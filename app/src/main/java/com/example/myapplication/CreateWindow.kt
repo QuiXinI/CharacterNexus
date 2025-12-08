@@ -123,14 +123,14 @@ fun CreateWindow(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    strength = StatEditor("Сила", strength)
-                    dexterity = StatEditor("Ловкость", dexterity)
-                    constitution = StatEditor("Телосложение", constitution)
+                    strength = StatEditor("Сила", strength, textColor = Color.White)
+                    dexterity = StatEditor("Ловкость", dexterity, textColor = Color.White)
+                    constitution = StatEditor("Телосложение", constitution, textColor = Color.White)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    intelligence = StatEditor("Интеллект", intelligence)
-                    wisdom = StatEditor("Мудрость", wisdom)
-                    charisma = StatEditor("Харизма", charisma)
+                    intelligence = StatEditor("Интеллект", intelligence, textColor = Color.White)
+                    wisdom = StatEditor("Мудрость", wisdom, textColor = Color.White)
+                    charisma = StatEditor("Харизма", charisma, textColor = Color.White)
                 }
             }
 
