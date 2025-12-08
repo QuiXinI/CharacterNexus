@@ -43,7 +43,6 @@ class MainActivity : ComponentActivity() {
                             onCharacterClick = { characterId ->
                                 navController.navigate("detail/$characterId")
                             },
-                            // ИСПРАВЛЕНИЕ: Добавлена логика для импорта
                             onImportCharacter = { importedCharacter ->
                                 characters.add(importedCharacter)
                                 characterRepository.saveCharacters(characters)

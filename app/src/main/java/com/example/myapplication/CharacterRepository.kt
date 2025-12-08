@@ -30,18 +30,14 @@ class CharacterRepository(private val context: Context) {
 
     fun saveImagePermanently(uri: Uri): Uri? {
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-        // Создаем уникальное имя файла
         val fileName = "char_image_${UUID.randomUUID()}.jpg"
-        // Получаем доступ к приватной папке files внутри вашего приложения
         val file = File(context.filesDir, fileName)
 
-        // Копируем данные из inputStream в новый файл
         inputStream.use { input ->
             file.outputStream().use { output ->
                 input.copyTo(output)
             }
         }
-        // Возвращаем URI для нашего локального файла
         return Uri.fromFile(file)
     }
 }

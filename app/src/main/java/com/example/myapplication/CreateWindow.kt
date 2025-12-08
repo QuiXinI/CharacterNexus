@@ -39,7 +39,7 @@ import kotlin.text.toInt
 @Composable
 fun CreateWindow(
     modifier: Modifier = Modifier,
-    onNavigateBack: () -> Unit, // Добавлено для кнопки "назад"
+    onNavigateBack: () -> Unit,
     onCharacterCreate: (Character, Uri?) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
@@ -80,7 +80,6 @@ fun CreateWindow(
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // --- Блок с основной информацией ---
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -119,7 +118,6 @@ fun CreateWindow(
 
             Spacer(Modifier.height(24.dp))
 
-            // --- Характеристики ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -138,7 +136,6 @@ fun CreateWindow(
 
             Spacer(Modifier.weight(1f))
 
-            // --- Кнопка создания ---
             Button(
                 onClick = {
                     val newCharacter = Character(
@@ -169,7 +166,7 @@ fun CreateWindow(
 }
 
 @Composable
-fun StatEditor(label: String, value: String, textColor: Color = Color.Black): String { // Добавлен параметр textColor
+fun StatEditor(label: String, value: String, textColor: Color = Color.Black): String {
     var statValue by remember { mutableStateOf(value) }
 
     fun calculateModifier(score: Int): Int {
@@ -185,7 +182,7 @@ fun StatEditor(label: String, value: String, textColor: Color = Color.Black): St
             text = label,
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
-            color = textColor // Используем переданный цвет
+            color = textColor
         )
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -200,7 +197,7 @@ fun StatEditor(label: String, value: String, textColor: Color = Color.Black): St
                 label = { Text("Показатель") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(2f),
-                textStyle = TextStyle(color = Color.White) // Цвет вводимого текста тоже белый
+                textStyle = TextStyle(color = Color.White)
             )
             Spacer(Modifier.width(8.dp))
             Text(
@@ -209,7 +206,7 @@ fun StatEditor(label: String, value: String, textColor: Color = Color.Black): St
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
-                color = Color.White // Модификатор тоже делаем белым
+                color = Color.White
             )
         }
     }

@@ -51,7 +51,7 @@ fun MenuWindow(
     characters: List<Character>,
     onNavigateToCreate: () -> Unit,
     onCharacterClick: (Int) -> Unit,
-    onImportCharacter: (Character) -> Unit // ИСПРАВЛЕНИЕ 1: Добавлен параметр
+    onImportCharacter: (Character) -> Unit
 ) {
     val context = LocalContext.current
     val gson = Gson()
@@ -63,9 +63,7 @@ fun MenuWindow(
         try {
             val jsonString = context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() }
             if (jsonString != null) {
-                // ИСПРАВЛЕНИЕ 2: Используем наш data class `Character`
                 val importedCharacter = gson.fromJson(jsonString, Character::class.java)
-                // ИСПРАВЛЕНИЕ 3: Вызываем `onImportCharacter` и используем `copy()`
                 onImportCharacter(importedCharacter.copy(id = (0..100000).random(), imageUriString = null))
             }
         } catch (e: Exception) {
@@ -178,7 +176,6 @@ fun MenuWindowPreview() {
             Character(1, "Гаррик", "Воин", "Человек"),
             Character(2, "Лиара", "Плут", "Эльф", imageUriString = null)
         )
-        // ИСПРАВЛЕНИЕ 4: Добавлен `onImportCharacter` в Preview
         MenuWindow(
             characters = previewCharacters,
             onNavigateToCreate = {},
