@@ -1,25 +1,51 @@
 package com.example.myapplication
 
+import android.graphics.BitmapFactory
 import android.net.Uri
-import androidx.compose.material.icons.filled.Download
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -37,7 +63,7 @@ fun CharacterDetailWindow(
     character: Character?,
     onNavigateBack: () -> Unit,
     onDeleteCharacter: (Character) -> Unit,
-    onSaveChanges: (Character, Uri?) -> Unit
+    onSaveChanges: (Character) -> Unit
 ) {
     var name by remember { mutableStateOf(character?.name ?: "") }
     var characterClass by remember { mutableStateOf(character?.characterClass ?: "") }
@@ -91,7 +117,7 @@ fun CharacterDetailWindow(
                 title = { Text(name) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
                 actions = {
@@ -125,11 +151,19 @@ fun CharacterDetailWindow(
                         .clickable { imagePickerLauncher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
-                    val imageToShow = tempImageUri ?: character.imageUriString?.let { Uri.parse(it) }
-                    if (imageToShow != null) {
+                    if (tempImageUri != null) {
                         AsyncImage(
-                            model = imageToShow,
+                            model = tempImageUri,
                             contentDescription = "Изображение персонажа",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else if (character.imageData != null) {
+                        val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
+                        val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "Иконка персонажа",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -153,14 +187,14 @@ fun CharacterDetailWindow(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    strength = StatEditor("Сила", strength, textColor = Color.White)
-                    dexterity = StatEditor("Ловкость", dexterity, textColor = Color.White)
-                    constitution = StatEditor("Телосложение", constitution, textColor = Color.White)
+                    strength = statEditor("Сила", strength, textColor = Color.White)
+                    dexterity = statEditor("Ловкость", dexterity, textColor = Color.White)
+                    constitution = statEditor("Телосложение", constitution, textColor = Color.White)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    intelligence = StatEditor("Интеллект", intelligence, textColor = Color.White)
-                    wisdom = StatEditor("Мудрость", wisdom, textColor = Color.White)
-                    charisma = StatEditor("Харизма", charisma, textColor = Color.White)
+                    intelligence = statEditor("Интеллект", intelligence, textColor = Color.White)
+                    wisdom = statEditor("Мудрость", wisdom, textColor = Color.White)
+                    charisma = statEditor("Харизма", charisma, textColor = Color.White)
                 }
             }
 
@@ -183,11 +217,19 @@ fun CharacterDetailWindow(
                 }
                 Button(
                     onClick = {
+                         val imageDataString = tempImageUri?.let { uri ->
+                            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                                val bytes = inputStream.readBytes()
+                                Base64.encodeToString(bytes, Base64.DEFAULT)
+                            }
+                        } ?: character.imageData
+
                         val updatedCharacter = character.copy(
                             name = name,
                             characterClass = characterClass,
                             order = order,
                             level = level,
+                            imageData = imageDataString,
                             strength = strength,
                             dexterity = dexterity,
                             constitution = constitution,
@@ -195,7 +237,7 @@ fun CharacterDetailWindow(
                             wisdom = wisdom,
                             charisma = charisma
                         )
-                        onSaveChanges(updatedCharacter, tempImageUri)
+                        onSaveChanges(updatedCharacter)
                     },
                     modifier = Modifier
                         .weight(1f)
@@ -218,7 +260,7 @@ fun CharacterDetailWindowPreview() {
             character = previewCharacter,
             onNavigateBack = {},
             onDeleteCharacter = {},
-            onSaveChanges = { _, _ -> }
+            onSaveChanges = { _ -> }
         )
     }
 }

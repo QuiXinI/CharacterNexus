@@ -1,6 +1,5 @@
 package com.example.myapplication
 
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,7 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.myapplication.ui.theme.MyApplicationTheme
-import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,13 +51,8 @@ class MainActivity : ComponentActivity() {
                     composable("create") {
                         CreateWindow(
                             onNavigateBack = { navController.popBackStack() },
-                            onCharacterCreate = { newCharacter, tempImageUri ->
-                                var finalCharacter = newCharacter
-                                if (tempImageUri != null) {
-                                    val permanentUri = characterRepository.saveImagePermanently(tempImageUri)
-                                    finalCharacter = newCharacter.copy(imageUriString = permanentUri?.toString())
-                                }
-                                characters.add(finalCharacter)
+                            onCharacterCreate = { newCharacter ->
+                                characters.add(newCharacter)
                                 characterRepository.saveCharacters(characters)
                                 navController.popBackStack()
                             }
@@ -79,27 +72,14 @@ class MainActivity : ComponentActivity() {
                                 navController.popBackStack()
                             },
                             onDeleteCharacter = { characterToDelete ->
-                                characterToDelete.imageUriString?.let { uriString ->
-                                    Uri.parse(uriString).path?.let { path ->
-                                        File(path).delete()
-                                    }
-                                }
                                 characters.remove(characterToDelete)
                                 characterRepository.saveCharacters(characters)
                                 navController.popBackStack()
                             },
-                            onSaveChanges = { updatedCharacter, newImageUri ->
-                                var finalCharacter = updatedCharacter
-                                if (newImageUri != null) {
-                                    finalCharacter.imageUriString?.let { uriString ->
-                                        Uri.parse(uriString).path?.let { path -> File(path).delete() }
-                                    }
-                                    val permanentUri = characterRepository.saveImagePermanently(newImageUri)
-                                    finalCharacter = finalCharacter.copy(imageUriString = permanentUri?.toString())
-                                }
-                                val index = characters.indexOfFirst { it.id == finalCharacter.id }
+                            onSaveChanges = { updatedCharacter ->
+                                val index = characters.indexOfFirst { it.id == updatedCharacter.id }
                                 if (index != -1) {
-                                    characters[index] = finalCharacter
+                                    characters[index] = updatedCharacter
                                     characterRepository.saveCharacters(characters)
                                 }
                                 navController.popBackStack()
