@@ -1,27 +1,48 @@
 package com.example.myapplication
 
 import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -33,14 +54,13 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import kotlin.math.floor
-import kotlin.text.toInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateWindow(
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
-    onCharacterCreate: (Character, Uri?) -> Unit
+    onCharacterCreate: (Character) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var characterClass by remember { mutableStateOf("") }
@@ -55,6 +75,8 @@ fun CreateWindow(
     var wisdom by remember { mutableStateOf("10") }
     var charisma by remember { mutableStateOf("10") }
 
+    val context = LocalContext.current
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -67,7 +89,7 @@ fun CreateWindow(
                 title = { Text("Создание персонажа") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 }
             )
@@ -123,14 +145,14 @@ fun CreateWindow(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    strength = StatEditor("Сила", strength, textColor = Color.White)
-                    dexterity = StatEditor("Ловкость", dexterity, textColor = Color.White)
-                    constitution = StatEditor("Телосложение", constitution, textColor = Color.White)
+                    strength = statEditor("Сила", strength, textColor = Color.White)
+                    dexterity = statEditor("Ловкость", dexterity, textColor = Color.White)
+                    constitution = statEditor("Телосложение", constitution, textColor = Color.White)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    intelligence = StatEditor("Интеллект", intelligence, textColor = Color.White)
-                    wisdom = StatEditor("Мудрость", wisdom, textColor = Color.White)
-                    charisma = StatEditor("Харизма", charisma, textColor = Color.White)
+                    intelligence = statEditor("Интеллект", intelligence, textColor = Color.White)
+                    wisdom = statEditor("Мудрость", wisdom, textColor = Color.White)
+                    charisma = statEditor("Харизма", charisma, textColor = Color.White)
                 }
             }
 
@@ -138,12 +160,19 @@ fun CreateWindow(
 
             Button(
                 onClick = {
+                     val imageDataString = tempImageUri?.let { uri ->
+                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                            val bytes = inputStream.readBytes()
+                            Base64.encodeToString(bytes, Base64.DEFAULT)
+                        }
+                    }
+
                     val newCharacter = Character(
                         id = (0..100000).random(),
                         name = name,
                         characterClass = characterClass,
                         order = order.ifEmpty { "Не указан" },
-                        imageUriString = null,
+                        imageData = imageDataString,
                         level = level.ifEmpty { "1" },
                         strength = strength,
                         dexterity = dexterity,
@@ -152,7 +181,7 @@ fun CreateWindow(
                         wisdom = wisdom,
                         charisma = charisma
                     )
-                    onCharacterCreate(newCharacter, tempImageUri)
+                    onCharacterCreate(newCharacter)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,7 +195,7 @@ fun CreateWindow(
 }
 
 @Composable
-fun StatEditor(label: String, value: String, textColor: Color = Color.Black): String {
+fun statEditor(label: String, value: String, textColor: Color = Color.Black): String {
     var statValue by remember { mutableStateOf(value) }
 
     fun calculateModifier(score: Int): Int {
@@ -220,7 +249,7 @@ fun CreateWindowPreview() {
     MyApplicationTheme {
         CreateWindow(
             onNavigateBack = {},
-            onCharacterCreate = { _, _ -> }
+            onCharacterCreate = { _ -> }
         )
     }
 }

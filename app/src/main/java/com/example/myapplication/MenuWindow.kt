@@ -1,24 +1,42 @@
 package com.example.myapplication
 
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -26,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.google.gson.Gson
 
@@ -35,7 +52,7 @@ data class Character(
     val name: String,
     val characterClass: String,
     val order: String,
-    val imageUriString: String? = null,
+    val imageData: String? = null,
     val level: String = "1",
     val strength: String = "10",
     val dexterity: String = "10",
@@ -64,7 +81,7 @@ fun MenuWindow(
             val jsonString = context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() }
             if (jsonString != null) {
                 val importedCharacter = gson.fromJson(jsonString, Character::class.java)
-                onImportCharacter(importedCharacter.copy(id = (0..100000).random(), imageUriString = null))
+                onImportCharacter(importedCharacter.copy(id = (0..100000).random()))
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -136,9 +153,11 @@ fun CharacterCard(
                     .background(Color.LightGray),
                 contentAlignment = Alignment.Center
             ) {
-                if (character.imageUriString != null) {
-                    AsyncImage(
-                        model = Uri.parse(character.imageUriString),
+                if (character.imageData != null) {
+                    val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
+                    val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
                         contentDescription = "Иконка персонажа",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -174,7 +193,7 @@ fun MenuWindowPreview() {
     MyApplicationTheme {
         val previewCharacters = listOf(
             Character(1, "Гаррик", "Воин", "Человек"),
-            Character(2, "Лиара", "Плут", "Эльф", imageUriString = null)
+            Character(2, "Лиара", "Плут", "Эльф", imageData = null)
         )
         MenuWindow(
             characters = previewCharacters,

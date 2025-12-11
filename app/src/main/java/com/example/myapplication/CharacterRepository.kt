@@ -1,13 +1,11 @@
 package com.example.myapplication
 
 import android.content.Context
-import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.io.File
-import java.util.UUID
+import androidx.core.content.edit
 
-class CharacterRepository(private val context: Context) {
+class CharacterRepository(context: Context) {
 
     private val sharedPreferences = context.getSharedPreferences("character_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
@@ -25,19 +23,6 @@ class CharacterRepository(private val context: Context) {
 
     fun saveCharacters(characters: List<Character>) {
         val json = gson.toJson(characters)
-        sharedPreferences.edit().putString(charactersKey, json).apply()
-    }
-
-    fun saveImagePermanently(uri: Uri): Uri? {
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
-        val fileName = "char_image_${UUID.randomUUID()}.jpg"
-        val file = File(context.filesDir, fileName)
-
-        inputStream.use { input ->
-            file.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-        return Uri.fromFile(file)
+        sharedPreferences.edit { putString(charactersKey, json) }
     }
 }
