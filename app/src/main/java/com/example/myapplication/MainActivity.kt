@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            MyApplicationTheme(dynamicColor = true) {
                 val characters: SnapshotStateList<Character> = remember {
                     mutableStateListOf<Character>().apply {
                         addAll(characterRepository.loadCharacters())

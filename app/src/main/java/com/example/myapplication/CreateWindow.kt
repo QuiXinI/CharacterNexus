@@ -44,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -103,7 +102,9 @@ fun CreateWindow(
                 .verticalScroll(rememberScrollState())
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -131,10 +132,10 @@ fun CreateWindow(
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Имя") }, textStyle = TextStyle(color = Color.White))
-                    OutlinedTextField(value = characterClass, onValueChange = { characterClass = it }, label = { Text("Класс") }, textStyle = TextStyle(color = Color.White))
-                    OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Вид") }, textStyle = TextStyle(color = Color.White))
-                    OutlinedTextField(value = level, onValueChange = { if (it.all(Char::isDigit)) level = it }, label = { Text("Уровень") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = TextStyle(color = Color.White))
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Имя") })
+                    OutlinedTextField(value = characterClass, onValueChange = { characterClass = it }, label = { Text("Класс") })
+                    OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Вид") })
+                    OutlinedTextField(value = level, onValueChange = { if (it.all(Char::isDigit)) level = it }, label = { Text("Уровень") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 }
             }
 
@@ -145,14 +146,14 @@ fun CreateWindow(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    strength = statEditor("Сила", strength, textColor = Color.White)
-                    dexterity = statEditor("Ловкость", dexterity, textColor = Color.White)
-                    constitution = statEditor("Телосложение", constitution, textColor = Color.White)
+                    strength = statEditor("Сила", strength)
+                    dexterity = statEditor("Ловкость", dexterity)
+                    constitution = statEditor("Телосложение", constitution)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    intelligence = statEditor("Интеллект", intelligence, textColor = Color.White)
-                    wisdom = statEditor("Мудрость", wisdom, textColor = Color.White)
-                    charisma = statEditor("Харизма", charisma, textColor = Color.White)
+                    intelligence = statEditor("Интеллект", intelligence)
+                    wisdom = statEditor("Мудрость", wisdom)
+                    charisma = statEditor("Харизма", charisma)
                 }
             }
 
@@ -195,7 +196,7 @@ fun CreateWindow(
 }
 
 @Composable
-fun statEditor(label: String, value: String, textColor: Color = Color.Black): String {
+fun statEditor(label: String, value: String): String {
     var statValue by remember { mutableStateOf(value) }
 
     fun calculateModifier(score: Int): Int {
@@ -210,8 +211,7 @@ fun statEditor(label: String, value: String, textColor: Color = Color.Black): St
         Text(
             text = label,
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = textColor
+            fontSize = 18.sp
         )
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -225,8 +225,7 @@ fun statEditor(label: String, value: String, textColor: Color = Color.Black): St
                 },
                 label = { Text("Показатель") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.weight(2f),
-                textStyle = TextStyle(color = Color.White)
+                modifier = Modifier.weight(2f)
             )
             Spacer(Modifier.width(8.dp))
             Text(
@@ -234,8 +233,7 @@ fun statEditor(label: String, value: String, textColor: Color = Color.Black): St
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center,
-                color = Color.White
+                textAlign = TextAlign.Center
             )
         }
     }

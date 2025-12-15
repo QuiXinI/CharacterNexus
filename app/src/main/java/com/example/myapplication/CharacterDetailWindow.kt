@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -173,10 +172,10 @@ fun CharacterDetailWindow(
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Имя") }, textStyle = TextStyle(color = Color.White))
-                    OutlinedTextField(value = characterClass, onValueChange = { characterClass = it }, label = { Text("Класс") }, textStyle = TextStyle(color = Color.White))
-                    OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Вид") }, textStyle = TextStyle(color = Color.White))
-                    OutlinedTextField(value = level, onValueChange = { if (it.all(Char::isDigit)) level = it }, label = { Text("Уровень") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), textStyle = TextStyle(color = Color.White))
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Имя") })
+                    OutlinedTextField(value = characterClass, onValueChange = { characterClass = it }, label = { Text("Класс") })
+                    OutlinedTextField(value = order, onValueChange = { order = it }, label = { Text("Вид") })
+                    OutlinedTextField(value = level, onValueChange = { if (it.all(Char::isDigit)) level = it }, label = { Text("Уровень") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 }
             }
 
@@ -187,14 +186,14 @@ fun CharacterDetailWindow(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    strength = statEditor("Сила", strength, textColor = Color.White)
-                    dexterity = statEditor("Ловкость", dexterity, textColor = Color.White)
-                    constitution = statEditor("Телосложение", constitution, textColor = Color.White)
+                    strength = statEditor("Сила", strength)
+                    dexterity = statEditor("Ловкость", dexterity)
+                    constitution = statEditor("Телосложение", constitution)
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    intelligence = statEditor("Интеллект", intelligence, textColor = Color.White)
-                    wisdom = statEditor("Мудрость", wisdom, textColor = Color.White)
-                    charisma = statEditor("Харизма", charisma, textColor = Color.White)
+                    intelligence = statEditor("Интеллект", intelligence)
+                    wisdom = statEditor("Мудрость", wisdom)
+                    charisma = statEditor("Харизма", charisma)
                 }
             }
 
