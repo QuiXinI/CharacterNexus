@@ -1,4 +1,4 @@
-package com.example.myapplication
+package ru.quasaris.characters.master
 
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.myapplication.ui.theme.MyApplicationTheme
+import ru.quasaris.characters.master.ui.theme.MyApplicationTheme
 import com.google.gson.Gson
 
 data class Character(

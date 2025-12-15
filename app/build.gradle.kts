@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.myapplication"
+    namespace = "ru.quasaris.characters.master"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.myapplication"
+        applicationId = "ru.quasaris.characters.master"
         minSdk = 24
         targetSdk = 35
         versionCode = 1

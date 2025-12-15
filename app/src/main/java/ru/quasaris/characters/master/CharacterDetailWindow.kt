@@ -1,4 +1,4 @@
-package com.example.myapplication
+package ru.quasaris.characters.master
 
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -53,7 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.myapplication.ui.theme.MyApplicationTheme
+import ru.quasaris.characters.master.ui.theme.MyApplicationTheme
 import com.google.gson.Gson
 
 @OptIn(ExperimentalMaterial3Api::class)

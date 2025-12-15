@@ -1,4 +1,4 @@
-package com.example.myapplication
+package ru.quasaris.characters.master
 
 import android.content.Context
 import com.google.gson.Gson

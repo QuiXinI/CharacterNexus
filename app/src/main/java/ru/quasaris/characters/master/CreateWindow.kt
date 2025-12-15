@@ -1,4 +1,4 @@
-package com.example.myapplication
+package ru.quasaris.characters.master
 
 import android.net.Uri
 import android.util.Base64
@@ -51,7 +51,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.myapplication.ui.theme.MyApplicationTheme
+import ru.quasaris.characters.master.ui.theme.MyApplicationTheme
 import kotlin.math.floor
 
 @OptIn(ExperimentalMaterial3Api::class)
