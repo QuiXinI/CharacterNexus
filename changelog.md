@@ -1,5 +1,8 @@
 # Чейнджлог
 
+## Version 1.4.0.2
+Иконка теперь поддерживает Material You
+
 ## Version 1.4.0.1
 Имя пакета изменено на `ru.quasaris.characters.master`
 
