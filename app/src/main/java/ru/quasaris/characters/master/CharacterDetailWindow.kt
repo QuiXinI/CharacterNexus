@@ -254,7 +254,7 @@ fun CharacterDetailWindow(
 @Composable
 fun CharacterDetailWindowPreview() {
     quasarisTheme {
-        val previewCharacter = Character(id = 1, name = "Арагорн", characterClass = "Следопыт", order = "Человек")
+        val previewCharacter = Character(id = 1, name = "Арагорн", characterClass = "Варвар", order = "Человек", strength = "16", dexterity = "14", constitution = "16", intelligence = "8", wisdom = "8", charisma = "12")
         CharacterDetailWindow(
             character = previewCharacter,
             onNavigateBack = {},
