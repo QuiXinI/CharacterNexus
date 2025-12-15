@@ -53,7 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import ru.quasaris.characters.master.ui.theme.MyApplicationTheme
+import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import com.google.gson.Gson
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -253,7 +253,7 @@ fun CharacterDetailWindow(
 @Preview(showBackground = true)
 @Composable
 fun CharacterDetailWindowPreview() {
-    MyApplicationTheme {
+    quasarisTheme {
         val previewCharacter = Character(id = 1, name = "Арагорн", characterClass = "Следопыт", order = "Человек")
         CharacterDetailWindow(
             character = previewCharacter,

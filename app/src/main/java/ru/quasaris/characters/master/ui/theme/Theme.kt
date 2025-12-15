@@ -63,7 +63,7 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun MyApplicationTheme(
+fun quasarisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit

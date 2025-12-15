@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.quasaris.characters.master.ui.theme.MyApplicationTheme
+import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import com.google.gson.Gson
 
 data class Character(
@@ -190,7 +190,7 @@ fun CharacterCard(
 @Preview(showBackground = true)
 @Composable
 fun MenuWindowPreview() {
-    MyApplicationTheme {
+    quasarisTheme {
         val previewCharacters = listOf(
             Character(1, "Гаррик", "Воин", "Человек"),
             Character(2, "Лиара", "Плут", "Эльф", imageData = null)

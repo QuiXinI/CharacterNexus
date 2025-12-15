@@ -51,7 +51,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import ru.quasaris.characters.master.ui.theme.MyApplicationTheme
+import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import kotlin.math.floor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -244,7 +244,7 @@ fun statEditor(label: String, value: String): String {
 @Preview(showBackground = true, widthDp = 380)
 @Composable
 fun CreateWindowPreview() {
-    MyApplicationTheme {
+    quasarisTheme {
         CreateWindow(
             onNavigateBack = {},
             onCharacterCreate = { _ -> }

@@ -11,7 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import ru.quasaris.characters.master.ui.theme.MyApplicationTheme
+import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme(dynamicColor = true) {
+            quasarisTheme(dynamicColor = true) {
                 val characters: SnapshotStateList<Character> = remember {
                     mutableStateListOf<Character>().apply {
                         addAll(characterRepository.loadCharacters())
