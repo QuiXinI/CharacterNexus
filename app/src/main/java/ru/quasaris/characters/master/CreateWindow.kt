@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +61,8 @@ fun CreateWindow(
     var intelligence by remember { mutableStateOf("10") }
     var wisdom by remember { mutableStateOf("10") }
     var charisma by remember { mutableStateOf("10") }
+
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         containerColor = Color.White,
@@ -138,7 +142,7 @@ fun CreateWindow(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp, horizontal = 12.dp),
+                        .padding(vertical = 8.dp, horizontal = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -178,7 +182,13 @@ fun CreateWindow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color.White) 
+                .background(Color.White)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    focusManager.clearFocus()
+                }
         ) {
             Column(
                 modifier = Modifier
@@ -190,7 +200,7 @@ fun CreateWindow(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(12.dp)
+                        .height(8.dp)
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(Color.Black.copy(alpha = 0.15f), Color.Transparent)
@@ -198,12 +208,12 @@ fun CreateWindow(
                         )
                 )
 
-                // Characteristics Header Bar (Updated Font Size)
+                // Characteristics Header Bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                        .height(44.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .height(40.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color(0xFFEADDFF)),
                     contentAlignment = Alignment.Center
@@ -223,7 +233,7 @@ fun CreateWindow(
                     onClick = { /* TODO */ },
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
-                        .padding(vertical = 12.dp)
+                        .padding(top = 12.dp, bottom = 20.dp)
                         .width(220.dp)
                         .height(44.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEADDFF)),
@@ -233,27 +243,29 @@ fun CreateWindow(
                     Text("Расширенный режим", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
 
+                // Stats Grid
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         StatCard("Сила", strength, Modifier.weight(1f)) { strength = it }
                         StatCard("Интеллект", intelligence, Modifier.weight(1f)) { intelligence = it }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         StatCard("Ловкость", dexterity, Modifier.weight(1f)) { dexterity = it }
                         StatCard("Мудрость", wisdom, Modifier.weight(1f)) { wisdom = it }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         StatCard("Телосложение", constitution, Modifier.weight(1f)) { constitution = it }
                         StatCard("Харизма", charisma, Modifier.weight(1f)) { charisma = it }
                     }
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(16.dp))
 
-                Text("Пассивные проверки", modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                // Passive Checks
+                Text("Пассивные проверки", modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 
                 Column(
                     modifier = Modifier
@@ -261,15 +273,15 @@ fun CreateWindow(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color(103, 80, 164, 20))
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     PassiveCheckRow("Анализ (Интеллект)", "12")
                     PassiveCheckRow("Внимательность (Мудрость)", "12")
                     PassiveCheckRow("Проницательность (Мудрость)", "10")
                 }
                 
-                Spacer(Modifier.height(40.dp))
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -313,18 +325,18 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
     val modStr = if (mod >= 0) "+$mod" else mod.toString()
     Box(
         modifier = modifier
-            .height(112.dp)
+            .height(104.dp)
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(8.dp))
             .background(Color.White, RoundedCornerShape(8.dp))
             .border(1.dp, Color(0xFFCAC4D0).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
             .padding(8.dp)
     ) {
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color.Black)
-        Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 25.dp, bottom = 5.dp).size(40.dp).rotate(-45f).clip(RoundedCornerShape(12.dp)).background(Color(0xFFD0BCFF)), contentAlignment = Alignment.Center) {
-            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.Black)
+        Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 22.dp, bottom = 2.dp).size(38.dp).rotate(-45f).clip(RoundedCornerShape(10.dp)).background(Color(0xFFD0BCFF)), contentAlignment = Alignment.Center) {
+            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
         }
-        Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(modifier = Modifier.size(46.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F1F8)).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+        Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F1F8)).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                 BasicTextField(
                     value = value,
                     onValueChange = { newValue ->
@@ -332,13 +344,13 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
                         if (filtered.isEmpty()) { onValueChange("") }
                         else { val num = filtered.toIntOrNull(); if (num != null && num in 1..30) onValueChange(filtered) }
                     },
-                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.Black),
+                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.width(36.dp)
+                    modifier = Modifier.width(32.dp)
                 )
             }
-            Box(modifier = Modifier.size(46.dp).clip(RoundedCornerShape(8.dp)).background(Color.White).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                Text(modStr, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+            Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(Color.White).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                Text(modStr, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
             }
         }
     }
@@ -346,9 +358,9 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
 
 @Composable
 fun PassiveCheckRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth().height(34.dp).clip(RoundedCornerShape(8.dp)).background(Color(103, 80, 164, 40)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, modifier = Modifier.padding(start = 12.dp), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-        Text(value, modifier = Modifier.padding(end = 12.dp), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    Row(modifier = Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(8.dp)).background(Color(103, 80, 164, 40)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, modifier = Modifier.padding(start = 12.dp), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(value, modifier = Modifier.padding(end = 12.dp), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
