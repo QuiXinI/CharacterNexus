@@ -75,10 +75,34 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         processed = processed.replace(key, value.toString())
     }
 
+    // Handle [MAX(...)] and [MIN(...)]
+    fun processFunctions(input: String): String {
+        var current = input
+        val functions = listOf("МАКС", "MAX", "МИН", "MIN")
+        
+        functions.forEach { func ->
+            // Регулярное выражение теперь ищет функцию с квадратными скобками (приоритетно) или без них
+            val patternWrapped = Regex("\\[$func\\s*\\(([^()]+)\\)\\]")
+            val patternUnwrapped = Regex("$func\\s*\\(([^()]+)\\)")
+            
+            while (current.contains(func)) {
+                val match = patternWrapped.find(current) ?: patternUnwrapped.find(current) ?: break
+                val content = match.groupValues[1]
+                val values = content.split(";").map { evaluateFormula(it.trim(), stats) }
+                val result = if (func.startsWith("МА") || func.startsWith("MA")) values.maxOrNull() ?: 0 else values.minOrNull() ?: 0
+                current = current.replace(match.value, result.toString())
+            }
+        }
+        return current
+    }
+
+    processed = processFunctions(processed)
+    
+    // Удаляем любые оставшиеся квадратные скобки, чтобы они не ломали математический парсер
+    processed = processed.replace("[", "").replace("]", "")
+
     return try {
         val tokens = processed.replace(" ", "").split(Regex("(?=[+\\-*/])|(?<=[+\\-*/])"))
-        
-        // Use Shunting-yard algorithm or similar for precedence
         val values = Stack<Int>()
         val ops = Stack<String>()
 
