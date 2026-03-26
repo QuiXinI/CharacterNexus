@@ -3,6 +3,10 @@ package ru.quasaris.characters.master
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,7 +45,79 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
+import java.util.UUID
+import java.util.Stack
 import kotlin.math.floor
+
+fun calculateModifier(scoreStr: String): Int {
+    val score = scoreStr.toIntOrNull() ?: 10
+    return floor((score - 10) / 2.0).toInt()
+}
+
+fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
+    var processed = formula.uppercase()
+    val replacements = mapOf(
+        "[СИЛ]" to calculateModifier(stats["strength"] ?: "10"),
+        "[STR]" to calculateModifier(stats["strength"] ?: "10"),
+        "[ЛОВ]" to calculateModifier(stats["dexterity"] ?: "10"),
+        "[DEX]" to calculateModifier(stats["dexterity"] ?: "10"),
+        "[ТЕЛ]" to calculateModifier(stats["constitution"] ?: "10"),
+        "[CON]" to calculateModifier(stats["constitution"] ?: "10"),
+        "[ИНТ]" to calculateModifier(stats["intelligence"] ?: "10"),
+        "[INT]" to calculateModifier(stats["intelligence"] ?: "10"),
+        "[МУД]" to calculateModifier(stats["wisdom"] ?: "10"),
+        "[WIS]" to calculateModifier(stats["wisdom"] ?: "10"),
+        "[ХАР]" to calculateModifier(stats["charisma"] ?: "10"),
+        "[CHA]" to calculateModifier(stats["charisma"] ?: "10")
+    )
+
+    replacements.forEach { (key, value) ->
+        processed = processed.replace(key, value.toString())
+    }
+
+    return try {
+        val tokens = processed.replace(" ", "").split(Regex("(?=[+\\-*/])|(?<=[+\\-*/])"))
+        
+        // Use Shunting-yard algorithm or similar for precedence
+        val values = Stack<Int>()
+        val ops = Stack<String>()
+
+        fun hasPrecedence(op1: String, op2: String): Boolean {
+            if ((op1 == "*" || op1 == "/") && (op2 == "+" || op2 == "-")) return false
+            return true
+        }
+
+        fun applyOp(op: String, b: Int, a: Int): Int {
+            return when (op) {
+                "+" -> a + b
+                "-" -> a - b
+                "*" -> a * b
+                "/" -> if (b != 0) a / b else 0
+                else -> 0
+            }
+        }
+
+        for (token in tokens) {
+            if (token.isEmpty()) continue
+            if (token[0].isDigit() || (token.length > 1 && token[0] == '-' && token[1].isDigit())) {
+                values.push(token.toInt())
+            } else {
+                while (!ops.empty() && hasPrecedence(token, ops.peek())) {
+                    values.push(applyOp(ops.pop(), values.pop(), values.pop()))
+                }
+                ops.push(token)
+            }
+        }
+
+        while (!ops.empty()) {
+            values.push(applyOp(ops.pop(), values.pop(), values.pop()))
+        }
+
+        values.pop()
+    } catch (e: Exception) {
+        0
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +138,21 @@ fun CreateWindow(
     var wisdom by remember { mutableStateOf("10") }
     var charisma by remember { mutableStateOf("10") }
 
+    val statsMap = mapOf(
+        "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
+        "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma
+    )
+
+    var armorClassEntries by remember { mutableStateOf(listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]"))) }
+    var activeArmorClassId by remember { mutableStateOf<String?>(armorClassEntries.firstOrNull()?.id) }
+    var isArmorClassPanelVisible by remember { mutableStateOf(false) }
+    var deleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    val activeACValue = remember(activeArmorClassId, armorClassEntries, statsMap) {
+        val active = armorClassEntries.find { it.id == activeArmorClassId }
+        if (active != null) evaluateFormula(active.formula, statsMap).toString() else "10"
+    }
+
     val focusManager = LocalFocusManager.current
 
     Scaffold(
@@ -72,7 +163,6 @@ fun CreateWindow(
                     .background(Color.White)
                     .statusBarsPadding()
             ) {
-                // Top Bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -99,7 +189,6 @@ fun CreateWindow(
                     }
                 }
 
-                // Experience Bar
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -138,7 +227,6 @@ fun CreateWindow(
                     }
                 }
 
-                // Expanded Quick Stats Row
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -147,7 +235,7 @@ fun CreateWindow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatIconBox("15", R.drawable.ic_shield)
+                        StatIconBox(activeACValue, R.drawable.ic_shield, onClick = { isArmorClassPanelVisible = !isArmorClassPanelVisible })
                         StatIconBox("+2", R.drawable.ic_sword)
                     }
                     Box(
@@ -188,6 +276,7 @@ fun CreateWindow(
                     indication = null
                 ) {
                     focusManager.clearFocus()
+                    deleteConfirmId = null
                 }
         ) {
             Column(
@@ -208,7 +297,21 @@ fun CreateWindow(
                         )
                 )
 
-                // Characteristics Header Bar
+                AnimatedVisibility(
+                    visible = isArmorClassPanelVisible,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    ArmorClassPanel(
+                        entries = armorClassEntries,
+                        activeId = activeArmorClassId,
+                        deleteConfirmId = deleteConfirmId,
+                        onEntriesChanged = { armorClassEntries = it },
+                        onActiveIdChanged = { activeArmorClassId = it },
+                        onDeleteConfirmIdChanged = { deleteConfirmId = it }
+                    )
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -243,7 +346,6 @@ fun CreateWindow(
                     Text("Расширенный режим", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
 
-                // Stats Grid
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -264,7 +366,6 @@ fun CreateWindow(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Passive Checks
                 Text("Пассивные проверки", modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 
                 Column(
@@ -276,9 +377,9 @@ fun CreateWindow(
                         .padding(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    PassiveCheckRow("Анализ (Интеллект)", "12")
-                    PassiveCheckRow("Внимательность (Мудрость)", "12")
-                    PassiveCheckRow("Проницательность (Мудрость)", "10")
+                    PassiveCheckRow("Анализ (Интеллект)", (10 + calculateModifier(intelligence)).toString())
+                    PassiveCheckRow("Внимательность (Мудрость)", (10 + calculateModifier(wisdom)).toString())
+                    PassiveCheckRow("Проницательность (Мудрость)", (10 + calculateModifier(wisdom)).toString())
                 }
                 
                 Spacer(Modifier.height(24.dp))
@@ -288,9 +389,161 @@ fun CreateWindow(
 }
 
 @Composable
-fun StatIconBox(value: String, iconRes: Int) {
+fun ArmorClassPanel(
+    entries: List<ArmorClassEntry>,
+    activeId: String?,
+    deleteConfirmId: String?,
+    onEntriesChanged: (List<ArmorClassEntry>) -> Unit,
+    onActiveIdChanged: (String?) -> Unit,
+    onDeleteConfirmIdChanged: (String?) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .background(Color(0xFFFEF7FF), RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0xFFCAC4D0).copy(0.3f), RoundedCornerShape(12.dp))
+            .animateContentSize()
+    ) {
+        entries.forEachIndexed { index, entry ->
+            val isActive = entry.id == activeId
+            ArmorClassEntryItem(
+                entry = entry,
+                isActive = isActive,
+                isDeleteConfirm = entry.id == deleteConfirmId,
+                onUpdate = { updated ->
+                    val newList = entries.toMutableList()
+                    newList[index] = updated
+                    onEntriesChanged(newList)
+                },
+                onDelete = {
+                    val newList = entries.toMutableList()
+                    newList.removeAt(index)
+                    if (entry.id == activeId) onActiveIdChanged(null)
+                    onEntriesChanged(newList)
+                    onDeleteConfirmIdChanged(null)
+                },
+                onDeleteConfirmRequest = {
+                    onDeleteConfirmIdChanged(entry.id)
+                },
+                onToggleActive = {
+                    onActiveIdChanged(if (isActive) null else entry.id)
+                    onDeleteConfirmIdChanged(null)
+                }
+            )
+            Divider(color = Color.Black.copy(0.15f), thickness = 1.dp)
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clickable {
+                    onEntriesChanged(entries + ArmorClassEntry())
+                    onDeleteConfirmIdChanged(null)
+                }
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = Color.Black, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Добавить Новое", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.Black)
+        }
+    }
+}
+
+@Composable
+fun ArmorClassEntryItem(
+    entry: ArmorClassEntry,
+    isActive: Boolean,
+    isDeleteConfirm: Boolean,
+    onUpdate: (ArmorClassEntry) -> Unit,
+    onDelete: () -> Unit,
+    onDeleteConfirmRequest: () -> Unit,
+    onToggleActive: () -> Unit
+) {
+    val backgroundColor = if (isActive) Color(0xFFD0BCFF) else Color.Transparent
+    val separatorColor = Color.Black.copy(0.2f)
+    val separatorThickness = 1.2.dp
+
+    Column(modifier = Modifier.fillMaxWidth().background(backgroundColor).animateContentSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(44.dp)
+                    .fillMaxHeight()
+                    .clickable { 
+                        if (isDeleteConfirm) onDelete() else onDeleteConfirmRequest() 
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isDeleteConfirm) Color.Red else Color.Black.copy(0.7f)
+                )
+            }
+            
+            Box(modifier = Modifier.width(separatorThickness).fillMaxHeight().background(separatorColor))
+
+            Box(modifier = Modifier.weight(1f).padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
+                if (entry.name.isEmpty()) {
+                    Text("Название", color = Color.Gray.copy(0.6f), fontSize = 16.sp)
+                }
+                BasicTextField(
+                    value = entry.name,
+                    onValueChange = { onUpdate(entry.copy(name = it)) },
+                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, color = Color.Black),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                )
+            }
+
+            Box(modifier = Modifier.width(separatorThickness).fillMaxHeight().background(separatorColor))
+
+            Box(
+                modifier = Modifier
+                    .width(44.dp)
+                    .fillMaxHeight()
+                    .clickable { onToggleActive() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isActive) Icons.Default.Close else Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Black
+                )
+            }
+        }
+        Divider(color = separatorColor, thickness = separatorThickness)
+        Box(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
+            if (entry.formula.isEmpty()) {
+                Text("Формула КД", color = Color.Gray.copy(0.6f), fontSize = 14.sp)
+            }
+            BasicTextField(
+                value = entry.formula,
+                onValueChange = { onUpdate(entry.copy(formula = it)) },
+                textStyle = TextStyle(fontSize = 14.sp, color = Color.Black),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
     Box(
-        modifier = Modifier.size(42.dp),
+        modifier = Modifier.size(42.dp).clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        ),
         contentAlignment = Alignment.Center
     ) {
         if (iconRes == R.drawable.ic_sword) {
