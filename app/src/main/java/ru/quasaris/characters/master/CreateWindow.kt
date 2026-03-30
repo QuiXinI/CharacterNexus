@@ -81,7 +81,6 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         val functions = listOf("МАКС", "MAX", "МИН", "MIN")
         
         functions.forEach { func ->
-            // Регулярное выражение теперь ищет функцию с квадратными скобками (приоритетно) или без них
             val patternWrapped = Regex("\\[$func\\s*\\(([^()]+)\\)\\]")
             val patternUnwrapped = Regex("$func\\s*\\(([^()]+)\\)")
             
@@ -97,8 +96,6 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     }
 
     processed = processFunctions(processed)
-    
-    // Удаляем любые оставшиеся квадратные скобки, чтобы они не ломали математический парсер
     processed = processed.replace("[", "").replace("]", "")
 
     return try {
@@ -178,13 +175,14 @@ fun CreateWindow(
     }
 
     val focusManager = LocalFocusManager.current
+    val colorScheme = MaterialTheme.colorScheme
 
     Scaffold(
-        containerColor = Color.White,
+        containerColor = colorScheme.background,
         topBar = {
             Column(
                 modifier = Modifier
-                    .background(Color.White)
+                    .background(colorScheme.surface)
                     .statusBarsPadding()
             ) {
                 Row(
@@ -194,22 +192,23 @@ fun CreateWindow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
                     Text(
                         text = name,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Normal,
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = colorScheme.onSurface
                     )
                     Box(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFEADDFF)),
+                            .background(colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF4F378A))
+                        Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
                     }
                 }
 
@@ -219,7 +218,7 @@ fun CreateWindow(
                         .padding(horizontal = 12.dp, vertical = 4.dp)
                         .height(24.dp)
                         .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp))
-                        .background(Color.White, RoundedCornerShape(20.dp))
+                        .background(colorScheme.surface, RoundedCornerShape(20.dp))
                         .padding(2.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -228,24 +227,24 @@ fun CreateWindow(
                                 .width(90.dp)
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 0.dp, bottomEnd = 0.dp))
-                                .background(Color(0xFFEADDFF)),
+                                .background(colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("$level уровень", fontSize = 11.sp, color = Color.Black)
+                            Text("$level уровень", fontSize = 11.sp, color = colorScheme.onPrimaryContainer)
                         }
                         Spacer(modifier = Modifier.width(2.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 20.dp, bottomEnd = 20.dp))
-                                .background(Color.White)
+                                .background(colorScheme.surface)
                         ) {
-                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.35f).background(Color(0xFFEADDFF)))
+                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.35f).background(colorScheme.primaryContainer))
                             Row(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.weight(0.4f))
-                                Text("$experience | $nextLevelExp", fontSize = 11.sp, color = Color.Black)
+                                Text("$experience | $nextLevelExp", fontSize = 11.sp, color = colorScheme.onSurface)
                                 Spacer(Modifier.weight(0.6f))
-                                Text("${level.toInt() + 1}", fontSize = 11.sp, color = Color.Black)
+                                Text("${level.toInt() + 1}", fontSize = 11.sp, color = colorScheme.onSurface)
                             }
                         }
                     }
@@ -268,7 +267,7 @@ fun CreateWindow(
                             .padding(horizontal = 8.dp)
                             .height(55.dp)
                             .border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp))
-                            .background(Color.White, RoundedCornerShape(8.dp)),
+                            .background(colorScheme.surface, RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -294,7 +293,7 @@ fun CreateWindow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(Color.White)
+                .background(colorScheme.background)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
@@ -307,7 +306,7 @@ fun CreateWindow(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .background(Color.White)
+                    .background(colorScheme.surface)
                     .verticalScroll(rememberScrollState())
             ) {
                 Box(
@@ -316,7 +315,7 @@ fun CreateWindow(
                         .height(8.dp)
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.Black.copy(alpha = 0.15f), Color.Transparent)
+                                colors = listOf(colorScheme.onSurface.copy(alpha = 0.15f), Color.Transparent)
                             )
                         )
                 )
@@ -342,7 +341,7 @@ fun CreateWindow(
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                         .height(40.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFEADDFF)),
+                        .background(colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -350,9 +349,9 @@ fun CreateWindow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Характеристики", fontSize = 12.sp, color = Color(0xFF4A4459), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text("Характеристики", fontSize = 18.sp, fontWeight = FontWeight.Normal, color = Color.Black, textAlign = TextAlign.Center, modifier = Modifier.weight(1.5f))
-                        Text("Характеристики", fontSize = 12.sp, color = Color(0xFF4A4459), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                        Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text("Характеристики", fontSize = 18.sp, fontWeight = FontWeight.Normal, color = colorScheme.onPrimaryContainer, textAlign = TextAlign.Center, modifier = Modifier.weight(1.5f))
+                        Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
                     }
                 }
 
@@ -363,11 +362,14 @@ fun CreateWindow(
                         .padding(top = 12.dp, bottom = 20.dp)
                         .width(220.dp)
                         .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEADDFF)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.secondaryContainer,
+                        contentColor = colorScheme.onSecondaryContainer
+                    ),
                     shape = RoundedCornerShape(8.dp),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
-                    Text("Расширенный режим", color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text("Расширенный режим", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
 
                 Column(
@@ -390,14 +392,21 @@ fun CreateWindow(
 
                 Spacer(Modifier.height(16.dp))
 
-                Text("Пассивные проверки", modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "Пассивные проверки",
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    textAlign = TextAlign.Center,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colorScheme.onSurface
+                )
                 
                 Column(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(103, 80, 164, 20))
+                        .background(colorScheme.primary.copy(alpha = 0.1f))
                         .padding(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
@@ -421,13 +430,14 @@ fun ArmorClassPanel(
     onActiveIdChanged: (String?) -> Unit,
     onDeleteConfirmIdChanged: (String?) -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .shadow(4.dp, RoundedCornerShape(12.dp))
-            .background(Color(0xFFFEF7FF), RoundedCornerShape(12.dp))
-            .border(1.dp, Color(0xFFCAC4D0).copy(0.3f), RoundedCornerShape(12.dp))
+            .background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .border(1.dp, colorScheme.outline.copy(0.3f), RoundedCornerShape(12.dp))
             .animateContentSize()
     ) {
         entries.forEachIndexed { index, entry ->
@@ -456,7 +466,7 @@ fun ArmorClassPanel(
                     onDeleteConfirmIdChanged(null)
                 }
             )
-            Divider(color = Color.Black.copy(0.15f), thickness = 1.dp)
+            HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
         }
 
         Row(
@@ -471,9 +481,9 @@ fun ArmorClassPanel(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = Color.Black, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = colorScheme.onSurface, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Добавить Новое", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color.Black)
+            Text("Добавить Новое", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
         }
     }
 }
@@ -488,8 +498,9 @@ fun ArmorClassEntryItem(
     onDeleteConfirmRequest: () -> Unit,
     onToggleActive: () -> Unit
 ) {
-    val backgroundColor = if (isActive) Color(0xFFD0BCFF) else Color.Transparent
-    val separatorColor = Color.Black.copy(0.2f)
+    val colorScheme = MaterialTheme.colorScheme
+    val backgroundColor = if (isActive) colorScheme.primaryContainer else Color.Transparent
+    val separatorColor = colorScheme.outline.copy(0.2f)
     val separatorThickness = 1.2.dp
 
     Column(modifier = Modifier.fillMaxWidth().background(backgroundColor).animateContentSize()) {
@@ -510,7 +521,7 @@ fun ArmorClassEntryItem(
                     imageVector = Icons.Default.Delete,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = if (isDeleteConfirm) Color.Red else Color.Black.copy(0.7f)
+                    tint = if (isDeleteConfirm) colorScheme.error else colorScheme.onSurface.copy(0.7f)
                 )
             }
             
@@ -518,12 +529,12 @@ fun ArmorClassEntryItem(
 
             Box(modifier = Modifier.weight(1f).padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
                 if (entry.name.isEmpty()) {
-                    Text("Название", color = Color.Gray.copy(0.6f), fontSize = 16.sp)
+                    Text("Название", color = colorScheme.onSurface.copy(0.4f), fontSize = 16.sp)
                 }
                 BasicTextField(
                     value = entry.name,
                     onValueChange = { onUpdate(entry.copy(name = it)) },
-                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, color = Color.Black),
+                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, color = colorScheme.onSurface),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                 )
             }
@@ -541,19 +552,19 @@ fun ArmorClassEntryItem(
                     imageVector = if (isActive) Icons.Default.Close else Icons.Default.Check,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = Color.Black
+                    tint = colorScheme.onSurface
                 )
             }
         }
-        Divider(color = separatorColor, thickness = separatorThickness)
+        HorizontalDivider(color = separatorColor, thickness = separatorThickness)
         Box(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
             if (entry.formula.isEmpty()) {
-                Text("Формула КД", color = Color.Gray.copy(0.6f), fontSize = 14.sp)
+                Text("Формула КД", color = colorScheme.onSurface.copy(0.4f), fontSize = 14.sp)
             }
             BasicTextField(
                 value = entry.formula,
                 onValueChange = { onUpdate(entry.copy(formula = it)) },
-                textStyle = TextStyle(fontSize = 14.sp, color = Color.Black),
+                textStyle = TextStyle(fontSize = 14.sp, color = colorScheme.onSurface),
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -562,6 +573,7 @@ fun ArmorClassEntryItem(
 
 @Composable
 fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier.size(42.dp).clickable(
             interactionSource = remember { MutableInteractionSource() },
@@ -570,23 +582,24 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
         ),
         contentAlignment = Alignment.Center
     ) {
+        val tint = colorScheme.primary
         if (iconRes == R.drawable.ic_sword) {
             Box(modifier = Modifier.fillMaxSize()) {
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(Color(0xFFD0BCFF)))
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(Color(0xFFD0BCFF)))
+                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
+                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
             }
         } else {
-            Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(Color(0xFFD0BCFF)))
+            Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
         }
         Text(
             text = value,
             fontSize = 15.sp,
-            color = Color.Black,
+            color = colorScheme.onSurface,
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
             style = TextStyle(
                 shadow = androidx.compose.ui.graphics.Shadow(
-                    color = Color.White,
+                    color = colorScheme.surface,
                     offset = Offset(0f, 0f),
                     blurRadius = 8f
                 )
@@ -597,6 +610,7 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
 
 @Composable
 fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
     val score = value.toIntOrNull() ?: 10
     val mod = floor((score - 10) / 2.0).toInt()
     val modStr = if (mod >= 0) "+$mod" else mod.toString()
@@ -604,16 +618,32 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
         modifier = modifier
             .height(104.dp)
             .shadow(elevation = 2.dp, shape = RoundedCornerShape(8.dp))
-            .background(Color.White, RoundedCornerShape(8.dp))
-            .border(1.dp, Color(0xFFCAC4D0).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .background(colorScheme.surface, RoundedCornerShape(8.dp))
+            .border(1.dp, colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
             .padding(8.dp)
     ) {
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Color.Black)
-        Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 22.dp, bottom = 2.dp).size(38.dp).rotate(-45f).clip(RoundedCornerShape(10.dp)).background(Color(0xFFD0BCFF)), contentAlignment = Alignment.Center) {
-            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 22.dp, bottom = 2.dp)
+                .size(38.dp)
+                .rotate(-45f)
+                .clip(RoundedCornerShape(10.dp))
+                .background(colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onPrimaryContainer)
         }
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F1F8)).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colorScheme.surfaceVariant)
+                    .border(1.dp, colorScheme.outline.copy(0.1f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
                 BasicTextField(
                     value = value,
                     onValueChange = { newValue ->
@@ -621,13 +651,20 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
                         if (filtered.isEmpty()) { onValueChange("") }
                         else { val num = filtered.toIntOrNull(); if (num != null && num in 1..30) onValueChange(filtered) }
                     },
-                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black),
+                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.width(32.dp)
                 )
             }
-            Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(Color.White).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                Text(modStr, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colorScheme.surface)
+                    .border(1.dp, colorScheme.outline.copy(0.1f), RoundedCornerShape(8.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(modStr, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
             }
         }
     }
@@ -635,9 +672,18 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
 
 @Composable
 fun PassiveCheckRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(8.dp)).background(Color(103, 80, 164, 40)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, modifier = Modifier.padding(start = 12.dp), fontSize = 13.sp, fontWeight = FontWeight.Medium)
-        Text(value, modifier = Modifier.padding(end = 12.dp), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(30.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(colorScheme.primary.copy(alpha = 0.2f)),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, modifier = Modifier.padding(start = 12.dp), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
+        Text(value, modifier = Modifier.padding(end = 12.dp), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
     }
 }
 
