@@ -56,48 +56,64 @@ fun calculateModifier(scoreStr: String): Int {
 
 fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     var processed = formula.uppercase()
-    val replacements = mapOf(
-        "[СИЛ]" to calculateModifier(stats["strength"] ?: "10"),
-        "[STR]" to calculateModifier(stats["strength"] ?: "10"),
-        "[ЛОВ]" to calculateModifier(stats["dexterity"] ?: "10"),
-        "[DEX]" to calculateModifier(stats["dexterity"] ?: "10"),
-        "[ТЕЛ]" to calculateModifier(stats["constitution"] ?: "10"),
-        "[CON]" to calculateModifier(stats["constitution"] ?: "10"),
-        "[ИНТ]" to calculateModifier(stats["intelligence"] ?: "10"),
-        "[INT]" to calculateModifier(stats["intelligence"] ?: "10"),
-        "[МУД]" to calculateModifier(stats["wisdom"] ?: "10"),
-        "[WIS]" to calculateModifier(stats["wisdom"] ?: "10"),
-        "[ХАР]" to calculateModifier(stats["charisma"] ?: "10"),
-        "[CHA]" to calculateModifier(stats["charisma"] ?: "10")
+    
+    // 1. Stat Replacements
+    val statKeys = mapOf(
+        "СИЛ" to "strength", "STR" to "strength",
+        "ЛОВ" to "dexterity", "DEX" to "dexterity",
+        "ТЕЛ" to "constitution", "CON" to "constitution",
+        "ИНТ" to "intelligence", "INT" to "intelligence",
+        "МУД" to "wisdom", "WIS" to "wisdom",
+        "ХАР" to "charisma", "CHA" to "charisma"
     )
 
-    replacements.forEach { (key, value) ->
-        processed = processed.replace(key, value.toString())
+    statKeys.forEach { (key, statKey) ->
+        val mod = calculateModifier(stats[statKey] ?: "10").toString()
+        processed = processed.replace("[$key]", mod)
+        processed = processed.replace("[$key ", "$mod ")
     }
 
-    // Handle [MAX(...)] and [MIN(...)]
+    // 2. Function Processing (MAX, MIN, CEIL/ВЕРХ, FLOOR/НИЗ)
     fun processFunctions(input: String): String {
         var current = input
-        val functions = listOf("МАКС", "MAX", "МИН", "MIN")
-        
-        functions.forEach { func ->
-            val patternWrapped = Regex("\\[$func\\s*\\(([^()]+)\\)\\]")
-            val patternUnwrapped = Regex("$func\\s*\\(([^()]+)\\)")
-            
-            while (current.contains(func)) {
-                val match = patternWrapped.find(current) ?: patternUnwrapped.find(current) ?: break
-                val content = match.groupValues[1]
-                val values = content.split(";").map { evaluateFormula(it.trim(), stats) }
-                val result = if (func.startsWith("МА") || func.startsWith("MA")) values.maxOrNull() ?: 0 else values.minOrNull() ?: 0
-                current = current.replace(match.value, result.toString())
+        val functions = listOf(
+            listOf("МАКС", "MAX", "НИЗ", "FLOOR") to true, // isMax = true (Floor/Niz limits from below)
+            listOf("МИН", "MIN", "ВЕРХ", "CEIL") to false // isMax = false (Ceil/Verh limits from above)
+        )
+
+        functions.forEach { (names, isMax) ->
+            names.forEach { func ->
+                // a. Standard syntax: [FUNC(a; b)] or FUNC(a, b)
+                val patternStandard = Regex("(?:\\[$func\\s*\\(([^()]+)\\)\\]|$func\\s*\\(([^()]+)\\))")
+                while (current.contains(func)) {
+                    val match = patternStandard.find(current) ?: break
+                    val content = match.groupValues[1].ifEmpty { match.groupValues[2] }
+                    val values = content.split(Regex("[;,]")).map { evaluateFormula(it.trim(), stats) }
+                    val result = if (isMax) values.maxOrNull() ?: 0 else values.minOrNull() ?: 0
+                    current = current.replace(match.value, result.toString())
+                }
+
+                // b. Trailing syntax: VALUE [FUNC] (LIMIT)
+                // Example: 3 [ВЕРХ] (2) or 10 ([ВЕРХ] (5), [НИЗ] (1))
+                val patternTrailing = Regex("(-?\\d+)[^\\d\\[]*\\[$func\\]\\s*\\((-?\\d+)\\)")
+                while (current.contains("[$func]")) {
+                    val match = patternTrailing.find(current) ?: break
+                    val val1 = match.groupValues[1].toInt()
+                    val val2 = match.groupValues[2].toInt()
+                    val result = if (isMax) maxOf(val1, val2) else minOf(val1, val2)
+                    current = current.replace(match.value, result.toString())
+                }
             }
         }
         return current
     }
 
     processed = processFunctions(processed)
-    processed = processed.replace("[", "").replace("]", "")
+    
+    // 3. Final Cleanup for Math Evaluator
+    processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
+    // 4. Math Evaluation
     return try {
         val tokens = processed.replace(" ", "").split(Regex("(?=[+\\-*/])|(?<=[+\\-*/])"))
         val values = Stack<Int>()
@@ -122,7 +138,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
             if (token.isEmpty()) continue
             if (token[0].isDigit() || (token.length > 1 && token[0] == '-' && token[1].isDigit())) {
                 values.push(token.toInt())
-            } else {
+            } else if ("+-*/".contains(token)) {
                 while (!ops.empty() && hasPrecedence(token, ops.peek())) {
                     values.push(applyOp(ops.pop(), values.pop(), values.pop()))
                 }
@@ -134,7 +150,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
             values.push(applyOp(ops.pop(), values.pop(), values.pop()))
         }
 
-        values.pop()
+        if (values.isEmpty()) 0 else values.pop()
     } catch (e: Exception) {
         0
     }
@@ -582,7 +598,7 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
         ),
         contentAlignment = Alignment.Center
     ) {
-        val tint = colorScheme.primary
+        val tint = colorScheme.primary.copy(alpha = 0.6f)
         if (iconRes == R.drawable.ic_sword) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
@@ -601,7 +617,7 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
                 shadow = androidx.compose.ui.graphics.Shadow(
                     color = colorScheme.surface,
                     offset = Offset(0f, 0f),
-                    blurRadius = 8f
+                    blurRadius = 14f
                 )
             )
         )
