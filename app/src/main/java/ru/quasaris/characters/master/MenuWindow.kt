@@ -46,30 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import com.google.gson.Gson
-import java.util.UUID
-
-data class ArmorClassEntry(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String = "",
-    val formula: String = ""
-)
-
-data class Character(
-    val id: Int,
-    val name: String,
-    val characterClass: String,
-    val order: String,
-    val imageData: String? = null,
-    val level: String = "1",
-    val strength: String = "10",
-    val dexterity: String = "10",
-    val constitution: String = "10",
-    val intelligence: String = "10",
-    val wisdom: String = "10",
-    val charisma: String = "10",
-    val armorClassEntries: List<ArmorClassEntry> = listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]")),
-    val activeArmorClassId: String? = armorClassEntries.firstOrNull()?.id
-)
 
 @Composable
 fun MenuWindow(
