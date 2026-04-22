@@ -73,13 +73,13 @@ val SquirclePath = GenericShape { size, _ ->
     val r = size.width * 0.25f
     moveTo(r, 0f)
     lineTo(size.width - r, 0f)
-    quadraticBezierTo(size.width, 0f, size.width, r)
+    quadraticTo(size.width, 0f, size.width, r)
     lineTo(size.width, size.height - r)
-    quadraticBezierTo(size.width, size.height, size.width - r, size.height)
+    quadraticTo(size.width, size.height, size.width - r, size.height)
     lineTo(r, size.height)
-    quadraticBezierTo(0f, size.height, 0f, size.height - r)
+    quadraticTo(0f, size.height, 0f, size.height - r)
     lineTo(0f, r)
-    quadraticBezierTo(0f, 0f, r, 0f)
+    quadraticTo(0f, 0f, r, 0f)
     close()
 }
 
@@ -139,11 +139,15 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     processed = processFunctions(processed)
     
     // 3. Final Cleanup for Math Evaluator
+    // We must keep +, -, *, / and digits.
+    // NOTE: For negative numbers like "10 + -5", the split logic below needs to handle it.
     processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
     // 4. Math Evaluation
     return try {
-        val tokens = processed.replace(" ", "").split(Regex("(?=[+\\-*/])|(?<=[+\\-*/])"))
+        // Updated regex to handle negative numbers more robustly
+        // Splits by operators but keeps them, while ignoring spaces
+        val tokens = processed.replace(" ", "").split(Regex("(?=[+*/])|(?<=[+*/])|(?<=\\d)(?=-)"))
         val values = Stack<Int>()
         val ops = Stack<String>()
 
@@ -164,6 +168,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
 
         for (token in tokens) {
             if (token.isEmpty()) continue
+            // Check if it's a number (including negative ones)
             if (token[0].isDigit() || (token.length > 1 && token[0] == '-' && token[1].isDigit())) {
                 values.push(token.toInt())
             } else if ("+-*/".contains(token)) {
@@ -236,6 +241,17 @@ fun CreateWindow(
         val active = initiativeEntries.find { it.id == activeInitiativeId }
         val value = if (active != null) evaluateFormula(active.formula, statsMap) else 0
         if (value >= 0) "+$value" else value.toString()
+    }
+
+    // Speed State
+    var speedEntries by remember { mutableStateOf(listOf(SpeedEntry(name = "Базовая Скорость", formula = "30"))) }
+    var activeSpeedId by remember { mutableStateOf<String?>(speedEntries.firstOrNull()?.id) }
+    var isSpeedPanelVisible by remember { mutableStateOf(false) }
+    var speedDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    val activeSpeedValue = remember(activeSpeedId, speedEntries, statsMap) {
+        val active = speedEntries.find { it.id == activeSpeedId }
+        if (active != null) evaluateFormula(active.formula, statsMap).toString() else "30"
     }
 
     val focusManager = LocalFocusManager.current
@@ -325,10 +341,12 @@ fun CreateWindow(
                         StatIconBox(activeACValue, R.drawable.ic_shield, onClick = { 
                             isArmorClassPanelVisible = !isArmorClassPanelVisible 
                             isInitiativePanelVisible = false
+                            isSpeedPanelVisible = false
                         })
                         StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = {
                             isInitiativePanelVisible = !isInitiativePanelVisible
                             isArmorClassPanelVisible = false
+                            isSpeedPanelVisible = false
                         })
                     }
                     Box(
@@ -353,7 +371,11 @@ fun CreateWindow(
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatIconBox("1", R.drawable.ic_conditions)
-                        StatIconBox("30", R.drawable.ic_speed)
+                        StatIconBox(activeSpeedValue, R.drawable.ic_speed, onClick = {
+                            isSpeedPanelVisible = !isSpeedPanelVisible
+                            isArmorClassPanelVisible = false
+                            isInitiativePanelVisible = false
+                        })
                     }
                 }
             }
@@ -371,6 +393,7 @@ fun CreateWindow(
                     focusManager.clearFocus()
                     acDeleteConfirmId = null
                     initDeleteConfirmId = null
+                    speedDeleteConfirmId = null
                 }
         ) {
             Column(
@@ -422,6 +445,23 @@ fun CreateWindow(
                         onActiveIdChanged = { activeInitiativeId = it },
                         onDeleteConfirmIdChanged = { initDeleteConfirmId = it },
                         onAdd = { initiativeEntries = initiativeEntries + InitiativeEntry() }
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = isSpeedPanelVisible,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    FormulaPanel(
+                        title = "Скорость",
+                        entries = speedEntries,
+                        activeId = activeSpeedId,
+                        deleteConfirmId = speedDeleteConfirmId,
+                        onEntriesChanged = { speedEntries = it.filterIsInstance<SpeedEntry>() },
+                        onActiveIdChanged = { activeSpeedId = it },
+                        onDeleteConfirmIdChanged = { speedDeleteConfirmId = it },
+                        onAdd = { speedEntries = speedEntries + SpeedEntry() }
                     )
                 }
 
@@ -635,6 +675,7 @@ fun FormulaEntryItem(
                         val updated = when(entry) {
                             is ArmorClassEntry -> entry.copy(name = it)
                             is InitiativeEntry -> entry.copy(name = it)
+                            is SpeedEntry -> entry.copy(name = it)
                             else -> entry
                         }
                         onUpdate(updated)
@@ -673,6 +714,7 @@ fun FormulaEntryItem(
                     val updated = when(entry) {
                         is ArmorClassEntry -> entry.copy(formula = it)
                         is InitiativeEntry -> entry.copy(formula = it)
+                        is SpeedEntry -> entry.copy(formula = it)
                         else -> entry
                     }
                     onUpdate(updated)
@@ -733,7 +775,6 @@ fun StatCard(
     onProficiencyToggle: (Boolean) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val score = value.toIntOrNull() ?: 10
     val baseMod = calculateModifier(value)
     val profBonus = if (isProficient) getProficiencyBonus(level) else 0
     val totalMod = baseMod + profBonus

@@ -20,6 +20,12 @@ data class InitiativeEntry(
     override val formula: String = ""
 ) : FormulaEntry
 
+data class SpeedEntry(
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = ""
+) : FormulaEntry
+
 data class Character(
     val id: Int,
     val name: String,
@@ -42,5 +48,7 @@ data class Character(
     val armorClassEntries: List<ArmorClassEntry> = listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]")),
     val activeArmorClassId: String? = armorClassEntries.firstOrNull()?.id,
     val initiativeEntries: List<InitiativeEntry> = listOf(InitiativeEntry(name = "Базовая Инициатива", formula = "[ЛОВ]")),
-    val activeInitiativeId: String? = initiativeEntries.firstOrNull()?.id
+    val activeInitiativeId: String? = initiativeEntries.firstOrNull()?.id,
+    val speedEntries: List<SpeedEntry> = listOf(SpeedEntry(name = "Базовая Скорость", formula = "30")),
+    val activeSpeedId: String? = speedEntries.firstOrNull()?.id
 )
