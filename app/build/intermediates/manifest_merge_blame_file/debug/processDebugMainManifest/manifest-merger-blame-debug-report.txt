@@ -1,0 +1,169 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="ru.quasaris.characters.master"
+4    android:versionCode="1"
+5    android:versionName="1.4.0.2" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission
+11-->D:\MP\app\src\main\AndroidManifest.xml:5:5-108
+12        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+12-->D:\MP\app\src\main\AndroidManifest.xml:5:22-78
+13        android:maxSdkVersion="28" />
+13-->D:\MP\app\src\main\AndroidManifest.xml:5:79-105
+14
+15    <permission
+15-->[androidx.core:core:1.17.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7a9bedf1357a77d82cb9acc62932b38a\transformed\core-1.17.0\AndroidManifest.xml:22:5-24:47
+16        android:name="ru.quasaris.characters.master.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+16-->[androidx.core:core:1.17.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7a9bedf1357a77d82cb9acc62932b38a\transformed\core-1.17.0\AndroidManifest.xml:23:9-81
+17        android:protectionLevel="signature" />
+17-->[androidx.core:core:1.17.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7a9bedf1357a77d82cb9acc62932b38a\transformed\core-1.17.0\AndroidManifest.xml:24:9-44
+18
+19    <uses-permission android:name="ru.quasaris.characters.master.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+19-->[androidx.core:core:1.17.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7a9bedf1357a77d82cb9acc62932b38a\transformed\core-1.17.0\AndroidManifest.xml:26:5-97
+19-->[androidx.core:core:1.17.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7a9bedf1357a77d82cb9acc62932b38a\transformed\core-1.17.0\AndroidManifest.xml:26:22-94
+20
+21    <application
+21-->D:\MP\app\src\main\AndroidManifest.xml:7:5-28:19
+22        android:allowBackup="true"
+22-->D:\MP\app\src\main\AndroidManifest.xml:8:9-35
+23        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+23-->[androidx.core:core:1.17.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7a9bedf1357a77d82cb9acc62932b38a\transformed\core-1.17.0\AndroidManifest.xml:28:18-86
+24        android:dataExtractionRules="@xml/data_extraction_rules"
+24-->D:\MP\app\src\main\AndroidManifest.xml:9:9-65
+25        android:debuggable="true"
+26        android:extractNativeLibs="false"
+27        android:fullBackupContent="@xml/backup_rules"
+27-->D:\MP\app\src\main\AndroidManifest.xml:10:9-54
+28        android:icon="@mipmap/ic_launcher"
+28-->D:\MP\app\src\main\AndroidManifest.xml:11:9-43
+29        android:label="@string/app_name"
+29-->D:\MP\app\src\main\AndroidManifest.xml:12:9-41
+30        android:roundIcon="@mipmap/ic_launcher_round"
+30-->D:\MP\app\src\main\AndroidManifest.xml:13:9-54
+31        android:supportsRtl="true"
+31-->D:\MP\app\src\main\AndroidManifest.xml:14:9-35
+32        android:testOnly="true"
+33        android:theme="@style/Theme.quasaris" >
+33-->D:\MP\app\src\main\AndroidManifest.xml:15:9-46
+34        <activity
+34-->D:\MP\app\src\main\AndroidManifest.xml:17:9-27:20
+35            android:name="ru.quasaris.characters.master.MainActivity"
+35-->D:\MP\app\src\main\AndroidManifest.xml:18:13-70
+36            android:exported="true"
+36-->D:\MP\app\src\main\AndroidManifest.xml:19:13-36
+37            android:label="@string/app_name"
+37-->D:\MP\app\src\main\AndroidManifest.xml:20:13-45
+38            android:theme="@style/Theme.quasaris" >
+38-->D:\MP\app\src\main\AndroidManifest.xml:21:13-50
+39            <intent-filter>
+39-->D:\MP\app\src\main\AndroidManifest.xml:22:13-26:29
+40                <action android:name="android.intent.action.MAIN" />
+40-->D:\MP\app\src\main\AndroidManifest.xml:23:17-69
+40-->D:\MP\app\src\main\AndroidManifest.xml:23:25-66
+41
+42                <category android:name="android.intent.category.LAUNCHER" />
+42-->D:\MP\app\src\main\AndroidManifest.xml:25:17-77
+42-->D:\MP\app\src\main\AndroidManifest.xml:25:27-74
+43            </intent-filter>
+44        </activity>
+45        <activity
+45-->[androidx.compose.ui:ui-tooling-android:1.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\fa03024a469b520d2cf7f752711d52a0\transformed\ui-tooling\AndroidManifest.xml:23:9-25:39
+46            android:name="androidx.compose.ui.tooling.PreviewActivity"
+46-->[androidx.compose.ui:ui-tooling-android:1.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\fa03024a469b520d2cf7f752711d52a0\transformed\ui-tooling\AndroidManifest.xml:24:13-71
+47            android:exported="true" />
+47-->[androidx.compose.ui:ui-tooling-android:1.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\fa03024a469b520d2cf7f752711d52a0\transformed\ui-tooling\AndroidManifest.xml:25:13-36
+48
+49        <uses-library
+49-->[androidx.window:window:1.5.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\8e9407fc0dcf2480f20c8a88cfd634ef\transformed\window-1.5.0\AndroidManifest.xml:23:9-25:40
+50            android:name="androidx.window.extensions"
+50-->[androidx.window:window:1.5.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\8e9407fc0dcf2480f20c8a88cfd634ef\transformed\window-1.5.0\AndroidManifest.xml:24:13-54
+51            android:required="false" />
+51-->[androidx.window:window:1.5.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\8e9407fc0dcf2480f20c8a88cfd634ef\transformed\window-1.5.0\AndroidManifest.xml:25:13-37
+52        <uses-library
+52-->[androidx.window:window:1.5.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\8e9407fc0dcf2480f20c8a88cfd634ef\transformed\window-1.5.0\AndroidManifest.xml:26:9-28:40
+53            android:name="androidx.window.sidecar"
+53-->[androidx.window:window:1.5.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\8e9407fc0dcf2480f20c8a88cfd634ef\transformed\window-1.5.0\AndroidManifest.xml:27:13-51
+54            android:required="false" />
+54-->[androidx.window:window:1.5.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\8e9407fc0dcf2480f20c8a88cfd634ef\transformed\window-1.5.0\AndroidManifest.xml:28:13-37
+55
+56        <provider
+56-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7e26f39f04923a1b9f1c2677a88ab790\transformed\emoji2-1.4.0\AndroidManifest.xml:24:9-32:20
+57            android:name="androidx.startup.InitializationProvider"
+57-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7e26f39f04923a1b9f1c2677a88ab790\transformed\emoji2-1.4.0\AndroidManifest.xml:25:13-67
+58            android:authorities="ru.quasaris.characters.master.androidx-startup"
+58-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7e26f39f04923a1b9f1c2677a88ab790\transformed\emoji2-1.4.0\AndroidManifest.xml:26:13-68
+59            android:exported="false" >
+59-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7e26f39f04923a1b9f1c2677a88ab790\transformed\emoji2-1.4.0\AndroidManifest.xml:27:13-37
+60            <meta-data
+60-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7e26f39f04923a1b9f1c2677a88ab790\transformed\emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
+61                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+61-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7e26f39f04923a1b9f1c2677a88ab790\transformed\emoji2-1.4.0\AndroidManifest.xml:30:17-75
+62                android:value="androidx.startup" />
+62-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\7e26f39f04923a1b9f1c2677a88ab790\transformed\emoji2-1.4.0\AndroidManifest.xml:31:17-49
+63            <meta-data
+63-->[androidx.lifecycle:lifecycle-process:2.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\fdafd105c22375bf5ddb5a38ad021bce\transformed\lifecycle-process-2.10.0\AndroidManifest.xml:29:13-31:52
+64                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+64-->[androidx.lifecycle:lifecycle-process:2.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\fdafd105c22375bf5ddb5a38ad021bce\transformed\lifecycle-process-2.10.0\AndroidManifest.xml:30:17-78
+65                android:value="androidx.startup" />
+65-->[androidx.lifecycle:lifecycle-process:2.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\fdafd105c22375bf5ddb5a38ad021bce\transformed\lifecycle-process-2.10.0\AndroidManifest.xml:31:17-49
+66            <meta-data
+66-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:29:13-31:52
+67                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+67-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:30:17-85
+68                android:value="androidx.startup" />
+68-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:31:17-49
+69        </provider>
+70
+71        <activity
+71-->[androidx.compose.ui:ui-test-manifest:1.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\555e823f99de147b41cef7084669100a\transformed\ui-test-manifest-1.10.0\AndroidManifest.xml:23:9-26:79
+72            android:name="androidx.activity.ComponentActivity"
+72-->[androidx.compose.ui:ui-test-manifest:1.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\555e823f99de147b41cef7084669100a\transformed\ui-test-manifest-1.10.0\AndroidManifest.xml:24:13-63
+73            android:exported="true"
+73-->[androidx.compose.ui:ui-test-manifest:1.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\555e823f99de147b41cef7084669100a\transformed\ui-test-manifest-1.10.0\AndroidManifest.xml:25:13-36
+74            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+74-->[androidx.compose.ui:ui-test-manifest:1.10.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\555e823f99de147b41cef7084669100a\transformed\ui-test-manifest-1.10.0\AndroidManifest.xml:26:13-76
+75
+76        <receiver
+76-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:34:9-52:20
+77            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+77-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:35:13-76
+78            android:directBootAware="false"
+78-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:36:13-44
+79            android:enabled="true"
+79-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:37:13-35
+80            android:exported="true"
+80-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:38:13-36
+81            android:permission="android.permission.DUMP" >
+81-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:39:13-57
+82            <intent-filter>
+82-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:40:13-42:29
+83                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+83-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:17-91
+83-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:25-88
+84            </intent-filter>
+85            <intent-filter>
+85-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:43:13-45:29
+86                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+86-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:17-85
+86-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:25-82
+87            </intent-filter>
+88            <intent-filter>
+88-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:46:13-48:29
+89                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+89-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:17-88
+89-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:25-85
+90            </intent-filter>
+91            <intent-filter>
+91-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:49:13-51:29
+92                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+92-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:17-95
+92-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Lexus\.gradle\caches\8.14.3\transforms\20944df707f2234047cbccdba37dd65a\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:25-92
+93            </intent-filter>
+94        </receiver>
+95    </application>
+96
+97</manifest>

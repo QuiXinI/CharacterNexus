@@ -75,6 +75,7 @@ fun CharacterDetailWindow(
 
     val context = LocalContext.current
     val gson = Gson()
+    val colorScheme = MaterialTheme.colorScheme
 
     val fileCreatorLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -97,32 +98,33 @@ fun CharacterDetailWindow(
 
     if (character == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Персонаж не найден!")
+            Text("Персонаж не найден!", color = colorScheme.onBackground)
         }
         return
     }
 
     Scaffold(
-        containerColor = Color.White,
+        containerColor = colorScheme.background,
         topBar = {
-            Column(modifier = Modifier.background(Color.White).statusBarsPadding()) {
+            Column(modifier = Modifier.background(colorScheme.surface).statusBarsPadding()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = colorScheme.onSurface)
                     }
                     Text(
                         text = name,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Normal,
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = colorScheme.onSurface
                     )
                     IconButton(onClick = { fileCreatorLauncher.launch("MP_${name}.json") }) {
-                        Icon(Icons.Filled.Download, contentDescription = "Скачать .json")
+                        Icon(Icons.Filled.Download, contentDescription = "Скачать .json", tint = colorScheme.onSurface)
                     }
                 }
                 
@@ -133,7 +135,7 @@ fun CharacterDetailWindow(
                         .padding(horizontal = 12.dp, vertical = 4.dp)
                         .height(24.dp)
                         .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp))
-                        .background(Color.White, RoundedCornerShape(20.dp))
+                        .background(colorScheme.surface, RoundedCornerShape(20.dp))
                         .padding(2.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -142,24 +144,24 @@ fun CharacterDetailWindow(
                                 .width(90.dp)
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 0.dp, bottomEnd = 0.dp))
-                                .background(Color(0xFFEADDFF)),
+                                .background(colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("$level уровень", fontSize = 11.sp, color = Color.Black)
+                            Text("$level уровень", fontSize = 11.sp, color = colorScheme.onPrimaryContainer)
                         }
                         Spacer(modifier = Modifier.width(2.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 20.dp, bottomEnd = 20.dp))
-                                .background(Color.White)
+                                .background(colorScheme.surface)
                         ) {
-                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.35f).background(Color(0xFFEADDFF)))
+                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.35f).background(colorScheme.primaryContainer))
                             Row(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.weight(0.4f))
-                                Text("$experience | $nextLevelExp", fontSize = 11.sp, color = Color.Black)
+                                Text("$experience | $nextLevelExp", fontSize = 11.sp, color = colorScheme.onSurface)
                                 Spacer(Modifier.weight(0.6f))
-                                Text("${level.toInt() + 1}", fontSize = 11.sp, color = Color.Black)
+                                Text("${level.toInt() + 1}", fontSize = 11.sp, color = colorScheme.onSurface)
                             }
                         }
                     }
@@ -176,7 +178,7 @@ fun CharacterDetailWindow(
                         StatIconBoxDetail("+2", R.drawable.ic_sword)
                     }
                     Box(
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp)).background(Color.White, RoundedCornerShape(8.dp)),
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -193,28 +195,28 @@ fun CharacterDetailWindow(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(Color.White)) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(colorScheme.background)) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .background(Color.White)
+                    .background(colorScheme.surface)
                     .verticalScroll(rememberScrollState())
             ) {
-                Box(modifier = Modifier.fillMaxWidth().height(12.dp).background(Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.15f), Color.Transparent))))
+                Box(modifier = Modifier.fillMaxWidth().height(12.dp).background(Brush.verticalGradient(colors = listOf(colorScheme.onSurface.copy(alpha = 0.15f), Color.Transparent))))
 
                 // Characteristics Header
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(44.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFEADDFF)), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(44.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Характеристики", fontSize = 12.sp, color = Color(0xFF4A4459), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text("Характеристики", fontSize = 18.sp, fontWeight = FontWeight.Normal, color = Color.Black, textAlign = TextAlign.Center, modifier = Modifier.weight(1.5f))
-                        Text("Характеристики", fontSize = 12.sp, color = Color(0xFF4A4459), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
+                        Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text("Характеристики", fontSize = 18.sp, fontWeight = FontWeight.Normal, color = colorScheme.onPrimaryContainer, textAlign = TextAlign.Center, modifier = Modifier.weight(1.5f))
+                        Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
                     }
                 }
 
                 // Profile Section
                 Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(Color.LightGray).clickable { imagePickerLauncher.launch("image/*") }, contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(colorScheme.surfaceVariant).clickable { imagePickerLauncher.launch("image/*") }, contentAlignment = Alignment.Center) {
                         if (tempImageUri != null) {
                             AsyncImage(model = tempImageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         } else if (character.imageData != null) {
@@ -222,7 +224,7 @@ fun CharacterDetailWindow(
                             val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
                             Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         } else {
-                            Icon(Icons.Default.Person, null, modifier = Modifier.size(40.dp))
+                            Icon(Icons.Default.Person, null, modifier = Modifier.size(40.dp), tint = colorScheme.onSurfaceVariant)
                         }
                     }
                     Spacer(Modifier.width(16.dp))
@@ -265,34 +267,50 @@ fun CharacterDetailWindow(
 
 @Composable
 fun StatIconBoxDetail(value: String, iconRes: Int) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+        val tint = colorScheme.primary.copy(alpha = 0.6f)
         if (iconRes == R.drawable.ic_sword) {
             Box(modifier = Modifier.fillMaxSize()) {
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(Color(0xFFD0BCFF)))
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(Color(0xFFD0BCFF)))
+                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
+                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
             }
         } else {
-            Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(Color(0xFFD0BCFF)))
+            Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
         }
-        Text(text = value, fontSize = 15.sp, color = Color.Black, fontWeight = FontWeight.Bold, style = TextStyle(shadow = Shadow(color = Color.White, offset = Offset(0f, 0f), blurRadius = 8f)))
+        Text(
+            text = value,
+            fontSize = 15.sp,
+            color = colorScheme.onSurface,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(
+                shadow = Shadow(
+                    color = colorScheme.surface,
+                    offset = Offset(0f, 0f),
+                    blurRadius = 14f
+                )
+            )
+        )
     }
 }
 
 @Composable
 fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
     val score = value.toIntOrNull() ?: 10
-    val modStr = if (floor((score - 10) / 2.0).toInt() >= 0) "+${floor((score - 10) / 2.0).toInt()}" else floor((score - 10) / 2.0).toInt().toString()
-    Box(modifier = modifier.height(104.dp).shadow(2.dp, RoundedCornerShape(8.dp)).background(Color.White, RoundedCornerShape(8.dp)).border(1.dp, Color(0xFFCAC4D0).copy(0.5f), RoundedCornerShape(8.dp)).padding(8.dp)) {
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-        Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 25.dp, bottom = 5.dp).size(40.dp).rotate(-45f).clip(RoundedCornerShape(12.dp)).background(Color(0xFFD0BCFF)), contentAlignment = Alignment.Center) {
-            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+    val mod = floor((score - 10) / 2.0).toInt()
+    val modStr = if (mod >= 0) "+$mod" else mod.toString()
+    Box(modifier = modifier.height(104.dp).shadow(2.dp, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).border(1.dp, colorScheme.outline.copy(0.5f), RoundedCornerShape(8.dp)).padding(8.dp)) {
+        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
+        Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 25.dp, bottom = 5.dp).size(40.dp).rotate(-45f).clip(RoundedCornerShape(12.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onPrimaryContainer)
         }
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF3F1F8)).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                BasicTextField(value = value, onValueChange = { val num = it.filter { it.isDigit() }.toIntOrNull(); if (it.isEmpty()) onValueChange(""); else if (num != null && num in 1..30) onValueChange(it.filter { it.isDigit() }) }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.width(36.dp))
+            Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.surfaceVariant).border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                BasicTextField(value = value, onValueChange = { val num = it.filter { it.isDigit() }.toIntOrNull(); if (it.isEmpty()) onValueChange(""); else if (num != null && num in 1..30) onValueChange(it.filter { it.isDigit() }) }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.width(36.dp))
             }
-            Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(Color.White).border(1.dp, Color.Black.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                Text(modStr, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.surface).border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                Text(modStr, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
             }
         }
     }
