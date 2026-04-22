@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -32,7 +33,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -52,6 +56,31 @@ import kotlin.math.floor
 fun calculateModifier(scoreStr: String): Int {
     val score = scoreStr.toIntOrNull() ?: 10
     return floor((score - 10) / 2.0).toInt()
+}
+
+fun getProficiencyBonus(levelStr: String): Int {
+    val level = levelStr.toIntOrNull() ?: 1
+    return when {
+        level >= 17 -> 6
+        level >= 13 -> 5
+        level >= 9 -> 4
+        level >= 5 -> 3
+        else -> 2
+    }
+}
+
+val SquirclePath = GenericShape { size, _ ->
+    val r = size.width * 0.25f
+    moveTo(r, 0f)
+    lineTo(size.width - r, 0f)
+    quadraticBezierTo(size.width, 0f, size.width, r)
+    lineTo(size.width, size.height - r)
+    quadraticBezierTo(size.width, size.height, size.width - r, size.height)
+    lineTo(r, size.height)
+    quadraticBezierTo(0f, size.height, 0f, size.height - r)
+    lineTo(0f, r)
+    quadraticBezierTo(0f, 0f, r, 0f)
+    close()
 }
 
 fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
@@ -173,6 +202,13 @@ fun CreateWindow(
     var intelligence by remember { mutableStateOf("10") }
     var wisdom by remember { mutableStateOf("10") }
     var charisma by remember { mutableStateOf("10") }
+
+    var strProf by remember { mutableStateOf(false) }
+    var dexProf by remember { mutableStateOf(false) }
+    var conProf by remember { mutableStateOf(false) }
+    var intProf by remember { mutableStateOf(false) }
+    var wisProf by remember { mutableStateOf(false) }
+    var chaProf by remember { mutableStateOf(false) }
 
     val statsMap = mapOf(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
@@ -431,16 +467,16 @@ fun CreateWindow(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Сила", strength, Modifier.weight(1f)) { strength = it }
-                        StatCard("Интеллект", intelligence, Modifier.weight(1f)) { intelligence = it }
+                        StatCard("Сила", strength, level, strProf, Modifier.weight(1f), { strength = it }, { strProf = it })
+                        StatCard("Интеллект", intelligence, level, intProf, Modifier.weight(1f), { intelligence = it }, { intProf = it })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Ловкость", dexterity, Modifier.weight(1f)) { dexterity = it }
-                        StatCard("Мудрость", wisdom, Modifier.weight(1f)) { wisdom = it }
+                        StatCard("Ловкость", dexterity, level, dexProf, Modifier.weight(1f), { dexterity = it }, { dexProf = it })
+                        StatCard("Мудрость", wisdom, level, wisProf, Modifier.weight(1f), { wisdom = it }, { wisProf = it })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Телосложение", constitution, Modifier.weight(1f)) { constitution = it }
-                        StatCard("Харизма", charisma, Modifier.weight(1f)) { charisma = it }
+                        StatCard("Телосложение", constitution, level, conProf, Modifier.weight(1f), { constitution = it }, { conProf = it })
+                        StatCard("Харизма", charisma, level, chaProf, Modifier.weight(1f), { charisma = it }, { chaProf = it })
                     }
                 }
 
@@ -604,6 +640,7 @@ fun FormulaEntryItem(
                         onUpdate(updated)
                     },
                     textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, color = colorScheme.onSurface),
+                    cursorBrush = SolidColor(colorScheme.primary),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                 )
             }
@@ -641,6 +678,7 @@ fun FormulaEntryItem(
                     onUpdate(updated)
                 },
                 textStyle = TextStyle(fontSize = 14.sp, color = colorScheme.onSurface),
+                cursorBrush = SolidColor(colorScheme.primary),
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -685,11 +723,24 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
+fun StatCard(
+    label: String,
+    value: String,
+    level: String,
+    isProficient: Boolean,
+    modifier: Modifier = Modifier,
+    onValueChange: (String) -> Unit,
+    onProficiencyToggle: (Boolean) -> Unit
+) {
     val colorScheme = MaterialTheme.colorScheme
     val score = value.toIntOrNull() ?: 10
-    val mod = floor((score - 10) / 2.0).toInt()
-    val modStr = if (mod >= 0) "+$mod" else mod.toString()
+    val baseMod = calculateModifier(value)
+    val profBonus = if (isProficient) getProficiencyBonus(level) else 0
+    val totalMod = baseMod + profBonus
+    
+    val modStr = if (baseMod >= 0) "+$baseMod" else baseMod.toString()
+    val totalModStr = if (totalMod >= 0) "+$totalMod" else totalMod.toString()
+    
     Box(
         modifier = modifier
             .height(104.dp)
@@ -699,19 +750,35 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
             .padding(8.dp)
     ) {
         Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
+        
+        // Saving Throw Box (Clickable)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 22.dp, bottom = 2.dp)
                 .size(38.dp)
-                .rotate(-45f)
-                .clip(RoundedCornerShape(10.dp))
-                .background(colorScheme.primaryContainer),
+                .rotate(if (isProficient) -45f else 0f)
+                .clip(if (isProficient) SquirclePath else RoundedCornerShape(8.dp))
+                .background(if (isProficient) colorScheme.primaryContainer else colorScheme.surfaceVariant)
+                .border(
+                    width = 1.dp,
+                    color = if (isProficient) colorScheme.primary else colorScheme.outline.copy(alpha = 0.2f),
+                    shape = if (isProficient) SquirclePath else RoundedCornerShape(8.dp)
+                )
+                .clickable { onProficiencyToggle(!isProficient) },
             contentAlignment = Alignment.Center
         ) {
-            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onPrimaryContainer)
+            Text(
+                text = totalModStr,
+                modifier = Modifier.rotate(if (isProficient) 45f else 0f),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isProficient) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant
+            )
         }
+        
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Score Input
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -728,10 +795,12 @@ fun StatCard(label: String, value: String, modifier: Modifier = Modifier, onValu
                         else { val num = filtered.toIntOrNull(); if (num != null && num in 1..30) onValueChange(filtered) }
                     },
                     textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface),
+                    cursorBrush = SolidColor(colorScheme.primary),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.width(32.dp)
                 )
             }
+            // Base Modifier Display
             Box(
                 modifier = Modifier
                     .size(42.dp)

@@ -1,110 +1,110 @@
 [
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-mdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-mdpi\\ic_launcher_round.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xxxhdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\drawable_ic_launcher_background.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\drawable\\ic_launcher_background.xml"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/xml_data_extraction_rules.xml.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/xml/data_extraction_rules.xml"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxhdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxhdpi\\ic_launcher_round.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\xml_data_extraction_rules.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\xml\\data_extraction_rules.xml"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-hdpi_ic_launcher_foreground.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-hdpi/ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-mdpi/ic_launcher.webp"
+    },
+    {
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-mdpi_ic_launcher_foreground.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-mdpi/ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-hdpi/ic_launcher.webp"
     },
     {
         "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_exhaustion.png.flat",
         "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_exhaustion.png"
     },
     {
-        "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_shield.png.flat",
-        "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_shield.png"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-mdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-mdpi\\ic_launcher.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_shield.png.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_shield.png"
     },
     {
         "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_conditions.png.flat",
         "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_conditions.png"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxxhdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxxhdpi\\ic_launcher.webp"
-    },
-    {
         "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_sword.png.flat",
         "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_sword.png"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-anydpi-v26\\ic_launcher.xml"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_launcher_foreground.xml"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-mdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-mdpi\\ic_launcher_foreground.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xxxhdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxxhdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxxhdpi\\ic_launcher_round.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xhdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-hdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-hdpi\\ic_launcher.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_launcher_background.xml.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_launcher_background.xml"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-hdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-hdpi\\ic_launcher_round.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xhdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xhdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xhdpi\\ic_launcher_round.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-hdpi/ic_launcher_round.webp"
+    },
+    {
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xhdpi_ic_launcher_foreground.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xhdpi/ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xxhdpi_ic_launcher_foreground.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xxhdpi/ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xxxhdpi_ic_launcher_foreground.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xxxhdpi/ic_launcher_foreground.webp"
     },
     {
         "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_speed.png.flat",
         "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_speed.png"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-hdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-hdpi\\ic_launcher_foreground.webp"
-    },
-    {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\drawable_ic_launcher_foreground.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\drawable\\ic_launcher_foreground.xml"
-    },
-    {
         "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_health.png.flat",
         "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_health.png"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxhdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxhdpi\\ic_launcher_foreground.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-mdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/xml_backup_rules.xml.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/xml/backup_rules.xml"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xhdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xhdpi\\ic_launcher.webp"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xxhdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxxhdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxxhdpi\\ic_launcher_foreground.webp"
-    },
-    {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxhdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxhdpi\\ic_launcher.webp"
-    },
-    {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xhdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xhdpi\\ic_launcher_foreground.webp"
-    },
-    {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\xml_backup_rules.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\xml\\backup_rules.xml"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/mipmap-xxhdpi/ic_launcher_round.webp"
     }
 ]
