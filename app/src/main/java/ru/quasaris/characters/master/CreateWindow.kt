@@ -69,9 +69,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
 
     statKeys.forEach { (key, statKey) ->
         val mod = calculateModifier(stats[statKey] ?: "10").toString()
-        // Replace [KEY]
         processed = processed.replace("[$key]", mod)
-        // Replace [KEY followed by space (for [ЛОВ [ВЕРХ]...])
         processed = processed.replace("[$key ", "$mod ")
     }
 
@@ -96,7 +94,6 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
                 }
 
                 // b. Trailing syntax: VALUE [FUNC] (LIMIT)
-                // Example: 3 [ВЕРХ] (2) or 10 ([ВЕРХ] (5), [НИЗ] (1))
                 val patternTrailing = Regex("(-?\\d+)[^\\d\\[]*\\[$func\\]\\s*\\((-?\\d+)\\)")
                 while (current.contains("[$func]")) {
                     val match = patternTrailing.find(current) ?: break
@@ -113,7 +110,6 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     processed = processFunctions(processed)
     
     // 3. Final Cleanup for Math Evaluator
-    // Remove anything that's not a number or operator
     processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
     // 4. Math Evaluation
@@ -183,14 +179,27 @@ fun CreateWindow(
         "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma
     )
 
+    // AC State
     var armorClassEntries by remember { mutableStateOf(listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]"))) }
     var activeArmorClassId by remember { mutableStateOf<String?>(armorClassEntries.firstOrNull()?.id) }
     var isArmorClassPanelVisible by remember { mutableStateOf(false) }
-    var deleteConfirmId by remember { mutableStateOf<String?>(null) }
+    var acDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
     val activeACValue = remember(activeArmorClassId, armorClassEntries, statsMap) {
         val active = armorClassEntries.find { it.id == activeArmorClassId }
         if (active != null) evaluateFormula(active.formula, statsMap).toString() else "10"
+    }
+
+    // Initiative State
+    var initiativeEntries by remember { mutableStateOf(listOf(InitiativeEntry(name = "Базовая Инициатива", formula = "[ЛОВ]"))) }
+    var activeInitiativeId by remember { mutableStateOf<String?>(initiativeEntries.firstOrNull()?.id) }
+    var isInitiativePanelVisible by remember { mutableStateOf(false) }
+    var initDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    val activeInitValue = remember(activeInitiativeId, initiativeEntries, statsMap) {
+        val active = initiativeEntries.find { it.id == activeInitiativeId }
+        val value = if (active != null) evaluateFormula(active.formula, statsMap) else 0
+        if (value >= 0) "+$value" else value.toString()
     }
 
     val focusManager = LocalFocusManager.current
@@ -277,8 +286,14 @@ fun CreateWindow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatIconBox(activeACValue, R.drawable.ic_shield, onClick = { isArmorClassPanelVisible = !isArmorClassPanelVisible })
-                        StatIconBox("+2", R.drawable.ic_sword)
+                        StatIconBox(activeACValue, R.drawable.ic_shield, onClick = { 
+                            isArmorClassPanelVisible = !isArmorClassPanelVisible 
+                            isInitiativePanelVisible = false
+                        })
+                        StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = {
+                            isInitiativePanelVisible = !isInitiativePanelVisible
+                            isArmorClassPanelVisible = false
+                        })
                     }
                     Box(
                         modifier = Modifier
@@ -318,7 +333,8 @@ fun CreateWindow(
                     indication = null
                 ) {
                     focusManager.clearFocus()
-                    deleteConfirmId = null
+                    acDeleteConfirmId = null
+                    initDeleteConfirmId = null
                 }
         ) {
             Column(
@@ -344,13 +360,32 @@ fun CreateWindow(
                     enter = expandVertically(),
                     exit = shrinkVertically()
                 ) {
-                    ArmorClassPanel(
+                    FormulaPanel(
+                        title = "Класс Доспеха",
                         entries = armorClassEntries,
                         activeId = activeArmorClassId,
-                        deleteConfirmId = deleteConfirmId,
-                        onEntriesChanged = { armorClassEntries = it },
+                        deleteConfirmId = acDeleteConfirmId,
+                        onEntriesChanged = { armorClassEntries = it.filterIsInstance<ArmorClassEntry>() },
                         onActiveIdChanged = { activeArmorClassId = it },
-                        onDeleteConfirmIdChanged = { deleteConfirmId = it }
+                        onDeleteConfirmIdChanged = { acDeleteConfirmId = it },
+                        onAdd = { armorClassEntries = armorClassEntries + ArmorClassEntry() }
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = isInitiativePanelVisible,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    FormulaPanel(
+                        title = "Инициатива",
+                        entries = initiativeEntries,
+                        activeId = activeInitiativeId,
+                        deleteConfirmId = initDeleteConfirmId,
+                        onEntriesChanged = { initiativeEntries = it.filterIsInstance<InitiativeEntry>() },
+                        onActiveIdChanged = { activeInitiativeId = it },
+                        onDeleteConfirmIdChanged = { initDeleteConfirmId = it },
+                        onAdd = { initiativeEntries = initiativeEntries + InitiativeEntry() }
                     )
                 }
 
@@ -417,8 +452,7 @@ fun CreateWindow(
                     textAlign = TextAlign.Center,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color = colorScheme.onSurface
-                )
+                    color = colorScheme.onSurface)
                 
                 Column(
                     modifier = Modifier
@@ -441,13 +475,15 @@ fun CreateWindow(
 }
 
 @Composable
-fun ArmorClassPanel(
-    entries: List<ArmorClassEntry>,
+fun FormulaPanel(
+    title: String,
+    entries: List<FormulaEntry>,
     activeId: String?,
     deleteConfirmId: String?,
-    onEntriesChanged: (List<ArmorClassEntry>) -> Unit,
+    onEntriesChanged: (List<FormulaEntry>) -> Unit,
     onActiveIdChanged: (String?) -> Unit,
-    onDeleteConfirmIdChanged: (String?) -> Unit
+    onDeleteConfirmIdChanged: (String?) -> Unit,
+    onAdd: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Column(
@@ -459,9 +495,16 @@ fun ArmorClassPanel(
             .border(1.dp, colorScheme.outline.copy(0.3f), RoundedCornerShape(12.dp))
             .animateContentSize()
     ) {
+        Text(
+            text = title,
+            modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.onSurfaceVariant
+        )
+        
         entries.forEachIndexed { index, entry ->
             val isActive = entry.id == activeId
-            ArmorClassEntryItem(
+            FormulaEntryItem(
                 entry = entry,
                 isActive = isActive,
                 isDeleteConfirm = entry.id == deleteConfirmId,
@@ -493,7 +536,7 @@ fun ArmorClassPanel(
                 .fillMaxWidth()
                 .height(48.dp)
                 .clickable {
-                    onEntriesChanged(entries + ArmorClassEntry())
+                    onAdd()
                     onDeleteConfirmIdChanged(null)
                 }
                 .padding(horizontal = 16.dp),
@@ -508,11 +551,11 @@ fun ArmorClassPanel(
 }
 
 @Composable
-fun ArmorClassEntryItem(
-    entry: ArmorClassEntry,
+fun FormulaEntryItem(
+    entry: FormulaEntry,
     isActive: Boolean,
     isDeleteConfirm: Boolean,
-    onUpdate: (ArmorClassEntry) -> Unit,
+    onUpdate: (FormulaEntry) -> Unit,
     onDelete: () -> Unit,
     onDeleteConfirmRequest: () -> Unit,
     onToggleActive: () -> Unit
@@ -552,7 +595,14 @@ fun ArmorClassEntryItem(
                 }
                 BasicTextField(
                     value = entry.name,
-                    onValueChange = { onUpdate(entry.copy(name = it)) },
+                    onValueChange = { 
+                        val updated = when(entry) {
+                            is ArmorClassEntry -> entry.copy(name = it)
+                            is InitiativeEntry -> entry.copy(name = it)
+                            else -> entry
+                        }
+                        onUpdate(updated)
+                    },
                     textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, color = colorScheme.onSurface),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                 )
@@ -578,11 +628,18 @@ fun ArmorClassEntryItem(
         HorizontalDivider(color = separatorColor, thickness = separatorThickness)
         Box(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) {
             if (entry.formula.isEmpty()) {
-                Text("Формула КД", color = colorScheme.onSurface.copy(0.4f), fontSize = 14.sp)
+                Text("Формула", color = colorScheme.onSurface.copy(0.4f), fontSize = 14.sp)
             }
             BasicTextField(
                 value = entry.formula,
-                onValueChange = { onUpdate(entry.copy(formula = it)) },
+                onValueChange = { 
+                    val updated = when(entry) {
+                        is ArmorClassEntry -> entry.copy(formula = it)
+                        is InitiativeEntry -> entry.copy(formula = it)
+                        else -> entry
+                    }
+                    onUpdate(updated)
+                },
                 textStyle = TextStyle(fontSize = 14.sp, color = colorScheme.onSurface),
                 modifier = Modifier.fillMaxWidth()
             )
