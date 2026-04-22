@@ -35,8 +35,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -97,7 +95,14 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     )
 
     statKeys.forEach { (key, statKey) ->
-        val mod = calculateModifier(stats[statKey] ?: "10").toString()
+        val score = stats[statKey] ?: "10"
+        val mod = calculateModifier(score).toString()
+        
+        // Handle raw score keyword: [ЛОВ ЗНАЧ] or [DEX SCR]
+        processed = processed.replace("[$key ЗНАЧ]", score)
+        processed = processed.replace("[$key SCR]", score)
+
+        // Handle modifier: [ЛОВ] or [DEX]
         processed = processed.replace("[$key]", mod)
         processed = processed.replace("[$key ", "$mod ")
     }
@@ -139,14 +144,11 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     processed = processFunctions(processed)
     
     // 3. Final Cleanup for Math Evaluator
-    // We must keep +, -, *, / and digits.
-    // NOTE: For negative numbers like "10 + -5", the split logic below needs to handle it.
     processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
     // 4. Math Evaluation
     return try {
-        // Updated regex to handle negative numbers more robustly
-        // Splits by operators but keeps them, while ignoring spaces
+        // Robust split to handle negative numbers like "10 + -5"
         val tokens = processed.replace(" ", "").split(Regex("(?=[+*/])|(?<=[+*/])|(?<=\\d)(?=-)"))
         val values = Stack<Int>()
         val ops = Stack<String>()
@@ -168,7 +170,6 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
 
         for (token in tokens) {
             if (token.isEmpty()) continue
-            // Check if it's a number (including negative ones)
             if (token[0].isDigit() || (token.length > 1 && token[0] == '-' && token[1].isDigit())) {
                 values.push(token.toInt())
             } else if ("+-*/".contains(token)) {
@@ -738,7 +739,7 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
         ),
         contentAlignment = Alignment.Center
     ) {
-        val tint = colorScheme.primary.copy(alpha = 0.6f)
+        val tint = colorScheme.primary.copy(alpha = 0.50f)
         if (iconRes == R.drawable.ic_sword) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
