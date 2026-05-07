@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +69,33 @@ fun getProficiencyBonus(levelStr: String): Int {
     }
 }
 
+fun getNextLevelThreshold(levelStr: String): String {
+    val level = levelStr.toIntOrNull() ?: 1
+    return when (level) {
+        0 -> "300"
+        1 -> "300"
+        2 -> "900"
+        3 -> "2700"
+        4 -> "6500"
+        5 -> "14000"
+        6 -> "23000"
+        7 -> "34000"
+        8 -> "48000"
+        9 -> "64000"
+        10 -> "85000"
+        11 -> "100000"
+        12 -> "120000"
+        13 -> "140000"
+        14 -> "165000"
+        15 -> "195000"
+        16 -> "225000"
+        17 -> "265000"
+        18 -> "305000"
+        19 -> "355000"
+        else -> "—"
+    }
+}
+
 val SquirclePath = GenericShape { size, _ ->
     val r = size.width * 0.25f
     moveTo(r, 0f)
@@ -83,7 +112,7 @@ val SquirclePath = GenericShape { size, _ ->
 
 fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     var processed = formula.uppercase()
-    
+
     // 1. Stat Replacements
     val statKeys = mapOf(
         "СИЛ" to "strength", "STR" to "strength",
@@ -97,7 +126,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     statKeys.forEach { (key, statKey) ->
         val score = stats[statKey] ?: "10"
         val mod = calculateModifier(score).toString()
-        
+
         // Handle raw score keyword: [ЛОВ ЗНАЧ] or [DEX SCR]
         processed = processed.replace("[$key ЗНАЧ]", score)
         processed = processed.replace("[$key SCR]", score)
@@ -142,7 +171,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     }
 
     processed = processFunctions(processed)
-    
+
     // 3. Final Cleanup for Math Evaluator
     processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
@@ -220,6 +249,14 @@ fun CreateWindow(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
         "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma
     )
+
+    // Level & Exp State
+    var isLevelPanelVisible by remember { mutableStateOf(false) }
+    val proficiencyBonusValue = remember(level) { getProficiencyBonus(level).toString() }
+
+    LaunchedEffect(level) {
+        nextLevelExp = getNextLevelThreshold(level)
+    }
 
     // AC State
     var armorClassEntries by remember { mutableStateOf(listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]"))) }
@@ -301,6 +338,12 @@ fun CreateWindow(
                         .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp))
                         .background(colorScheme.surface, RoundedCornerShape(20.dp))
                         .padding(2.dp)
+                        .clickable {
+                            isLevelPanelVisible = !isLevelPanelVisible
+                            isArmorClassPanelVisible = false
+                            isInitiativePanelVisible = false
+                            isSpeedPanelVisible = false
+                        }
                 ) {
                     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         Box(
@@ -320,12 +363,18 @@ fun CreateWindow(
                                 .clip(RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 20.dp, bottomEnd = 20.dp))
                                 .background(colorScheme.surface)
                         ) {
-                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.35f).background(colorScheme.primaryContainer))
+                            val progress = remember(experience, nextLevelExp) {
+                                val current = experience.toFloatOrNull() ?: 0f
+                                val next = nextLevelExp.toFloatOrNull() ?: 0f
+                                if (next <= 0f) 1f else (current / next).coerceIn(0f, 1f)
+                            }
+                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(progress).background(colorScheme.primaryContainer))
                             Row(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.weight(0.4f))
                                 Text("$experience | $nextLevelExp", fontSize = 11.sp, color = colorScheme.onSurface)
                                 Spacer(Modifier.weight(0.6f))
-                                Text("${level.toInt() + 1}", fontSize = 11.sp, color = colorScheme.onSurface)
+                                val nextLvl = (level.toIntOrNull() ?: 0) + 1
+                                Text(if (nextLvl <= 20) "$nextLvl" else "", fontSize = 11.sp, color = colorScheme.onSurface)
                             }
                         }
                     }
@@ -339,15 +388,17 @@ fun CreateWindow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatIconBox(activeACValue, R.drawable.ic_shield, onClick = { 
-                            isArmorClassPanelVisible = !isArmorClassPanelVisible 
+                        StatIconBox(activeACValue, R.drawable.ic_shield, onClick = {
+                            isArmorClassPanelVisible = !isArmorClassPanelVisible
                             isInitiativePanelVisible = false
                             isSpeedPanelVisible = false
+                            isLevelPanelVisible = false
                         })
                         StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = {
                             isInitiativePanelVisible = !isInitiativePanelVisible
                             isArmorClassPanelVisible = false
                             isSpeedPanelVisible = false
+                            isLevelPanelVisible = false
                         })
                     }
                     Box(
@@ -376,6 +427,7 @@ fun CreateWindow(
                             isSpeedPanelVisible = !isSpeedPanelVisible
                             isArmorClassPanelVisible = false
                             isInitiativePanelVisible = false
+                            isLevelPanelVisible = false
                         })
                     }
                 }
@@ -414,6 +466,21 @@ fun CreateWindow(
                             )
                         )
                 )
+
+                AnimatedVisibility(
+                    visible = isLevelPanelVisible,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    LevelPanel(
+                        level = level,
+                        onLevelChange = { level = it },
+                        experience = experience,
+                        onExperienceChange = { experience = it },
+                        nextLevelExp = nextLevelExp,
+                        proficiencyBonus = proficiencyBonusValue
+                    )
+                }
 
                 AnimatedVisibility(
                     visible = isArmorClassPanelVisible,
@@ -530,7 +597,7 @@ fun CreateWindow(
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                     color = colorScheme.onSurface)
-                
+
                 Column(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
@@ -544,9 +611,111 @@ fun CreateWindow(
                     PassiveCheckRow("Внимательность (Мудрость)", (10 + calculateModifier(wisdom)).toString())
                     PassiveCheckRow("Проницательность (Мудрость)", (10 + calculateModifier(wisdom)).toString())
                 }
-                
+
                 Spacer(Modifier.height(24.dp))
             }
+        }
+    }
+}
+
+@Composable
+fun LevelPanel(
+    level: String,
+    onLevelChange: (String) -> Unit,
+    experience: String,
+    onExperienceChange: (String) -> Unit,
+    nextLevelExp: String,
+    proficiencyBonus: String
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .border(1.dp, colorScheme.outline.copy(0.3f), RoundedCornerShape(12.dp))
+            .animateContentSize()
+    ) {
+        Text(
+            text = "Уровень и Опыт",
+            modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.onSurfaceVariant
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Уровень персонажа",
+                modifier = Modifier.padding(start = 16.dp).weight(1f),
+                fontSize = 14.sp,
+                color = colorScheme.onSurfaceVariant
+            )
+            BasicTextField(
+                value = level,
+                onValueChange = { newValue ->
+                    val filtered = newValue.filter { it.isDigit() }
+                    if (filtered.isEmpty()) { onLevelChange("0") }
+                    else {
+                        val num = filtered.toIntOrNull()
+                        if (num != null && num in 0..20) onLevelChange(num.toString())
+                    }
+                },
+                textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
+                modifier = Modifier.width(60.dp).padding(end = 16.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        }
+
+        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
+
+        Row(
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Текущий опыт",
+                modifier = Modifier.padding(start = 16.dp).weight(1f),
+                fontSize = 14.sp,
+                color = colorScheme.onSurfaceVariant
+            )
+            BasicTextField(
+                value = experience,
+                onValueChange = { onExperienceChange(it.filter { it.isDigit() }) },
+                textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
+                modifier = Modifier.width(100.dp).padding(end = 4.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            Text(
+                "/ $nextLevelExp",
+                modifier = Modifier.padding(end = 16.dp),
+                fontSize = 14.sp,
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
+
+        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
+
+        Row(
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Бонус мастерства",
+                modifier = Modifier.padding(start = 16.dp).weight(1f),
+                fontSize = 14.sp,
+                color = colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "+$proficiencyBonus",
+                modifier = Modifier.padding(end = 16.dp),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.onSurface
+            )
         }
     }
 }
@@ -578,7 +747,7 @@ fun FormulaPanel(
             style = MaterialTheme.typography.titleMedium,
             color = colorScheme.onSurfaceVariant
         )
-        
+
         entries.forEachIndexed { index, entry ->
             val isActive = entry.id == activeId
             FormulaEntryItem(
@@ -651,8 +820,8 @@ fun FormulaEntryItem(
                 modifier = Modifier
                     .width(44.dp)
                     .fillMaxHeight()
-                    .clickable { 
-                        if (isDeleteConfirm) onDelete() else onDeleteConfirmRequest() 
+                    .clickable {
+                        if (isDeleteConfirm) onDelete() else onDeleteConfirmRequest()
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -663,7 +832,7 @@ fun FormulaEntryItem(
                     tint = if (isDeleteConfirm) colorScheme.error else colorScheme.onSurface.copy(0.7f)
                 )
             }
-            
+
             Box(modifier = Modifier.width(separatorThickness).fillMaxHeight().background(separatorColor))
 
             Box(modifier = Modifier.weight(1f).padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
@@ -672,7 +841,7 @@ fun FormulaEntryItem(
                 }
                 BasicTextField(
                     value = entry.name,
-                    onValueChange = { 
+                    onValueChange = {
                         val updated = when(entry) {
                             is ArmorClassEntry -> entry.copy(name = it)
                             is InitiativeEntry -> entry.copy(name = it)
@@ -711,7 +880,7 @@ fun FormulaEntryItem(
             }
             BasicTextField(
                 value = entry.formula,
-                onValueChange = { 
+                onValueChange = {
                     val updated = when(entry) {
                         is ArmorClassEntry -> entry.copy(formula = it)
                         is InitiativeEntry -> entry.copy(formula = it)
@@ -779,10 +948,10 @@ fun StatCard(
     val baseMod = calculateModifier(value)
     val profBonus = if (isProficient) getProficiencyBonus(level) else 0
     val totalMod = baseMod + profBonus
-    
+
     val modStr = if (baseMod >= 0) "+$baseMod" else baseMod.toString()
     val totalModStr = if (totalMod >= 0) "+$totalMod" else totalMod.toString()
-    
+
     Box(
         modifier = modifier
             .height(104.dp)
@@ -792,7 +961,7 @@ fun StatCard(
             .padding(8.dp)
     ) {
         Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
-        
+
         // Saving Throw Box (Clickable)
         Box(
             modifier = Modifier
@@ -818,7 +987,7 @@ fun StatCard(
                 color = if (isProficient) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant
             )
         }
-        
+
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             // Score Input
             Box(
