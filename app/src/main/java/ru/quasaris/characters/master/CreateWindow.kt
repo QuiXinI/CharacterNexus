@@ -113,7 +113,6 @@ val SquirclePath = GenericShape { size, _ ->
 fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     var processed = formula.uppercase()
 
-    // 1. Stat Replacements
     val statKeys = mapOf(
         "СИЛ" to "strength", "STR" to "strength",
         "ЛОВ" to "dexterity", "DEX" to "dexterity",
@@ -126,27 +125,21 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     statKeys.forEach { (key, statKey) ->
         val score = stats[statKey] ?: "10"
         val mod = calculateModifier(score).toString()
-
-        // Handle raw score keyword: [ЛОВ ЗНАЧ] or [DEX SCR]
         processed = processed.replace("[$key ЗНАЧ]", score)
         processed = processed.replace("[$key SCR]", score)
-
-        // Handle modifier: [ЛОВ] or [DEX]
         processed = processed.replace("[$key]", mod)
         processed = processed.replace("[$key ", "$mod ")
     }
 
-    // 2. Function Processing (MAX, MIN, CEIL/ВЕРХ, FLOOR/НИЗ)
     fun processFunctions(input: String): String {
         var current = input
         val functions = listOf(
-            listOf("МАКС", "MAX", "НИЗ", "FLOOR") to true, // isMax = true (Floor/Niz limits from below)
-            listOf("МИН", "MIN", "ВЕРХ", "CEIL") to false // isMax = false (Ceil/Verh limits from above)
+            listOf("МАКС", "MAX", "НИЗ", "FLOOR") to true,
+            listOf("МИН", "MIN", "ВЕРХ", "CEIL") to false
         )
 
         functions.forEach { (names, isMax) ->
             names.forEach { func ->
-                // a. Standard syntax: [FUNC(a; b)] or FUNC(a, b)
                 val patternStandard = Regex("(?:\\[$func\\s*\\(([^()]+)\\)\\]|$func\\s*\\(([^()]+)\\))")
                 while (current.contains(func)) {
                     val match = patternStandard.find(current) ?: break
@@ -156,7 +149,6 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
                     current = current.replace(match.value, result.toString())
                 }
 
-                // b. Trailing syntax: VALUE [FUNC] (LIMIT)
                 val patternTrailing = Regex("(-?\\d+)[^\\d\\[]*\\[$func\\]\\s*\\((-?\\d+)\\)")
                 while (current.contains("[$func]")) {
                     val match = patternTrailing.find(current) ?: break
@@ -171,13 +163,9 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     }
 
     processed = processFunctions(processed)
-
-    // 3. Final Cleanup for Math Evaluator
     processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
-    // 4. Math Evaluation
     return try {
-        // Robust split to handle negative numbers like "10 + -5"
         val tokens = processed.replace(" ", "").split(Regex("(?=[+*/])|(?<=[+*/])|(?<=\\d)(?=-)"))
         val values = Stack<Int>()
         val ops = Stack<String>()
@@ -373,8 +361,8 @@ fun CreateWindow(
                                 Spacer(Modifier.weight(0.4f))
                                 Text("$experience | $nextLevelExp", fontSize = 11.sp, color = colorScheme.onSurface)
                                 Spacer(Modifier.weight(0.6f))
-                                val nextLvl = (level.toIntOrNull() ?: 0) + 1
-                                Text(if (nextLvl <= 20) "$nextLvl" else "", fontSize = 11.sp, color = colorScheme.onSurface)
+                                val nextLvlNum = (level.toIntOrNull() ?: 0) + 1
+                                Text(if (nextLvlNum <= 20) "$nextLvlNum" else "", fontSize = 11.sp, color = colorScheme.onSurface)
                             }
                         }
                     }
@@ -665,7 +653,8 @@ fun LevelPanel(
                     }
                 },
                 textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
-                modifier = Modifier.width(60.dp).padding(end = 16.dp),
+                modifier = Modifier.width(100.dp).padding(end = 16.dp),
+                cursorBrush = SolidColor(colorScheme.primary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         }
@@ -687,6 +676,7 @@ fun LevelPanel(
                 onValueChange = { onExperienceChange(it.filter { it.isDigit() }) },
                 textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
                 modifier = Modifier.width(100.dp).padding(end = 4.dp),
+                cursorBrush = SolidColor(colorScheme.primary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             Text(
@@ -962,7 +952,6 @@ fun StatCard(
     ) {
         Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
 
-        // Saving Throw Box (Clickable)
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -989,7 +978,6 @@ fun StatCard(
         }
 
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Score Input
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -1011,7 +999,6 @@ fun StatCard(
                     modifier = Modifier.width(32.dp)
                 )
             }
-            // Base Modifier Display
             Box(
                 modifier = Modifier
                     .size(42.dp)
