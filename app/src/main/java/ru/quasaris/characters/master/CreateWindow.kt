@@ -43,6 +43,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -93,6 +98,32 @@ fun getNextLevelThreshold(levelStr: String): String {
         18 -> "305000"
         19 -> "355000"
         else -> "—"
+    }
+}
+
+fun calculateLevelFromExperience(expStr: String): Int {
+    val exp = expStr.toLongOrNull() ?: 0L
+    return when {
+        exp >= 355000 -> 20
+        exp >= 305000 -> 19
+        exp >= 265000 -> 18
+        exp >= 225000 -> 17
+        exp >= 195000 -> 16
+        exp >= 165000 -> 15
+        exp >= 140000 -> 14
+        exp >= 120000 -> 13
+        exp >= 100000 -> 12
+        exp >= 85000 -> 11
+        exp >= 64000 -> 10
+        exp >= 48000 -> 9
+        exp >= 34000 -> 8
+        exp >= 23000 -> 7
+        exp >= 14000 -> 6
+        exp >= 6500 -> 5
+        exp >= 2700 -> 4
+        exp >= 900 -> 3
+        exp >= 300 -> 2
+        else -> 1
     }
 }
 
@@ -218,6 +249,7 @@ fun CreateWindow(
     var level by remember { mutableStateOf("1") }
     var experience by remember { mutableStateOf("50") }
     var nextLevelExp by remember { mutableStateOf("300") }
+    var proficiencyBonus by remember { mutableStateOf("2") }
 
     var strength by remember { mutableStateOf("10") }
     var dexterity by remember { mutableStateOf("10") }
@@ -240,10 +272,10 @@ fun CreateWindow(
 
     // Level & Exp State
     var isLevelPanelVisible by remember { mutableStateOf(false) }
-    val proficiencyBonusValue = remember(level) { getProficiencyBonus(level).toString() }
 
     LaunchedEffect(level) {
         nextLevelExp = getNextLevelThreshold(level)
+        proficiencyBonus = getProficiencyBonus(level).toString()
     }
 
     // AC State
@@ -465,8 +497,9 @@ fun CreateWindow(
                         onLevelChange = { level = it },
                         experience = experience,
                         onExperienceChange = { experience = it },
-                        nextLevelExp = nextLevelExp,
-                        proficiencyBonus = proficiencyBonusValue
+                        proficiencyBonus = proficiencyBonus,
+                        onProficiencyBonusChange = { proficiencyBonus = it },
+                        nextLevelExp = nextLevelExp
                     )
                 }
 
@@ -563,16 +596,16 @@ fun CreateWindow(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Сила", strength, level, strProf, Modifier.weight(1f), { strength = it }, { strProf = it })
-                        StatCard("Интеллект", intelligence, level, intProf, Modifier.weight(1f), { intelligence = it }, { intProf = it })
+                        StatCard("Сила", strength, proficiencyBonus, strProf, Modifier.weight(1f), { strength = it }, { strProf = it })
+                        StatCard("Интеллект", intelligence, proficiencyBonus, intProf, Modifier.weight(1f), { intelligence = it }, { intProf = it })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Ловкость", dexterity, level, dexProf, Modifier.weight(1f), { dexterity = it }, { dexProf = it })
-                        StatCard("Мудрость", wisdom, level, wisProf, Modifier.weight(1f), { wisdom = it }, { wisProf = it })
+                        StatCard("Ловкость", dexterity, proficiencyBonus, dexProf, Modifier.weight(1f), { dexterity = it }, { dexProf = it })
+                        StatCard("Мудрость", wisdom, proficiencyBonus, wisProf, Modifier.weight(1f), { wisdom = it }, { wisProf = it })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Телосложение", constitution, level, conProf, Modifier.weight(1f), { constitution = it }, { conProf = it })
-                        StatCard("Харизма", charisma, level, chaProf, Modifier.weight(1f), { charisma = it }, { chaProf = it })
+                        StatCard("Телосложение", constitution, proficiencyBonus, conProf, Modifier.weight(1f), { constitution = it }, { conProf = it })
+                        StatCard("Харизма", charisma, proficiencyBonus, chaProf, Modifier.weight(1f), { charisma = it }, { chaProf = it })
                     }
                 }
 
@@ -612,10 +645,53 @@ fun LevelPanel(
     onLevelChange: (String) -> Unit,
     experience: String,
     onExperienceChange: (String) -> Unit,
-    nextLevelExp: String,
-    proficiencyBonus: String
+    proficiencyBonus: String,
+    onProficiencyBonusChange: (String) -> Unit,
+    nextLevelExp: String
 ) {
     val colorScheme = MaterialTheme.colorScheme
+
+    // Используем TextFieldValue для контроля курсора
+    var levelTextFieldValue by remember {
+        mutableStateOf(TextFieldValue(level))
+    }
+    var experienceTextFieldValue by remember {
+        mutableStateOf(TextFieldValue(experience))
+    }
+    var proficiencyTextFieldValue by remember {
+        mutableStateOf(TextFieldValue(proficiencyBonus))
+    }
+
+    LaunchedEffect(level) {
+        if (levelTextFieldValue.text != level) {
+            levelTextFieldValue = levelTextFieldValue.copy(text = level, selection = TextRange(level.length))
+        }
+    }
+    LaunchedEffect(experience) {
+        if (experienceTextFieldValue.text != experience) {
+            experienceTextFieldValue = experienceTextFieldValue.copy(text = experience, selection = TextRange(experience.length))
+        }
+    }
+    LaunchedEffect(proficiencyBonus) {
+        if (proficiencyTextFieldValue.text != proficiencyBonus) {
+            proficiencyTextFieldValue = proficiencyTextFieldValue.copy(text = proficiencyBonus, selection = TextRange(proficiencyBonus.length))
+        }
+    }
+
+    val focusRequesterLevel = remember { FocusRequester() }
+    val focusRequesterExp = remember { FocusRequester() }
+    val focusRequesterProf = remember { FocusRequester() }
+
+    val currentLevelInt = level.toIntOrNull() ?: 1
+    val targetLevel = calculateLevelFromExperience(experience)
+
+    val canUpdate = targetLevel != currentLevelInt
+    val buttonText = when {
+        targetLevel > currentLevelInt -> "Повысить уровень"
+        targetLevel < currentLevelInt -> "Понизить уровень"
+        else -> "Повысить уровень"
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -633,7 +709,13 @@ fun LevelPanel(
         )
 
         Row(
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clickable {
+                    levelTextFieldValue = levelTextFieldValue.copy(selection = TextRange(level.length))
+                    focusRequesterLevel.requestFocus()
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -643,17 +725,22 @@ fun LevelPanel(
                 color = colorScheme.onSurfaceVariant
             )
             BasicTextField(
-                value = level,
-                onValueChange = { newValue ->
-                    val filtered = newValue.filter { it.isDigit() }
-                    if (filtered.isEmpty()) { onLevelChange("0") }
+                value = levelTextFieldValue,
+                onValueChange = {
+                    levelTextFieldValue = it
+                    val filtered = it.text.filter { c -> c.isDigit() }
+                    if (filtered.isEmpty()) { onLevelChange("") }
                     else {
                         val num = filtered.toIntOrNull()
                         if (num != null && num in 0..20) onLevelChange(num.toString())
                     }
                 },
                 textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
-                modifier = Modifier.width(100.dp).padding(end = 16.dp),
+                modifier = Modifier
+                    .width(100.dp)
+                    .padding(end = 16.dp)
+                    .focusRequester(focusRequesterLevel)
+                    .onFocusChanged { if (!it.isFocused && level.isEmpty()) onLevelChange("0") },
                 cursorBrush = SolidColor(colorScheme.primary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
@@ -662,7 +749,13 @@ fun LevelPanel(
         HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
 
         Row(
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clickable {
+                    experienceTextFieldValue = experienceTextFieldValue.copy(selection = TextRange(experience.length))
+                    focusRequesterExp.requestFocus()
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -672,10 +765,17 @@ fun LevelPanel(
                 color = colorScheme.onSurfaceVariant
             )
             BasicTextField(
-                value = experience,
-                onValueChange = { onExperienceChange(it.filter { it.isDigit() }) },
+                value = experienceTextFieldValue,
+                onValueChange = {
+                    experienceTextFieldValue = it
+                    onExperienceChange(it.text.filter { c -> c.isDigit() })
+                },
                 textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
-                modifier = Modifier.width(100.dp).padding(end = 4.dp),
+                modifier = Modifier
+                    .width(100.dp)
+                    .padding(end = 4.dp)
+                    .focusRequester(focusRequesterExp)
+                    .onFocusChanged { if (!it.isFocused && experience.isEmpty()) onExperienceChange("0") },
                 cursorBrush = SolidColor(colorScheme.primary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
@@ -690,7 +790,13 @@ fun LevelPanel(
         HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
 
         Row(
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .clickable {
+                    proficiencyTextFieldValue = proficiencyTextFieldValue.copy(selection = TextRange(proficiencyBonus.length))
+                    focusRequesterProf.requestFocus()
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -699,13 +805,42 @@ fun LevelPanel(
                 fontSize = 14.sp,
                 color = colorScheme.onSurfaceVariant
             )
-            Text(
-                text = "+$proficiencyBonus",
-                modifier = Modifier.padding(end = 16.dp),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.onSurface
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 16.dp)) {
+                Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                BasicTextField(
+                    value = proficiencyTextFieldValue,
+                    onValueChange = {
+                        proficiencyTextFieldValue = it
+                        onProficiencyBonusChange(it.text.filter { c -> c.isDigit() })
+                    },
+                    textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
+                    modifier = Modifier
+                        .width(40.dp)
+                        .focusRequester(focusRequesterProf)
+                        .onFocusChanged { if (!it.isFocused && proficiencyBonus.isEmpty()) onProficiencyBonusChange(getProficiencyBonus(level).toString()) },
+                    cursorBrush = SolidColor(colorScheme.primary),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { if (canUpdate) onLevelChange(targetLevel.toString()) },
+            enabled = canUpdate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .height(40.dp),
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (canUpdate) colorScheme.primary else colorScheme.outline.copy(alpha = 0.12f),
+                contentColor = if (canUpdate) colorScheme.onPrimary else colorScheme.onSurface.copy(alpha = 0.38f)
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = if (canUpdate) 2.dp else 0.dp)
+        ) {
+            Text(buttonText, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -928,7 +1063,7 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
 fun StatCard(
     label: String,
     value: String,
-    level: String,
+    proficiencyBonus: String,
     isProficient: Boolean,
     modifier: Modifier = Modifier,
     onValueChange: (String) -> Unit,
@@ -936,7 +1071,7 @@ fun StatCard(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val baseMod = calculateModifier(value)
-    val profBonus = if (isProficient) getProficiencyBonus(level) else 0
+    val profBonus = if (isProficient) (proficiencyBonus.toIntOrNull() ?: 0) else 0
     val totalMod = baseMod + profBonus
 
     val modStr = if (baseMod >= 0) "+$baseMod" else baseMod.toString()
