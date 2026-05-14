@@ -319,6 +319,16 @@ fun CreateWindow(
     var wisProf by remember { mutableStateOf(false) }
     var chaProf by remember { mutableStateOf(false) }
 
+    // Health State
+    var maxHp by remember { mutableStateOf("10") }
+    var hpBonus by remember { mutableStateOf("0") }
+    var tempHp by remember { mutableStateOf("0") }
+    var currentHp by remember { mutableStateOf("10") }
+    var isHealthPanelVisible by remember { mutableStateOf(false) }
+    var hpDialogType by remember { mutableStateOf("") } // "heal", "damage", "temp"
+    var hpDialogValue by remember { mutableStateOf("") }
+    var showHpDialog by remember { mutableStateOf(false) }
+
     val statsMap = mapOf(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
         "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma,
@@ -417,6 +427,7 @@ fun CreateWindow(
                             isArmorClassPanelVisible = false
                             isInitiativePanelVisible = false
                             isSpeedPanelVisible = false
+                            isHealthPanelVisible = false
                         }
                 ) {
                     Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -467,12 +478,14 @@ fun CreateWindow(
                             isInitiativePanelVisible = false
                             isSpeedPanelVisible = false
                             isLevelPanelVisible = false
+                            isHealthPanelVisible = false
                         })
                         StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = {
                             isInitiativePanelVisible = !isInitiativePanelVisible
                             isArmorClassPanelVisible = false
                             isSpeedPanelVisible = false
                             isLevelPanelVisible = false
+                            isHealthPanelVisible = false
                         })
                     }
                     Box(
@@ -481,7 +494,14 @@ fun CreateWindow(
                             .padding(horizontal = 8.dp)
                             .height(55.dp)
                             .border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp))
-                            .background(colorScheme.surface, RoundedCornerShape(8.dp)),
+                            .background(colorScheme.surface, RoundedCornerShape(8.dp))
+                            .clickable {
+                                isHealthPanelVisible = !isHealthPanelVisible
+                                isArmorClassPanelVisible = false
+                                isInitiativePanelVisible = false
+                                isSpeedPanelVisible = false
+                                isLevelPanelVisible = false
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -492,7 +512,11 @@ fun CreateWindow(
                                 colorFilter = ColorFilter.tint(Color(0xFF00C46F))
                             )
                             Spacer(Modifier.width(6.dp))
-                            Text("10 / 10", color = Color(0xFF00C46F), fontSize = 16.sp, fontWeight = FontWeight.Normal)
+                            val totalMax = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
+                            Text("$currentHp / $totalMax", color = Color(0xFF00C46F), fontSize = 16.sp, fontWeight = FontWeight.Normal)
+                            if ((tempHp.toIntOrNull() ?: 0) > 0) {
+                                Text(" (+$tempHp)", color = Color(0xFF00C46F).copy(alpha = 0.7f), fontSize = 14.sp)
+                            }
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -502,6 +526,7 @@ fun CreateWindow(
                             isArmorClassPanelVisible = false
                             isInitiativePanelVisible = false
                             isLevelPanelVisible = false
+                            isHealthPanelVisible = false
                         })
                     }
                 }
@@ -555,6 +580,22 @@ fun CreateWindow(
                         onProficiencyBonusChange = { proficiencyBonus = it },
                         nextLevelExp = nextLevelExp,
                         statsMap = statsMap
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = isHealthPanelVisible,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    HealthPanel(
+                        maxHp = maxHp, onMaxHpChange = { maxHp = it },
+                        hpBonus = hpBonus, onHpBonusChange = { hpBonus = it },
+                        tempHp = tempHp, onTempHpChange = { tempHp = it },
+                        currentHp = currentHp, onCurrentHpChange = { currentHp = it },
+                        onHealClick = { hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true },
+                        onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
+                        onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true }
                     )
                 }
 
@@ -693,6 +734,143 @@ fun CreateWindow(
                 Spacer(Modifier.height(24.dp))
             }
         }
+
+        if (showHpDialog) {
+            AlertDialog(
+                onDismissRequest = { showHpDialog = false },
+                title = { Text(when(hpDialogType) {
+                    "heal" -> "Лечение"
+                    "damage" -> "Получение урона"
+                    else -> "Временные хиты"
+                }) },
+                text = {
+                    OutlinedTextField(
+                        value = hpDialogValue,
+                        onValueChange = { hpDialogValue = it.filter { c -> c.isDigit() } },
+                        label = { Text("Значение") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        val value = hpDialogValue.toIntOrNull() ?: 0
+                        when(hpDialogType) {
+                            "heal" -> {
+                                val max = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
+                                val current = currentHp.toIntOrNull() ?: 0
+                                currentHp = minOf(max, current + value).toString()
+                            }
+                            "damage" -> {
+                                var damage = value
+                                var temp = tempHp.toIntOrNull() ?: 0
+                                var current = currentHp.toIntOrNull() ?: 0
+                                
+                                if (temp > 0) {
+                                    val absorbed = minOf(temp, damage)
+                                    temp -= absorbed
+                                    damage -= absorbed
+                                    tempHp = temp.toString()
+                                }
+                                
+                                if (damage > 0) {
+                                    current = maxOf(0, current - damage)
+                                    currentHp = current.toString()
+                                }
+                            }
+                            "temp" -> {
+                                tempHp = value.toString()
+                            }
+                        }
+                        showHpDialog = false
+                    }) { Text("ОК") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showHpDialog = false }) { Text("Отмена") }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun HealthPanel(
+    maxHp: String, onMaxHpChange: (String) -> Unit,
+    hpBonus: String, onHpBonusChange: (String) -> Unit,
+    tempHp: String, onTempHpChange: (String) -> Unit,
+    currentHp: String, onCurrentHpChange: (String) -> Unit,
+    onHealClick: () -> Unit,
+    onDamageClick: () -> Unit,
+    onTempClick: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+            .border(1.dp, colorScheme.outline.copy(0.3f), RoundedCornerShape(12.dp))
+            .animateContentSize()
+    ) {
+        Text(
+            text = "Хиты (HP)",
+            modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+            style = MaterialTheme.typography.titleMedium,
+            color = Color(0xFF00C46F)
+        )
+
+        HealthRow("Максимум хитов", maxHp, onMaxHpChange)
+        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
+        HealthRow("Бонус к максимуму", hpBonus, onHpBonusChange)
+        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
+        HealthRow("Временные хиты", tempHp, onTempHpChange)
+        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
+        HealthRow("Текущие хиты", currentHp, onCurrentHpChange)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        HealthActionRow("Лечение", Color(0xFF00C46F), onHealClick)
+        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
+        HealthActionRow("Получение урона", Color(0xFFE57373), onDamageClick)
+        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
+        HealthActionRow("Укрепление", Color(0xFF64B5F6), onTempClick)
+
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+fun HealthRow(label: String, value: String, onValueChange: (String) -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, modifier = Modifier.padding(start = 16.dp).weight(1f), fontSize = 14.sp, color = colorScheme.onSurfaceVariant)
+        BasicTextField(
+            value = value,
+            onValueChange = { onValueChange(it.filter { c -> c.isDigit() || c == '-' }) },
+            textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
+            modifier = Modifier.width(100.dp).padding(end = 16.dp),
+            cursorBrush = SolidColor(colorScheme.primary),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+    }
+}
+
+@Composable
+fun HealthActionRow(text: String, color: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(text, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = color)
     }
 }
 
