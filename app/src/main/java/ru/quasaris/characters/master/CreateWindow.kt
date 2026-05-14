@@ -144,6 +144,7 @@ val SquirclePath = GenericShape { size, _ ->
 fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     var processed = formula.uppercase()
 
+    // 1. Stat Replacements
     val statKeys = mapOf(
         "СИЛ" to "strength", "STR" to "strength",
         "ЛОВ" to "dexterity", "DEX" to "dexterity",
@@ -162,6 +163,16 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         processed = processed.replace("[$key ", "$mod ")
     }
 
+    // 2. Proficiency Bonus Replacements
+    val pb = stats["proficiencyBonus"] ?: "2"
+    val level = stats["level"] ?: "1"
+    val realPb = getProficiencyBonus(level).toString()
+    processed = processed.replace("[БМ]", pb)
+    processed = processed.replace("[PB]", pb)
+    processed = processed.replace("[НАСТ БМ]", realPb)
+    processed = processed.replace("[REAL PB]", realPb)
+
+    // 3. Function Processing (MAX, MIN, CEIL/ВЕРХ, FLOOR/НИЗ)
     fun processFunctions(input: String): String {
         var current = input
         val functions = listOf(
@@ -194,8 +205,11 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     }
 
     processed = processFunctions(processed)
+    
+    // 4. Final Cleanup for Math Evaluator
     processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
+    // 5. Math Evaluation
     return try {
         val tokens = processed.replace(" ", "").split(Regex("(?=[+*/])|(?<=[+*/])|(?<=\\d)(?=-)"))
         val values = Stack<Int>()
@@ -267,7 +281,8 @@ fun CreateWindow(
 
     val statsMap = mapOf(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
-        "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma
+        "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma,
+        "proficiencyBonus" to proficiencyBonus, "level" to level
     )
 
     // Level & Exp State
