@@ -164,13 +164,20 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     }
 
     // 2. Proficiency Bonus Replacements
-    val pb = stats["proficiencyBonus"] ?: "2"
+    val pbFormula = stats["proficiencyBonus"] ?: "2"
     val level = stats["level"] ?: "1"
     val realPb = getProficiencyBonus(level).toString()
-    processed = processed.replace("[БМ]", pb)
-    processed = processed.replace("[PB]", pb)
+    
+    // Replace [БМ] first. If pbFormula is [НАСТ БМ], it will become [НАСТ БМ]
+    processed = processed.replace("[БМ]", pbFormula)
+    processed = processed.replace("[PB]", pbFormula)
     processed = processed.replace("[НАСТ БМ]", realPb)
     processed = processed.replace("[REAL PB]", realPb)
+    
+    // If we still have [БМ] after replacement (e.g. infinite recursion prevention), fallback to level bonus
+    if (processed.contains("[БМ]") || processed.contains("[PB]")) {
+        processed = processed.replace("[БМ]", realPb).replace("[PB]", realPb)
+    }
 
     // 3. Function Processing (MAX, MIN, CEIL/ВЕРХ, FLOOR/НИЗ)
     fun processFunctions(input: String): String {
@@ -209,9 +216,41 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
     // 4. Final Cleanup for Math Evaluator
     processed = processed.replace(Regex("[^\\d+\\-*/]"), " ")
 
-    // 5. Math Evaluation
+    // 5. Math Evaluation - Manual Tokenization for Negative Numbers and Subtraction
     return try {
-        val tokens = processed.replace(" ", "").split(Regex("(?=[+*/])|(?<=[+*/])|(?<=\\d)(?=-)"))
+        val clean = processed.replace(" ", "")
+        val tokens = mutableListOf<String>()
+        var i = 0
+        while (i < clean.length) {
+            val c = clean[i]
+            if (c.isDigit()) {
+                val start = i
+                while (i < clean.length && clean[i].isDigit()) i++
+                tokens.add(clean.substring(start, i))
+            } else if ("+*/".contains(c)) {
+                tokens.add(c.toString())
+                i++
+            } else if (c == '-') {
+                // Check if it's subtraction or negative sign
+                if (i > 0 && clean[i-1].isDigit()) {
+                    tokens.add("-")
+                    i++
+                } else {
+                    // It's a negative sign, combine with digits
+                    val start = i
+                    i++ // skip '-'
+                    while (i < clean.length && clean[i].isDigit()) i++
+                    if (i > start + 1) {
+                        tokens.add(clean.substring(start, i))
+                    } else {
+                        tokens.add("-")
+                    }
+                }
+            } else {
+                i++
+            }
+        }
+
         val values = Stack<Int>()
         val ops = Stack<String>()
 
@@ -236,13 +275,14 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
                 values.push(token.toInt())
             } else if ("+-*/".contains(token)) {
                 while (!ops.empty() && hasPrecedence(token, ops.peek())) {
+                    if (values.size < 2) break
                     values.push(applyOp(ops.pop(), values.pop(), values.pop()))
                 }
                 ops.push(token)
             }
         }
 
-        while (!ops.empty()) {
+        while (!ops.empty() && values.size >= 2) {
             values.push(applyOp(ops.pop(), values.pop(), values.pop()))
         }
 
@@ -263,7 +303,7 @@ fun CreateWindow(
     var level by remember { mutableStateOf("1") }
     var experience by remember { mutableStateOf("50") }
     var nextLevelExp by remember { mutableStateOf("300") }
-    var proficiencyBonus by remember { mutableStateOf("2") }
+    var proficiencyBonus by remember { mutableStateOf("[НАСТ БМ]") }
 
     var strength by remember { mutableStateOf("10") }
     var dexterity by remember { mutableStateOf("10") }
@@ -290,7 +330,6 @@ fun CreateWindow(
 
     LaunchedEffect(level) {
         nextLevelExp = getNextLevelThreshold(level)
-        proficiencyBonus = getProficiencyBonus(level).toString()
     }
 
     // AC State
@@ -514,7 +553,8 @@ fun CreateWindow(
                         onExperienceChange = { experience = it },
                         proficiencyBonus = proficiencyBonus,
                         onProficiencyBonusChange = { proficiencyBonus = it },
-                        nextLevelExp = nextLevelExp
+                        nextLevelExp = nextLevelExp,
+                        statsMap = statsMap
                     )
                 }
 
@@ -606,21 +646,23 @@ fun CreateWindow(
                     Text("Расширенный режим", fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
 
+                val evaluatedPB = remember(proficiencyBonus, statsMap) { evaluateFormula(proficiencyBonus, statsMap).toString() }
+
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Сила", strength, proficiencyBonus, strProf, Modifier.weight(1f), { strength = it }, { strProf = it })
-                        StatCard("Интеллект", intelligence, proficiencyBonus, intProf, Modifier.weight(1f), { intelligence = it }, { intProf = it })
+                        StatCard("Сила", strength, evaluatedPB, strProf, Modifier.weight(1f), { strength = it }, { strProf = it })
+                        StatCard("Интеллект", intelligence, evaluatedPB, intProf, Modifier.weight(1f), { intelligence = it }, { intProf = it })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Ловкость", dexterity, proficiencyBonus, dexProf, Modifier.weight(1f), { dexterity = it }, { dexProf = it })
-                        StatCard("Мудрость", wisdom, proficiencyBonus, wisProf, Modifier.weight(1f), { wisdom = it }, { wisProf = it })
+                        StatCard("Ловкость", dexterity, evaluatedPB, dexProf, Modifier.weight(1f), { dexterity = it }, { dexProf = it })
+                        StatCard("Мудрость", wisdom, evaluatedPB, wisProf, Modifier.weight(1f), { wisdom = it }, { wisProf = it })
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        StatCard("Телосложение", constitution, proficiencyBonus, conProf, Modifier.weight(1f), { constitution = it }, { conProf = it })
-                        StatCard("Харизма", charisma, proficiencyBonus, chaProf, Modifier.weight(1f), { charisma = it }, { chaProf = it })
+                        StatCard("Телосложение", constitution, evaluatedPB, conProf, Modifier.weight(1f), { constitution = it }, { conProf = it })
+                        StatCard("Харизма", charisma, evaluatedPB, chaProf, Modifier.weight(1f), { charisma = it }, { chaProf = it })
                     }
                 }
 
@@ -662,7 +704,8 @@ fun LevelPanel(
     onExperienceChange: (String) -> Unit,
     proficiencyBonus: String,
     onProficiencyBonusChange: (String) -> Unit,
-    nextLevelExp: String
+    nextLevelExp: String,
+    statsMap: Map<String, String>
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -677,6 +720,8 @@ fun LevelPanel(
         mutableStateOf(TextFieldValue(proficiencyBonus))
     }
 
+    var isProfFocused by remember { mutableStateOf(false) }
+
     LaunchedEffect(level) {
         if (levelTextFieldValue.text != level) {
             levelTextFieldValue = levelTextFieldValue.copy(text = level, selection = TextRange(level.length))
@@ -687,9 +732,15 @@ fun LevelPanel(
             experienceTextFieldValue = experienceTextFieldValue.copy(text = experience, selection = TextRange(experience.length))
         }
     }
-    LaunchedEffect(proficiencyBonus) {
-        if (proficiencyTextFieldValue.text != proficiencyBonus) {
-            proficiencyTextFieldValue = proficiencyTextFieldValue.copy(text = proficiencyBonus, selection = TextRange(proficiencyBonus.length))
+    
+    // Синхронизация поля Бонуса Мастерства с учетом фокуса и формулы
+    LaunchedEffect(proficiencyBonus, isProfFocused, statsMap) {
+        val displayStr = if (isProfFocused) proficiencyBonus else evaluateFormula(proficiencyBonus, statsMap).toString()
+        if (proficiencyTextFieldValue.text != displayStr) {
+            proficiencyTextFieldValue = TextFieldValue(
+                text = displayStr,
+                selection = if (isProfFocused) TextRange(displayStr.length) else TextRange.Zero
+            )
         }
     }
 
@@ -809,32 +860,52 @@ fun LevelPanel(
                 .fillMaxWidth()
                 .height(48.dp)
                 .clickable {
-                    proficiencyTextFieldValue = proficiencyTextFieldValue.copy(selection = TextRange(proficiencyBonus.length))
                     focusRequesterProf.requestFocus()
                 },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Бонус мастерства",
+                "Бонус Мастерства",
                 modifier = Modifier.padding(start = 16.dp).weight(1f),
                 fontSize = 14.sp,
                 color = colorScheme.onSurfaceVariant
             )
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(end = 16.dp)) {
-                Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(end = 16.dp)
+            ) {
+                val evaluated = remember(proficiencyBonus, statsMap) { evaluateFormula(proficiencyBonus, statsMap) }
+                if (!isProfFocused && evaluated >= 0) {
+                    Text("+", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                }
                 BasicTextField(
                     value = proficiencyTextFieldValue,
                     onValueChange = {
-                        proficiencyTextFieldValue = it
-                        onProficiencyBonusChange(it.text.filter { c -> c.isDigit() })
+                        if (isProfFocused) {
+                            proficiencyTextFieldValue = it
+                            onProficiencyBonusChange(it.text)
+                        }
                     },
-                    textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
+                    textStyle = TextStyle(
+                        textAlign = if (isProfFocused) TextAlign.Start else TextAlign.End,
+                        fontSize = 16.sp,
+                        color = colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    ),
                     modifier = Modifier
-                        .width(40.dp)
+                        .width(IntrinsicSize.Min)
+                        .defaultMinSize(minWidth = 10.dp)
                         .focusRequester(focusRequesterProf)
-                        .onFocusChanged { if (!it.isFocused && proficiencyBonus.isEmpty()) onProficiencyBonusChange(getProficiencyBonus(level).toString()) },
+                        .onFocusChanged { 
+                            if (isProfFocused != it.isFocused) {
+                                isProfFocused = it.isFocused
+                                if (!it.isFocused && proficiencyBonus.isEmpty()) {
+                                    onProficiencyBonusChange("[НАСТ БМ]")
+                                }
+                            }
+                        },
                     cursorBrush = SolidColor(colorScheme.primary),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
                 )
             }
         }
