@@ -4,26 +4,25 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТИРОВАНИЯ ДИЗАЙНА
-        // val characterRepository = CharacterRepository(applicationContext)
+        val characterRepository = CharacterRepository(applicationContext)
 
         enableEdgeToEdge()
         setContent {
             quasarisTheme(dynamicColor = true) {
-                // Прямой запуск окна создания для проверки дизайна
-                CreateWindow(
-                    onNavigateBack = { /* Временно ничего не делает */ },
-                    onCharacterCreate = { _ -> /* Временно ничего не делает */ }
-                )
-
-                /* 
-                // ОРИГИНАЛЬНАЯ ЛОГИКА НАВИГАЦИИ
                 val characters: SnapshotStateList<Character> = remember {
                     mutableStateListOf<Character>().apply {
                         addAll(characterRepository.loadCharacters())
@@ -62,10 +61,25 @@ class MainActivity : ComponentActivity() {
                     ) { backStackEntry ->
                         val characterId = backStackEntry.arguments?.getInt("characterId")
                         val character = characters.find { it.id == characterId }
-                        CharacterDetailWindow(...)
+                        CharacterDetailWindow(
+                            character = character,
+                            onNavigateBack = { navController.popBackStack() },
+                            onDeleteCharacter = { charToDelete ->
+                                characters.removeIf { it.id == charToDelete.id }
+                                characterRepository.saveCharacters(characters)
+                                navController.popBackStack()
+                            },
+                            onSaveChanges = { updatedChar ->
+                                val index = characters.indexOfFirst { it.id == updatedChar.id }
+                                if (index != -1) {
+                                    characters[index] = updatedChar
+                                    characterRepository.saveCharacters(characters)
+                                }
+                                navController.popBackStack()
+                            }
+                        )
                     }
                 }
-                */
             }
         }
     }

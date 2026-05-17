@@ -94,7 +94,11 @@ fun CharacterDetailWindow(
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> tempImageUri = uri }
+    ) { uri: Uri? -> 
+        if (uri != null) {
+            tempImageUri = uri 
+        }
+    }
 
     if (character == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -300,9 +300,9 @@ fun CreateWindow(
     onNavigateBack: () -> Unit,
     onCharacterCreate: (Character) -> Unit
 ) {
-    var name by remember { mutableStateOf("Мирослав") }
+    var name by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("1") }
-    var experience by remember { mutableStateOf("50") }
+    var experience by remember { mutableStateOf("0") }
     var nextLevelExp by remember { mutableStateOf("300") }
     var proficiencyBonus by remember { mutableStateOf("[НАСТ БМ]") }
 
@@ -329,10 +329,17 @@ fun CreateWindow(
     var hpDialogValue by remember { mutableStateOf("") }
     var showHpDialog by remember { mutableStateOf(false) }
 
+    var showNameDialog by remember { mutableStateOf(false) }
+    var nameEditValue by remember { mutableStateOf("") }
+
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> selectedImageUri = uri }
+    ) { uri: Uri? -> 
+        if (uri != null) {
+            selectedImageUri = uri 
+        }
+    }
 
     val healthState = remember(currentHp, maxHp) {
         val current = currentHp.toIntOrNull() ?: 0
@@ -429,14 +436,21 @@ fun CreateWindow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.Menu, contentDescription = "В меню", modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
+                    }
                     Text(
-                        text = name,
+                        text = name.ifEmpty { "Имя персонажа" },
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Normal,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                nameEditValue = name
+                                showNameDialog = true
+                            },
                         textAlign = TextAlign.Center,
-                        color = colorScheme.onSurface
+                        color = if (name.isEmpty()) colorScheme.onSurface.copy(alpha = 0.5f) else colorScheme.onSurface
                     )
                     Box(
                         modifier = Modifier
@@ -779,6 +793,30 @@ fun CreateWindow(
 
                 Spacer(Modifier.height(24.dp))
             }
+        }
+
+        if (showNameDialog) {
+            AlertDialog(
+                onDismissRequest = { showNameDialog = false },
+                title = { Text("Имя персонажа") },
+                text = {
+                    OutlinedTextField(
+                        value = nameEditValue,
+                        onValueChange = { nameEditValue = it },
+                        label = { Text("Введите имя") },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        name = nameEditValue
+                        showNameDialog = false
+                    }) { Text("ОК") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showNameDialog = false }) { Text("Отмена") }
+                }
+            )
         }
 
         if (showHpDialog) {
