@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,7 +50,7 @@ class MainActivity : ComponentActivity() {
                             characters = characters,
                             onNavigateToCreate = { navController.navigate("empty_window") },
                             onCharacterClick = { characterId ->
-                                navController.navigate("detail/$characterId")
+                                navController.navigate("edit/$characterId")
                             },
                             onImportCharacter = { importedCharacter ->
                                 characters.add(importedCharacter)
@@ -67,7 +65,7 @@ class MainActivity : ComponentActivity() {
                             topBar = {
                                 CenterAlignedTopAppBar(
                                     title = { Text("Новый персонаж") },
-                                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                    colors = TopAppBarDefaults.topAppBarColors(
                                         containerColor = MaterialTheme.colorScheme.surface
                                     )
                                 )
@@ -115,39 +113,40 @@ class MainActivity : ComponentActivity() {
 
                     composable("create") {
                         CreateWindow(
+                            character = null,
                             onNavigateBack = {
-                                navController.navigate("menu") { popUpTo("menu") { inclusive = true } }
+                                navController.popBackStack("menu", inclusive = false)
                             },
-                            onCharacterCreate = { newCharacter ->
-                                characters.add(newCharacter)
+                            onCharacterChange = { newCharacter ->
+                                val index = characters.indexOfFirst { it.id == newCharacter.id }
+                                if (index == -1) {
+                                    characters.add(newCharacter)
+                                } else {
+                                    characters[index] = newCharacter
+                                }
                                 characterRepository.saveCharacters(characters)
-                                navController.navigate("menu") { popUpTo("menu") { inclusive = true } }
                             }
                         )
                     }
 
                     composable(
-                        route = "detail/{characterId}",
+                        route = "edit/{characterId}",
                         arguments = listOf(navArgument("characterId") { type = NavType.IntType })
                     ) { backStackEntry ->
                         val characterId = backStackEntry.arguments?.getInt("characterId")
                         val character = characters.find { it.id == characterId }
 
-                        CharacterDetailWindow(
+                        CreateWindow(
                             character = character,
-                            onNavigateBack = { navController.popBackStack() },
-                            onDeleteCharacter = { charToDelete ->
-                                characters.removeIf { it.id == charToDelete.id }
-                                characterRepository.saveCharacters(characters)
+                            onNavigateBack = {
                                 navController.popBackStack()
                             },
-                            onSaveChanges = { updatedCharacter ->
+                            onCharacterChange = { updatedCharacter ->
                                 val index = characters.indexOfFirst { it.id == updatedCharacter.id }
                                 if (index != -1) {
                                     characters[index] = updatedCharacter
                                     characterRepository.saveCharacters(characters)
                                 }
-                                navController.popBackStack()
                             }
                         )
                     }

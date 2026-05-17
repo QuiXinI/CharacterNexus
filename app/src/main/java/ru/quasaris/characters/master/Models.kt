@@ -33,6 +33,7 @@ data class Character(
     val order: String,
     val imageData: String? = null,
     val level: String = "1",
+    val experience: String = "0",
     val strength: String = "10",
     val dexterity: String = "10",
     val constitution: String = "10",

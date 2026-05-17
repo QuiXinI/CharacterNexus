@@ -1,5 +1,6 @@
 package ru.quasaris.characters.master
 
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -35,6 +36,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.geometry.Offset
@@ -299,29 +301,30 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
 @Composable
 fun CreateWindow(
     modifier: Modifier = Modifier,
+    character: Character? = null,
     onNavigateBack: () -> Unit,
-    onCharacterCreate: (Character) -> Unit
+    onCharacterChange: (Character) -> Unit
 ) {
     val context = LocalContext.current
-    var name by remember { mutableStateOf("") }
-    var level by remember { mutableStateOf("1") }
-    var experience by remember { mutableStateOf("0") }
+    var name by remember { mutableStateOf(character?.name ?: "") }
+    var level by remember { mutableStateOf(character?.level ?: "1") }
+    var experience by remember { mutableStateOf(character?.experience ?: "0") }
     var nextLevelExp by remember { mutableStateOf("300") }
     var proficiencyBonus by remember { mutableStateOf("[НАСТ БМ]") }
 
-    var strength by remember { mutableStateOf("10") }
-    var dexterity by remember { mutableStateOf("10") }
-    var constitution by remember { mutableStateOf("10") }
-    var intelligence by remember { mutableStateOf("10") }
-    var wisdom by remember { mutableStateOf("10") }
-    var charisma by remember { mutableStateOf("10") }
+    var strength by remember { mutableStateOf(character?.strength ?: "10") }
+    var dexterity by remember { mutableStateOf(character?.dexterity ?: "10") }
+    var constitution by remember { mutableStateOf(character?.constitution ?: "10") }
+    var intelligence by remember { mutableStateOf(character?.intelligence ?: "10") }
+    var wisdom by remember { mutableStateOf(character?.wisdom ?: "10") }
+    var charisma by remember { mutableStateOf(character?.charisma ?: "10") }
 
-    var strProf by remember { mutableStateOf(false) }
-    var dexProf by remember { mutableStateOf(false) }
-    var conProf by remember { mutableStateOf(false) }
-    var intProf by remember { mutableStateOf(false) }
-    var wisProf by remember { mutableStateOf(false) }
-    var chaProf by remember { mutableStateOf(false) }
+    var strProf by remember { mutableStateOf(character?.strengthProficient ?: false) }
+    var dexProf by remember { mutableStateOf(character?.dexterityProficient ?: false) }
+    var conProf by remember { mutableStateOf(character?.constitutionProficient ?: false) }
+    var intProf by remember { mutableStateOf(character?.intelligenceProficient ?: false) }
+    var wisProf by remember { mutableStateOf(character?.wisdomProficient ?: false) }
+    var chaProf by remember { mutableStateOf(character?.charismaProficient ?: false) }
 
     // Health State
     var maxHp by remember { mutableStateOf("10") }
@@ -381,8 +384,8 @@ fun CreateWindow(
     }
 
     // AC State
-    var armorClassEntries by remember { mutableStateOf(listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]"))) }
-    var activeArmorClassId by remember { mutableStateOf<String?>(armorClassEntries.firstOrNull()?.id) }
+    var armorClassEntries by remember { mutableStateOf(character?.armorClassEntries ?: listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]"))) }
+    var activeArmorClassId by remember { mutableStateOf<String?>(character?.activeArmorClassId ?: armorClassEntries.firstOrNull()?.id) }
     var isArmorClassPanelVisible by remember { mutableStateOf(false) }
     var acDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
@@ -392,8 +395,8 @@ fun CreateWindow(
     }
 
     // Initiative State
-    var initiativeEntries by remember { mutableStateOf(listOf(InitiativeEntry(name = "Базовая Инициатива", formula = "[ЛОВ]"))) }
-    var activeInitiativeId by remember { mutableStateOf<String?>(initiativeEntries.firstOrNull()?.id) }
+    var initiativeEntries by remember { mutableStateOf(character?.initiativeEntries ?: listOf(InitiativeEntry(name = "Базовая Инициатива", formula = "[ЛОВ]"))) }
+    var activeInitiativeId by remember { mutableStateOf<String?>(character?.activeInitiativeId ?: initiativeEntries.firstOrNull()?.id) }
     var isInitiativePanelVisible by remember { mutableStateOf(false) }
     var initDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
@@ -404,14 +407,65 @@ fun CreateWindow(
     }
 
     // Speed State
-    var speedEntries by remember { mutableStateOf(listOf(SpeedEntry(name = "Базовая Скорость", formula = "30"))) }
-    var activeSpeedId by remember { mutableStateOf<String?>(speedEntries.firstOrNull()?.id) }
+    var speedEntries by remember { mutableStateOf(character?.speedEntries ?: listOf(SpeedEntry(name = "Базовая Скорость", formula = "30"))) }
+    var activeSpeedId by remember { mutableStateOf<String?>(character?.activeSpeedId ?: speedEntries.firstOrNull()?.id) }
     var isSpeedPanelVisible by remember { mutableStateOf(false) }
     var speedDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
     val activeSpeedValue = remember(activeSpeedId, speedEntries, statsMap) {
         val active = speedEntries.find { it.id == activeSpeedId }
         if (active != null) evaluateFormula(active.formula, statsMap).toString() else "30"
+    }
+
+    val characterId = remember { character?.id ?: (0..Int.MAX_VALUE).random() }
+
+    // Automatic Saving Effect
+    LaunchedEffect(
+        name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
+        strProf, dexProf, conProf, intProf, wisProf, chaProf,
+        armorClassEntries, activeArmorClassId,
+        initiativeEntries, activeInitiativeId,
+        speedEntries, activeSpeedId,
+        selectedImageUri
+    ) {
+        val imageDataString = selectedImageUri?.let { uri ->
+            try {
+                context.contentResolver.openInputStream(uri)?.use {
+                    Base64.encodeToString(it.readBytes(), Base64.DEFAULT)
+                }
+            } catch (e: Exception) {
+                null
+            }
+        } ?: character?.imageData
+
+        val updatedChar = Character(
+            id = characterId,
+            name = name,
+            characterClass = character?.characterClass ?: "Воин",
+            order = character?.order ?: "Человек",
+            imageData = imageDataString,
+            level = level,
+            experience = experience,
+            strength = strength,
+            dexterity = dexterity,
+            constitution = constitution,
+            intelligence = intelligence,
+            wisdom = wisdom,
+            charisma = charisma,
+            strengthProficient = strProf,
+            dexterityProficient = dexProf,
+            constitutionProficient = conProf,
+            intelligenceProficient = intProf,
+            wisdomProficient = wisProf,
+            charismaProficient = chaProf,
+            armorClassEntries = armorClassEntries,
+            activeArmorClassId = activeArmorClassId,
+            initiativeEntries = initiativeEntries,
+            activeInitiativeId = activeInitiativeId,
+            speedEntries = speedEntries,
+            activeSpeedId = activeSpeedId
+        )
+        onCharacterChange(updatedChar)
     }
 
     val focusManager = LocalFocusManager.current
@@ -461,54 +515,33 @@ fun CreateWindow(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = {
-                            val imageDataString = selectedImageUri?.let { uri ->
-                                context.contentResolver.openInputStream(uri)?.use { 
-                                    Base64.encodeToString(it.readBytes(), Base64.DEFAULT)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(colorScheme.primaryContainer)
+                            .clickable { imagePickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedImageUri != null) {
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else if (character?.imageData != null) {
+                            val bitmap = remember(character.imageData) {
+                                try {
+                                    val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
+                                    BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)?.asImageBitmap()
+                                } catch (e: Exception) {
+                                    null
                                 }
                             }
-                            val newChar = Character(
-                                id = (0..Int.MAX_VALUE).random(),
-                                name = if (name.isEmpty()) "Новый персонаж" else name,
-                                characterClass = "Воин", // Default or add field
-                                order = "Человек", // Default or add field
-                                imageData = imageDataString,
-                                level = level,
-                                strength = strength,
-                                dexterity = dexterity,
-                                constitution = constitution,
-                                intelligence = intelligence,
-                                wisdom = wisdom,
-                                charisma = charisma,
-                                strengthProficient = strProf,
-                                dexterityProficient = dexProf,
-                                constitutionProficient = conProf,
-                                intelligenceProficient = intProf,
-                                wisdomProficient = wisProf,
-                                charismaProficient = chaProf,
-                                armorClassEntries = armorClassEntries,
-                                activeArmorClassId = activeArmorClassId,
-                                initiativeEntries = initiativeEntries,
-                                activeInitiativeId = activeInitiativeId,
-                                speedEntries = speedEntries,
-                                activeSpeedId = activeSpeedId
-                            )
-                            onCharacterCreate(newChar)
-                        }) {
-                            Icon(Icons.Default.Check, contentDescription = "Сохранить", tint = colorScheme.primary)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(colorScheme.primaryContainer)
-                                .clickable { imagePickerLauncher.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selectedImageUri != null) {
-                                AsyncImage(
-                                    model = selectedImageUri,
+                            if (bitmap != null) {
+                                Image(
+                                    bitmap = bitmap,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
@@ -516,6 +549,8 @@ fun CreateWindow(
                             } else {
                                 Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
                             }
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
                         }
                     }
                 }
@@ -1544,8 +1579,7 @@ fun PassiveCheckRow(label: String, value: String) {
             .clip(RoundedCornerShape(8.dp))
             .background(colorScheme.primary.copy(alpha = 0.2f)),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+        horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, modifier = Modifier.padding(start = 12.dp), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
         Text(value, modifier = Modifier.padding(end = 12.dp), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
     }
@@ -1554,5 +1588,5 @@ fun PassiveCheckRow(label: String, value: String) {
 @Preview(showBackground = true, widthDp = 412, heightDp = 892)
 @Composable
 fun CreateWindowPreview() {
-    quasarisTheme { CreateWindow(onNavigateBack = {}, onCharacterCreate = { _ -> }) }
+    quasarisTheme { CreateWindow(onNavigateBack = {}, onCharacterChange = { _ -> }) }
 }
