@@ -12,20 +12,20 @@
         "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-mdpi\\ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\drawable_ic_launcher_background.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\drawable\\ic_launcher_background.xml"
+        "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_health_death.png.flat",
+        "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_health_death.png"
     },
     {
         "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxhdpi_ic_launcher_round.webp.flat",
         "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxhdpi\\ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\xml_data_extraction_rules.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\xml\\data_extraction_rules.xml"
+        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\drawable_ic_launcher_background.xml.flat",
+        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\drawable\\ic_launcher_background.xml"
     },
     {
-        "merged": "ru.quasaris.characters.master.app-debug-46:/drawable_ic_health_bloodied.png.flat",
-        "source": "ru.quasaris.characters.master.app-main-48:/drawable/ic_health_bloodied.png"
+        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\xml_data_extraction_rules.xml.flat",
+        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\xml\\data_extraction_rules.xml"
     },
     {
         "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\drawable_ic_shield.png.flat",
@@ -40,12 +40,12 @@
         "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxxhdpi\\ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-anydpi-v26\\ic_launcher.xml"
-    },
-    {
         "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\drawable_ic_conditions.png.flat",
         "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\drawable\\ic_conditions.png"
+    },
+    {
+        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-anydpi-v26\\ic_launcher.xml"
     },
     {
         "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-mdpi_ic_launcher_foreground.webp.flat",
@@ -82,6 +82,10 @@
     {
         "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-xxhdpi_ic_launcher_foreground.webp.flat",
         "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\mipmap-xxhdpi\\ic_launcher_foreground.webp"
+    },
+    {
+        "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\drawable_ic_health_bloodied.png.flat",
+        "source": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-main-48:\\drawable\\ic_health_bloodied.png"
     },
     {
         "merged": "C:\\Users\\Lexus\\.gradle\\daemon\\8.14.3\\ru.quasaris.characters.master.app-debug-46:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",

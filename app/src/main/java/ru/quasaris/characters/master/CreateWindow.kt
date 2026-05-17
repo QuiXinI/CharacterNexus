@@ -321,7 +321,6 @@ fun CreateWindow(
 
     // Health State
     var maxHp by remember { mutableStateOf("10") }
-    var hpBonus by remember { mutableStateOf("0") }
     var tempHp by remember { mutableStateOf("0") }
     var currentHp by remember { mutableStateOf("10") }
     var isHealthPanelVisible by remember { mutableStateOf(false) }
@@ -329,16 +328,30 @@ fun CreateWindow(
     var hpDialogValue by remember { mutableStateOf("") }
     var showHpDialog by remember { mutableStateOf(false) }
 
-    val isBloodied = remember(currentHp, maxHp, hpBonus) {
+    val healthState = remember(currentHp, maxHp) {
         val current = currentHp.toIntOrNull() ?: 0
-        val totalMax = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
-        totalMax > 0 && current <= totalMax / 2
+        val max = maxHp.toIntOrNull() ?: 0
+        when {
+            current <= 0 -> "dead"
+            max > 0 && current <= max / 2 -> "bloodied"
+            else -> "healthy"
+        }
     }
-    val healthColor = if (isBloodied) Color(0xFFE57373) else Color(0xFF00C46F)
-    val healthIcon = if (isBloodied) R.drawable.ic_health_bloodied else R.drawable.ic_health
+
+    val healthColor = when(healthState) {
+        "dead" -> Color(0xFF454545)
+        "bloodied" -> Color(0xFFE57373)
+        else -> Color(0xFF00C46F)
+    }
+
+    val healthIcon = when(healthState) {
+        "dead" -> R.drawable.ic_health_death
+        "bloodied" -> R.drawable.ic_health_bloodied
+        else -> R.drawable.ic_health
+    }
 
     val clampHp = {
-        val totalMax = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
+        val totalMax = maxHp.toIntOrNull() ?: 0
         val current = currentHp.toIntOrNull() ?: 0
         if (current > totalMax && maxHp.isNotEmpty()) {
             currentHp = totalMax.coerceAtLeast(0).toString()
@@ -528,7 +541,7 @@ fun CreateWindow(
                                 colorFilter = ColorFilter.tint(healthColor)
                             )
                             Spacer(Modifier.width(6.dp))
-                            val totalMax = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
+                            val totalMax = maxHp.toIntOrNull() ?: 0
                             Text("$currentHp / $totalMax", color = healthColor, fontSize = 16.sp, fontWeight = FontWeight.Normal)
                             if ((tempHp.toIntOrNull() ?: 0) > 0) {
                                 Text(" (+$tempHp)", color = healthColor.copy(alpha = 0.7f), fontSize = 14.sp)
@@ -606,7 +619,6 @@ fun CreateWindow(
                 ) {
                     HealthPanel(
                         maxHp = maxHp, onMaxHpChange = { maxHp = it },
-                        hpBonus = hpBonus, onHpBonusChange = { hpBonus = it },
                         tempHp = tempHp, onTempHpChange = { tempHp = it },
                         currentHp = currentHp, onCurrentHpChange = { currentHp = it },
                         onHealClick = { hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true },
@@ -759,7 +771,7 @@ fun CreateWindow(
                 title = { Text(when(hpDialogType) {
                     "heal" -> "Лечение"
                     "damage" -> "Получение урона"
-                    else -> "Временные хиты"
+                    else -> "Временные Хиты"
                 }) },
                 text = {
                     OutlinedTextField(
@@ -775,7 +787,7 @@ fun CreateWindow(
                         val value = hpDialogValue.toIntOrNull() ?: 0
                         when(hpDialogType) {
                             "heal" -> {
-                                val max = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
+                                val max = maxHp.toIntOrNull() ?: 0
                                 val current = currentHp.toIntOrNull() ?: 0
                                 currentHp = minOf(max, current + value).toString()
                             }
@@ -797,7 +809,7 @@ fun CreateWindow(
                                 }
                             }
                             "temp" -> {
-                                tempHp = value.toString()
+                                tempHp = minOf(9999, value).toString()
                             }
                         }
                         showHpDialog = false
@@ -814,7 +826,6 @@ fun CreateWindow(
 @Composable
 fun HealthPanel(
     maxHp: String, onMaxHpChange: (String) -> Unit,
-    hpBonus: String, onHpBonusChange: (String) -> Unit,
     tempHp: String, onTempHpChange: (String) -> Unit,
     currentHp: String, onCurrentHpChange: (String) -> Unit,
     onHealClick: () -> Unit,
@@ -834,19 +845,26 @@ fun HealthPanel(
             .animateContentSize()
     ) {
         Text(
-            text = "Хиты (HP)",
+            text = "Хиты",
             modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
             style = MaterialTheme.typography.titleMedium,
             color = healthColor
         )
 
-        HealthRow("Максимум хитов", maxHp, onMaxHpChange, onFocusLost)
+        HealthRow("Максимум Хитов", maxHp, { newValue ->
+            val num = newValue.toIntOrNull() ?: 0
+            onMaxHpChange(minOf(999, num).toString())
+        }, onFocusLost)
         HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
-        HealthRow("Бонус к максимуму", hpBonus, onHpBonusChange, onFocusLost)
+        HealthRow("Текущие Хиты", currentHp, { newValue ->
+            val num = newValue.toIntOrNull() ?: 0
+            onCurrentHpChange(minOf(999, num).toString())
+        }, onFocusLost)
         HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
-        HealthRow("Временные хиты", tempHp, onTempHpChange)
-        HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
-        HealthRow("Текущие хиты", currentHp, onCurrentHpChange, onFocusLost)
+        HealthRow("Временные Хиты", tempHp, { newValue ->
+            val num = newValue.toIntOrNull() ?: 0
+            onTempHpChange(minOf(9999, num).toString())
+        })
 
         Spacer(modifier = Modifier.height(12.dp))
 

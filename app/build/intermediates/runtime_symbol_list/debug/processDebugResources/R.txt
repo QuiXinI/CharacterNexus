@@ -117,6 +117,7 @@ int drawable ic_conditions 0x7f040008
 int drawable ic_exhaustion 0x7f040009
 int drawable ic_health 0x7f04000a
 int drawable ic_health_bloodied 0x7f04001d
+int drawable ic_health_death 0x7f04001e
 int drawable ic_launcher_background 0x7f04000b
 int drawable ic_launcher_foreground 0x7f04000c
 int drawable ic_shield 0x7f04000d
