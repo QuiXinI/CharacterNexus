@@ -8,39 +8,28 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -56,6 +45,7 @@ fun MenuWindow(
     onImportCharacter: (Character) -> Unit
 ) {
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
     val gson = Gson()
 
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -73,25 +63,49 @@ fun MenuWindow(
         }
     }
 
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = colorScheme.background,
+        topBar = {
+            Column(
+                modifier = Modifier
+                    .background(colorScheme.surface)
+                    .statusBarsPadding()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
+                    Text(
+                        text = "Персонажи",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Normal,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        color = colorScheme.onSurface
+                    )
+                    IconButton(onClick = { filePickerLauncher.launch("application/json") }) {
+                        Icon(Icons.Default.UploadFile, contentDescription = "Загрузить", tint = colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(colorScheme.surface)
                 .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Button(
-                onClick = { filePickerLauncher.launch("application/json") },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.UploadFile, contentDescription = "Загрузить")
-                Spacer(Modifier.width(8.dp))
-                Text("Загрузить .json")
-            }
-            Spacer(Modifier.height(16.dp))
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
             ) {
                 items(characters) { character ->
                     CharacterCard(
@@ -100,15 +114,22 @@ fun MenuWindow(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+
             Button(
                 onClick = onNavigateToCreate,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .height(52.dp)
+                    .shadow(4.dp, RoundedCornerShape(12.dp)),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.primaryContainer,
+                    contentColor = colorScheme.onPrimaryContainer
+                )
             ) {
-                Text("Создать нового персонажа", fontSize = 16.sp)
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Создать нового персонажа", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -120,52 +141,63 @@ fun CharacterCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    
+    val bitmap = remember(character.imageData) {
+        if (character.imageData != null) {
+            try {
+                val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)?.asImageBitmap()
+            } catch (e: Exception) {
+                null
+            }
+        } else null
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(56.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                if (character.imageData != null) {
-                    val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
-                    val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+                if (bitmap != null) {
                     Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = "Иконка персонажа",
+                        bitmap = bitmap,
+                        contentDescription = "Иконка",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    Image(
-                        painter = painterResource(id = android.R.drawable.ic_menu_myplaces),
-                        contentDescription = "Иконка персонажа",
-                        modifier = Modifier.size(40.dp)
-                    )
+                    Icon(Icons.Default.Person, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurfaceVariant)
                 }
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
-                    text = character.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    text = character.name.ifEmpty { "Без имени" },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface
                 )
                 Text(
-                    text = "${character.characterClass}, ${character.order}",
+                    text = "Уровень ${character.level} • ${character.characterClass}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = colorScheme.onSurfaceVariant
                 )
             }
         }

@@ -1,6 +1,7 @@
 package ru.quasaris.characters.master
 
 import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -300,9 +302,10 @@ fun CreateWindow(
     onNavigateBack: () -> Unit,
     onCharacterCreate: (Character) -> Unit
 ) {
-    var name by remember { mutableStateOf("Мирослав") }
+    val context = LocalContext.current
+    var name by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("1") }
-    var experience by remember { mutableStateOf("50") }
+    var experience by remember { mutableStateOf("0") }
     var nextLevelExp by remember { mutableStateOf("300") }
     var proficiencyBonus by remember { mutableStateOf("[НАСТ БМ]") }
 
@@ -429,32 +432,90 @@ fun CreateWindow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
-                    Text(
-                        text = name,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        color = colorScheme.onSurface
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(colorScheme.primaryContainer)
-                            .clickable { imagePickerLauncher.launch("image/*") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selectedImageUri != null) {
-                            AsyncImage(
-                                model = selectedImageUri,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
+                    }
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        BasicTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            textStyle = TextStyle(
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Normal,
+                                textAlign = TextAlign.Center,
+                                color = colorScheme.onSurface
+                            ),
+                            decorationBox = { innerTextField ->
+                                if (name.isEmpty()) {
+                                    Text(
+                                        "Имя персонажа",
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        textAlign = TextAlign.Center,
+                                        color = colorScheme.onSurface.copy(alpha = 0.5f),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                                innerTextField()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = {
+                            val imageDataString = selectedImageUri?.let { uri ->
+                                context.contentResolver.openInputStream(uri)?.use { 
+                                    Base64.encodeToString(it.readBytes(), Base64.DEFAULT)
+                                }
+                            }
+                            val newChar = Character(
+                                id = (0..Int.MAX_VALUE).random(),
+                                name = if (name.isEmpty()) "Новый персонаж" else name,
+                                characterClass = "Воин", // Default or add field
+                                order = "Человек", // Default or add field
+                                imageData = imageDataString,
+                                level = level,
+                                strength = strength,
+                                dexterity = dexterity,
+                                constitution = constitution,
+                                intelligence = intelligence,
+                                wisdom = wisdom,
+                                charisma = charisma,
+                                strengthProficient = strProf,
+                                dexterityProficient = dexProf,
+                                constitutionProficient = conProf,
+                                intelligenceProficient = intProf,
+                                wisdomProficient = wisProf,
+                                charismaProficient = chaProf,
+                                armorClassEntries = armorClassEntries,
+                                activeArmorClassId = activeArmorClassId,
+                                initiativeEntries = initiativeEntries,
+                                activeInitiativeId = activeInitiativeId,
+                                speedEntries = speedEntries,
+                                activeSpeedId = activeSpeedId
                             )
-                        } else {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
+                            onCharacterCreate(newChar)
+                        }) {
+                            Icon(Icons.Default.Check, contentDescription = "Сохранить", tint = colorScheme.primary)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(colorScheme.primaryContainer)
+                                .clickable { imagePickerLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (selectedImageUri != null) {
+                                AsyncImage(
+                                    model = selectedImageUri,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
+                            }
                         }
                     }
                 }
