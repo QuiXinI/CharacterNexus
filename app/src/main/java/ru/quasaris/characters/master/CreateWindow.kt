@@ -438,7 +438,7 @@ fun CreateWindow(
         val charToExport = Character(
             id = characterId,
             name = name,
-            characterClass = character?.characterClass ?: "Воин",
+            characterClass = character?.characterClass ?: "",
             order = character?.order ?: "Человек",
             imageData = imageDataString,
             level = level,
@@ -493,7 +493,7 @@ fun CreateWindow(
         val updatedChar = Character(
             id = characterId,
             name = name,
-            characterClass = character?.characterClass ?: "Воин",
+            characterClass = character?.characterClass ?: "",
             order = character?.order ?: "Человек",
             imageData = imageDataString,
             level = level,

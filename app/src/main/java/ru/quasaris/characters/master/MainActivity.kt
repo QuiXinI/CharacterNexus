@@ -55,6 +55,10 @@ class MainActivity : ComponentActivity() {
                             onImportCharacter = { importedCharacter ->
                                 characters.add(importedCharacter)
                                 characterRepository.saveCharacters(characters)
+                            },
+                            onDeleteCharacters = { idsToDelete ->
+                                characters.removeAll { it.id in idsToDelete }
+                                characterRepository.saveCharacters(characters)
                             }
                         )
                     }

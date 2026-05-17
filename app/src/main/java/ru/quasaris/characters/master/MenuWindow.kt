@@ -5,9 +5,16 @@ import android.net.Uri
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,16 +22,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -38,15 +49,19 @@ import com.google.gson.Gson
 
 @Composable
 fun MenuWindow(
-    modifier: Modifier = Modifier,
     characters: List<Character>,
     onNavigateToCreate: () -> Unit,
     onCharacterClick: (Int) -> Unit,
-    onImportCharacter: (Character) -> Unit
+    onImportCharacter: (Character) -> Unit,
+    onDeleteCharacters: (List<Int>) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val gson = Gson()
+
+    // Состояние выбранных персонажей
+    val selectedIds = remember { mutableStateListOf<Int>() }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -63,83 +78,153 @@ fun MenuWindow(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = colorScheme.background,
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .background(colorScheme.surface)
-                    .statusBarsPadding()
-            ) {
-                Row(
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = colorScheme.background,
+            topBar = {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(colorScheme.surface)
+                        .statusBarsPadding()
                 ) {
-                    Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
-                    Text(
-                        text = "Персонажи",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        color = colorScheme.onSurface
-                    )
-                    IconButton(onClick = { filePickerLauncher.launch("application/json") }) {
-                        Icon(Icons.Default.UploadFile, contentDescription = "Загрузить", tint = colorScheme.onSurface)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
+                        Text(
+                            text = "Персонажи",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Normal,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                            color = colorScheme.onSurface
+                        )
+                        IconButton(onClick = { filePickerLauncher.launch("application/json") }) {
+                            Icon(Icons.Default.UploadFile, contentDescription = "Загрузить", tint = colorScheme.onSurface)
+                        }
                     }
                 }
             }
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                .background(colorScheme.surface)
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                    .background(colorScheme.surface)
+                    .fillMaxSize()
+                    .padding(16.dp)
+                    // Отмена выбора при клике на фон
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        if (selectedIds.isNotEmpty()) selectedIds.clear()
+                    }
             ) {
-                items(characters) { character ->
-                    CharacterCard(
-                        character = character,
-                        onClick = { onCharacterClick(character.id) }
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(characters) { character ->
+                        val isSelected = character.id in selectedIds
+                        CharacterCard(
+                            character = character,
+                            isSelected = isSelected,
+                            onClick = {
+                                if (selectedIds.isNotEmpty()) {
+                                    if (isSelected) selectedIds.remove(character.id)
+                                    else selectedIds.add(character.id)
+                                } else {
+                                    onCharacterClick(character.id)
+                                }
+                            },
+                            onLongClick = {
+                                if (character.id !in selectedIds) {
+                                    selectedIds.add(character.id)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = onNavigateToCreate,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .shadow(4.dp, RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.primaryContainer,
+                        contentColor = colorScheme.onPrimaryContainer
                     )
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Создать нового персонажа", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
             }
+        }
 
+        // Появляющаяся снизу красная кнопка удаления
+        AnimatedVisibility(
+            visible = selectedIds.isNotEmpty(),
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+                .padding(bottom = 8.dp)
+        ) {
             Button(
-                onClick = onNavigateToCreate,
+                onClick = {
+                    onDeleteCharacters(selectedIds.toList())
+                    selectedIds.clear()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
-                    .shadow(4.dp, RoundedCornerShape(12.dp)),
-                shape = RoundedCornerShape(12.dp),
+                    .height(60.dp)
+                    .shadow(8.dp, RectangleShape),
+                shape = RectangleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colorScheme.primaryContainer,
-                    contentColor = colorScheme.onPrimaryContainer
+                    containerColor = Color.Red,
+                    contentColor = Color.White
                 )
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Создать нового персонажа", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Удалить Персонажа",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Удалить",
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CharacterCard(
     character: Character,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
@@ -157,12 +242,17 @@ fun CharacterCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(16.dp),
+        border = if (isSelected) BorderStroke(2.dp, colorScheme.primary) else null,
         colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = if (isSelected) colorScheme.primaryContainer.copy(alpha = 0.3f)
+                             else colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -216,7 +306,8 @@ fun MenuWindowPreview() {
             characters = previewCharacters,
             onNavigateToCreate = {},
             onCharacterClick = {},
-            onImportCharacter = {}
+            onImportCharacter = {},
+            onDeleteCharacters = {}
         )
     }
 }
