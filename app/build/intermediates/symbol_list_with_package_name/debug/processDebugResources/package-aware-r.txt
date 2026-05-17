@@ -117,6 +117,7 @@ drawable ic_call_decline_low
 drawable ic_conditions
 drawable ic_exhaustion
 drawable ic_health
+drawable ic_health_bloodied
 drawable ic_launcher_background
 drawable ic_launcher_foreground
 drawable ic_shield

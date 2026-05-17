@@ -329,6 +329,22 @@ fun CreateWindow(
     var hpDialogValue by remember { mutableStateOf("") }
     var showHpDialog by remember { mutableStateOf(false) }
 
+    val isBloodied = remember(currentHp, maxHp, hpBonus) {
+        val current = currentHp.toIntOrNull() ?: 0
+        val totalMax = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
+        totalMax > 0 && current <= totalMax / 2
+    }
+    val healthColor = if (isBloodied) Color(0xFFE57373) else Color(0xFF00C46F)
+    val healthIcon = if (isBloodied) R.drawable.ic_health_bloodied else R.drawable.ic_health
+
+    val clampHp = {
+        val totalMax = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
+        val current = currentHp.toIntOrNull() ?: 0
+        if (current > totalMax && maxHp.isNotEmpty()) {
+            currentHp = totalMax.coerceAtLeast(0).toString()
+        }
+    }
+
     val statsMap = mapOf(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
         "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma,
@@ -493,7 +509,7 @@ fun CreateWindow(
                             .weight(1f)
                             .padding(horizontal = 8.dp)
                             .height(55.dp)
-                            .border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp))
+                            .border(1.5.dp, healthColor, RoundedCornerShape(8.dp))
                             .background(colorScheme.surface, RoundedCornerShape(8.dp))
                             .clickable {
                                 isHealthPanelVisible = !isHealthPanelVisible
@@ -506,16 +522,16 @@ fun CreateWindow(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_health),
+                                painter = painterResource(id = healthIcon),
                                 contentDescription = null,
                                 modifier = Modifier.size(32.dp),
-                                colorFilter = ColorFilter.tint(Color(0xFF00C46F))
+                                colorFilter = ColorFilter.tint(healthColor)
                             )
                             Spacer(Modifier.width(6.dp))
                             val totalMax = (maxHp.toIntOrNull() ?: 0) + (hpBonus.toIntOrNull() ?: 0)
-                            Text("$currentHp / $totalMax", color = Color(0xFF00C46F), fontSize = 16.sp, fontWeight = FontWeight.Normal)
+                            Text("$currentHp / $totalMax", color = healthColor, fontSize = 16.sp, fontWeight = FontWeight.Normal)
                             if ((tempHp.toIntOrNull() ?: 0) > 0) {
-                                Text(" (+$tempHp)", color = Color(0xFF00C46F).copy(alpha = 0.7f), fontSize = 14.sp)
+                                Text(" (+$tempHp)", color = healthColor.copy(alpha = 0.7f), fontSize = 14.sp)
                             }
                         }
                     }
@@ -595,7 +611,9 @@ fun CreateWindow(
                         currentHp = currentHp, onCurrentHpChange = { currentHp = it },
                         onHealClick = { hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true },
                         onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
-                        onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true }
+                        onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true },
+                        healthColor = healthColor,
+                        onFocusLost = clampHp
                     )
                 }
 
@@ -801,7 +819,9 @@ fun HealthPanel(
     currentHp: String, onCurrentHpChange: (String) -> Unit,
     onHealClick: () -> Unit,
     onDamageClick: () -> Unit,
-    onTempClick: () -> Unit
+    onTempClick: () -> Unit,
+    healthColor: Color,
+    onFocusLost: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Column(
@@ -817,16 +837,16 @@ fun HealthPanel(
             text = "Хиты (HP)",
             modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
             style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFF00C46F)
+            color = healthColor
         )
 
-        HealthRow("Максимум хитов", maxHp, onMaxHpChange)
+        HealthRow("Максимум хитов", maxHp, onMaxHpChange, onFocusLost)
         HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
-        HealthRow("Бонус к максимуму", hpBonus, onHpBonusChange)
+        HealthRow("Бонус к максимуму", hpBonus, onHpBonusChange, onFocusLost)
         HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
         HealthRow("Временные хиты", tempHp, onTempHpChange)
         HorizontalDivider(color = colorScheme.outline.copy(0.15f), thickness = 1.dp)
-        HealthRow("Текущие хиты", currentHp, onCurrentHpChange)
+        HealthRow("Текущие хиты", currentHp, onCurrentHpChange, onFocusLost)
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -841,7 +861,7 @@ fun HealthPanel(
 }
 
 @Composable
-fun HealthRow(label: String, value: String, onValueChange: (String) -> Unit) {
+fun HealthRow(label: String, value: String, onValueChange: (String) -> Unit, onFocusLost: () -> Unit = {}) {
     val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -852,7 +872,14 @@ fun HealthRow(label: String, value: String, onValueChange: (String) -> Unit) {
             value = value,
             onValueChange = { onValueChange(it.filter { c -> c.isDigit() || c == '-' }) },
             textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
-            modifier = Modifier.width(100.dp).padding(end = 16.dp),
+            modifier = Modifier
+                .width(100.dp)
+                .padding(end = 16.dp)
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        onFocusLost()
+                    }
+                },
             cursorBrush = SolidColor(colorScheme.primary),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
