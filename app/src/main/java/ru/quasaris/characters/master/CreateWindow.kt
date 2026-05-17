@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
+import com.google.gson.Gson
 import java.util.UUID
 import java.util.Stack
 import kotlin.math.floor
@@ -418,6 +419,57 @@ fun CreateWindow(
     }
 
     val characterId = remember { character?.id ?: (0..Int.MAX_VALUE).random() }
+    var showAvatarMenu by remember { mutableStateOf(false) }
+    val gson = remember { Gson() }
+
+    val fileCreatorLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        
+        val imageDataString = selectedImageUri?.let { u ->
+            try {
+                context.contentResolver.openInputStream(u)?.use {
+                    Base64.encodeToString(it.readBytes(), Base64.DEFAULT)
+                }
+            } catch (e: Exception) { null }
+        } ?: character?.imageData
+
+        val charToExport = Character(
+            id = characterId,
+            name = name,
+            characterClass = character?.characterClass ?: "Воин",
+            order = character?.order ?: "Человек",
+            imageData = imageDataString,
+            level = level,
+            experience = experience,
+            strength = strength,
+            dexterity = dexterity,
+            constitution = constitution,
+            intelligence = intelligence,
+            wisdom = wisdom,
+            charisma = charisma,
+            strengthProficient = strProf,
+            dexterityProficient = dexProf,
+            constitutionProficient = conProf,
+            intelligenceProficient = intProf,
+            wisdomProficient = wisProf,
+            charismaProficient = chaProf,
+            armorClassEntries = armorClassEntries,
+            activeArmorClassId = activeArmorClassId,
+            initiativeEntries = initiativeEntries,
+            activeInitiativeId = activeInitiativeId,
+            speedEntries = speedEntries,
+            activeSpeedId = activeSpeedId
+        )
+        
+        val jsonString = gson.toJson(charToExport)
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(jsonString.toByteArray())
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+    }
 
     // Automatic Saving Effect
     LaunchedEffect(
@@ -515,42 +567,66 @@ fun CreateWindow(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(colorScheme.primaryContainer)
-                            .clickable { imagePickerLauncher.launch("image/*") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selectedImageUri != null) {
-                            AsyncImage(
-                                model = selectedImageUri,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else if (character?.imageData != null) {
-                            val bitmap = remember(character.imageData) {
-                                try {
-                                    val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
-                                    BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)?.asImageBitmap()
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            }
-                            if (bitmap != null) {
-                                Image(
-                                    bitmap = bitmap,
+                    Box(contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(colorScheme.primaryContainer)
+                                .clickable { showAvatarMenu = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (selectedImageUri != null) {
+                                AsyncImage(
+                                    model = selectedImageUri,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
-                                Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
+                                val bitmap = remember(character?.imageData) {
+                                    if (character?.imageData != null) {
+                                        try {
+                                            val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
+                                            BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)?.asImageBitmap()
+                                        } catch (e: Exception) {
+                                            null
+                                        }
+                                    } else null
+                                }
+                                if (bitmap != null) {
+                                    Image(
+                                        bitmap = bitmap,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
+                                }
                             }
-                        } else {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
+                        }
+
+                        DropdownMenu(
+                            expanded = showAvatarMenu,
+                            onDismissRequest = { showAvatarMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Выбор изображения") },
+                                leadingIcon = { Icon(Icons.Default.Image, null) },
+                                onClick = {
+                                    showAvatarMenu = false
+                                    imagePickerLauncher.launch("image/*")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Скачать персонажа") },
+                                leadingIcon = { Icon(Icons.Default.Download, null) },
+                                onClick = {
+                                    showAvatarMenu = false
+                                    fileCreatorLauncher.launch("${if (name.isEmpty()) "character" else name}.json")
+                                }
+                            )
                         }
                     }
                 }
