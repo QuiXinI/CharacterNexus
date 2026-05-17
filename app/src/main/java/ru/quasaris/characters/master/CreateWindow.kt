@@ -53,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import java.util.UUID
 import java.util.Stack
@@ -328,6 +329,11 @@ fun CreateWindow(
     var hpDialogValue by remember { mutableStateOf("") }
     var showHpDialog by remember { mutableStateOf(false) }
 
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? -> selectedImageUri = uri }
+
     val healthState = remember(currentHp, maxHp) {
         val current = currentHp.toIntOrNull() ?: 0
         val max = maxHp.toIntOrNull() ?: 0
@@ -436,10 +442,20 @@ fun CreateWindow(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(colorScheme.primaryContainer),
+                            .background(colorScheme.primaryContainer)
+                            .clickable { imagePickerLauncher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
+                        if (selectedImageUri != null) {
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = colorScheme.onPrimaryContainer)
+                        }
                     }
                 }
 
