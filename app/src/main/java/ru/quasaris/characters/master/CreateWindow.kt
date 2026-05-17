@@ -327,10 +327,11 @@ fun CreateWindow(
     var wisProf by remember { mutableStateOf(character?.wisdomProficient ?: false) }
     var chaProf by remember { mutableStateOf(character?.charismaProficient ?: false) }
 
-    // Health State
-    var maxHp by remember { mutableStateOf("10") }
-    var tempHp by remember { mutableStateOf("0") }
-    var currentHp by remember { mutableStateOf("10") }
+    // Health State - Initialized from character
+    var maxHp by remember { mutableStateOf(character?.maxHp ?: "10") }
+    var tempHp by remember { mutableStateOf(character?.tempHp ?: "0") }
+    var currentHp by remember { mutableStateOf(character?.currentHp ?: "10") }
+    
     var isHealthPanelVisible by remember { mutableStateOf(false) }
     var hpDialogType by remember { mutableStateOf("") } // "heal", "damage", "temp"
     var hpDialogValue by remember { mutableStateOf("") }
@@ -460,7 +461,10 @@ fun CreateWindow(
             initiativeEntries = initiativeEntries,
             activeInitiativeId = activeInitiativeId,
             speedEntries = speedEntries,
-            activeSpeedId = activeSpeedId
+            activeSpeedId = activeSpeedId,
+            maxHp = maxHp,
+            currentHp = currentHp,
+            tempHp = tempHp
         )
         
         val jsonString = gson.toJson(charToExport)
@@ -478,7 +482,8 @@ fun CreateWindow(
         armorClassEntries, activeArmorClassId,
         initiativeEntries, activeInitiativeId,
         speedEntries, activeSpeedId,
-        selectedImageUri
+        selectedImageUri,
+        maxHp, currentHp, tempHp // Added HP dependencies
     ) {
         val imageDataString = selectedImageUri?.let { uri ->
             try {
@@ -515,7 +520,10 @@ fun CreateWindow(
             initiativeEntries = initiativeEntries,
             activeInitiativeId = activeInitiativeId,
             speedEntries = speedEntries,
-            activeSpeedId = activeSpeedId
+            activeSpeedId = activeSpeedId,
+            maxHp = maxHp,
+            currentHp = currentHp,
+            tempHp = tempHp
         )
         onCharacterChange(updatedChar)
     }
@@ -1533,8 +1541,8 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}) {
         val tint = colorScheme.primary.copy(alpha = 0.50f)
         if (iconRes == R.drawable.ic_sword) {
             Box(modifier = Modifier.fillMaxSize()) {
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
+                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.size(42.dp), colorFilter = ColorFilter.tint(tint))
+                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.size(42.dp).graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
             }
         } else {
             Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
