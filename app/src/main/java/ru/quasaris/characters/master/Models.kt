@@ -52,7 +52,8 @@ data class Character(
     val activeInitiativeId: String? = initiativeEntries.firstOrNull()?.id,
     val speedEntries: List<SpeedEntry> = listOf(SpeedEntry(name = "Базовая Скорость", formula = "30")),
     val activeSpeedId: String? = speedEntries.firstOrNull()?.id,
-    val maxHp: String = "10",
-    val currentHp: String = "10",
-    val tempHp: String = "0"
+    val maxHp: String = "0",
+    val currentHp: String = "0",
+    val tempHp: String = "0",
+    val selectedConditions: List<String> = emptyList()
 )
