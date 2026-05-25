@@ -1,10 +1,10 @@
 {
     "logs": [
         {
-            "outputFile": "ru.quasaris.characters.master.app-mergeDebugResources-44:/values-v21/values-v21.xml",
+            "outputFile": "ru.quasaris.characters.master.app-mergeDebugResources-2:/values-v21/values-v21.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\Lexus\\.gradle\\caches\\8.14.3\\transforms\\7a9bedf1357a77d82cb9acc62932b38a\\transformed\\core-1.17.0\\res\\values-v21\\values-v21.xml",
+                    "source": "C:\\Users\\QuiXinI\\.gradle\\caches\\8.14.3\\transforms\\7a9bedf1357a77d82cb9acc62932b38a\\transformed\\core-1.17.0\\res\\values-v21\\values-v21.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,13",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4",

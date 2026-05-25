@@ -559,6 +559,7 @@ fun CreateWindow(
                                 textAlign = TextAlign.Center,
                                 color = colorScheme.onSurface
                             ),
+                            cursorBrush = SolidColor(colorScheme.primary),
                             decorationBox = { innerTextField ->
                                 if (name.isEmpty()) {
                                     Text(
@@ -1077,18 +1078,40 @@ fun HealthPanel(
 @Composable
 fun HealthRow(label: String, value: String, onValueChange: (String) -> Unit, onFocusLost: () -> Unit = {}) {
     val colorScheme = MaterialTheme.colorScheme
+
+    // Используем TextFieldValue для контроля курсора, как в LevelPanel
+    var textFieldValue by remember { mutableStateOf(TextFieldValue(value)) }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(value) {
+        if (textFieldValue.text != value) {
+            textFieldValue = textFieldValue.copy(text = value, selection = TextRange(value.length))
+        }
+    }
+
     Row(
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clickable {
+                // При нажатии на строку переносим курсор в конец и запрашиваем фокус
+                textFieldValue = textFieldValue.copy(selection = TextRange(value.length))
+                focusRequester.requestFocus()
+            },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, modifier = Modifier.padding(start = 16.dp).weight(1f), fontSize = 14.sp, color = colorScheme.onSurfaceVariant)
         BasicTextField(
-            value = value,
-            onValueChange = { onValueChange(it.filter { c -> c.isDigit() || c == '-' }) },
+            value = textFieldValue,
+            onValueChange = {
+                textFieldValue = it
+                onValueChange(it.text.filter { c -> c.isDigit() || c == '-' })
+            },
             textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
             modifier = Modifier
                 .width(100.dp)
                 .padding(end = 16.dp)
+                .focusRequester(focusRequester)
                 .onFocusChanged { focusState ->
                     if (!focusState.isFocused) {
                         onFocusLost()
