@@ -1,5 +1,8 @@
 package ru.quasaris.characters.master.HeaderCode
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +26,7 @@ import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.FormulaEntry
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
+import ru.quasaris.characters.master.ShieldEntry
 
 @Composable
 fun FormulaPanel(
@@ -33,11 +37,21 @@ fun FormulaPanel(
     onEntries: (List<FormulaEntry>) -> Unit,
     onActive: (String?) -> Unit,
     onDeleteReq: (String?) -> Unit,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    headerTrailing: @Composable (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(4.dp, RoundedCornerShape(12.dp)).background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)).animateContentSize()) {
-        Text(title, modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.titleMedium, color = colorScheme.onSurfaceVariant)
+    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
+    
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(4.dp, RoundedCornerShape(12.dp)).background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)).animateContentSize(animationSpec)) {
+        Box(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp)) {
+            Text(title, modifier = Modifier.align(Alignment.Center), style = MaterialTheme.typography.titleMedium, color = colorScheme.onSurfaceVariant)
+            if (headerTrailing != null) {
+                Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                    headerTrailing()
+                }
+            }
+        }
         entries.forEachIndexed { i, entry ->
             FormulaEntryItem(entry, entry.id == activeId, entry.id == deleteId, { updated -> val nl = entries.toMutableList(); nl[i] = updated; onEntries(nl) }, { val nl = entries.toMutableList(); nl.removeAt(i); if (entry.id == activeId) onActive(null); onEntries(nl); onDeleteReq(null) }, { onDeleteReq(entry.id) }, { onActive(if (entry.id == activeId) null else entry.id); onDeleteReq(null) })
             HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f))
@@ -57,14 +71,22 @@ fun FormulaEntryItem(
     onToggle: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme; val sep = colorScheme.outline.copy(alpha = 0.2f)
-    Column(modifier = Modifier.fillMaxWidth().background(if (isActive) colorScheme.primaryContainer else Color.Transparent).animateContentSize()) {
+    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
+    
+    Column(modifier = Modifier.fillMaxWidth().background(if (isActive) colorScheme.primaryContainer else Color.Transparent).animateContentSize(animationSpec)) {
         Row(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.width(44.dp).fillMaxHeight().clickable { if (isDelete) onDelete() else onDeleteReq() }, contentAlignment = Alignment.Center) { Icon(Icons.Default.Delete, null, modifier = Modifier.size(20.dp), tint = if (isDelete) colorScheme.error else colorScheme.onSurface.copy(alpha = 0.7f)) }
             Box(modifier = Modifier.width(1.2.dp).fillMaxHeight().background(sep))
             Box(modifier = Modifier.weight(1f).padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
                 if (entry.name.isEmpty()) Text("Название", color = colorScheme.onSurface.copy(alpha = 0.4f), fontSize = 16.sp)
                 BasicTextField(value = entry.name, onValueChange = { s -> 
-                    val u: FormulaEntry = when(entry) { is ArmorClassEntry -> entry.copy(name = s); is InitiativeEntry -> entry.copy(name = s); is SpeedEntry -> entry.copy(name = s); else -> entry }
+                    val u: FormulaEntry = when(entry) { 
+                        is ArmorClassEntry -> entry.copy(name = s)
+                        is InitiativeEntry -> entry.copy(name = s)
+                        is SpeedEntry -> entry.copy(name = s)
+                        is ShieldEntry -> entry.copy(name = s)
+                        else -> entry 
+                    }
                     onUpdate(u) 
                 }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, color = colorScheme.onSurface), modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp))
             }
@@ -74,7 +96,13 @@ fun FormulaEntryItem(
         HorizontalDivider(color = sep, thickness = 1.2.dp); Box(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
             if (entry.formula.isEmpty()) Text("Формула", color = colorScheme.onSurface.copy(alpha = 0.4f), fontSize = 14.sp)
             BasicTextField(value = entry.formula, onValueChange = { s -> 
-                val u: FormulaEntry = when(entry) { is ArmorClassEntry -> entry.copy(formula = s); is InitiativeEntry -> entry.copy(formula = s); is SpeedEntry -> entry.copy(formula = s); else -> entry }
+                val u: FormulaEntry = when(entry) { 
+                    is ArmorClassEntry -> entry.copy(formula = s)
+                    is InitiativeEntry -> entry.copy(formula = s)
+                    is SpeedEntry -> entry.copy(formula = s)
+                    is ShieldEntry -> entry.copy(formula = s)
+                    else -> entry 
+                }
                 onUpdate(u) 
             }, textStyle = TextStyle(fontSize = 14.sp, color = colorScheme.onSurface), modifier = Modifier.fillMaxWidth())
         }

@@ -34,12 +34,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import coil.compose.AsyncImage
-import ru.quasaris.characters.master.ArmorClassEntry
-import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.R
-import ru.quasaris.characters.master.SpeedEntry
+import ru.quasaris.characters.master.*
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 
@@ -57,6 +61,8 @@ fun CharacterHeader(
     onNavigateBack: () -> Unit,
     activeACValue: String,
     onACClick: () -> Unit,
+    onACLongClick: () -> Unit,
+    isShieldActive: Boolean,
     activeInitValue: String,
     onInitClick: () -> Unit,
     currentHp: String,
@@ -66,7 +72,9 @@ fun CharacterHeader(
     healthIcon: Int,
     onHealthClick: () -> Unit,
     conditionsCount: String,
+    selectedConditions: List<String>,
     onConditionsClick: () -> Unit,
+    exhaustion: Int,
     activeSpeedValue: String,
     onSpeedClick: () -> Unit,
     showAvatarMenu: Boolean,
@@ -75,9 +83,14 @@ fun CharacterHeader(
     onDownloadClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val haptic = LocalHapticFeedback.current
+    
     Column(modifier = Modifier.background(colorScheme.surface).statusBarsPadding()) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onNavigateBack) { Icon(Icons.Default.Menu, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface) }
+            IconButton(onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onNavigateBack()
+            }) { Icon(Icons.Default.Menu, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface) }
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 BasicTextField(
                     value = name, onValueChange = onNameChange,
@@ -88,12 +101,15 @@ fun CharacterHeader(
                 )
             }
             Box(contentAlignment = Alignment.Center) {
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(colorScheme.primaryContainer).clickable { onAvatarClick() }, contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(colorScheme.primaryContainer).clickable { 
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onAvatarClick() 
+                }, contentAlignment = Alignment.Center) {
                     if (selectedImageUri != null) AsyncImage(model = selectedImageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     else {
                         val bm = remember(characterImageData) {
                             if (characterImageData != null) {
-                                try { val d = Base64.decode(characterImageData, Base64.DEFAULT); BitmapFactory.decodeByteArray(d, 0, d.size)?.asImageBitmap() } catch (e: Exception) { null }
+                                try { val d = Base64.decode(characterImageData, Base64.DEFAULT); BitmapFactory.decodeByteArray(d, 0, d.size)?.asImageBitmap() } catch (_: Exception) { null }
                             } else null
                         }
                         if (bm != null) Image(bitmap = bm, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -101,12 +117,21 @@ fun CharacterHeader(
                     }
                 }
                 DropdownMenu(expanded = showAvatarMenu, onDismissRequest = onDismissAvatarMenu) {
-                    DropdownMenuItem(text = { Text("Выбор изображения") }, leadingIcon = { Icon(Icons.Default.Image, null) }, onClick = onImagePickerClick)
-                    DropdownMenuItem(text = { Text("Скачать персонажа") }, leadingIcon = { Icon(Icons.Default.Download, null) }, onClick = onDownloadClick)
+                    DropdownMenuItem(text = { Text("Выбор изображения") }, leadingIcon = { Icon(Icons.Default.Image, null) }, onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onImagePickerClick()
+                    })
+                    DropdownMenuItem(text = { Text("Скачать персонажа") }, leadingIcon = { Icon(Icons.Default.Download, null) }, onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onDownloadClick()
+                    })
                 }
             }
         }
-        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(24.dp).shadow(2.dp, RoundedCornerShape(20.dp)).background(colorScheme.surface, RoundedCornerShape(20.dp)).padding(2.dp).clickable { onLevelClick() }) {
+        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(24.dp).shadow(2.dp, RoundedCornerShape(20.dp)).background(colorScheme.surface, RoundedCornerShape(20.dp)).padding(2.dp).clickable { 
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onLevelClick() 
+        }) {
             Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.width(90.dp).fillMaxHeight().clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("$level уровень", fontSize = 11.sp, color = colorScheme.onPrimaryContainer) }
                 val pr = remember(experience, nextLevelExp) { val c = experience.toFloatOrNull() ?: 0f; val n = nextLevelExp.toFloatOrNull() ?: 0f; if (n <= 0f) 1f else (c / n).coerceIn(0f, 1f) }
@@ -121,19 +146,23 @@ fun CharacterHeader(
         }
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatIconBox(activeACValue, R.drawable.ic_shield, onClick = onACClick)
-                StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = onInitClick)
+                StatIconBox(activeACValue,
+                    R.drawable.ic_shield, onClick = onACClick, onLongClick = onACLongClick, isHighlighted = isShieldActive)
+                StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = onInitClick, isHighlighted = true)
             }
-            Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, healthColor, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).clickable { onHealthClick() }, contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, healthColor, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).clickable { 
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onHealthClick() 
+            }, contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(painterResource(healthIcon), null, modifier = Modifier.size(32.dp), colorFilter = ColorFilter.tint(healthColor))
-                    Spacer(Modifier.width(6.dp)); Text("$currentHp / ${maxHp.toIntOrNull() ?: 0}", color = healthColor, fontSize = 16.sp)
-                    if ((tempHp.toIntOrNull() ?: 0) > 0) Text(" (+$tempHp)", color = healthColor.copy(alpha = 0.7f), fontSize = 14.sp)
+                    Spacer(Modifier.width(6.dp)); Text("$currentHp / ${maxHp.toIntOrNull() ?: 0}", color = healthColor, fontSize = 15.sp)
+                    if ((tempHp.toIntOrNull() ?: 0) > 0) Text(" (+$tempHp)", color = healthColor.copy(alpha = 0.7f), fontSize = 13.sp)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatIconBox(conditionsCount, R.drawable.ic_conditions, onClick = onConditionsClick)
-                StatIconBox(activeSpeedValue, R.drawable.ic_speed, onClick = onSpeedClick)
+                StatIconBox(conditionsCount, R.drawable.ic_conditions, onClick = onConditionsClick, isHighlighted = selectedConditions.isNotEmpty() || exhaustion > 0)
+                StatIconBox(activeSpeedValue, R.drawable.ic_speed, onClick = onSpeedClick, isHighlighted = true)
             }
         }
     }
@@ -186,6 +215,18 @@ fun ExpandingPanelsSection(
     allConditions: List<Condition>,
     selectedConditions: List<String>,
     onToggleCondition: (String) -> Unit,
+    exhaustion: Int,
+    onExhaustionChange: (Int) -> Unit,
+    
+    isShieldActive: Boolean,
+    onShieldActiveChange: (Boolean) -> Unit,
+    shieldEntries: List<ShieldEntry>,
+    activeShieldId: String?,
+    shieldDeleteConfirmId: String?,
+    onShieldEntries: (List<ShieldEntry>) -> Unit,
+    onActiveShield: (String?) -> Unit,
+    onShieldDeleteReq: (String?) -> Unit,
+    onAddShield: () -> Unit,
     
     isSpeedPanelVisible: Boolean,
     speedEntries: List<SpeedEntry>,
@@ -197,14 +238,37 @@ fun ExpandingPanelsSection(
     onAddSpeed: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
+    
     Column {
         Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(colorScheme.onSurface.copy(alpha = 0.15f), Color.Transparent))))
-        AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(), exit = shrinkVertically()) { LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) }
-        AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(), exit = shrinkVertically()) { HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp) }
-        AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(), exit = shrinkVertically()) { FormulaPanel("Класс Доспеха", armorClassEntries, activeArmorClassId, acDeleteConfirmId, { updated -> onArmorClassEntries(updated.filterIsInstance<ArmorClassEntry>()) }, onActiveArmorClass, onAcDeleteReq, onAddArmorClass) }
-        AnimatedVisibility(isInitiativePanelVisible, enter = expandVertically(), exit = shrinkVertically()) { FormulaPanel("Инициатива", initiativeEntries, activeInitiativeId, initDeleteConfirmId, { updated -> onInitiativeEntries(updated.filterIsInstance<InitiativeEntry>()) }, onActiveInitiative, onInitDeleteReq, onAddInitiative) }
-        AnimatedVisibility(isConditionsPanelVisible, enter = expandVertically(), exit = shrinkVertically()) { ConditionsPanel(allConditions, selectedConditions, onToggleCondition) }
-        AnimatedVisibility(isSpeedPanelVisible, enter = expandVertically(), exit = shrinkVertically()) { FormulaPanel("Скорость", speedEntries, activeSpeedId, speedDeleteConfirmId, { updated -> onSpeedEntries(updated.filterIsInstance<SpeedEntry>()) }, onActiveSpeed, onSpeedDeleteReq, onAddSpeed) }
+        AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) }
+        AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp) }
+        AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
+            Column(modifier = Modifier.animateContentSize(animationSpec)) {
+                FormulaPanel("Класс Доспеха", armorClassEntries, activeArmorClassId, acDeleteConfirmId, { updated -> onArmorClassEntries(updated.filterIsInstance<ArmorClassEntry>()) }, onActiveArmorClass, onAcDeleteReq, onAddArmorClass) 
+                FormulaPanel(
+                    title = "Щит",
+                    entries = shieldEntries,
+                    activeId = activeShieldId,
+                    deleteId = shieldDeleteConfirmId,
+                    onEntries = { updated -> onShieldEntries(updated.filterIsInstance<ShieldEntry>()) },
+                    onActive = onActiveShield,
+                    onDeleteReq = onShieldDeleteReq,
+                    onAdd = onAddShield,
+                    headerTrailing = {
+                        Switch(
+                            checked = isShieldActive,
+                            onCheckedChange = onShieldActiveChange,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                )
+            }
+        }
+        AnimatedVisibility(isInitiativePanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { FormulaPanel("Инициатива", initiativeEntries, activeInitiativeId, initDeleteConfirmId, { updated -> onInitiativeEntries(updated.filterIsInstance<InitiativeEntry>()) }, onActiveInitiative, onInitDeleteReq, onAddInitiative) }
+        AnimatedVisibility(isConditionsPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { ConditionsPanel(allConditions, selectedConditions, onToggleCondition, exhaustion, onExhaustionChange) }
+        AnimatedVisibility(isSpeedPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { FormulaPanel("Скорость", speedEntries, activeSpeedId, speedDeleteConfirmId, { updated -> onSpeedEntries(updated.filterIsInstance<SpeedEntry>()) }, onActiveSpeed, onSpeedDeleteReq, onAddSpeed) }
         
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).height(40.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -215,3 +279,4 @@ fun ExpandingPanelsSection(
         }
     }
 }
+

@@ -100,18 +100,19 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         val score = stats[statKey] ?: "10"
         val mod = calculateModifier(score).toString()
         processed = processed.replace("[$key ЗНАЧ]", score).replace("[$key SCR]", score)
-            .replace("[$key]", mod).replace("[$key ", "$mod ")
+            .replace("[$key]", " $mod ")
+            .replace("[$key ", " $mod ")
     }
     val pb = stats["proficiencyBonus"] ?: "2"
     val level = stats["level"] ?: "1"
     val realPb = getProficiencyBonus(level).toString()
     
     // Заменяем [БМ] на реальный бонус или на то, что введено в поле "Бонус Мастерства"
-    processed = processed.replace("[БМ]", pb).replace("[PB]", pb)
-        .replace("[НАСТ БМ]", realPb).replace("[REAL PB]", realPb)
+    processed = processed.replace("[БМ]", " $pb ").replace("[PB]", " $pb ")
+        .replace("[НАСТ БМ]", " $realPb ").replace("[REAL PB]", " $realPb ")
     
     if (processed.contains("[БМ]") || processed.contains("[PB]")) {
-        processed = processed.replace("[БМ]", realPb).replace("[PB]", realPb)
+        processed = processed.replace("[БМ]", " $realPb ").replace("[PB]", " $realPb ")
     }
     
     fun processFunctions(input: String): String {
@@ -122,7 +123,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         )
         functions.forEach { (names, isMax) ->
             names.forEach { func ->
-                val patternStandard = Regex("(?:\\[$func\\s*\\(([^()]+)\\)\\]|$func\\s*\\(([^()]+)\\))")
+                val patternStandard = Regex("(?:\\[$func\\s*\\(([^()]+)\\)]|$func\\s*\\(([^()]+)\\))")
                 while (current.contains(func)) {
                     val match = patternStandard.find(current) ?: break
                     val content = match.groupValues[1].ifEmpty { match.groupValues[2] }
@@ -130,7 +131,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
                     val result = if (isMax) values.maxOrNull() ?: 0 else values.minOrNull() ?: 0
                     current = current.replace(match.value, result.toString())
                 }
-                val patternTrailing = Regex("(-?\\d+)[^\\d\\[]*\\[$func\\]\\s*\\((-?\\d+)\\)")
+                val patternTrailing = Regex("(-?\\d+)[^\\d\\[]*\\[$func]\\s*\\((-?\\d+)\\)")
                 while (current.contains("[$func]")) {
                     val match = patternTrailing.find(current) ?: break
                     val val1 = match.groupValues[1].toInt()
@@ -178,7 +179,7 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         }
         while (!oS.empty() && vS.size >= 2) vS.push(app(oS.pop(), vS.pop(), vS.pop()))
         if (vS.isEmpty()) 0 else vS.pop()
-    } catch (e: Exception) { 0 }
+    } catch (_: Exception) { 0 }
 }
 
 data class Condition(val name: String, val description: String)

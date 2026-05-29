@@ -55,5 +55,15 @@ data class Character(
     val maxHp: String = "0",
     val currentHp: String = "0",
     val tempHp: String = "0",
-    val selectedConditions: List<String> = emptyList()
+    val selectedConditions: List<String> = emptyList(),
+    val exhaustion: Int = 0,
+    val isShieldActive: Boolean = false,
+    val shieldEntries: List<ShieldEntry> = listOf(ShieldEntry(name = "Базовый Щит", formula = "2")),
+    val activeShieldId: String? = shieldEntries.firstOrNull()?.id
 )
+
+data class ShieldEntry(
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = ""
+) : FormulaEntry

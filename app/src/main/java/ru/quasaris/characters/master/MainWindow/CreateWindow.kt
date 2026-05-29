@@ -28,11 +28,11 @@ import ru.quasaris.characters.master.HeaderCode.evaluateFormula
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.SpeedEntry
+import ru.quasaris.characters.master.ShieldEntry
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateWindow(
-    modifier: Modifier = Modifier,
     character: Character? = null,
     onNavigateBack: () -> Unit,
     onCharacterChange: (Character) -> Unit
@@ -99,6 +99,13 @@ fun CreateWindow(
     var speedDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
     var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList<String>()) }
+    var exhaustion by remember { mutableStateOf(character?.exhaustion ?: 0) }
+    var isShieldActive by remember { mutableStateOf(character?.isShieldActive ?: false) }
+    var shieldEntries by remember { mutableStateOf(character?.shieldEntries ?: listOf(
+        ShieldEntry(name = "Базовый Щит", formula = "2")
+    )) }
+    var activeShieldId by remember { mutableStateOf<String?>(character?.activeShieldId ?: shieldEntries.firstOrNull()?.id) }
+    var shieldDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     val allConditions = rememberAllConditions(context)
 
     var showAvatarMenu by remember { mutableStateOf(false) }
@@ -111,14 +118,14 @@ fun CreateWindow(
         "proficiencyBonus" to proficiencyBonus, "level" to level
     )
 
-    val activeACValue = remember(activeArmorClassId, armorClassEntries, statsMap) {
-        CombatCalculations.calculateAC(activeArmorClassId, armorClassEntries, statsMap)
+    val activeACValue = remember(activeArmorClassId, armorClassEntries, statsMap, isShieldActive, activeShieldId, shieldEntries) {
+        CombatCalculations.calculateAC(activeArmorClassId, armorClassEntries, statsMap, isShieldActive, activeShieldId, shieldEntries)
     }
-    val activeInitValue = remember(activeInitiativeId, initiativeEntries, statsMap) {
-        CombatCalculations.calculateInitiative(activeInitiativeId, initiativeEntries, statsMap)
+    val activeInitValue = remember(activeInitiativeId, initiativeEntries, statsMap, exhaustion) {
+        CombatCalculations.calculateInitiative(activeInitiativeId, initiativeEntries, statsMap, exhaustion)
     }
-    val activeSpeedValue = remember(activeSpeedId, speedEntries, statsMap) {
-        CombatCalculations.calculateSpeed(activeSpeedId, speedEntries, statsMap)
+    val activeSpeedValue = remember(activeSpeedId, speedEntries, statsMap, exhaustion) {
+        CombatCalculations.calculateSpeed(activeSpeedId, speedEntries, statsMap, exhaustion)
     }
 
     val healthState = remember(currentHp, maxHp) {
@@ -138,13 +145,13 @@ fun CreateWindow(
         name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
         strProf, dexProf, conProf, intProf, wisProf, chaProf, armorClassEntries, activeArmorClassId,
         initiativeEntries, activeInitiativeId, speedEntries, activeSpeedId, selectedImageUri,
-        maxHp, currentHp, tempHp, selectedConditions
+        maxHp, currentHp, tempHp, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId
     ) {
         val updated = CharacterDataHandler.createCharacter(
             charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
-            speedEntries, activeSpeedId, selectedConditions, character?.imageData, context, selectedImageUri
+            speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId, character?.imageData, context, selectedImageUri
         )
         onCharacterChange(updated)
     }
@@ -155,7 +162,7 @@ fun CreateWindow(
             charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
-            speedEntries, activeSpeedId, selectedConditions, character?.imageData, context, selectedImageUri
+            speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId, character?.imageData, context, selectedImageUri
         )
         CharacterDataHandler.exportToJson(context, uri, currentChar)
     }
@@ -174,10 +181,12 @@ fun CreateWindow(
                     isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                 },
                 onNavigateBack = onNavigateBack, activeACValue = activeACValue,
-                onACClick = {
+                onACClick = { isShieldActive = !isShieldActive },
+                onACLongClick = {
                     isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
                     isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                 },
+                isShieldActive = isShieldActive,
                 activeInitValue = activeInitValue,
                 onInitClick = {
                     isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
@@ -190,10 +199,12 @@ fun CreateWindow(
                     isSpeedPanelVisible = false; isLevelPanelVisible = false; isConditionsPanelVisible = false
                 },
                 conditionsCount = selectedConditions.size.toString(),
+                selectedConditions = selectedConditions,
                 onConditionsClick = {
                     isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
                     isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
                 },
+                exhaustion = exhaustion,
                 activeSpeedValue = activeSpeedValue,
                 onSpeedClick = {
                     isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
@@ -231,6 +242,17 @@ fun CreateWindow(
                     isConditionsPanelVisible = isConditionsPanelVisible, allConditions = allConditions,
                     selectedConditions = selectedConditions,
                     onToggleCondition = { n -> selectedConditions = toggleCondition(selectedConditions, n) },
+                    exhaustion = exhaustion,
+                    onExhaustionChange = { exhaustion = it },
+                    isShieldActive = isShieldActive,
+                    onShieldActiveChange = { isShieldActive = it },
+                    shieldEntries = shieldEntries,
+                    activeShieldId = activeShieldId,
+                    shieldDeleteConfirmId = shieldDeleteConfirmId,
+                    onShieldEntries = { shieldEntries = it },
+                    onActiveShield = { activeShieldId = it },
+                    onShieldDeleteReq = { shieldDeleteConfirmId = it },
+                    onAddShield = { shieldEntries = shieldEntries + ShieldEntry() },
                     isSpeedPanelVisible = isSpeedPanelVisible, speedEntries = speedEntries,
                     activeSpeedId = activeSpeedId, speedDeleteConfirmId = speedDeleteConfirmId,
                     onSpeedEntries = { speedEntries = it }, onActiveSpeed = { activeSpeedId = it },
@@ -263,7 +285,7 @@ fun CreateWindow(
                 when(hpDialogType) {
                     "heal" -> currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + v).toString()
                     "damage" -> {
-                        var d = v; var t = tempHp.toIntOrNull() ?: 0; var c = currentHp.toIntOrNull() ?: 0
+                        var d = v; var t = tempHp.toIntOrNull() ?: 0; val c = currentHp.toIntOrNull() ?: 0
                         if (t > 0) { val a = minOf(t, d); t -= a; d -= a; tempHp = t.toString() }
                         if (d > 0) currentHp = maxOf(0, c - d).toString()
                     }

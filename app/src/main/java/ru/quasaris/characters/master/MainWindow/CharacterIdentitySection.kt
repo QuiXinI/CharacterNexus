@@ -21,6 +21,8 @@ fun CharacterIdentitySection(
     onNavigateBack: () -> Unit,
     activeACValue: String,
     onACClick: () -> Unit,
+    onACLongClick: () -> Unit,
+    isShieldActive: Boolean,
     activeInitValue: String,
     onInitClick: () -> Unit,
     currentHp: String,
@@ -30,7 +32,9 @@ fun CharacterIdentitySection(
     healthIcon: Int,
     onHealthClick: () -> Unit,
     conditionsCount: String,
+    selectedConditions: List<String>,
     onConditionsClick: () -> Unit,
+    exhaustion: Int,
     activeSpeedValue: String,
     onSpeedClick: () -> Unit,
     imagePicker: ManagedActivityResultLauncher<String, Uri?>,
@@ -49,6 +53,8 @@ fun CharacterIdentitySection(
         onNavigateBack = onNavigateBack,
         activeACValue = activeACValue,
         onACClick = onACClick,
+        onACLongClick = onACLongClick,
+        isShieldActive = isShieldActive,
         activeInitValue = activeInitValue,
         onInitClick = onInitClick,
         currentHp = currentHp,
@@ -58,7 +64,9 @@ fun CharacterIdentitySection(
         healthIcon = healthIcon,
         onHealthClick = onHealthClick,
         conditionsCount = conditionsCount,
+        selectedConditions = selectedConditions,
         onConditionsClick = onConditionsClick,
+        exhaustion = exhaustion,
         activeSpeedValue = activeSpeedValue,
         onSpeedClick = onSpeedClick,
         showAvatarMenu = showAvatarMenu,
@@ -69,7 +77,7 @@ fun CharacterIdentitySection(
         },
         onDownloadClick = {
             onDismissAvatarMenu()
-            onDownloadClick("${if (name.isEmpty()) "character" else name}.json")
+            onDownloadClick("${name.ifEmpty { "character" }}.json")
         }
     )
 }

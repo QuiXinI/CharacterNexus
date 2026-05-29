@@ -8,6 +8,7 @@ import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
+import ru.quasaris.characters.master.ShieldEntry
 
 object CharacterDataHandler {
     private val gson = Gson()
@@ -39,6 +40,10 @@ object CharacterDataHandler {
         speedEntries: List<SpeedEntry>,
         activeSpeedId: String?,
         selectedConditions: List<String>,
+        exhaustion: Int = 0,
+        isShieldActive: Boolean = false,
+        shieldEntries: List<ShieldEntry> = emptyList(),
+        activeShieldId: String? = null,
         imageData: String? = null,
         context: Context? = null,
         selectedImageUri: Uri? = null
@@ -48,7 +53,7 @@ object CharacterDataHandler {
                 context?.contentResolver?.openInputStream(u)?.use { 
                     Base64.encodeToString(it.readBytes(), Base64.DEFAULT) 
                 }
-            } catch (e: Exception) { null }
+            } catch (_: Exception) { null }
         } ?: imageData
 
         return Character(
@@ -80,7 +85,11 @@ object CharacterDataHandler {
             maxHp = maxHp,
             currentHp = currentHp,
             tempHp = tempHp,
-            selectedConditions = selectedConditions
+            selectedConditions = selectedConditions,
+            exhaustion = exhaustion,
+            isShieldActive = isShieldActive,
+            shieldEntries = shieldEntries,
+            activeShieldId = activeShieldId
         )
     }
 
