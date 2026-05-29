@@ -14,8 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +33,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import com.google.gson.Gson
+import ru.quasaris.characters.master.HeaderCode.CharacterHeader
+import ru.quasaris.characters.master.HeaderCode.Condition
+import ru.quasaris.characters.master.HeaderCode.ExpandingPanelsSection
+import ru.quasaris.characters.master.HeaderCode.SquirclePath
+import ru.quasaris.characters.master.HeaderCode.calculateModifier
+import ru.quasaris.characters.master.HeaderCode.evaluateFormula
+import ru.quasaris.characters.master.HeaderCode.getNextLevelThreshold
+import ru.quasaris.characters.master.HeaderCode.parseConditions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,7 +133,9 @@ fun CreateWindow(
     var allConditions by remember { mutableStateOf(emptyList<Condition>()) }
 
     LaunchedEffect(Unit) {
-        try { context.assets.open("Conditions.md").bufferedReader().use { allConditions = parseConditions(it.readText()) } }
+        try { context.assets.open("Conditions.md").bufferedReader().use { allConditions =
+            parseConditions(it.readText())
+        } }
         catch (e: Exception) { e.printStackTrace() }
     }
 
@@ -184,37 +192,132 @@ fun CreateWindow(
         containerColor = colorScheme.background,
         topBar = {
             CharacterHeader(
-                name = name, onNameChange = { name = it },
-                level = level, experience = experience, nextLevelExp = nextLevelExp,
-                selectedImageUri = selectedImageUri, characterImageData = character?.imageData,
+                name = name,
+                onNameChange = { name = it },
+                level = level,
+                experience = experience,
+                nextLevelExp = nextLevelExp,
+                selectedImageUri = selectedImageUri,
+                characterImageData = character?.imageData,
                 onAvatarClick = { showAvatarMenu = true },
-                onLevelClick = { isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false; isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false },
+                onLevelClick = {
+                    isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible =
+                    false; isInitiativePanelVisible = false; isSpeedPanelVisible =
+                    false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                },
                 onNavigateBack = onNavigateBack,
-                activeACValue = activeACValue, onACClick = { isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false; isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false },
-                activeInitValue = activeInitValue, onInitClick = { isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false; isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false },
-                currentHp = currentHp, maxHp = maxHp, tempHp = tempHp, healthColor = healthColor, healthIcon = healthIcon,
-                onHealthClick = { isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false; isSpeedPanelVisible = false; isLevelPanelVisible = false; isConditionsPanelVisible = false },
-                conditionsCount = selectedConditions.size.toString(), onConditionsClick = { isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false; isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false },
-                activeSpeedValue = activeSpeedValue, onSpeedClick = { isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false },
-                showAvatarMenu = showAvatarMenu, onDismissAvatarMenu = { showAvatarMenu = false },
+                activeACValue = activeACValue,
+                onACClick = {
+                    isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible =
+                    false; isSpeedPanelVisible = false; isLevelPanelVisible =
+                    false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                },
+                activeInitValue = activeInitValue,
+                onInitClick = {
+                    isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible =
+                    false; isSpeedPanelVisible = false; isLevelPanelVisible =
+                    false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                },
+                currentHp = currentHp,
+                maxHp = maxHp,
+                tempHp = tempHp,
+                healthColor = healthColor,
+                healthIcon = healthIcon,
+                onHealthClick = {
+                    isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible =
+                    false; isInitiativePanelVisible = false; isSpeedPanelVisible =
+                    false; isLevelPanelVisible = false; isConditionsPanelVisible = false
+                },
+                conditionsCount = selectedConditions.size.toString(),
+                onConditionsClick = {
+                    isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible =
+                    false; isInitiativePanelVisible = false; isSpeedPanelVisible =
+                    false; isLevelPanelVisible = false; isHealthPanelVisible = false
+                },
+                activeSpeedValue = activeSpeedValue,
+                onSpeedClick = {
+                    isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible =
+                    false; isInitiativePanelVisible = false; isLevelPanelVisible =
+                    false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                },
+                showAvatarMenu = showAvatarMenu,
+                onDismissAvatarMenu = { showAvatarMenu = false },
                 onImagePickerClick = { showAvatarMenu = false; imagePicker.launch("image/*") },
-                onDownloadClick = { showAvatarMenu = false; fileCreator.launch("${if (name.isEmpty()) "character" else name}.json") }
+                onDownloadClick = {
+                    showAvatarMenu =
+                        false; fileCreator.launch("${if (name.isEmpty()) "character" else name}.json")
+                }
             )
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding).background(colorScheme.background).clickable(remember { MutableInteractionSource() }, null) { focusManager.clearFocus(); acDeleteConfirmId = null; initDeleteConfirmId = null; speedDeleteConfirmId = null }) {
             Column(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(colorScheme.surface).verticalScroll(rememberScrollState())) {
                 ExpandingPanelsSection(
-                    isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it }, experience = experience, onExpChange = { experience = it }, proficiencyBonus = proficiencyBonus, onProfChange = { proficiencyBonus = it }, nextLevelExp = nextLevelExp, statsMap = statsMap,
-                    isHealthPanelVisible = isHealthPanelVisible, maxHp = maxHp, onMaxHpChange = { maxHp = it }, tempHp = tempHp, onTempHpChange = { tempHp = it }, currentHp = currentHp, onCurrentHpChange = { currentHp = it }, onHealClick = { hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true }, onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true }, onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true }, healthColor = healthColor, clampHp = clampHp,
-                    isArmorClassPanelVisible = isArmorClassPanelVisible, armorClassEntries = armorClassEntries, activeArmorClassId = activeArmorClassId, acDeleteConfirmId = acDeleteConfirmId, onArmorClassEntries = { armorClassEntries = it }, onActiveArmorClass = { activeArmorClassId = it }, onAcDeleteReq = { acDeleteConfirmId = it }, onAddArmorClass = { armorClassEntries = armorClassEntries + ArmorClassEntry() },
-                    isInitiativePanelVisible = isInitiativePanelVisible, initiativeEntries = initiativeEntries, activeInitiativeId = activeInitiativeId, initDeleteConfirmId = initDeleteConfirmId, onInitiativeEntries = { initiativeEntries = it }, onActiveInitiative = { activeInitiativeId = it }, onInitDeleteReq = { initDeleteConfirmId = it }, onAddInitiative = { initiativeEntries = initiativeEntries + InitiativeEntry() },
-                    isConditionsPanelVisible = isConditionsPanelVisible, allConditions = allConditions, selectedConditions = selectedConditions, onToggleCondition = { n -> selectedConditions = if (selectedConditions.contains(n)) selectedConditions - n else selectedConditions + n },
-                    isSpeedPanelVisible = isSpeedPanelVisible, speedEntries = speedEntries, activeSpeedId = activeSpeedId, speedDeleteConfirmId = speedDeleteConfirmId, onSpeedEntries = { speedEntries = it }, onActiveSpeed = { activeSpeedId = it }, onSpeedDeleteReq = { speedDeleteConfirmId = it }, onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
+                    isLevelPanelVisible = isLevelPanelVisible,
+                    level = level,
+                    onLevelChange = { level = it },
+                    experience = experience,
+                    onExpChange = { experience = it },
+                    proficiencyBonus = proficiencyBonus,
+                    onProfChange = { proficiencyBonus = it },
+                    nextLevelExp = nextLevelExp,
+                    statsMap = statsMap,
+                    isHealthPanelVisible = isHealthPanelVisible,
+                    maxHp = maxHp,
+                    onMaxHpChange = { maxHp = it },
+                    tempHp = tempHp,
+                    onTempHpChange = { tempHp = it },
+                    currentHp = currentHp,
+                    onCurrentHpChange = { currentHp = it },
+                    onHealClick = {
+                        hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true
+                    },
+                    onDamageClick = {
+                        hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true
+                    },
+                    onTempClick = {
+                        hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true
+                    },
+                    healthColor = healthColor,
+                    clampHp = clampHp,
+                    isArmorClassPanelVisible = isArmorClassPanelVisible,
+                    armorClassEntries = armorClassEntries,
+                    activeArmorClassId = activeArmorClassId,
+                    acDeleteConfirmId = acDeleteConfirmId,
+                    onArmorClassEntries = { armorClassEntries = it },
+                    onActiveArmorClass = { activeArmorClassId = it },
+                    onAcDeleteReq = { acDeleteConfirmId = it },
+                    onAddArmorClass = { armorClassEntries = armorClassEntries + ArmorClassEntry() },
+                    isInitiativePanelVisible = isInitiativePanelVisible,
+                    initiativeEntries = initiativeEntries,
+                    activeInitiativeId = activeInitiativeId,
+                    initDeleteConfirmId = initDeleteConfirmId,
+                    onInitiativeEntries = { initiativeEntries = it },
+                    onActiveInitiative = { activeInitiativeId = it },
+                    onInitDeleteReq = { initDeleteConfirmId = it },
+                    onAddInitiative = { initiativeEntries = initiativeEntries + InitiativeEntry() },
+                    isConditionsPanelVisible = isConditionsPanelVisible,
+                    allConditions = allConditions,
+                    selectedConditions = selectedConditions,
+                    onToggleCondition = { n ->
+                        selectedConditions =
+                            if (selectedConditions.contains(n)) selectedConditions - n else selectedConditions + n
+                    },
+                    isSpeedPanelVisible = isSpeedPanelVisible,
+                    speedEntries = speedEntries,
+                    activeSpeedId = activeSpeedId,
+                    speedDeleteConfirmId = speedDeleteConfirmId,
+                    onSpeedEntries = { speedEntries = it },
+                    onActiveSpeed = { activeSpeedId = it },
+                    onSpeedDeleteReq = { speedDeleteConfirmId = it },
+                    onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
                 )
 
                 Button(onClick = {}, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp, bottom = 20.dp).width(220.dp).height(44.dp), colors = ButtonDefaults.buttonColors(containerColor = colorScheme.secondaryContainer, contentColor = colorScheme.onSecondaryContainer), shape = RoundedCornerShape(8.dp), elevation = ButtonDefaults.buttonElevation(4.dp)) { Text("Расширенный режим", fontSize = 14.sp) }
-                val evalPB = remember(proficiencyBonus, statsMap) { evaluateFormula(proficiencyBonus, statsMap).toString() }
+                val evalPB = remember(proficiencyBonus, statsMap) { evaluateFormula(
+                    proficiencyBonus,
+                    statsMap
+                ).toString() }
                 Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), { strength = it }, { strProf = it }); StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), { intelligence = it }, { intProf = it }) }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), { dexterity = it }, { dexProf = it }); StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), { wisdom = it }, { wisProf = it }) }

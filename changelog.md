@@ -1,5 +1,15 @@
 # Чейнджлог
 
+## Version 1.6.2.2
+Добавленное до этого окно HeaderCode.kt было разбито на несколько новых:
+- StatCalculations.kt — математика, формулы, парсинг условий;
+- CommonHeaderWidgets.kt — общие мелкие виджеты (StatIconBox, SquirclePath);
+- HitPointPanel.kt — всё, что касается Хитов;
+- LevelPanel.kt — уровень и опыт;
+- FormulaPanels.kt — универсальные панели для КД, Инициативы и Скорости;
+- ConditionsPanel.kt — состояния и форматирование описаний;
+- CharacterHeader.kt — основной компонент шапки и секция панелей.
+
 ## Version 1.6.2.1
 Начало процесса разделения кода на разные окна. Было создано окно HeaderCode.kt
 
