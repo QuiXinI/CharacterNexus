@@ -24,6 +24,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ru.quasaris.characters.master.MainWindow.CreateWindow
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
 class MainActivity : ComponentActivity() {
