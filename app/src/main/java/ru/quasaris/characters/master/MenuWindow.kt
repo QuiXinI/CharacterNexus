@@ -60,7 +60,6 @@ fun MenuWindow(
     val colorScheme = MaterialTheme.colorScheme
     val gson = Gson()
 
-    // Состояние выбранных персонажей
     val selectedIds = remember { mutableStateListOf<Int>() }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -117,7 +116,6 @@ fun MenuWindow(
                     .background(colorScheme.surface)
                     .fillMaxSize()
                     .padding(16.dp)
-                    // Отмена выбора при клике на фон
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -171,13 +169,13 @@ fun MenuWindow(
             }
         }
 
-        // Появляющаяся снизу красная кнопка удаления
         AnimatedVisibility(
             visible = selectedIds.isNotEmpty(),
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(16.dp)
                 .padding(bottom = 8.dp)
         ) {
@@ -188,28 +186,36 @@ fun MenuWindow(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .shadow(8.dp, RectangleShape),
-                shape = RectangleShape,
+                    .height(52.dp)
+                    .shadow(6.dp, RoundedCornerShape(12.dp)),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Red,
-                    contentColor = Color.White
+                    containerColor = colorScheme.error,
+                    contentColor = colorScheme.onError
                 )
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    modifier = Modifier.wrapContentWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        "Удалить Персонажа",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Удалить",
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    val buttonText = if (selectedIds.size > 1) {
+                        "Удалить персонажей (${selectedIds.size})"
+                    } else {
+                        "Удалить персонажа"
+                    }
+
+                    Text(
+                        text = buttonText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -227,7 +233,7 @@ fun CharacterCard(
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    
+
     val bitmap = remember(character.imageData) {
         if (character.imageData != null) {
             try {
@@ -250,7 +256,7 @@ fun CharacterCard(
         border = if (isSelected) BorderStroke(2.dp, colorScheme.primary) else null,
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) colorScheme.primaryContainer.copy(alpha = 0.3f)
-                             else colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            else colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
     ) {

@@ -1,16 +1,36 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+# Системные файлы и временные файлы ОС
 .DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# Файлы настроек IDE (Android Studio)
+.idea/
+*.iml
+*.ipr
+*.iws
+/out/
+/captures/
+
+# Локальные конфигурации (содержат пути к SDK и приватные ключи)
+/local.properties
+.gradle/config.properties
+
+# Кэш сборщика Gradle и компилятора Kotlin
+.gradle/
+.kotlin/
+
+# Результаты компиляции и сборки (Build Artifacts)
 build/
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-/.idea
+**/build/
+/build/
+
+# Специфичные папки нативной сборки (C/C++)
+.externalNativeBuild/
+.cxx/
+/ndkBuild/
+
+# Релизы и пакеты
+*.apk
+*.aar
+*.jar
