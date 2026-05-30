@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
@@ -45,11 +50,28 @@ class MainActivity : ComponentActivity() {
 
                 val navController = rememberNavController()
 
+                val springSpec = spring<IntOffset>(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+
                 NavHost(navController = navController, startDestination = "menu") {
-                    composable("menu") {
+                    composable(
+                        "menu",
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = springSpec)
+                        },
+                        popEnterTransition = {
+                            if (initialState.destination.route == "create_setup") {
+                                slideInVertically(initialOffsetY = { -it }, animationSpec = springSpec)
+                            } else {
+                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = springSpec)
+                            }
+                        }
+                    ) {
                         MenuWindow(
                             characters = characters,
-                            onNavigateToCreate = { navController.navigate("empty_window") },
+                            onNavigateToCreate = { navController.navigate("create_setup") },
                             onCharacterClick = { characterId ->
                                 navController.navigate("edit/$characterId")
                             },
@@ -64,79 +86,71 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    composable("empty_window") {
-                        Scaffold(
-                            containerColor = MaterialTheme.colorScheme.background,
-                            topBar = {
-                                CenterAlignedTopAppBar(
-                                    title = { Text("Новый персонаж") },
-                                    colors = TopAppBarDefaults.topAppBarColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
-                                    )
-                                )
-                            }
-                        ) { padding ->
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(padding)
-                                    .clickable { navController.navigate("create") },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Card(
-                                    modifier = Modifier
-                                        .size(300.dp, 400.dp)
-                                        .shadow(8.dp, RoundedCornerShape(24.dp)),
-                                    shape = RoundedCornerShape(24.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
-                                    )
-                                ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxSize(),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Person,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(120.dp),
-                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                                        )
-                                        Spacer(Modifier.height(24.dp))
-                                        Text(
-                                            "Нажмите, чтобы создать",
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                        )
-                                    }
+                    composable(
+                        "create_setup",
+                        enterTransition = {
+                            slideInVertically(initialOffsetY = { it }, animationSpec = springSpec)
+                        },
+                        exitTransition = {
+                            slideOutVertically(targetOffsetY = { it }, animationSpec = springSpec)
+                        },
+                        popExitTransition = {
+                            slideOutVertically(targetOffsetY = { it }, animationSpec = springSpec)
+                        }
+                    ) {
+                        CharacterCreationWindow(
+                            onNavigateBack = { navController.popBackStack() },
+                            onCharacterCreate = { newChar ->
+                                characters.add(newChar)
+                                characterRepository.saveCharacters(characters)
+                                navController.navigate("character_sheet/${newChar.id}") {
+                                    popUpTo("menu")
                                 }
                             }
-                        }
+                        )
                     }
 
-                    composable("create") {
+                    composable(
+                        route = "character_sheet/{characterId}",
+                        arguments = listOf(navArgument("characterId") { type = NavType.IntType }),
+                        enterTransition = {
+                            slideInVertically(initialOffsetY = { it }, animationSpec = springSpec)
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = springSpec)
+                        },
+                        popExitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = springSpec)
+                        }
+                    ) { backStackEntry ->
+                        val characterId = backStackEntry.arguments?.getInt("characterId")
+                        val character = characters.find { it.id == characterId }
+                        
                         CreateWindow(
-                            character = null,
-                            onNavigateBack = {
-                                navController.popBackStack("menu", inclusive = false)
-                            },
-                            onCharacterChange = { newCharacter ->
-                                val index = characters.indexOfFirst { it.id == newCharacter.id }
-                                if (index == -1) {
-                                    characters.add(newCharacter)
-                                } else {
-                                    characters[index] = newCharacter
+                            character = character,
+                            onNavigateBack = { navController.popBackStack("menu", false) },
+                            onCharacterChange = { updated ->
+                                val index = characters.indexOfFirst { it.id == updated.id }
+                                if (index != -1) {
+                                    characters[index] = updated
+                                    characterRepository.saveCharacters(characters)
                                 }
-                                characterRepository.saveCharacters(characters)
                             }
                         )
                     }
 
                     composable(
                         route = "edit/{characterId}",
-                        arguments = listOf(navArgument("characterId") { type = NavType.IntType })
+                        arguments = listOf(navArgument("characterId") { type = NavType.IntType }),
+                        enterTransition = {
+                            slideInHorizontally(initialOffsetX = { it }, animationSpec = springSpec)
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = springSpec)
+                        },
+                        popExitTransition = {
+                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = springSpec)
+                        }
                     ) { backStackEntry ->
                         val characterId = backStackEntry.arguments?.getInt("characterId")
                         val character = characters.find { it.id == characterId }

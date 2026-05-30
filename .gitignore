@@ -29,6 +29,7 @@ build/
 .externalNativeBuild/
 .cxx/
 /ndkBuild/
+/tmp
 
 # Релизы и пакеты
 *.apk
