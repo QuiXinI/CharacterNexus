@@ -11,6 +11,7 @@ Thumbs.db
 *.iws
 /out/
 /captures/
+.artifacts
 
 # Локальные конфигурации (содержат пути к SDK и приватные ключи)
 /local.properties
