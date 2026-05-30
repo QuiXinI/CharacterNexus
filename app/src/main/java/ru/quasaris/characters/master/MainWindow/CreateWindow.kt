@@ -198,7 +198,7 @@ fun CreateWindow(
                     isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
                     isSpeedPanelVisible = false; isLevelPanelVisible = false; isConditionsPanelVisible = false
                 },
-                conditionsCount = selectedConditions.size.toString(),
+                conditionsCount = exhaustion.toString(),
                 selectedConditions = selectedConditions,
                 onConditionsClick = {
                     isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false

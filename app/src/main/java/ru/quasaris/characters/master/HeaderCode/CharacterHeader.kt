@@ -161,7 +161,12 @@ fun CharacterHeader(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatIconBox(conditionsCount, R.drawable.ic_conditions, onClick = onConditionsClick, isHighlighted = selectedConditions.isNotEmpty() || exhaustion > 0)
+                StatIconBox(
+                    value = if (conditionsCount == "0" || conditionsCount.isEmpty()) "" else conditionsCount,
+                    iconRes = R.drawable.ic_conditions,
+                    onClick = onConditionsClick,
+                    isHighlighted = selectedConditions.isNotEmpty()
+                )
                 StatIconBox(activeSpeedValue, R.drawable.ic_speed, onClick = onSpeedClick, isHighlighted = true)
             }
         }

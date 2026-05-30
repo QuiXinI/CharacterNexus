@@ -68,7 +68,10 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}, isHighlig
             ),
         contentAlignment = Alignment.Center
     ) {
-        val tint = if (isHighlighted) colorScheme.error else colorScheme.primary.copy(alpha = 0.5f)
+        val tint = if (isHighlighted)
+            colorScheme.primary.copy(alpha = 0.75f)
+        else
+            colorScheme.onSurface.copy(alpha = 0.55f)
         
         if (iconRes == R.drawable.ic_sword) {
             Box(Modifier.fillMaxSize()) {

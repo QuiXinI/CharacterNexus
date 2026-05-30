@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import com.google.gson.Gson
+import ru.quasaris.characters.master.MainWindow.CombatCalculations
 import kotlin.math.floor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,6 +66,9 @@ fun CharacterDetailWindow(
     var experience by remember { mutableStateOf("50") }
     var nextLevelExp by remember { mutableStateOf("300") }
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList()) }
+    var exhaustion by remember { mutableStateOf(character?.exhaustion ?: 0) }
 
     var strength by remember { mutableStateOf(character?.strength ?: "10") }
     var dexterity by remember { mutableStateOf(character?.dexterity ?: "10") }
@@ -107,12 +111,26 @@ fun CharacterDetailWindow(
         return
     }
 
+    val statsMap = mapOf(
+        "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
+        "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma,
+        "level" to level
+    )
+
+    val acValue = CombatCalculations.calculateAC(character.activeArmorClassId, character.armorClassEntries, statsMap, character.isShieldActive, character.activeShieldId, character.shieldEntries)
+    val initValue = CombatCalculations.calculateInitiative(character.activeInitiativeId, character.initiativeEntries, statsMap, exhaustion)
+    val speedValue = CombatCalculations.calculateSpeed(character.activeSpeedId, character.speedEntries, statsMap, exhaustion)
+
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
-            Column(modifier = Modifier.background(colorScheme.surface).statusBarsPadding()) {
+            Column(modifier = Modifier
+                .background(colorScheme.surface)
+                .statusBarsPadding()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -147,7 +165,14 @@ fun CharacterDetailWindow(
                             modifier = Modifier
                                 .width(90.dp)
                                 .fillMaxHeight()
-                                .clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp, topEnd = 0.dp, bottomEnd = 0.dp))
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 20.dp,
+                                        bottomStart = 20.dp,
+                                        topEnd = 0.dp,
+                                        bottomEnd = 0.dp
+                                    )
+                                )
                                 .background(colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
@@ -157,11 +182,23 @@ fun CharacterDetailWindow(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .clip(RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 20.dp, bottomEnd = 20.dp))
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 0.dp,
+                                        bottomStart = 0.dp,
+                                        topEnd = 20.dp,
+                                        bottomEnd = 20.dp
+                                    )
+                                )
                                 .background(colorScheme.surface)
                         ) {
-                            Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(0.35f).background(colorScheme.primaryContainer))
-                            Row(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(0.35f)
+                                .background(colorScheme.primaryContainer))
+                            Row(modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.weight(0.4f))
                                 Text("$experience | $nextLevelExp", fontSize = 11.sp, color = colorScheme.onSurface)
                                 Spacer(Modifier.weight(0.6f))
@@ -173,33 +210,47 @@ fun CharacterDetailWindow(
 
                 // Quick Stats
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp, horizontal = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatIconBoxDetail("15", R.drawable.ic_shield)
-                        StatIconBoxDetail("+2", R.drawable.ic_sword)
+                        StatIconBoxDetail(acValue, R.drawable.ic_shield, isActive = true)
+                        StatIconBoxDetail(initValue, R.drawable.ic_sword, isActive = true)
                     }
                     Box(
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                            .height(55.dp)
+                            .border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp))
+                            .background(colorScheme.surface, RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Image(painter = painterResource(id = R.drawable.ic_health), contentDescription = null, modifier = Modifier.size(32.dp), colorFilter = ColorFilter.tint(Color(0xFF00C46F)))
                             Spacer(Modifier.width(6.dp))
-                            Text("10 / 10", color = Color(0xFF00C46F), fontSize = 16.sp)
+                            Text("${character.currentHp} / ${character.maxHp}", color = Color(0xFF00C46F), fontSize = 16.sp)
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatIconBoxDetail("1", R.drawable.ic_conditions)
-                        StatIconBoxDetail("30", R.drawable.ic_speed)
+                        StatIconBoxDetail(
+                            value = if (exhaustion > 0) exhaustion.toString() else "",
+                            iconRes = R.drawable.ic_conditions,
+                            isActive = selectedConditions.isNotEmpty()
+                        )
+                        StatIconBoxDetail(speedValue, R.drawable.ic_speed, isActive = true)
                     }
                 }
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues).background(colorScheme.background)) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .background(colorScheme.background)) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -207,11 +258,29 @@ fun CharacterDetailWindow(
                     .background(colorScheme.surface)
                     .verticalScroll(rememberScrollState())
             ) {
-                Box(modifier = Modifier.fillMaxWidth().height(12.dp).background(Brush.verticalGradient(colors = listOf(colorScheme.onSurface.copy(alpha = 0.15f), Color.Transparent))))
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .height(12.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                colorScheme.onSurface.copy(
+                                    alpha = 0.15f
+                                ), Color.Transparent
+                            )
+                        )
+                    ))
 
                 // Characteristics Header
-                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(44.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                    Row(modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         Text("Характеристики", fontSize = 18.sp, fontWeight = FontWeight.Normal, color = colorScheme.onPrimaryContainer, textAlign = TextAlign.Center, modifier = Modifier.weight(1.5f))
                         Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
@@ -219,8 +288,14 @@ fun CharacterDetailWindow(
                 }
 
                 // Profile Section
-                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(80.dp).clip(CircleShape).background(colorScheme.surfaceVariant).clickable { imagePickerLauncher.launch("image/*") }, contentAlignment = Alignment.Center) {
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(colorScheme.surfaceVariant)
+                        .clickable { imagePickerLauncher.launch("image/*") }, contentAlignment = Alignment.Center) {
                         if (tempImageUri != null) {
                             AsyncImage(model = tempImageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         } else if (character.imageData != null) {
@@ -233,8 +308,12 @@ fun CharacterDetailWindow(
                     }
                     Spacer(Modifier.width(16.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Имя") }, modifier = Modifier.fillMaxWidth().height(56.dp))
-                        OutlinedTextField(value = characterClass, onValueChange = { characterClass = it }, label = { Text("Класс") }, modifier = Modifier.fillMaxWidth().height(56.dp))
+                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Имя") }, modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp))
+                        OutlinedTextField(value = characterClass, onValueChange = { characterClass = it }, label = { Text("Класс") }, modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp))
                     }
                 }
 
@@ -256,12 +335,18 @@ fun CharacterDetailWindow(
 
                 Spacer(Modifier.height(16.dp))
                 
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { onDeleteCharacter(character) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(8.dp)) { Text("Удалить") }
+                Row(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(onClick = { onDeleteCharacter(character) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp), shape = RoundedCornerShape(8.dp)) { Text("Удалить") }
                     Button(onClick = {
                         val imageDataString = tempImageUri?.let { uri -> context.contentResolver.openInputStream(uri)?.use { Base64.encodeToString(it.readBytes(), Base64.DEFAULT) } } ?: character.imageData
-                        onSaveChanges(character.copy(name = name, characterClass = characterClass, order = order, level = level, imageData = imageDataString, strength = strength, dexterity = dexterity, constitution = constitution, intelligence = intelligence, wisdom = wisdom, charisma = charisma))
-                    }, modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(8.dp)) { Text("Сохранить") }
+                        onSaveChanges(character.copy(name = name, characterClass = characterClass, order = order, level = level, imageData = imageDataString, strength = strength, dexterity = dexterity, constitution = constitution, intelligence = intelligence, wisdom = wisdom, charisma = charisma, selectedConditions = selectedConditions, exhaustion = exhaustion))
+                    }, modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp), shape = RoundedCornerShape(8.dp)) { Text("Сохранить") }
                 }
                 Spacer(Modifier.height(24.dp))
             }
@@ -270,14 +355,16 @@ fun CharacterDetailWindow(
 }
 
 @Composable
-fun StatIconBoxDetail(value: String, iconRes: Int) {
+fun StatIconBoxDetail(value: String, iconRes: Int, isActive: Boolean = true) {
     val colorScheme = MaterialTheme.colorScheme
     Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-        val tint = colorScheme.primary.copy(alpha = 0.6f)
+        val tint = if (isActive) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.onSurface.copy(alpha = 0.12f)
         if (iconRes == R.drawable.ic_sword) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
+                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
             }
         } else {
             Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
@@ -304,16 +391,35 @@ fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, 
     val score = value.toIntOrNull() ?: 10
     val mod = floor((score - 10) / 2.0).toInt()
     val modStr = if (mod >= 0) "+$mod" else mod.toString()
-    Box(modifier = modifier.height(104.dp).shadow(2.dp, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).border(1.dp, colorScheme.outline.copy(0.5f), RoundedCornerShape(8.dp)).padding(8.dp)) {
+    Box(modifier = modifier
+        .height(104.dp)
+        .shadow(2.dp, RoundedCornerShape(8.dp))
+        .background(colorScheme.surface, RoundedCornerShape(8.dp))
+        .border(1.dp, colorScheme.outline.copy(0.5f), RoundedCornerShape(8.dp))
+        .padding(8.dp)) {
         Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
-        Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 25.dp, bottom = 5.dp).size(40.dp).rotate(-45f).clip(RoundedCornerShape(12.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier
+            .align(Alignment.BottomStart)
+            .padding(start = 25.dp, bottom = 5.dp)
+            .size(40.dp)
+            .rotate(-45f)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
             Text(modStr, modifier = Modifier.rotate(45f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onPrimaryContainer)
         }
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.surfaceVariant).border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(colorScheme.surfaceVariant)
+                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                 BasicTextField(value = value, onValueChange = { val num = it.filter { it.isDigit() }.toIntOrNull(); if (it.isEmpty()) onValueChange(""); else if (num != null && num in 1..30) onValueChange(it.filter { it.isDigit() }) }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.width(36.dp))
             }
-            Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.surface).border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(colorScheme.surface)
+                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                 Text(modStr, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
             }
         }
