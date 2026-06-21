@@ -44,7 +44,7 @@ fun ConditionsPanel(
     val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
     
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(4.dp, RoundedCornerShape(12.dp)).background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)).animateContentSize(animationSpec)) {
-        Text("Состояния", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.titleMedium, color = colorScheme.onSurfaceVariant)
+        Text("Состояния", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.titleLarge, color = colorScheme.onSurfaceVariant)
 
         ExhaustionSection(exhaustion, onExhaustionChange)
         HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.3f), thickness = 1.dp)
@@ -66,7 +66,7 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
             Text(
                 "Истощение", 
                 modifier = Modifier.weight(1f), 
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp), 
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
                 color = colorScheme.onSurface
             )
             
@@ -127,7 +127,7 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
         ) {
             Column(modifier = Modifier.padding(top = 12.dp)) {
                 if (exhaustion == 6) {
-                    Text("СМЕРТЬ", fontSize = 18.sp, color = colorScheme.error, fontWeight = FontWeight.ExtraBold)
+                    Text("Смерть", fontSize = 18.sp, color = colorScheme.error, fontWeight = FontWeight.ExtraBold)
                 }
                 Text("-${exhaustion * 2} к проверкам к20", fontSize = 16.sp, color = colorScheme.error, fontWeight = FontWeight.Medium)
                 Text("-${exhaustion * 5} фт к скорости", fontSize = 16.sp, color = colorScheme.error, fontWeight = FontWeight.Medium)

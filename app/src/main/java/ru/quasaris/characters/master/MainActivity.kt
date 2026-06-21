@@ -28,8 +28,12 @@ import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.History
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
 
@@ -42,13 +46,20 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            quasarisTheme(dynamicColor = true) {
-                val characters: SnapshotStateList<Character> = remember {
-                    mutableStateListOf<Character>().apply {
-                        addAll(characterRepository.loadCharacters())
-                    }
-                }
+            val settingsManager = remember { SettingsManager(applicationContext) }
+            var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
+            var lastCharacterId by remember { mutableIntStateOf(settingsManager.lastCharacterId) }
 
+            val characters: SnapshotStateList<Character> = remember {
+                mutableStateListOf<Character>().apply {
+                    addAll(characterRepository.loadCharacters())
+                }
+            }
+            
+            val lastCharacter = characters.find { it.id == lastCharacterId }
+            val avatarColor = lastCharacter?.themeSeedColorArgb ?: settingsManager.lastCharacterSeedColor
+
+            quasarisTheme(themeMode = themeMode, avatarColor = avatarColor) {
                 val navController = rememberNavController()
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
@@ -77,6 +88,20 @@ class MainActivity : ComponentActivity() {
                                 icon = { Icon(Icons.Default.Person, null) },
                                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                             )
+                            
+                            if (lastCharacterId != -1) {
+                                NavigationDrawerItem(
+                                    label = { Text("Последний персонаж") },
+                                    selected = false,
+                                    onClick = {
+                                        scope.launch { drawerState.close() }
+                                        navController.navigate("edit/$lastCharacterId")
+                                    },
+                                    icon = { Icon(Icons.Default.History, null) },
+                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                )
+                            }
+                            
                             NavigationDrawerItem(
                                 label = { Text("Настройки") },
                                 selected = currentRoute == "settings",
@@ -117,6 +142,10 @@ class MainActivity : ComponentActivity() {
                                     characters = characters,
                                     onNavigateToCreate = { navController.navigate("create_setup") },
                                     onCharacterClick = { characterId ->
+                                        val char = characters.find { it.id == characterId }
+                                        lastCharacterId = characterId
+                                        settingsManager.lastCharacterId = characterId
+                                        settingsManager.lastCharacterSeedColor = char?.themeSeedColorArgb
                                         navController.navigate("edit/$characterId")
                                     },
                                     onImportCharacter = { importedCharacter ->
@@ -126,13 +155,20 @@ class MainActivity : ComponentActivity() {
                                     onDeleteCharacters = { idsToDelete ->
                                         characters.removeAll { it.id in idsToDelete }
                                         characterRepository.saveCharacters(characters)
+                                        if (lastCharacterId in idsToDelete) {
+                                            lastCharacterId = -1
+                                            settingsManager.lastCharacterId = -1
+                                        }
                                     },
                                     onOpenDrawer = { scope.launch { drawerState.open() } }
                                 )
                             }
 
                             composable("settings") {
-                                SettingsWindow(onOpenDrawer = { scope.launch { drawerState.open() } })
+                                SettingsWindow(
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onThemeModeChange = { themeMode = it }
+                                )
                             }
 
                             composable(
@@ -143,6 +179,9 @@ class MainActivity : ComponentActivity() {
                                     onCharacterCreate = { newChar ->
                                         characters.add(newChar)
                                         characterRepository.saveCharacters(characters)
+                                        lastCharacterId = newChar.id
+                                        settingsManager.lastCharacterId = newChar.id
+                                        settingsManager.lastCharacterSeedColor = newChar.themeSeedColorArgb
                                         navController.navigate("edit/${newChar.id}") {
                                             popUpTo("menu")
                                         }
@@ -162,11 +201,15 @@ class MainActivity : ComponentActivity() {
                                     onNavigateBack = {
                                         navController.popBackStack()
                                     },
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
                                     onCharacterChange = { updatedCharacter ->
                                         val index = characters.indexOfFirst { it.id == updatedCharacter.id }
                                         if (index != -1) {
                                             characters[index] = updatedCharacter
                                             characterRepository.saveCharacters(characters)
+                                            if (updatedCharacter.id == lastCharacterId) {
+                                                settingsManager.lastCharacterSeedColor = updatedCharacter.themeSeedColorArgb
+                                            }
                                         }
                                     }
                                 )

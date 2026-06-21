@@ -8,12 +8,17 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import ru.quasaris.characters.master.AppThemeMode
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,
@@ -68,27 +73,44 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun quasarisTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true, // Костыль для <12 ведра, чтоб не крашилось
+fun CharacterTheme(
+    seedColor: Color?,
+    isDark: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColors
-        else -> LightColors
-    }
-
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
-            insetsController.isAppearanceLightNavigationBars = !darkTheme
+    val colorScheme = remember(seedColor, isDark) {
+        if (seedColor == null) {
+            if (isDark) DarkColors else LightColors
+        } else {
+            // Generates a scheme based on the seed color.
+            // In a real app, you might use material-color-utilities for better results.
+            if (isDark) {
+                darkColorScheme(
+                    primary = seedColor,
+                    onPrimary = if (seedColor.luminance() > 0.5f) Color.Black else Color.White,
+                    primaryContainer = seedColor.copy(alpha = 0.3f),
+                    onPrimaryContainer = Color.White,
+                    secondary = seedColor.copy(alpha = 0.8f),
+                    background = Color(0xFF121212),
+                    surface = Color(0xFF121212),
+                    onSurface = Color.White,
+                    surfaceVariant = seedColor.copy(alpha = 0.1f),
+                    onSurfaceVariant = Color.White
+                )
+            } else {
+                lightColorScheme(
+                    primary = seedColor,
+                    onPrimary = if (seedColor.luminance() > 0.5f) Color.Black else Color.White,
+                    primaryContainer = seedColor.copy(alpha = 0.2f),
+                    onPrimaryContainer = seedColor,
+                    secondary = seedColor.copy(alpha = 0.7f),
+                    background = Color.White,
+                    surface = Color.White,
+                    onSurface = Color.Black,
+                    surfaceVariant = seedColor.copy(alpha = 0.05f),
+                    onSurfaceVariant = Color.Black
+                )
+            }
         }
     }
 
@@ -97,4 +119,104 @@ fun quasarisTheme(
         typography = Typography,
         content = content
     )
+}
+
+@Composable
+fun quasarisTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = true,
+    themeMode: AppThemeMode = AppThemeMode.M3,
+    avatarColor: Int? = null,
+    content: @Composable () -> Unit
+) {
+    val context = LocalContext.current
+    
+    val colorScheme = remember(themeMode, darkTheme, avatarColor, dynamicColor) {
+        when (themeMode) {
+            AppThemeMode.M3 -> {
+                if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+                } else {
+                    if (darkTheme) DarkColors else LightColors
+                }
+            }
+            AppThemeMode.OFF -> {
+                darkColorScheme(
+                    primary = Color.White,
+                    onPrimary = Color.Black,
+                    primaryContainer = Color(0xFF222222),
+                    onPrimaryContainer = Color.White,
+                    secondary = Color.White,
+                    onSecondary = Color.Black,
+                    secondaryContainer = Color(0xFF111111),
+                    onSecondaryContainer = Color.White,
+                    background = Color.Black,
+                    onBackground = Color.White,
+                    surface = Color.Black,
+                    onSurface = Color.White,
+                    surfaceVariant = Color(0xFF121212),
+                    onSurfaceVariant = Color.White,
+                    outline = Color.White.copy(alpha = 0.6f),
+                    outlineVariant = Color.White.copy(alpha = 0.3f)
+                )
+            }
+            AppThemeMode.CHARACTER -> {
+                val seedColor = avatarColor?.let { Color(it) }
+                if (seedColor == null) {
+                    if (darkTheme) DarkColors else LightColors
+                } else {
+                    if (darkTheme) {
+                        darkColorScheme(
+                            primary = seedColor,
+                            onPrimary = if (seedColor.luminance() > 0.5f) Color.Black else Color.White,
+                            primaryContainer = seedColor.copy(alpha = 0.3f),
+                            onPrimaryContainer = Color.White,
+                            secondary = seedColor.copy(alpha = 0.8f),
+                            background = Color(0xFF121212),
+                            surface = Color(0xFF121212),
+                            onSurface = Color.White,
+                            surfaceVariant = seedColor.copy(alpha = 0.1f),
+                            onSurfaceVariant = Color.White
+                        )
+                    } else {
+                        lightColorScheme(
+                            primary = seedColor,
+                            onPrimary = if (seedColor.luminance() > 0.5f) Color.Black else Color.White,
+                            primaryContainer = seedColor.copy(alpha = 0.2f),
+                            onPrimaryContainer = seedColor,
+                            secondary = seedColor.copy(alpha = 0.7f),
+                            background = Color.White,
+                            surface = Color.White,
+                            onSurface = Color.Black,
+                            surfaceVariant = seedColor.copy(alpha = 0.05f),
+                            onSurfaceVariant = Color.Black
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography
+    ) {
+        ApplySideEffects(colorScheme, darkTheme, themeMode)
+        content()
+    }
+}
+
+@Composable
+private fun ApplySideEffects(colorScheme: ColorScheme, darkTheme: Boolean, themeMode: AppThemeMode) {
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !darkTheme && themeMode != AppThemeMode.OFF
+            insetsController.isAppearanceLightNavigationBars = !darkTheme && themeMode != AppThemeMode.OFF
+            window.statusBarColor = colorScheme.surface.toArgb()
+            window.navigationBarColor = colorScheme.surface.toArgb()
+        }
+    }
 }

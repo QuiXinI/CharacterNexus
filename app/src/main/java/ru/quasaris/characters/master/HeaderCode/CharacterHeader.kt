@@ -21,7 +21,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -55,11 +54,10 @@ fun CharacterHeader(
     level: String,
     experience: String,
     nextLevelExp: String,
-    selectedImageUri: Uri?,
     characterImageData: String?,
     onAvatarClick: () -> Unit,
     onLevelClick: () -> Unit,
-    onNavigateBack: () -> Unit,
+    onOpenDrawer: () -> Unit,
     activeACValue: String,
     onACClick: () -> Unit,
     onACLongClick: () -> Unit,
@@ -75,13 +73,15 @@ fun CharacterHeader(
     conditionsCount: String,
     selectedConditions: List<String>,
     onConditionsClick: () -> Unit,
-    exhaustion: Int,
     activeSpeedValue: String,
     onSpeedClick: () -> Unit,
     showAvatarMenu: Boolean,
     onDismissAvatarMenu: () -> Unit,
     onImagePickerClick: () -> Unit,
-    onDownloadClick: () -> Unit
+    onDownloadClick: () -> Unit,
+    selectedImageUri: Uri?,
+    onNavigateBack: () -> Unit,
+    exhaustion: Int
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val haptic = LocalHapticFeedback.current
@@ -90,7 +90,7 @@ fun CharacterHeader(
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onNavigateBack()
+                onOpenDrawer()
             }) { Icon(Icons.Default.Menu, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface) }
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 BasicTextField(
@@ -108,10 +108,23 @@ fun CharacterHeader(
                 }, contentAlignment = Alignment.Center) {
                     val context = LocalContext.current
                     val portraitFile = remember(characterImageData) {
-                        characterImageData?.let { ImageManager.getThumbnailFile(context, it) }
+                        if (characterImageData != null && characterImageData.length < 100) {
+                            ImageManager.getThumbnailFile(context, characterImageData)
+                        } else null
                     }
+                    val base64Bitmap = remember(characterImageData) {
+                        if (characterImageData != null && characterImageData.length >= 100) {
+                            try {
+                                val decoded = Base64.decode(characterImageData, Base64.DEFAULT)
+                                BitmapFactory.decodeByteArray(decoded, 0, decoded.size)?.asImageBitmap()
+                            } catch (_: Exception) { null }
+                        } else null
+                    }
+
                     if (portraitFile != null && portraitFile.exists()) {
                         AsyncImage(model = portraitFile, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    } else if (base64Bitmap != null) {
+                        Image(bitmap = base64Bitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
                         Icon(Icons.Default.Person, null, tint = colorScheme.onPrimaryContainer)
                     }

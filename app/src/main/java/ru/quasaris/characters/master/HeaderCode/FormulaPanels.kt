@@ -45,7 +45,7 @@ fun FormulaPanel(
     
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(4.dp, RoundedCornerShape(12.dp)).background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)).animateContentSize(animationSpec)) {
         Box(modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp)) {
-            Text(title, modifier = Modifier.align(Alignment.Center), style = MaterialTheme.typography.titleMedium, color = colorScheme.onSurfaceVariant)
+            Text(title, modifier = Modifier.align(Alignment.Center), style = MaterialTheme.typography.titleLarge, color = colorScheme.onSurfaceVariant)
             if (headerTrailing != null) {
                 Box(modifier = Modifier.align(Alignment.CenterEnd)) {
                     headerTrailing()

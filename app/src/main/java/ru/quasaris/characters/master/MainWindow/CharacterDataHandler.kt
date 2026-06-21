@@ -51,7 +51,8 @@ object CharacterDataHandler {
         activeShieldId: String? = null,
         imageData: String? = null,
         skilledProficiencies: List<String> = emptyList(),
-        skilledExpertise: List<String> = emptyList()
+        skilledExpertise: List<String> = emptyList(),
+        themeSeedColorArgb: Int? = null
     ): Character {
         return Character(
             id = id,
@@ -88,7 +89,8 @@ object CharacterDataHandler {
             shieldEntries = shieldEntries,
             activeShieldId = activeShieldId,
             skilledProficiencies = skilledProficiencies,
-            skilledExpertise = skilledExpertise
+            skilledExpertise = skilledExpertise,
+            themeSeedColorArgb = themeSeedColorArgb
         )
     }
 

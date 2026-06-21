@@ -2,7 +2,6 @@ package ru.quasaris.characters.master.MainWindow
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +31,8 @@ import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
 import ru.quasaris.characters.master.ImageManager
+import ru.quasaris.characters.master.PaletteHelper
+import android.graphics.BitmapFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.IntOffset
 fun CreateWindow(
     character: Character? = null,
     onNavigateBack: () -> Unit,
+    onOpenDrawer: () -> Unit,
     onCharacterChange: (Character) -> Unit
 ) {
     val context = LocalContext.current
@@ -80,11 +82,21 @@ fun CreateWindow(
 
     var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var characterImageData by remember { mutableStateOf(character?.imageData) }
+    var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             CoroutineScope(Dispatchers.IO).launch {
                 val newId = ImageManager.processAndSaveImage(context, it)
+                val portraitFile = ImageManager.getPortraitFile(context, newId)
+                var seedColor: Int? = null
+                if (portraitFile.exists()) {
+                    val bitmap = BitmapFactory.decodeFile(portraitFile.absolutePath)
+                    if (bitmap != null) {
+                        seedColor = PaletteHelper.extractSeedColor(bitmap)
+                    }
+                }
                 characterImageData = newId
+                themeSeedColorArgb = seedColor
             }
         }
     }
@@ -164,14 +176,14 @@ fun CreateWindow(
         strProf, dexProf, conProf, intProf, wisProf, chaProf, armorClassEntries, activeArmorClassId,
         initiativeEntries, activeInitiativeId, speedEntries, activeSpeedId,
         maxHp, currentHp, tempHp, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-        skilledProficiencies, skilledExpertise, characterImageData
+        skilledProficiencies, skilledExpertise, characterImageData, themeSeedColorArgb
     ) {
         val updated = CharacterDataHandler.createCharacter(
             charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
             speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-            characterImageData, skilledProficiencies, skilledExpertise
+            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb
         )
         onCharacterChange(updated)
     }
@@ -202,7 +214,9 @@ fun CreateWindow(
                     isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
                     isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                 },
-                onNavigateBack = onNavigateBack, activeACValue = activeACValue,
+                onNavigateBack = onNavigateBack,
+                onOpenDrawer = onOpenDrawer,
+                activeACValue = activeACValue,
                 onACClick = { isShieldActive = !isShieldActive },
                 onACLongClick = {
                     isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
@@ -353,4 +367,4 @@ fun CreateWindow(
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 892)
 @Composable
-fun CreateWindowPreview() { quasarisTheme { CreateWindow(onNavigateBack = {}, onCharacterChange = {}) } }
+fun CreateWindowPreview() { quasarisTheme { CreateWindow(onNavigateBack = {}, onOpenDrawer = {}, onCharacterChange = {}) } }

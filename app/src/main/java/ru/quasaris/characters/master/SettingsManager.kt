@@ -3,10 +3,25 @@ package ru.quasaris.characters.master
 import android.content.Context
 import androidx.core.content.edit
 
+enum class AppThemeMode {
+    M3, OFF, CHARACTER
+}
+
 class SettingsManager(context: Context) {
     private val prefs = context.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
 
-    var isModernLayout: Boolean
-        get() = prefs.getBoolean("is_modern_layout", true)
-        set(value) = prefs.edit { putBoolean("is_modern_layout", value) }
+    var themeMode: AppThemeMode
+        get() = AppThemeMode.valueOf(prefs.getString("theme_mode", AppThemeMode.M3.name) ?: AppThemeMode.M3.name)
+        set(value) = prefs.edit { putString("theme_mode", value.name) }
+
+    var lastCharacterId: Int
+        get() = prefs.getInt("last_character_id", -1)
+        set(value) = prefs.edit { putInt("last_character_id", value) }
+
+    var lastCharacterSeedColor: Int?
+        get() = if (prefs.contains("last_character_seed_color")) prefs.getInt("last_character_seed_color", 0) else null
+        set(value) = prefs.edit {
+            if (value != null) putInt("last_character_seed_color", value)
+            else remove("last_character_seed_color")
+        }
 }

@@ -1,7 +1,6 @@
 package ru.quasaris.characters.master.MainWindow
 
 import android.net.Uri
-import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.compose.runtime.Composable
 import ru.quasaris.characters.master.HeaderCode.CharacterHeader
 
@@ -19,6 +18,7 @@ fun CharacterIdentitySection(
     onDismissAvatarMenu: () -> Unit,
     onLevelClick: () -> Unit,
     onNavigateBack: () -> Unit,
+    onOpenDrawer: () -> Unit,
     activeACValue: String,
     onACClick: () -> Unit,
     onACLongClick: () -> Unit,
@@ -51,6 +51,7 @@ fun CharacterIdentitySection(
         onAvatarClick = onAvatarClick,
         onLevelClick = onLevelClick,
         onNavigateBack = onNavigateBack,
+        onOpenDrawer = onOpenDrawer,
         activeACValue = activeACValue,
         onACClick = onACClick,
         onACLongClick = onACLongClick,

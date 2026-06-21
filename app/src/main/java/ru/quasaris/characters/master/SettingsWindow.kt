@@ -16,11 +16,12 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsWindow(
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    onThemeModeChange: (AppThemeMode) -> Unit
 ) {
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
-    var isModernLayout by remember { mutableStateOf(settingsManager.isModernLayout) }
+    var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
     val colorScheme = MaterialTheme.colorScheme
 
     Scaffold(
@@ -54,30 +55,44 @@ fun SettingsWindow(
                 fontWeight = FontWeight.Bold
             )
             
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Современный M3 интерфейс",
-                        fontSize = 16.sp,
-                        color = colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Использовать новый компактный вид (выключите для Legacy)",
-                        fontSize = 12.sp,
-                        color = colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = isModernLayout,
-                    onCheckedChange = {
-                        isModernLayout = it
-                        settingsManager.isModernLayout = it
-                    }
+                Text(
+                    text = "Цвета приложения",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
                 )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = themeMode == AppThemeMode.M3,
+                        onClick = { 
+                            themeMode = AppThemeMode.M3
+                            settingsManager.themeMode = AppThemeMode.M3 
+                            onThemeModeChange(AppThemeMode.M3)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                    ) { Text("M3") }
+                    SegmentedButton(
+                        selected = themeMode == AppThemeMode.OFF,
+                        onClick = { 
+                            themeMode = AppThemeMode.OFF
+                            settingsManager.themeMode = AppThemeMode.OFF 
+                            onThemeModeChange(AppThemeMode.OFF)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                    ) { Text("Oled") }
+                    SegmentedButton(
+                        selected = themeMode == AppThemeMode.CHARACTER,
+                        onClick = { 
+                            themeMode = AppThemeMode.CHARACTER
+                            settingsManager.themeMode = AppThemeMode.CHARACTER 
+                            onThemeModeChange(AppThemeMode.CHARACTER)
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                    ) { Text("Персонаж BETA") }
+                }
             }
             
             HorizontalDivider(color = colorScheme.outlineVariant)
@@ -90,7 +105,7 @@ fun SettingsWindow(
             )
             
             Text(
-                text = "D&D Character Sheet Master\nВерсия 2.0.0 (M3 Refactor)",
+                text = "Мастер Персонажей\nВерсия 1.7",
                 fontSize = 14.sp,
                 color = colorScheme.onSurfaceVariant
             )

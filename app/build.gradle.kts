@@ -12,8 +12,8 @@ android {
         applicationId = "ru.quasaris.characters.master"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.6.3.1"
+        versionCode = 2
+        versionName = "1.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("androidx.navigation:navigation-compose:2.9.6")
+    implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.compose.material:material-icons-extended-android:1.7.0")

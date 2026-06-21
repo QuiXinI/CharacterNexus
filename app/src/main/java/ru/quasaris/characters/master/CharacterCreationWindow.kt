@@ -6,17 +6,16 @@ import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -36,9 +35,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import ru.quasaris.characters.master.ui.MorphingPolygonShape
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
-import java.io.ByteArrayOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,16 +67,34 @@ fun CharacterCreationWindow(
         }
     }
 
+    val scope = rememberCoroutineScope()
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
-            try {
-                context.contentResolver.openInputStream(it)?.use { input ->
-                    val bytes = input.readBytes()
-                    imageData = Base64.encodeToString(bytes, Base64.DEFAULT)
-                }
-            } catch (e: Exception) { e.printStackTrace() }
+            scope.launch {
+                try {
+                    val newId = ImageManager.processAndSaveImage(context, it)
+                    imageData = newId
+                } catch (e: Exception) { e.printStackTrace() }
+            }
         }
     }
+
+    val bitmap = remember(imageData) {
+        if (imageData != null) {
+            try {
+                if (imageData!!.length > 100) {
+                    val decoded = Base64.decode(imageData, Base64.DEFAULT)
+                    BitmapFactory.decodeByteArray(decoded, 0, decoded.size)
+                } else {
+                    val portraitFile = ImageManager.getPortraitFile(context, imageData!!)
+                    if (portraitFile.exists()) {
+                        BitmapFactory.decodeFile(portraitFile.absolutePath)
+                    } else null
+                }
+            } catch (_: Exception) { null }
+        } else null
+    }
+    val themeSeedColorArgb = rememberSeedColor(bitmap)
 
     fun getXpForLevel(level: Int): String {
         return when (level) {
@@ -111,7 +128,7 @@ fun CharacterCreationWindow(
                 title = { Text("Создание персонажа", fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -142,7 +159,8 @@ fun CharacterCreationWindow(
                             constitution = (baseStats[2] + indicatorStates[2]).toString(),
                             intelligence = (baseStats[3] + indicatorStates[3]).toString(),
                             wisdom = (baseStats[4] + indicatorStates[4]).toString(),
-                            charisma = (baseStats[5] + indicatorStates[5]).toString()
+                            charisma = (baseStats[5] + indicatorStates[5]).toString(),
+                            themeSeedColorArgb = themeSeedColorArgb
                         )
                         onCharacterCreate(newChar)
                     },
@@ -224,14 +242,22 @@ fun CharacterInfoSection(
     imageData: String?,
     onAvatarClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
 
     val bitmap = remember(imageData) {
         if (imageData != null) {
             try {
-                val decoded = Base64.decode(imageData, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(decoded, 0, decoded.size)?.asImageBitmap()
-            } catch (e: Exception) { null }
+                if (imageData.length > 100) {
+                    val decoded = Base64.decode(imageData, Base64.DEFAULT)
+                    BitmapFactory.decodeByteArray(decoded, 0, decoded.size)?.asImageBitmap()
+                } else {
+                    val portraitFile = ImageManager.getPortraitFile(context, imageData)
+                    if (portraitFile.exists()) {
+                        BitmapFactory.decodeFile(portraitFile.absolutePath)?.asImageBitmap()
+                    } else null
+                }
+            } catch (_: Exception) { null }
         } else null
     }
 

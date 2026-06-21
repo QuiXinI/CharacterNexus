@@ -31,7 +31,7 @@ data class Character(
     val name: String,
     val characterClass: String,
     val order: String,
-    val imageData: String? = null, // Stores UUID reference ID
+    val imageData: String? = null,
     val level: String = "1",
     val experience: String = "0",
     val strength: String = "10",
@@ -61,7 +61,8 @@ data class Character(
     val shieldEntries: List<ShieldEntry> = listOf(ShieldEntry(name = "Базовый Щит", formula = "2")),
     val activeShieldId: String? = shieldEntries.firstOrNull()?.id,
     val skilledProficiencies: List<String> = emptyList(), // Track proficient skills
-    val skilledExpertise: List<String> = emptyList() // Track expertise skills
+    val skilledExpertise: List<String> = emptyList(), // Track expertise skills
+    val themeSeedColorArgb: Int? = null
 )
 
 data class ShieldEntry(
