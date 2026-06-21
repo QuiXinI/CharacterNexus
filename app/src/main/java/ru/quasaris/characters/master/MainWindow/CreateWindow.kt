@@ -2,6 +2,8 @@ package ru.quasaris.characters.master.MainWindow
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,6 +31,11 @@ import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
+import ru.quasaris.characters.master.ImageManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.compose.ui.unit.IntOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +79,15 @@ fun CreateWindow(
     var showHpDialog by remember { mutableStateOf(false) }
 
     var selectedImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { selectedImageUri = it }
+    var characterImageData by remember { mutableStateOf(character?.imageData) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            CoroutineScope(Dispatchers.IO).launch {
+                val newId = ImageManager.processAndSaveImage(context, it)
+                characterImageData = newId
+            }
+        }
+    }
 
     var isLevelPanelVisible by remember { mutableStateOf(false) }
     var isArmorClassPanelVisible by remember { mutableStateOf(false) }
@@ -110,6 +125,9 @@ fun CreateWindow(
 
     var showAvatarMenu by remember { mutableStateOf(false) }
     val charId = remember { character?.id ?: (0..Int.MAX_VALUE).random() }
+    var isAdvancedMode by remember { mutableStateOf(false) }
+    var skilledProficiencies by remember { mutableStateOf(character?.skilledProficiencies ?: emptyList()) }
+    var skilledExpertise by remember { mutableStateOf(character?.skilledExpertise ?: emptyList()) }
 
     // Derived values
     val statsMap = mapOf(
@@ -144,27 +162,31 @@ fun CreateWindow(
     LaunchedEffect(
         name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
         strProf, dexProf, conProf, intProf, wisProf, chaProf, armorClassEntries, activeArmorClassId,
-        initiativeEntries, activeInitiativeId, speedEntries, activeSpeedId, selectedImageUri,
-        maxHp, currentHp, tempHp, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId
+        initiativeEntries, activeInitiativeId, speedEntries, activeSpeedId,
+        maxHp, currentHp, tempHp, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
+        skilledProficiencies, skilledExpertise, characterImageData
     ) {
         val updated = CharacterDataHandler.createCharacter(
             charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
-            speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId, character?.imageData, context, selectedImageUri
+            speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
+            characterImageData, skilledProficiencies, skilledExpertise
         )
         onCharacterChange(updated)
     }
 
-    val fileCreator = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    val fileCreator = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/lsskiller")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val currentChar = CharacterDataHandler.createCharacter(
             charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
-            speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId, character?.imageData, context, selectedImageUri
+            speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
+            characterImageData, skilledProficiencies, skilledExpertise
         )
-        CharacterDataHandler.exportToJson(context, uri, currentChar)
+        val scope = CoroutineScope(Dispatchers.IO)
+        CharacterDataHandler.exportToLssKiller(context, uri, currentChar, scope)
     }
 
     Scaffold(
@@ -173,7 +195,7 @@ fun CreateWindow(
             CharacterIdentitySection(
                 name = name, onNameChange = { name = it },
                 level = level, experience = experience, nextLevelExp = nextLevelExp,
-                selectedImageUri = selectedImageUri, characterImageData = character?.imageData,
+                selectedImageUri = selectedImageUri, characterImageData = characterImageData,
                 showAvatarMenu = showAvatarMenu, onAvatarClick = { showAvatarMenu = true },
                 onDismissAvatarMenu = { showAvatarMenu = false },
                 onLevelClick = {
@@ -218,6 +240,7 @@ fun CreateWindow(
         Box(modifier = Modifier.fillMaxSize().padding(padding).background(colorScheme.background).clickable(remember { MutableInteractionSource() }, null) { 
             focusManager.clearFocus(); acDeleteConfirmId = null; initDeleteConfirmId = null; speedDeleteConfirmId = null 
         }) {
+            // Multi-Phase Synchronized Animation
             Column(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(colorScheme.surface).verticalScroll(rememberScrollState())) {
                 ExpandingPanelsSection(
                     isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it },
@@ -259,17 +282,48 @@ fun CreateWindow(
                     onSpeedDeleteReq = { speedDeleteConfirmId = it }, onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
                 )
 
-                Button(onClick = {}, modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp, bottom = 20.dp).width(220.dp).height(44.dp), colors = ButtonDefaults.buttonColors(containerColor = colorScheme.secondaryContainer, contentColor = colorScheme.onSecondaryContainer), shape = RoundedCornerShape(8.dp), elevation = ButtonDefaults.buttonElevation(4.dp)) { Text("Расширенный режим", fontSize = 14.sp) }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 12.dp, bottom = 20.dp)
+                        .width(220.dp)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colorScheme.secondaryContainer)
+                        .clickable { isAdvancedMode = !isAdvancedMode },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        if (isAdvancedMode) "Обычный режим" else "Расширенный режим",
+                        fontSize = 14.sp,
+                        color = colorScheme.onSecondaryContainer
+                    )
+                }
                 
-                AttributesSection(
-                    strength = strength, onStrengthChange = { strength = it }, strProf = strProf, onStrProfChange = { strProf = it },
-                    intelligence = intelligence, onIntelligenceChange = { intelligence = it }, intProf = intProf, onIntProfChange = { intProf = it },
-                    dexterity = dexterity, onDexterityChange = { dexterity = it }, dexProf = dexProf, onDexProfChange = { dexProf = it },
-                    wisdom = wisdom, onWisdomChange = { wisdom = it }, wisProf = wisProf, onWisProfChange = { wisProf = it },
-                    constitution = constitution, onConstitutionChange = { constitution = it }, conProf = conProf, onConProfChange = { conProf = it },
-                    charisma = charisma, onCharismaChange = { charisma = it }, chaProf = chaProf, onChaProfChange = { chaProf = it },
-                    evalPB = evalPB
-                )
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    AttributesSection(
+                        strength = strength, onStrengthChange = { strength = it }, strProf = strProf, onStrProfChange = { strProf = it },
+                        intelligence = intelligence, onIntelligenceChange = { intelligence = it }, intProf = intProf, onIntProfChange = { intProf = it },
+                        dexterity = dexterity, onDexterityChange = { dexterity = it }, dexProf = dexProf, onDexProfChange = { dexProf = it },
+                        wisdom = wisdom, onWisdomChange = { wisdom = it }, wisProf = wisProf, onWisProfChange = { wisProf = it },
+                        constitution = constitution, onConstitutionChange = { constitution = it }, conProf = conProf, onConProfChange = { conProf = it },
+                        charisma = charisma, onCharismaChange = { charisma = it }, chaProf = chaProf, onChaProfChange = { chaProf = it },
+                        evalPB = evalPB,
+                        isAdvancedMode = isAdvancedMode,
+                        skilledProficiencies = skilledProficiencies,
+                        skilledExpertise = skilledExpertise,
+                        onSkillClick = { skill ->
+                            if (skilledExpertise.contains(skill)) {
+                                skilledExpertise = skilledExpertise - skill
+                            } else if (skilledProficiencies.contains(skill)) {
+                                skilledExpertise = skilledExpertise + skill
+                                skilledProficiencies = skilledProficiencies - skill
+                            } else {
+                                skilledProficiencies = skilledProficiencies + skill
+                            }
+                        }
+                    )
+                }
                 
                 Spacer(Modifier.height(24.dp))
             }

@@ -60,7 +60,25 @@ fun LevelPanel(
         Text("Уровень и Опыт", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.titleMedium, color = colorScheme.onSurfaceVariant)
         Row(modifier = Modifier.fillMaxWidth().height(48.dp).clickable { ltv = ltv.copy(selection = TextRange(level.length)); fl.requestFocus() }, verticalAlignment = Alignment.CenterVertically) {
             Text("Уровень персонажа", modifier = Modifier.padding(start = 16.dp).weight(1f), fontSize = 14.sp, color = colorScheme.onSurfaceVariant)
-            BasicTextField(value = ltv, onValueChange = { textFieldValue -> ltv = textFieldValue; val f = textFieldValue.text.filter { it.isDigit() }; if (f.isEmpty()) onLevelChange("") else { val n = f.toIntOrNull(); if (n != null && n in 0..20) onLevelChange(n.toString()) } }, textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold), modifier = Modifier.width(100.dp).padding(end = 16.dp).focusRequester(fl).onFocusChanged { state -> if (!state.isFocused) { if (level.isEmpty()) onLevelChange("0") } }, cursorBrush = SolidColor(colorScheme.primary), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+            BasicTextField(value = ltv, onValueChange = { textFieldValue -> 
+                ltv = textFieldValue
+                val f = textFieldValue.text.filter { it.isDigit() }
+                if (f.isEmpty()) {
+                    onLevelChange("")
+                } else {
+                    val n = f.toIntOrNull()
+                    if (n != null && n in 0..100) {
+                        onLevelChange(n.toString())
+                        val milestone = if (n >= 20) 355000 else getPreviousLevelThreshold(n.toString()).toIntOrNull() ?: 0
+                        val currentExp = exp.toIntOrNull() ?: 0
+                        if (n <= 20) {
+                             onExpChange(milestone.toString())
+                        } else if (currentExp < 355000) {
+                             onExpChange("355000")
+                        }
+                    }
+                }
+            }, textStyle = TextStyle(textAlign = TextAlign.End, fontSize = 16.sp, color = colorScheme.onSurface, fontWeight = FontWeight.Bold), modifier = Modifier.width(100.dp).padding(end = 16.dp).focusRequester(fl).onFocusChanged { state -> if (!state.isFocused) { if (level.isEmpty()) onLevelChange("0") } }, cursorBrush = SolidColor(colorScheme.primary), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
         }
         HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f))
         Row(modifier = Modifier.fillMaxWidth().height(48.dp).clickable { etv = etv.copy(selection = TextRange(exp.length)); fe.requestFocus() }, verticalAlignment = Alignment.CenterVertically) {

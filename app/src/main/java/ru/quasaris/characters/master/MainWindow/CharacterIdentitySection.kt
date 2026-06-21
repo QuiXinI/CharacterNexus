@@ -37,7 +37,7 @@ fun CharacterIdentitySection(
     exhaustion: Int,
     activeSpeedValue: String,
     onSpeedClick: () -> Unit,
-    imagePicker: ManagedActivityResultLauncher<String, Uri?>,
+    imagePicker: androidx.activity.result.ActivityResultLauncher<String>,
     onDownloadClick: (String) -> Unit
 ) {
     CharacterHeader(
@@ -71,13 +71,13 @@ fun CharacterIdentitySection(
         onSpeedClick = onSpeedClick,
         showAvatarMenu = showAvatarMenu,
         onDismissAvatarMenu = onDismissAvatarMenu,
-        onImagePickerClick = { 
+        onImagePickerClick = {
             onDismissAvatarMenu()
-            imagePicker.launch("image/*") 
+            imagePicker.launch("image/*")
         },
         onDownloadClick = {
             onDismissAvatarMenu()
-            onDownloadClick("${name.ifEmpty { "character" }}.json")
+            onDownloadClick("${name.ifEmpty { "character" }}.lsskiller")
         }
     )
 }

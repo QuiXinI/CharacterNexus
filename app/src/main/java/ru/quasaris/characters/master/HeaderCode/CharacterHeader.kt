@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntSize
@@ -105,15 +106,14 @@ fun CharacterHeader(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onAvatarClick() 
                 }, contentAlignment = Alignment.Center) {
-                    if (selectedImageUri != null) AsyncImage(model = selectedImageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    else {
-                        val bm = remember(characterImageData) {
-                            if (characterImageData != null) {
-                                try { val d = Base64.decode(characterImageData, Base64.DEFAULT); BitmapFactory.decodeByteArray(d, 0, d.size)?.asImageBitmap() } catch (_: Exception) { null }
-                            } else null
-                        }
-                        if (bm != null) Image(bitmap = bm, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        else Icon(Icons.Default.Person, null, tint = colorScheme.onPrimaryContainer)
+                    val context = LocalContext.current
+                    val portraitFile = remember(characterImageData) {
+                        characterImageData?.let { ImageManager.getThumbnailFile(context, it) }
+                    }
+                    if (portraitFile != null && portraitFile.exists()) {
+                        AsyncImage(model = portraitFile, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    } else {
+                        Icon(Icons.Default.Person, null, tint = colorScheme.onPrimaryContainer)
                     }
                 }
                 DropdownMenu(expanded = showAvatarMenu, onDismissRequest = onDismissAvatarMenu) {
@@ -128,20 +128,59 @@ fun CharacterHeader(
                 }
             }
         }
-        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).height(24.dp).shadow(2.dp, RoundedCornerShape(20.dp)).background(colorScheme.surface, RoundedCornerShape(20.dp)).padding(2.dp).clickable { 
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onLevelClick() 
-        }) {
-            Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.width(90.dp).fillMaxHeight().clip(RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text("$level уровень", fontSize = 11.sp, color = colorScheme.onPrimaryContainer) }
-                val pr = remember(experience, nextLevelExp) { val c = experience.toFloatOrNull() ?: 0f; val n = nextLevelExp.toFloatOrNull() ?: 0f; if (n <= 0f) 1f else (c / n).coerceIn(0f, 1f) }
-                Box(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)).background(colorScheme.surface)) {
-                    Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(pr).background(colorScheme.primaryContainer))
-                    Row(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Spacer(Modifier.weight(0.4f)); Text("$experience | $nextLevelExp", fontSize = 11.sp, color = colorScheme.onSurface); Spacer(Modifier.weight(0.6f))
-                        val nxt = (level.toIntOrNull() ?: 0) + 1; Text(if (nxt <= 20) "$nxt" else "", fontSize = 11.sp, color = colorScheme.onSurface)
-                    }
-                }
+        Box(modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .height(32.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .clickable { 
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onLevelClick() 
+            }
+        ) {
+            val pr = remember(experience, nextLevelExp, level) {
+                val currentXp = experience.toFloatOrNull() ?: 0f
+                val nextXp = nextLevelExp.toFloatOrNull() ?: 0f
+                val prevLevelXp = getPreviousLevelThreshold(level).toFloatOrNull() ?: 0f
+                val totalNeededForLevel = nextXp - prevLevelXp
+                val progressInLevel = currentXp - prevLevelXp
+                if (totalNeededForLevel <= 0f) 1f else (progressInLevel / totalNeededForLevel).coerceIn(0f, 1f)
+            }
+            
+            // Progress Fill
+            Box(modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(pr)
+                .background(colorScheme.primary.copy(alpha = 0.2f))
+            )
+            
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp), 
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "$level Уровень",
+                    fontSize = 12.sp, 
+                    fontWeight = FontWeight.Black,
+                    color = colorScheme.primary
+                )
+                
+                Text(
+                    text = "$experience / $nextLevelExp Опыта",
+                    fontSize = 11.sp, 
+                    fontWeight = FontWeight.Medium,
+                    color = colorScheme.onSurfaceVariant
+                )
+                
+                val nxt = (level.toIntOrNull() ?: 0) + 1
+                Text(
+                    text = "$nxt", 
+                    fontSize = 12.sp, 
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.outline
+                )
             }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -156,8 +195,8 @@ fun CharacterHeader(
             }, contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(painterResource(healthIcon), null, modifier = Modifier.size(32.dp), colorFilter = ColorFilter.tint(healthColor))
-                    Spacer(Modifier.width(6.dp)); Text("$currentHp / ${maxHp.toIntOrNull() ?: 0}", color = healthColor, fontSize = 15.sp)
-                    if ((tempHp.toIntOrNull() ?: 0) > 0) Text(" (+$tempHp)", color = healthColor.copy(alpha = 0.7f), fontSize = 13.sp)
+                    Spacer(Modifier.width(6.dp)); Text("$currentHp / ${maxHp.toIntOrNull() ?: 0}", color = healthColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    if ((tempHp.toIntOrNull() ?: 0) > 0) Text(" (+$tempHp)", color = healthColor.copy(alpha = 0.7f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

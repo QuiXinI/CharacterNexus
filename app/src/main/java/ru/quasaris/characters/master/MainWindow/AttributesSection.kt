@@ -1,20 +1,21 @@
 package ru.quasaris.characters.master.MainWindow
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -22,7 +23,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.quasaris.characters.master.HeaderCode.SquirclePath
 import ru.quasaris.characters.master.HeaderCode.calculateModifier
 
 @Composable
@@ -33,57 +33,214 @@ fun AttributesSection(
     wisdom: String, onWisdomChange: (String) -> Unit, wisProf: Boolean, onWisProfChange: (Boolean) -> Unit,
     constitution: String, onConstitutionChange: (String) -> Unit, conProf: Boolean, onConProfChange: (Boolean) -> Unit,
     charisma: String, onCharismaChange: (String) -> Unit, chaProf: Boolean, onChaProfChange: (Boolean) -> Unit,
-    evalPB: String
+    evalPB: String,
+    isAdvancedMode: Boolean,
+    skilledProficiencies: List<String>,
+    skilledExpertise: List<String>,
+    onSkillClick: (String) -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange)
-            StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange)
+    val animDuration = 600
+
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        // --- Compact Mode Layer ---
+        AnimatedVisibility(
+            visible = !isAdvancedMode,
+            enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeOut()
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange)
+                    StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange)
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange)
+                    StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange)
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatCard("Телосложение", constitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange)
+                    StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange)
+                }
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange)
-            StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange)
+
+        // --- Advanced Mode Layer ---
+        AnimatedVisibility(
+            visible = isAdvancedMode,
+            enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(animDuration)) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(animDuration)) + fadeOut()
+        ) {
+            val stats = listOf(
+                StatInfo("STR", "Сила", strength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
+                StatInfo("DEX", "Ловкость", dexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
+                StatInfo("CON", "Телосложение", constitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
+                StatInfo("INT", "Интеллект", intelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
+                StatInfo("WIS", "Мудрость", wisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
+                StatInfo("CHA", "Харизма", charisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
+            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                stats.forEach { stat ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange)
+                        stat.skills.forEach { skill ->
+                            SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick)
+                        }
+                    }
+                }
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StatCard("Телосложение", constitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange)
-            StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange)
-        }
-    }
-    
-    Spacer(Modifier.height(16.dp))
-    Text("Пассивные проверки", modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp), textAlign = TextAlign.Center, fontSize = 15.sp, color = colorScheme.onSurface)
-    Column(modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(colorScheme.primary.copy(alpha = 0.1f)).padding(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        PassiveCheckRow("Анализ (Интеллект)", (10 + calculateModifier(intelligence)).toString())
-        PassiveCheckRow("Внимательность (Мудрость)", (10 + calculateModifier(wisdom)).toString())
-        PassiveCheckRow("Проницательность (Мудрость)", (10 + calculateModifier(wisdom)).toString())
     }
 }
+
+data class StatInfo(
+    val id: String,
+    val label: String,
+    val value: String,
+    val isProf: Boolean,
+    val onValueChange: (String) -> Unit,
+    val onProfChange: (Boolean) -> Unit,
+    val skills: List<String>
+)
 
 @Composable
 fun StatCard(label: String, value: String, profB: String, isP: Boolean, modifier: Modifier = Modifier, onValue: (String) -> Unit, onPToggle: (Boolean) -> Unit) {
-    val colorScheme = MaterialTheme.colorScheme; val base = calculateModifier(value); val total = base + (if (isP) profB.toIntOrNull() ?: 0 else 0)
-    Box(modifier = modifier.height(104.dp).shadow(2.dp, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).border(1.dp, colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(8.dp)).padding(8.dp)) {
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-        Box(modifier = Modifier.align(Alignment.BottomStart).padding(start = 22.dp, bottom = 2.dp).size(38.dp).rotate(if (isP) -45f else 0f).clip(if (isP) SquirclePath else RoundedCornerShape(8.dp)).background(if (isP) colorScheme.primaryContainer else colorScheme.surfaceVariant).border(1.dp, if (isP) colorScheme.primary else colorScheme.outline.copy(alpha = 0.2f), if (isP) SquirclePath else RoundedCornerShape(8.dp)).clickable { onPToggle(!isP) }, contentAlignment = Alignment.Center) {
-            Text(if (total >= 0) "+$total" else "$total", modifier = Modifier.rotate(if (isP) 45f else 0f), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+    val colorScheme = MaterialTheme.colorScheme
+    val base = calculateModifier(value)
+    val pb = profB.toIntOrNull() ?: 0
+    val total = base + (if (isP) pb else 0)
+    
+    Box(modifier = modifier
+        .height(96.dp)
+        .clip(RoundedCornerShape(12.dp))
+        .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
+        .border(1.dp, colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+        .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        // TOP ROW: LABEL (LEFT) | VALUE (RIGHT)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+            Text(
+                label, 
+                fontSize = 18.sp, 
+                fontWeight = FontWeight.Black, 
+                color = colorScheme.onSurfaceVariant
+            )
+            
+            Box(modifier = Modifier
+                .width(48.dp)
+                .height(36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                BasicTextField(
+                    value = value,
+                    onValueChange = { val f = it.filter { it.isDigit() }; if (f.isEmpty()) onValue("") else { val n = f.toIntOrNull(); if (n != null && n in 1..30) onValue(f) } },
+                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface),
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
         }
-        Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.surfaceVariant).border(1.dp, colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                BasicTextField(value = value, onValueChange = { val f = it.filter { it.isDigit() }; if (f.isEmpty()) onValue("") else { val n = f.toIntOrNull(); if (n != null && n in 1..30) onValue(f) } }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface), modifier = Modifier.width(32.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+
+        // BOTTOM AREA
+        Row(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            // SAVE ON THE LEFT
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onPToggle(!isP) }
+                    .background(if (isP) colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(if (isP) colorScheme.primary else colorScheme.outline.copy(alpha = 0.3f))
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Спас.", 
+                    fontSize = 16.sp, 
+                    fontWeight = FontWeight.Bold, 
+                    color = colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (total >= 0) "+$total" else "$total",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isP) colorScheme.primary else colorScheme.onSurface
+                )
             }
-            Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.surface).border(1.dp, colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                Text(if (base >= 0) "+$base" else "$base", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
+
+            // MODIFIER BELOW VALUE (RIGHT ALIGNED)
+            Text(
+                if (base >= 0) "+$base" else "$base",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary,
+                modifier = Modifier.padding(end = 4.dp)
+            )
         }
     }
 }
 
 @Composable
-fun PassiveCheckRow(label: String, value: String) {
+fun SkillSubPlate(
+    name: String,
+    isProficient: Boolean,
+    isExpert: Boolean,
+    pbStr: String,
+    attrValue: String,
+    onClick: (String) -> Unit
+) {
     val colorScheme = MaterialTheme.colorScheme
-    Row(modifier = Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.primary.copy(alpha = 0.2f)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, modifier = Modifier.padding(start = 12.dp), fontSize = 13.sp, color = colorScheme.onSurface)
-        Text(value, modifier = Modifier.padding(end = 12.dp), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+    val pb = pbStr.toIntOrNull() ?: 0
+    val baseMod = calculateModifier(attrValue)
+    val total = baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(38.dp)
+            .padding(start = 16.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (isExpert) colorScheme.primary.copy(alpha = 0.18f)
+                else if (isProficient) colorScheme.primary.copy(alpha = 0.1f)
+                else colorScheme.surfaceVariant.copy(alpha = 0.25f)
+            )
+            .clickable { onClick(name) }
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(modifier = Modifier
+                .size(10.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(if (isProficient || isExpert) colorScheme.primary else colorScheme.outline.copy(alpha = 0.2f))
+            )
+            Box(modifier = Modifier
+                .size(10.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(if (isExpert) colorScheme.primary else Color.Transparent)
+                .border(0.8.dp, if (isExpert) Color.Transparent else colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(2.dp))
+            )
+        }
+        
+        Spacer(Modifier.width(12.dp))
+        Text(
+            name, 
+            modifier = Modifier.weight(1f), 
+            fontSize = 17.sp,
+            fontWeight = FontWeight.ExtraBold, 
+            color = colorScheme.onSurface
+        )
+        Text(
+            if (total >= 0) "+$total" else "$total",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface
+        )
     }
 }

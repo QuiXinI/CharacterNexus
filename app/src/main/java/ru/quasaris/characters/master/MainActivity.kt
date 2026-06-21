@@ -26,6 +26,13 @@ import androidx.navigation.navArgument
 import ru.quasaris.characters.master.MainWindow.CreateWindow
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.navigation.compose.currentBackStackEntryAsState
+import kotlinx.coroutines.launch
+
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,85 +50,127 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val navController = rememberNavController()
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val scope = rememberCoroutineScope()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
 
                 val animDuration = 550
                 val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
 
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.surface,
+                ModalNavigationDrawer(
+                    drawerState = drawerState,
+                    drawerContent = {
+                        ModalDrawerSheet {
+                            Spacer(Modifier.height(12.dp))
+                            NavigationDrawerItem(
+                                label = { Text("Главный экран") },
+                                selected = currentRoute == "menu",
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    if (currentRoute != "menu") {
+                                        navController.navigate("menu") {
+                                            popUpTo("menu") { inclusive = true }
+                                        }
+                                    }
+                                },
+                                icon = { Icon(Icons.Default.Person, null) },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                            NavigationDrawerItem(
+                                label = { Text("Настройки") },
+                                selected = currentRoute == "settings",
+                                onClick = {
+                                    scope.launch { drawerState.close() }
+                                    if (currentRoute != "settings") {
+                                        navController.navigate("settings")
+                                    }
+                                },
+                                icon = { Icon(Icons.Default.Settings, null) },
+                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                        }
+                    }
                 ) {
-                    NavHost(
-                        navController = navController,
-                        startDestination = "menu",
-                        enterTransition = {
-                            slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                        },
-                        exitTransition = {
-                            slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                        },
-                        popEnterTransition = {
-                            slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                        },
-                        popExitTransition = {
-                            slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                        }
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.surface,
                     ) {
-                        composable(
-                            "menu"
+                        NavHost(
+                            navController = navController,
+                            startDestination = "menu",
+                            enterTransition = {
+                                slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                            },
+                            exitTransition = {
+                                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                            },
+                            popEnterTransition = {
+                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                            }
                         ) {
-                            MenuWindow(
-                                characters = characters,
-                                onNavigateToCreate = { navController.navigate("create_setup") },
-                                onCharacterClick = { characterId ->
-                                    navController.navigate("edit/$characterId")
-                                },
-                                onImportCharacter = { importedCharacter ->
-                                    characters.add(importedCharacter)
-                                    characterRepository.saveCharacters(characters)
-                                },
-                                onDeleteCharacters = { idsToDelete ->
-                                    characters.removeAll { it.id in idsToDelete }
-                                    characterRepository.saveCharacters(characters)
-                                }
-                            )
-                        }
-
-                        composable(
-                            "create_setup"
-                        ) {
-                            CharacterCreationWindow(
-                                onNavigateBack = { navController.popBackStack() },
-                                onCharacterCreate = { newChar ->
-                                    characters.add(newChar)
-                                    characterRepository.saveCharacters(characters)
-                                    navController.navigate("edit/${newChar.id}") {
-                                        popUpTo("menu")
-                                    }
-                                }
-                            )
-                        }
-
-                        composable(
-                            route = "edit/{characterId}",
-                            arguments = listOf(navArgument("characterId") { type = NavType.IntType })
-                        ) { backStackEntry ->
-                            val characterId = backStackEntry.arguments?.getInt("characterId")
-                            val character = characters.find { it.id == characterId }
-
-                            CreateWindow(
-                                character = character,
-                                onNavigateBack = {
-                                    navController.popBackStack()
-                                },
-                                onCharacterChange = { updatedCharacter ->
-                                    val index = characters.indexOfFirst { it.id == updatedCharacter.id }
-                                    if (index != -1) {
-                                        characters[index] = updatedCharacter
+                            composable("menu") {
+                                MenuWindow(
+                                    characters = characters,
+                                    onNavigateToCreate = { navController.navigate("create_setup") },
+                                    onCharacterClick = { characterId ->
+                                        navController.navigate("edit/$characterId")
+                                    },
+                                    onImportCharacter = { importedCharacter ->
+                                        characters.add(importedCharacter)
                                         characterRepository.saveCharacters(characters)
+                                    },
+                                    onDeleteCharacters = { idsToDelete ->
+                                        characters.removeAll { it.id in idsToDelete }
+                                        characterRepository.saveCharacters(characters)
+                                    },
+                                    onOpenDrawer = { scope.launch { drawerState.open() } }
+                                )
+                            }
+
+                            composable("settings") {
+                                SettingsWindow(onOpenDrawer = { scope.launch { drawerState.open() } })
+                            }
+
+                            composable(
+                                "create_setup"
+                            ) {
+                                CharacterCreationWindow(
+                                    onNavigateBack = { navController.popBackStack() },
+                                    onCharacterCreate = { newChar ->
+                                        characters.add(newChar)
+                                        characterRepository.saveCharacters(characters)
+                                        navController.navigate("edit/${newChar.id}") {
+                                            popUpTo("menu")
+                                        }
                                     }
-                                }
-                            )
+                                )
+                            }
+
+                            composable(
+                                route = "edit/{characterId}",
+                                arguments = listOf(navArgument("characterId") { type = NavType.IntType })
+                            ) { backStackEntry ->
+                                val characterId = backStackEntry.arguments?.getInt("characterId")
+                                val character = characters.find { it.id == characterId }
+
+                                CreateWindow(
+                                    character = character,
+                                    onNavigateBack = {
+                                        navController.popBackStack()
+                                    },
+                                    onCharacterChange = { updatedCharacter ->
+                                        val index = characters.indexOfFirst { it.id == updatedCharacter.id }
+                                        if (index != -1) {
+                                            characters[index] = updatedCharacter
+                                            characterRepository.saveCharacters(characters)
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }

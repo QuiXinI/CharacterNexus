@@ -10,6 +10,11 @@ import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
 
+import ru.quasaris.characters.master.ArchiveManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 object CharacterDataHandler {
     private val gson = Gson()
 
@@ -45,23 +50,15 @@ object CharacterDataHandler {
         shieldEntries: List<ShieldEntry> = emptyList(),
         activeShieldId: String? = null,
         imageData: String? = null,
-        context: Context? = null,
-        selectedImageUri: Uri? = null
+        skilledProficiencies: List<String> = emptyList(),
+        skilledExpertise: List<String> = emptyList()
     ): Character {
-        val img = selectedImageUri?.let { u ->
-            try {
-                context?.contentResolver?.openInputStream(u)?.use { 
-                    Base64.encodeToString(it.readBytes(), Base64.DEFAULT) 
-                }
-            } catch (_: Exception) { null }
-        } ?: imageData
-
         return Character(
             id = id,
             name = name,
             characterClass = "", // Can be extended
             order = "Человек",   // Can be extended
-            imageData = img,
+            imageData = imageData,
             level = level,
             experience = experience,
             strength = strength,
@@ -89,17 +86,15 @@ object CharacterDataHandler {
             exhaustion = exhaustion,
             isShieldActive = isShieldActive,
             shieldEntries = shieldEntries,
-            activeShieldId = activeShieldId
+            activeShieldId = activeShieldId,
+            skilledProficiencies = skilledProficiencies,
+            skilledExpertise = skilledExpertise
         )
     }
 
-    fun exportToJson(context: Context, uri: Uri, character: Character) {
-        try {
-            context.contentResolver.openOutputStream(uri)?.use { 
-                it.write(gson.toJson(character).toByteArray()) 
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+    fun exportToLssKiller(context: Context, uri: Uri, character: Character, scope: CoroutineScope) {
+        scope.launch {
+            ArchiveManager.exportCharacter(context, character, uri)
         }
     }
 }

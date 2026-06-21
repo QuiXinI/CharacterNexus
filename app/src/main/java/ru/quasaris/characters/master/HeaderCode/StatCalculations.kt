@@ -16,13 +16,7 @@ fun calculateModifier(scoreStr: String): Int {
  */
 fun getProficiencyBonus(levelStr: String): Int {
     val level = levelStr.toIntOrNull() ?: 1
-    return when {
-        level >= 17 -> 6
-        level >= 13 -> 5
-        level >= 9 -> 4
-        level >= 5 -> 3
-        else -> 2
-    }
+    return kotlin.math.floor((level - 1) / 4.0).toInt() + 2
 }
 
 /**
@@ -50,7 +44,34 @@ fun getNextLevelThreshold(levelStr: String): String {
         17 -> "265000"
         18 -> "305000"
         19 -> "355000"
-        else -> "—"
+        else -> ((level - 20) * 50000 + 355000).toString()
+    }
+}
+
+fun getPreviousLevelThreshold(levelStr: String): String {
+    val level = levelStr.toIntOrNull() ?: 1
+    return when (level) {
+        0, 1 -> "0"
+        2 -> "300"
+        3 -> "900"
+        4 -> "2700"
+        5 -> "6500"
+        6 -> "14000"
+        7 -> "23000"
+        8 -> "34000"
+        9 -> "48000"
+        10 -> "64000"
+        11 -> "85000"
+        12 -> "100000"
+        13 -> "120000"
+        14 -> "140000"
+        15 -> "165000"
+        16 -> "195000"
+        17 -> "225000"
+        18 -> "265000"
+        19 -> "305000"
+        20 -> "355000"
+        else -> ((level - 21) * 50000 + 355000).toString()
     }
 }
 
@@ -59,8 +80,10 @@ fun getNextLevelThreshold(levelStr: String): String {
  */
 fun calculateLevelFromExperience(expStr: String): Int {
     val exp = expStr.toLongOrNull() ?: 0L
+    if (exp >= 355000) {
+        return 20 + ((exp - 355000) / 50000).toInt()
+    }
     return when {
-        exp >= 355000 -> 20
         exp >= 305000 -> 19
         exp >= 265000 -> 18
         exp >= 225000 -> 17

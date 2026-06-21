@@ -18,6 +18,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,11 +57,12 @@ fun MenuWindow(
     onCharacterClick: (Int) -> Unit,
     onImportCharacter: (Character) -> Unit,
     onDeleteCharacters: (List<Int>) -> Unit,
+    onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
-    val gson = Gson()
+    val scope = rememberCoroutineScope()
 
     val selectedIds = remember { mutableStateListOf<Int>() }
 
@@ -66,14 +70,11 @@ fun MenuWindow(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
-        try {
-            val jsonString = context.contentResolver.openInputStream(uri)?.bufferedReader().use { it?.readText() }
-            if (jsonString != null) {
-                val importedCharacter = gson.fromJson(jsonString, Character::class.java)
+        scope.launch {
+            val importedCharacter = ArchiveManager.importCharacter(context, uri)
+            if (importedCharacter != null) {
                 onImportCharacter(importedCharacter.copy(id = (0..100000).random()))
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
@@ -93,7 +94,9 @@ fun MenuWindow(
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
+                        IconButton(onClick = onOpenDrawer) {
+                            Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
+                        }
                         Text(
                             text = "Персонажи",
                             fontSize = 22.sp,
@@ -102,7 +105,7 @@ fun MenuWindow(
                             textAlign = TextAlign.Center,
                             color = colorScheme.onSurface
                         )
-                        IconButton(onClick = { filePickerLauncher.launch("application/json") }) {
+                        IconButton(onClick = { filePickerLauncher.launch("*/*") }) {
                             Icon(Icons.Default.UploadFile, contentDescription = "Загрузить", tint = colorScheme.onSurface)
                         }
                     }
@@ -232,17 +235,11 @@ fun CharacterCard(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
 
-    val bitmap = remember(character.imageData) {
-        if (character.imageData != null) {
-            try {
-                val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)?.asImageBitmap()
-            } catch (e: Exception) {
-                null
-            }
-        } else null
+    val thumbFile = remember(character.imageData) {
+        character.imageData?.let { ImageManager.getThumbnailFile(context, it) }
     }
 
     Card(
@@ -271,9 +268,9 @@ fun CharacterCard(
                     .background(colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap,
+                if (thumbFile != null && thumbFile.exists()) {
+                    AsyncImage(
+                        model = thumbFile,
                         contentDescription = "Иконка",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -313,7 +310,8 @@ fun MenuWindowPreview() {
             onNavigateToCreate = {},
             onCharacterClick = {},
             onImportCharacter = {},
-            onDeleteCharacters = {}
+            onDeleteCharacters = {},
+            onOpenDrawer = {}
         )
     }
 }
