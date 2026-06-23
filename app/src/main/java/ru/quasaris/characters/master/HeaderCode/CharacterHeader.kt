@@ -208,7 +208,7 @@ fun CharacterHeader(
             }, contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(painterResource(healthIcon), null, modifier = Modifier.size(32.dp), colorFilter = ColorFilter.tint(healthColor))
-                    Spacer(Modifier.width(6.dp)); Text("$currentHp / ${maxHp.toIntOrNull() ?: 0}", color = healthColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(6.dp)); Text("$currentHp / ${maxHp.toIntOrNull() ?: 0}", color = healthColor, fontSize = 15.sp, fontWeight = FontWeight.Black)
                     if ((tempHp.toIntOrNull() ?: 0) > 0) Text(" (+$tempHp)", color = healthColor.copy(alpha = 0.7f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
@@ -329,9 +329,9 @@ fun ExpandingPanelsSection(
         
         Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).height(40.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), modifier = Modifier.weight(1f))
-                Text("Характеристики", fontSize = 18.sp, color = colorScheme.onPrimaryContainer, modifier = Modifier.weight(1.5f), textAlign = TextAlign.Center)
-                Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                Text("Характеристики", fontSize = 8.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), modifier = Modifier.weight(1f))
+                Text("Характеристики", fontSize = 15.sp, color = colorScheme.onPrimaryContainer, modifier = Modifier.weight(1.5f), textAlign = TextAlign.Center)
+                Text("Характеристики", fontSize = 8.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), modifier = Modifier.weight(1f), textAlign = TextAlign.End)
             }
         }
     }

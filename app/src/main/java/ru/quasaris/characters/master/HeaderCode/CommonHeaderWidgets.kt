@@ -98,7 +98,7 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}, isHighlig
                 value,
                 fontSize = fontSize,
                 color = colorScheme.onSurface,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Black
             )
         }
     }

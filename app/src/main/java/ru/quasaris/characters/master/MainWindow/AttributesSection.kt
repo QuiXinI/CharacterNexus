@@ -27,12 +27,30 @@ import ru.quasaris.characters.master.HeaderCode.calculateModifier
 
 @Composable
 fun AttributesSection(
-    strength: String, onStrengthChange: (String) -> Unit, strProf: Boolean, onStrProfChange: (Boolean) -> Unit,
-    intelligence: String, onIntelligenceChange: (String) -> Unit, intProf: Boolean, onIntProfChange: (Boolean) -> Unit,
-    dexterity: String, onDexterityChange: (String) -> Unit, dexProf: Boolean, onDexProfChange: (Boolean) -> Unit,
-    wisdom: String, onWisdomChange: (String) -> Unit, wisProf: Boolean, onWisProfChange: (Boolean) -> Unit,
-    constitution: String, onConstitutionChange: (String) -> Unit, conProf: Boolean, onConProfChange: (Boolean) -> Unit,
-    charisma: String, onCharismaChange: (String) -> Unit, chaProf: Boolean, onChaProfChange: (Boolean) -> Unit,
+    strength: String,
+    onStrengthChange: (String) -> Unit,
+    strProf: Boolean,
+    onStrProfChange: (Boolean) -> Unit,
+    intelligence: String,
+    onIntelligenceChange: (String) -> Unit,
+    intProf: Boolean,
+    onIntProfChange: (Boolean) -> Unit,
+    dexterity: String,
+    onDexterityChange: (String) -> Unit,
+    dexProf: Boolean,
+    onDexProfChange: (Boolean) -> Unit,
+    wisdom: String,
+    onWisdomChange: (String) -> Unit,
+    wisProf: Boolean,
+    onWisProfChange: (Boolean) -> Unit,
+    constitution: String,
+    onConstitutionChange: (String) -> Unit,
+    conProf: Boolean,
+    onConProfChange: (Boolean) -> Unit,
+    charisma: String,
+    onCharismaChange: (String) -> Unit,
+    chaProf: Boolean,
+    onChaProfChange: (Boolean) -> Unit,
     evalPB: String,
     isAdvancedMode: Boolean,
     skilledProficiencies: List<String>,
@@ -41,54 +59,86 @@ fun AttributesSection(
 ) {
     val animDuration = 600
 
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        // --- Compact Mode Layer ---
-        AnimatedVisibility(
-            visible = !isAdvancedMode,
-            enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeOut()
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange)
-                    StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange)
-                    StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange)
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatCard("Телосложение", constitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange)
-                    StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange)
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = !isAdvancedMode,
+                enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeIn(),
+                exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeOut()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange)
+                        StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange)
+                        StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatCard("Тело.", constitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange)
+                        StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange)
+                    }
                 }
             }
-        }
 
-        // --- Advanced Mode Layer ---
-        AnimatedVisibility(
-            visible = isAdvancedMode,
-            enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(animDuration)) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(animDuration)) + fadeOut()
-        ) {
-            val stats = listOf(
-                StatInfo("STR", "Сила", strength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
-                StatInfo("DEX", "Ловкость", dexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
-                StatInfo("CON", "Телосложение", constitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
-                StatInfo("INT", "Интеллект", intelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
-                StatInfo("WIS", "Мудрость", wisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
-                StatInfo("CHA", "Харизма", charisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
-            )
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isAdvancedMode,
+                enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(animDuration)) + fadeIn(),
+                exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(animDuration)) + fadeOut()
+            ) {
+                val stats = listOf(
+                    StatInfo("STR", "Сила", strength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
+                    StatInfo("DEX", "Ловкость", dexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
+                    StatInfo("CON", "Телосложение", constitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
+                    StatInfo("INT", "Интеллект", intelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
+                    StatInfo("WIS", "Мудрость", wisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
+                    StatInfo("CHA", "Харизма", charisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
+                )
 
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                stats.forEach { stat ->
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange)
-                        stat.skills.forEach { skill ->
-                            SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    stats.forEach { stat ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange)
+                            stat.skills.forEach { skill ->
+                                SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick)
+                            }
                         }
                     }
                 }
             }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+        ) {
+            Text(
+                "Пассивные проверки",
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
+            )
+            androidx.compose.material3.HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 12.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            )
+            PassiveCheckRow("Пассивный Анализ", intelligence, evalPB, skilledProficiencies.contains("Анализ"), skilledExpertise.contains("Анализ"))
+            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            PassiveCheckRow("Пассивная Внимательность", wisdom, evalPB, skilledProficiencies.contains("Внимательность"), skilledExpertise.contains("Внимательность"))
+            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            PassiveCheckRow("Пассивная Проницательность", wisdom, evalPB, skilledProficiencies.contains("Проницательность"), skilledExpertise.contains("Проницательность"))
         }
     }
 }
@@ -117,70 +167,90 @@ fun StatCard(label: String, value: String, profB: String, isP: Boolean, modifier
         .border(1.dp, colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
         .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        // TOP ROW: LABEL (LEFT) | VALUE (RIGHT)
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
-            Text(
-                label, 
-                fontSize = 18.sp, 
-                fontWeight = FontWeight.Black, 
-                color = colorScheme.onSurfaceVariant
-            )
-            
-            Box(modifier = Modifier
-                .width(48.dp)
-                .height(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                BasicTextField(
-                    value = value,
-                    onValueChange = { val f = it.filter { it.isDigit() }; if (f.isEmpty()) onValue("") else { val n = f.toIntOrNull(); if (n != null && n in 1..30) onValue(f) } },
-                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface),
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
-        }
-
-        // BOTTOM AREA
-        Row(modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-            // SAVE ON THE LEFT
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
             Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable { onPToggle(!isP) }
-                    .background(if (isP) colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(if (isP) colorScheme.primary else colorScheme.outline.copy(alpha = 0.3f))
-                )
-                Spacer(Modifier.width(8.dp))
                 Text(
-                    "Спас.", 
-                    fontSize = 16.sp, 
-                    fontWeight = FontWeight.Bold, 
+                    label,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
                     color = colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (total >= 0) "+$total" else "$total",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isP) colorScheme.primary else colorScheme.onSurface
-                )
+
+                Box(
+                    modifier = Modifier
+                        .width(48.dp)
+                        .height(36.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BasicTextField(
+                        value = value,
+                        onValueChange = {
+                            val f = it.filter { it.isDigit() }; if (f.isEmpty()) onValue("") else {
+                            val n = f.toIntOrNull(); if (n != null && n in 1..30) onValue(f)
+                        }
+                        },
+                        textStyle = TextStyle(
+                            textAlign = TextAlign.Center,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Black,
+                            color = colorScheme.onSurface
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
             }
 
-            // MODIFIER BELOW VALUE (RIGHT ALIGNED)
-            Text(
-                if (base >= 0) "+$base" else "$base",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.primary,
-                modifier = Modifier.padding(end = 4.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { onPToggle(!isP) }
+                        .background(if (isP) colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(if (isP) colorScheme.primary else colorScheme.outline.copy(alpha = 0.3f))
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Спас",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (total >= 0) "+$total" else "$total",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (isP) colorScheme.primary else colorScheme.onSurface
+                    )
+                }
+
+                Text(
+                    if (base >= 0) "+$base" else "$base",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Black,
+                    color = colorScheme.primary,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
         }
     }
 }
@@ -241,6 +311,42 @@ fun SkillSubPlate(
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun PassiveCheckRow(
+    label: String,
+    attrValue: String,
+    pbStr: String,
+    isProficient: Boolean,
+    isExpert: Boolean
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val pb = pbStr.toIntOrNull() ?: 0
+    val baseMod = calculateModifier(attrValue)
+    val total = 10 + baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            label,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = colorScheme.onSurfaceVariant
+        )
+        Text(
+            "$total",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            color = colorScheme.primary
         )
     }
 }

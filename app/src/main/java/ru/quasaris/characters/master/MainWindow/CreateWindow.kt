@@ -33,6 +33,7 @@ import ru.quasaris.characters.master.ShieldEntry
 import ru.quasaris.characters.master.ImageManager
 import ru.quasaris.characters.master.PaletteHelper
 import android.graphics.BitmapFactory
+import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -309,8 +310,9 @@ fun CreateWindow(
                 ) {
                     Text(
                         if (isAdvancedMode) "Обычный режим" else "Расширенный режим",
-                        fontSize = 14.sp,
-                        color = colorScheme.onSecondaryContainer
+                        fontSize = 16.sp,
+                        color = colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 

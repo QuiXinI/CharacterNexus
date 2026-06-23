@@ -242,30 +242,36 @@ fun CharacterCard(
         character.imageData?.let { ImageManager.getThumbnailFile(context, it) }
     }
 
+    val cardColor = if (isSelected) {
+        colorScheme.primaryContainer
+    } else {
+        colorScheme.surfaceVariant
+    }
+
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         border = if (isSelected) BorderStroke(2.dp, colorScheme.primary) else null,
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) colorScheme.primaryContainer.copy(alpha = 0.3f)
-            else colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = cardColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
+                .fillMaxWidth()
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(colorScheme.surfaceVariant),
+                    .background(colorScheme.surface),
                 contentAlignment = Alignment.Center
             ) {
                 if (thumbFile != null && thumbFile.exists()) {
