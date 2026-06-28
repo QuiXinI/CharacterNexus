@@ -27,6 +27,7 @@ data class SpeedEntry(
 ) : FormulaEntry
 
 enum class CharacterTab(val title: String) {
+    STATS("Характеристики"),
     ATTACKS("Атаки"),
     SKILLS_FEATS("Умения/Черты"),
     INVENTORY("Инвентарь"),

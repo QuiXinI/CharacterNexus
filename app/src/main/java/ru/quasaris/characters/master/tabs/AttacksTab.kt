@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.attacks
+package ru.quasaris.characters.master.tabs
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,10 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
+import ru.quasaris.characters.master.attacks.AttackConfigDialog
 
 @Composable
 fun AttacksTab(
