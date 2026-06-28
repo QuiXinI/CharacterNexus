@@ -23,7 +23,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import ru.quasaris.characters.master.MainWindow.CreateWindow
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
 import androidx.compose.ui.unit.dp
@@ -71,6 +70,7 @@ class MainActivity : ComponentActivity() {
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,
+                    gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
                     drawerContent = {
                         ModalDrawerSheet {
                             Spacer(Modifier.height(12.dp))
@@ -196,13 +196,22 @@ class MainActivity : ComponentActivity() {
                                 val characterId = backStackEntry.arguments?.getInt("characterId")
                                 val character = characters.find { it.id == characterId }
 
-                                CreateWindow(
+                                CharacterDetailWindow(
                                     character = character,
                                     onNavigateBack = {
                                         navController.popBackStack()
                                     },
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onCharacterChange = { updatedCharacter ->
+                                    onDeleteCharacter = { charToDelete ->
+                                        characters.removeAll { it.id == charToDelete.id }
+                                        characterRepository.saveCharacters(characters)
+                                        if (lastCharacterId == charToDelete.id) {
+                                            lastCharacterId = -1
+                                            settingsManager.lastCharacterId = -1
+                                        }
+                                        navController.popBackStack()
+                                    },
+                                    onSaveChanges = { updatedCharacter ->
                                         val index = characters.indexOfFirst { it.id == updatedCharacter.id }
                                         if (index != -1) {
                                             characters[index] = updatedCharacter

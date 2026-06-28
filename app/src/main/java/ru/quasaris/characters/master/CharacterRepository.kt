@@ -5,10 +5,12 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import androidx.core.content.edit
 
+import ru.quasaris.characters.master.utils.GsonFactory
+
 class CharacterRepository(context: Context) {
 
     private val sharedPreferences = context.getSharedPreferences("character_prefs", Context.MODE_PRIVATE)
-    private val gson = Gson()
+    private val gson = GsonFactory.create()
     private val charactersKey = "CHARACTERS_LIST"
 
     fun loadCharacters(): MutableList<Character> {

@@ -11,12 +11,13 @@ import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
 
 import ru.quasaris.characters.master.ArchiveManager
+import ru.quasaris.characters.master.utils.GsonFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object CharacterDataHandler {
-    private val gson = Gson()
+    private val gson = GsonFactory.create()
 
     fun createCharacter(
         id: Int,
@@ -52,7 +53,8 @@ object CharacterDataHandler {
         imageData: String? = null,
         skilledProficiencies: List<String> = emptyList(),
         skilledExpertise: List<String> = emptyList(),
-        themeSeedColorArgb: Int? = null
+        themeSeedColorArgb: Int? = null,
+        attacks: List<ru.quasaris.characters.master.AttackEntry> = emptyList()
     ): Character {
         return Character(
             id = id,
@@ -90,7 +92,8 @@ object CharacterDataHandler {
             activeShieldId = activeShieldId,
             skilledProficiencies = skilledProficiencies,
             skilledExpertise = skilledExpertise,
-            themeSeedColorArgb = themeSeedColorArgb
+            themeSeedColorArgb = themeSeedColorArgb,
+            attacks = attacks
         )
     }
 
