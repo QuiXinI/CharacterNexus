@@ -1,5 +1,3 @@
-# BIG PART OF THIS APP WAS VIBECODED, USE AT YOUR OWN RISK
-
 # Это *readme.md*, она пока пустая))
 ---
 Чейнджлог можно прочитать в [changelog.md](changelog.md)

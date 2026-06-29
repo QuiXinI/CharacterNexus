@@ -78,7 +78,7 @@ fun CharacterIdentitySection(
         },
         onDownloadClick = {
             onDismissAvatarMenu()
-            onDownloadClick("${name.ifEmpty { "character" }}.lsskiller")
+            onDownloadClick("${name.ifEmpty { "character" }}.${ru.quasaris.characters.master.ArchiveManager.EXPORT_EXTENSION}")
         }
     )
 }

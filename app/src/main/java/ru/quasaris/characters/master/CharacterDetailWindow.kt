@@ -148,11 +148,11 @@ fun CharacterDetailWindow(
     var showAvatarMenu by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val gson = remember { GsonFactory.create() }
     val colorScheme = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
 
     val fileCreatorLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
+        contract = ActivityResultContracts.CreateDocument("application/${ArchiveManager.EXPORT_EXTENSION}")
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val currentCharacterState = character!!.copy(
@@ -171,9 +171,8 @@ fun CharacterDetailWindow(
             skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
             imageData = characterImageData, themeSeedColorArgb = themeSeedColorArgb
         )
-        val jsonString = gson.toJson(currentCharacterState)
-        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-            outputStream.write(jsonString.toByteArray())
+        scope.launch {
+            ArchiveManager.exportCharacter(context, currentCharacterState, uri)
         }
     }
 
@@ -225,7 +224,6 @@ fun CharacterDetailWindow(
     val totalPages = 10000
     val initialPage = totalPages / 2 - (totalPages / 2 % tabs.size)
     val pagerState = rememberPagerState(initialPage = initialPage) { totalPages }
-    val scope = rememberCoroutineScope()
     var showTabSheet by remember { mutableStateOf(false) }
     val currentTab = tabs[pagerState.currentPage % tabs.size]
     val sheetState = rememberModalBottomSheetState()
@@ -326,7 +324,7 @@ fun CharacterDetailWindow(
                     showAvatarMenu = showAvatarMenu,
                     onDismissAvatarMenu = { showAvatarMenu = false },
                     onImagePickerClick = { imagePickerLauncher.launch("image/*"); showAvatarMenu = false },
-                    onDownloadClick = { fileCreatorLauncher.launch("MP_${name}.json"); showAvatarMenu = false },
+                    onDownloadClick = { fileCreatorLauncher.launch("MP_${name}.${ArchiveManager.EXPORT_EXTENSION}"); showAvatarMenu = false },
                     selectedImageUri = null,
                     onNavigateBack = onNavigateBack,
                     exhaustion = exhaustion
