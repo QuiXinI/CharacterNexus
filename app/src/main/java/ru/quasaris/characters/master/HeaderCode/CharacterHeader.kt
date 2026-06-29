@@ -294,11 +294,10 @@ fun ExpandingPanelsSection(
     onSpeedDeleteReq: (String?) -> Unit,
     onAddSpeed: () -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
     val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
     
     Column {
-        Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(colorScheme.onSurface.copy(alpha = 0.15f), Color.Transparent))))
+        Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.1f), Color.Transparent))))
         AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) }
         AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp) }
         AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
@@ -326,14 +325,6 @@ fun ExpandingPanelsSection(
         AnimatedVisibility(isInitiativePanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { FormulaPanel("Инициатива", initiativeEntries, activeInitiativeId, initDeleteConfirmId, { updated -> onInitiativeEntries(updated.filterIsInstance<InitiativeEntry>()) }, onActiveInitiative, onInitDeleteReq, onAddInitiative) }
         AnimatedVisibility(isConditionsPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { ConditionsPanel(allConditions, selectedConditions, onToggleCondition, exhaustion, onExhaustionChange) }
         AnimatedVisibility(isSpeedPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { FormulaPanel("Скорость", speedEntries, activeSpeedId, speedDeleteConfirmId, { updated -> onSpeedEntries(updated.filterIsInstance<SpeedEntry>()) }, onActiveSpeed, onSpeedDeleteReq, onAddSpeed) }
-        
-        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).height(40.dp).clip(RoundedCornerShape(8.dp)).background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Характеристики", fontSize = 8.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), modifier = Modifier.weight(1f))
-                Text("Характеристики", fontSize = 15.sp, color = colorScheme.onPrimaryContainer, modifier = Modifier.weight(1.5f), textAlign = TextAlign.Center)
-                Text("Характеристики", fontSize = 8.sp, color = colorScheme.onPrimaryContainer.copy(alpha = 0.7f), modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-            }
-        }
     }
 }
 

@@ -8,8 +8,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -52,10 +54,14 @@ fun FormulaPanel(
                 }
             }
         }
-        entries.forEachIndexed { i, entry ->
-            FormulaEntryItem(entry, entry.id == activeId, entry.id == deleteId, { updated -> val nl = entries.toMutableList(); nl[i] = updated; onEntries(nl) }, { val nl = entries.toMutableList(); nl.removeAt(i); if (entry.id == activeId) onActive(null); onEntries(nl); onDeleteReq(null) }, { onDeleteReq(entry.id) }, { onActive(if (entry.id == activeId) null else entry.id); onDeleteReq(null) })
-            HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f))
+        
+        Column(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp).verticalScroll(rememberScrollState())) {
+            entries.forEachIndexed { i, entry ->
+                FormulaEntryItem(entry, entry.id == activeId, entry.id == deleteId, { updated -> val nl = entries.toMutableList(); nl[i] = updated; onEntries(nl) }, { val nl = entries.toMutableList(); nl.removeAt(i); if (entry.id == activeId) onActive(null); onEntries(nl); onDeleteReq(null) }, { onDeleteReq(entry.id) }, { onActive(if (entry.id == activeId) null else entry.id); onDeleteReq(null) })
+                HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f))
+            }
         }
+        
         Row(modifier = Modifier.fillMaxWidth().height(48.dp).clickable { onAdd(); onDeleteReq(null) }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) { Icon(Icons.Default.AddCircleOutline, null, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("Добавить Новое", fontSize = 16.sp) }
     }
 }
@@ -74,7 +80,7 @@ fun FormulaEntryItem(
     val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
     
     Column(modifier = Modifier.fillMaxWidth().background(if (isActive) colorScheme.primaryContainer else Color.Transparent).animateContentSize(animationSpec)) {
-        Row(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.width(44.dp).fillMaxHeight().clickable { if (isDelete) onDelete() else onDeleteReq() }, contentAlignment = Alignment.Center) { Icon(Icons.Default.Delete, null, modifier = Modifier.size(20.dp), tint = if (isDelete) colorScheme.error else colorScheme.onSurface.copy(alpha = 0.7f)) }
             Box(modifier = Modifier.width(1.2.dp).fillMaxHeight().background(sep))
             Box(modifier = Modifier.weight(1f).padding(vertical = 4.dp), contentAlignment = Alignment.Center) {

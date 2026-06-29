@@ -44,7 +44,7 @@ fun getNextLevelThreshold(levelStr: String): String {
         17 -> "265000"
         18 -> "305000"
         19 -> "355000"
-        else -> ((level - 20) * 50000 + 355000).toString()
+        else -> ((level - 19) * 50000 + 355000).toString()
     }
 }
 
@@ -71,7 +71,7 @@ fun getPreviousLevelThreshold(levelStr: String): String {
         18 -> "265000"
         19 -> "305000"
         20 -> "355000"
-        else -> ((level - 21) * 50000 + 355000).toString()
+        else -> ((level - 20) * 50000 + 355000).toString()
     }
 }
 

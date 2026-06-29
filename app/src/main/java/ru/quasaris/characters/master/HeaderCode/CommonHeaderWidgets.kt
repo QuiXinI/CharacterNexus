@@ -48,7 +48,7 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}, isHighlig
     val interactionSource = remember { MutableInteractionSource() }
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
-    
+
     Box(
         modifier = Modifier
             .size(46.dp)
@@ -72,19 +72,19 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}, isHighlig
             colorScheme.primary.copy(alpha = 0.75f)
         else
             colorScheme.onSurface.copy(alpha = 0.55f)
-        
+
         if (iconRes == R.drawable.ic_sword) {
             Box(Modifier.fillMaxSize()) {
                 Image(painterResource(R.drawable.ic_sword), null, modifier = Modifier.size(46.dp), colorFilter = ColorFilter.tint(tint))
                 Image(painterResource(R.drawable.ic_sword), null, modifier = Modifier.size(46.dp).graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
             }
         } else Image(painterResource(iconRes), null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
-        
+
         Box(contentAlignment = Alignment.Center) {
             val strokeColor = colorScheme.background
             val fontSize = 18.sp
             val strokeWidth = with(density) { (fontSize.toPx() * 0.1f) }
-            
+
             Text(
                 value,
                 fontSize = fontSize,
