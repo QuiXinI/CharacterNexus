@@ -131,7 +131,7 @@ fun LevelPanel(
                 buttonEnabled = true
                 buttonColor = colorScheme.error
             } else {
-                buttonText = "вы стали божеством"
+                buttonText = "Вы стали божеством"
                 buttonEnabled = false
                 buttonColor = colorScheme.outline.copy(alpha = 0.12f)
             }
@@ -147,7 +147,7 @@ fun LevelPanel(
             buttonColor = colorScheme.error
         }
         else -> {
-            buttonText = "недостаточно опыта"
+            buttonText = "Недостаточно опыта"
             buttonEnabled = false
             buttonColor = colorScheme.outline.copy(alpha = 0.12f)
         }
@@ -220,7 +220,9 @@ fun LevelPanel(
                 cursorBrush = SolidColor(colorScheme.primary), 
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
-            Text("/ $nextExp", modifier = Modifier.padding(end = 16.dp), fontSize = 14.sp, color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+            if (currentLvlInt < 20) {
+                Text("/ $nextExp", modifier = Modifier.padding(end = 16.dp), fontSize = 14.sp, color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+            }
         }
         
         HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f))

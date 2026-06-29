@@ -180,20 +180,23 @@ fun CharacterHeader(
                     color = colorScheme.primary
                 )
                 
+                val xpText = if ((level.toIntOrNull() ?: 0) >= 20) "$experience Опыта" else "$experience / $nextLevelExp Опыта"
                 Text(
-                    text = "$experience / $nextLevelExp Опыта",
+                    text = xpText,
                     fontSize = 11.sp, 
                     fontWeight = FontWeight.Medium,
                     color = colorScheme.onSurfaceVariant
                 )
                 
                 val nxt = (level.toIntOrNull() ?: 0) + 1
-                Text(
-                    text = "$nxt", 
-                    fontSize = 12.sp, 
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.outline
-                )
+                if ((level.toIntOrNull() ?: 0) < 20) {
+                    Text(
+                        text = "$nxt", 
+                        fontSize = 12.sp, 
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.outline
+                    )
+                }
             }
         }
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -297,7 +300,7 @@ fun ExpandingPanelsSection(
     val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
     
     Column {
-        Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.1f), Color.Transparent))))
+        Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent))))
         AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) }
         AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp) }
         AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 

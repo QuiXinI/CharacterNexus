@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,7 +79,11 @@ fun CharacterDetailWindow(
     var order by remember { mutableStateOf(character?.order ?: "") }
     var level by remember { mutableStateOf(character?.level ?: "1") }
     var experience by remember { mutableStateOf(character?.experience ?: "50") }
-    var nextLevelExp by remember { mutableStateOf("300") }
+    var nextLevelExp by remember { mutableStateOf(getNextLevelThreshold(character?.level ?: "1")) }
+
+    LaunchedEffect(level) {
+        nextLevelExp = getNextLevelThreshold(level)
+    }
 
     var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList()) }
     var exhaustion by remember { mutableStateOf(character?.exhaustion ?: 0) }
