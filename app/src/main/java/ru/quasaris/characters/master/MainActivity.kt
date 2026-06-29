@@ -23,7 +23,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import ru.quasaris.characters.master.MainWindow.CreateWindow
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
 import androidx.compose.ui.unit.dp
@@ -36,13 +35,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val characterRepository = CharacterRepository(applicationContext)
+        val characterRepository = CharacterRepository(
+            context = applicationContext,
+            appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        )
+        
+        ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver(characterRepository))
 
         enableEdgeToEdge()
         setContent {
@@ -54,6 +63,14 @@ class MainActivity : ComponentActivity() {
                 mutableStateListOf<Character>().apply {
                     addAll(characterRepository.loadCharacters())
                 }
+            }
+
+            // Sync SnapshotStateList back to Repository for debounced saving
+            LaunchedEffect(characters) {
+                snapshotFlow { characters.toList() }
+                    .collectLatest { list ->
+                        characterRepository.updateCharacters(list)
+                    }
             }
             
             val lastCharacter = characters.find { it.id == lastCharacterId }
@@ -71,6 +88,7 @@ class MainActivity : ComponentActivity() {
 
                 ModalNavigationDrawer(
                     drawerState = drawerState,
+                    gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
                     drawerContent = {
                         ModalDrawerSheet {
                             Spacer(Modifier.height(12.dp))
@@ -196,13 +214,22 @@ class MainActivity : ComponentActivity() {
                                 val characterId = backStackEntry.arguments?.getInt("characterId")
                                 val character = characters.find { it.id == characterId }
 
-                                CreateWindow(
+                                CharacterDetailWindow(
                                     character = character,
                                     onNavigateBack = {
                                         navController.popBackStack()
                                     },
                                     onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onCharacterChange = { updatedCharacter ->
+                                    onDeleteCharacter = { charToDelete ->
+                                        characters.removeAll { it.id == charToDelete.id }
+                                        characterRepository.saveCharacters(characters)
+                                        if (lastCharacterId == charToDelete.id) {
+                                            lastCharacterId = -1
+                                            settingsManager.lastCharacterId = -1
+                                        }
+                                        navController.popBackStack()
+                                    },
+                                    onSaveChanges = { updatedCharacter ->
                                         val index = characters.indexOfFirst { it.id == updatedCharacter.id }
                                         if (index != -1) {
                                             characters[index] = updatedCharacter

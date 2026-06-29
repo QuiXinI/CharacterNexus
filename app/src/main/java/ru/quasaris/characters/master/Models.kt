@@ -26,6 +26,39 @@ data class SpeedEntry(
     override val formula: String = ""
 ) : FormulaEntry
 
+enum class CharacterTab(val title: String) {
+    STATS("Характеристики"),
+    ATTACKS("Атаки"),
+    SKILLS_FEATS("Умения/Черты"),
+    INVENTORY("Инвентарь"),
+    NOTES("Заметки"),
+    BIO("Био"),
+    SPELLS("Заклинания")
+}
+
+enum class Attribute(val fullName: String, val shortName: String) {
+    STRENGTH("Сила", "СИЛ"),
+    DEXTERITY("Ловкость", "ЛОВ"),
+    CONSTITUTION("Телосложение", "ТЕЛ"),
+    INTELLIGENCE("Интеллект", "ИНТ"),
+    WISDOM("Мудрость", "МУД"),
+    CHARISMA("Харизма", "ХАР"),
+    NONE("Нет", "НЕТ")
+}
+
+data class AttackEntry(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val isProficient: Boolean = false,
+    val attribute: Attribute = Attribute.STRENGTH,
+    val attackBonus: Int = 0,
+    val damageFormula: String = "",
+    val damageType: String = "",
+    val damageBonus: Int = 0,
+    val notes: String = "",
+    val showNotes: Boolean = false
+)
+
 data class Character(
     val id: Int,
     val name: String,
@@ -62,7 +95,8 @@ data class Character(
     val activeShieldId: String? = shieldEntries.firstOrNull()?.id,
     val skilledProficiencies: List<String> = emptyList(), // Track proficient skills
     val skilledExpertise: List<String> = emptyList(), // Track expertise skills
-    val themeSeedColorArgb: Int? = null
+    val themeSeedColorArgb: Int? = null,
+    val attacks: List<AttackEntry> = emptyList()
 )
 
 data class ShieldEntry(

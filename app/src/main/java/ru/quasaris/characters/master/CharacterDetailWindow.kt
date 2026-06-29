@@ -9,7 +9,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,10 +21,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,9 +54,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
-import com.google.gson.Gson
-import ru.quasaris.characters.master.MainWindow.CombatCalculations
+import ru.quasaris.characters.master.utils.GsonFactory
+import kotlinx.coroutines.launch
+import ru.quasaris.characters.master.tabs.*
+import ru.quasaris.characters.master.MainWindow.*
+import ru.quasaris.characters.master.HeaderCode.*
 import kotlin.math.floor
+import ru.quasaris.characters.master.ImageManager
+import ru.quasaris.characters.master.PaletteHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,50 +71,128 @@ fun CharacterDetailWindow(
     character: Character?,
     onNavigateBack: () -> Unit,
     onDeleteCharacter: (Character) -> Unit,
-    onSaveChanges: (Character) -> Unit
+    onSaveChanges: (Character) -> Unit,
+    onOpenDrawer: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf(character?.name ?: "") }
     var characterClass by remember { mutableStateOf(character?.characterClass ?: "") }
     var order by remember { mutableStateOf(character?.order ?: "") }
     var level by remember { mutableStateOf(character?.level ?: "1") }
-    var experience by remember { mutableStateOf("50") }
-    var nextLevelExp by remember { mutableStateOf("300") }
-    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+    var experience by remember { mutableStateOf(character?.experience ?: "50") }
+    var nextLevelExp by remember { mutableStateOf(getNextLevelThreshold(character?.level ?: "1")) }
+
+    LaunchedEffect(level) {
+        nextLevelExp = getNextLevelThreshold(level)
+    }
 
     var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList()) }
     var exhaustion by remember { mutableStateOf(character?.exhaustion ?: 0) }
 
-    var strength by remember { mutableStateOf(character?.strength ?: "10") }
-    var dexterity by remember { mutableStateOf(character?.dexterity ?: "10") }
-    var constitution by remember { mutableStateOf(character?.constitution ?: "10") }
-    var intelligence by remember { mutableStateOf(character?.intelligence ?: "10") }
-    var wisdom by remember { mutableStateOf(character?.wisdom ?: "10") }
-    var charisma by remember { mutableStateOf(character?.charisma ?: "10") }
+    var attacks by remember { mutableStateOf(character?.attacks ?: emptyList()) }
+
+    var statsState by remember {
+        mutableStateOf(
+            StatsState(
+                strength = character?.strength ?: "10",
+                dexterity = character?.dexterity ?: "10",
+                constitution = character?.constitution ?: "10",
+                intelligence = character?.intelligence ?: "10",
+                wisdom = character?.wisdom ?: "10",
+                charisma = character?.charisma ?: "10",
+                strProf = character?.strengthProficient ?: false,
+                dexProf = character?.dexterityProficient ?: false,
+                conProf = character?.constitutionProficient ?: false,
+                intProf = character?.intelligenceProficient ?: false,
+                wisProf = character?.wisdomProficient ?: false,
+                chaProf = character?.charismaProficient ?: false,
+                skilledProficiencies = character?.skilledProficiencies ?: emptyList(),
+                skilledExpertise = character?.skilledExpertise ?: emptyList()
+            )
+        )
+    }
+
+    var maxHp by remember { mutableStateOf(character?.maxHp ?: "10") }
+    var currentHp by remember { mutableStateOf(character?.currentHp ?: "10") }
+    var tempHp by remember { mutableStateOf(character?.tempHp ?: "0") }
+
+    var isLevelPanelVisible by remember { mutableStateOf(false) }
+    var isArmorClassPanelVisible by remember { mutableStateOf(false) }
+    var isInitiativePanelVisible by remember { mutableStateOf(false) }
+    var isSpeedPanelVisible by remember { mutableStateOf(false) }
+    var isConditionsPanelVisible by remember { mutableStateOf(false) }
+    var isHealthPanelVisible by remember { mutableStateOf(false) }
+
+    var hpDialogType by remember { mutableStateOf("") }
+    var hpDialogValue by remember { mutableStateOf("") }
+    var showHpDialog by remember { mutableStateOf(false) }
+
+    var armorClassEntries by remember { mutableStateOf(character?.armorClassEntries ?: listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]"))) }
+    var activeArmorClassId by remember { mutableStateOf(character?.activeArmorClassId ?: armorClassEntries.firstOrNull()?.id) }
+    var acDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    var initiativeEntries by remember { mutableStateOf(character?.initiativeEntries ?: listOf(InitiativeEntry(name = "Базовая Инициатива", formula = "[ЛОВ]"))) }
+    var activeInitiativeId by remember { mutableStateOf(character?.activeInitiativeId ?: initiativeEntries.firstOrNull()?.id) }
+    var initDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    var speedEntries by remember { mutableStateOf(character?.speedEntries ?: listOf(SpeedEntry(name = "Базовая Скорость", formula = "30"))) }
+    var activeSpeedId by remember { mutableStateOf(character?.activeSpeedId ?: speedEntries.firstOrNull()?.id) }
+    var speedDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    var isShieldActive by remember { mutableStateOf(character?.isShieldActive ?: false) }
+    var shieldEntries by remember { mutableStateOf(character?.shieldEntries ?: listOf(ShieldEntry(name = "Базовый Щит", formula = "2"))) }
+    var activeShieldId by remember { mutableStateOf(character?.activeShieldId ?: shieldEntries.firstOrNull()?.id) }
+    var shieldDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    var characterImageData by remember { mutableStateOf(character?.imageData) }
+    var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
+    var showAvatarMenu by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
-    val gson = Gson()
     val colorScheme = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
 
     val fileCreatorLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
+        contract = ActivityResultContracts.CreateDocument("application/${ArchiveManager.EXPORT_EXTENSION}")
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val currentCharacterState = character!!.copy(
             name = name, characterClass = characterClass, order = order, level = level,
-            strength = strength, dexterity = dexterity, constitution = constitution,
-            intelligence = intelligence, wisdom = wisdom, charisma = charisma
+            strength = statsState.strength, dexterity = statsState.dexterity, constitution = statsState.constitution,
+            intelligence = statsState.intelligence, wisdom = statsState.wisdom, charisma = statsState.charisma,
+            attacks = attacks,
+            strengthProficient = statsState.strProf, dexterityProficient = statsState.dexProf, constitutionProficient = statsState.conProf,
+            intelligenceProficient = statsState.intProf, wisdomProficient = statsState.wisProf, charismaProficient = statsState.chaProf,
+            maxHp = maxHp, currentHp = currentHp, tempHp = tempHp,
+            selectedConditions = selectedConditions, exhaustion = exhaustion,
+            armorClassEntries = armorClassEntries, activeArmorClassId = activeArmorClassId,
+            initiativeEntries = initiativeEntries, activeInitiativeId = activeInitiativeId,
+            speedEntries = speedEntries, activeSpeedId = activeSpeedId,
+            isShieldActive = isShieldActive, shieldEntries = shieldEntries, activeShieldId = activeShieldId,
+            skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
+            imageData = characterImageData, themeSeedColorArgb = themeSeedColorArgb
         )
-        val jsonString = gson.toJson(currentCharacterState)
-        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-            outputStream.write(jsonString.toByteArray())
+        scope.launch {
+            ArchiveManager.exportCharacter(context, currentCharacterState, uri)
         }
     }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? -> 
-        if (uri != null) {
-            tempImageUri = uri 
+        uri?.let {
+            CoroutineScope(Dispatchers.IO).launch {
+                val newId = ImageManager.processAndSaveImage(context, it)
+                val portraitFile = ImageManager.getPortraitFile(context, newId)
+                var seedColor: Int? = null
+                if (portraitFile.exists()) {
+                    val bitmap = BitmapFactory.decodeFile(portraitFile.absolutePath)
+                    if (bitmap != null) {
+                        seedColor = PaletteHelper.extractSeedColor(bitmap)
+                    }
+                }
+                characterImageData = newId
+                themeSeedColorArgb = seedColor
+            }
         }
     }
 
@@ -111,138 +203,153 @@ fun CharacterDetailWindow(
         return
     }
 
-    val statsMap = mapOf(
-        "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
-        "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma,
-        "level" to level
-    )
+    val statsMap = remember(statsState, level) { statsState.toStatsMap(level) }
 
-    val acValue = CombatCalculations.calculateAC(character.activeArmorClassId, character.armorClassEntries, statsMap, character.isShieldActive, character.activeShieldId, character.shieldEntries)
-    val initValue = CombatCalculations.calculateInitiative(character.activeInitiativeId, character.initiativeEntries, statsMap, exhaustion)
-    val speedValue = CombatCalculations.calculateSpeed(character.activeSpeedId, character.speedEntries, statsMap, exhaustion)
+    val attributeModifiers = remember(statsState) { statsState.toAttributeModifiers() }
+    val pb = getProficiencyBonus(level)
+
+    val acValue = CombatCalculations.calculateAC(activeArmorClassId, armorClassEntries, statsMap, isShieldActive, activeShieldId, shieldEntries)
+    val initValue = CombatCalculations.calculateInitiative(activeInitiativeId, initiativeEntries, statsMap, exhaustion)
+    val speedValue = CombatCalculations.calculateSpeed(activeSpeedId, speedEntries, statsMap, exhaustion)
+
+    val healthState = remember(currentHp, maxHp) {
+        val c = currentHp.toIntOrNull() ?: 0; val m = maxHp.toIntOrNull() ?: 0
+        when { c <= 0 -> "dead"; m > 0 && c <= m / 2 -> "bloodied"; else -> "healthy" }
+    }
+    val healthColor = when(healthState) { "dead" -> Color(0xFF454545); "bloodied" -> Color(0xFFE57373); else -> Color(0xFF00C46F) }
+    val healthIcon = when(healthState) { "dead" -> R.drawable.ic_health_death; "bloodied" -> R.drawable.ic_health_bloodied; else -> R.drawable.ic_health }
+    val allConditions = rememberAllConditions(context)
+
+    val tabs = CharacterTab.entries
+    val totalPages = 10000
+    val initialPage = totalPages / 2 - (totalPages / 2 % tabs.size)
+    val pagerState = rememberPagerState(initialPage = initialPage) { totalPages }
+    var showTabSheet by remember { mutableStateOf(false) }
+    val currentTab = tabs[pagerState.currentPage % tabs.size]
+    val sheetState = rememberModalBottomSheetState()
+
+    val saveCurrentCharacter = {
+        onSaveChanges(character.copy(
+            name = name, 
+            characterClass = characterClass, 
+            order = order, 
+            level = level, 
+            imageData = characterImageData, 
+            strength = statsState.strength, 
+            dexterity = statsState.dexterity, 
+            constitution = statsState.constitution, 
+            intelligence = statsState.intelligence, 
+            wisdom = statsState.wisdom, 
+            charisma = statsState.charisma, 
+            strengthProficient = statsState.strProf,
+            dexterityProficient = statsState.dexProf,
+            constitutionProficient = statsState.conProf,
+            intelligenceProficient = statsState.intProf,
+            wisdomProficient = statsState.wisProf,
+            charismaProficient = statsState.chaProf,
+            maxHp = maxHp,
+            currentHp = currentHp,
+            tempHp = tempHp,
+            selectedConditions = selectedConditions, 
+            exhaustion = exhaustion, 
+            attacks = attacks,
+            armorClassEntries = armorClassEntries,
+            activeArmorClassId = activeArmorClassId,
+            initiativeEntries = initiativeEntries,
+            activeInitiativeId = activeInitiativeId,
+            speedEntries = speedEntries,
+            activeSpeedId = activeSpeedId,
+            isShieldActive = isShieldActive,
+            shieldEntries = shieldEntries,
+            activeShieldId = activeShieldId,
+            skilledProficiencies = statsState.skilledProficiencies,
+            skilledExpertise = statsState.skilledExpertise,
+            themeSeedColorArgb = themeSeedColorArgb
+        ))
+    }
+
+    LaunchedEffect(
+        name, characterClass, order, level, characterImageData,
+        statsState, maxHp, currentHp, tempHp, selectedConditions, exhaustion,
+        attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
+        activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
+        shieldEntries, activeShieldId, themeSeedColorArgb
+    ) {
+        saveCurrentCharacter()
+    }
 
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
-            Column(modifier = Modifier
-                .background(colorScheme.surface)
-                .statusBarsPadding()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = colorScheme.onSurface)
-                    }
-                    Text(
-                        text = name,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Normal,
-                        modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        color = colorScheme.onSurface
-                    )
-                    IconButton(onClick = { fileCreatorLauncher.launch("MP_${name}.json") }) {
-                        Icon(Icons.Filled.Download, contentDescription = "Скачать .json", tint = colorScheme.onSurface)
-                    }
-                }
-                
-                // Experience Bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                        .height(24.dp)
-                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(20.dp))
-                        .background(colorScheme.surface, RoundedCornerShape(20.dp))
-                        .padding(2.dp)
-                ) {
-                    Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .width(90.dp)
-                                .fillMaxHeight()
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = 20.dp,
-                                        bottomStart = 20.dp,
-                                        topEnd = 0.dp,
-                                        bottomEnd = 0.dp
-                                    )
-                                )
-                                .background(colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("$level уровень", fontSize = 11.sp, color = colorScheme.onPrimaryContainer)
-                        }
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = 0.dp,
-                                        bottomStart = 0.dp,
-                                        topEnd = 20.dp,
-                                        bottomEnd = 20.dp
-                                    )
-                                )
-                                .background(colorScheme.surface)
-                        ) {
-                            Box(modifier = Modifier
-                                .fillMaxHeight()
-                                .fillMaxWidth(0.35f)
-                                .background(colorScheme.primaryContainer))
-                            Row(modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(Modifier.weight(0.4f))
-                                Text("$experience | $nextLevelExp", fontSize = 11.sp, color = colorScheme.onSurface)
-                                Spacer(Modifier.weight(0.6f))
-                                Text("${level.toInt() + 1}", fontSize = 11.sp, color = colorScheme.onSurface)
-                            }
-                        }
-                    }
-                }
+            Column(modifier = Modifier.background(colorScheme.surface)) {
+                CharacterHeader(
+                    name = name, onNameChange = { name = it },
+                    level = level, experience = experience, nextLevelExp = nextLevelExp,
+                    characterImageData = characterImageData,
+                    onAvatarClick = { showAvatarMenu = true },
+                    onLevelClick = {
+                        isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    onOpenDrawer = onOpenDrawer,
+                    activeACValue = acValue,
+                    onACClick = { isShieldActive = !isShieldActive },
+                    onACLongClick = {
+                        isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    isShieldActive = isShieldActive,
+                    activeInitValue = initValue,
+                    onInitClick = {
+                        isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    currentHp = currentHp, maxHp = maxHp, tempHp = tempHp,
+                    healthColor = healthColor, healthIcon = healthIcon,
+                    onHealthClick = {
+                        isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    conditionsCount = exhaustion.toString(),
+                    selectedConditions = selectedConditions,
+                    onConditionsClick = {
+                        isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
+                    },
+                    activeSpeedValue = speedValue,
+                    onSpeedClick = {
+                        isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    showAvatarMenu = showAvatarMenu,
+                    onDismissAvatarMenu = { showAvatarMenu = false },
+                    onImagePickerClick = { imagePickerLauncher.launch("image/*"); showAvatarMenu = false },
+                    onDownloadClick = { fileCreatorLauncher.launch("MP_${name}.${ArchiveManager.EXPORT_EXTENSION}"); showAvatarMenu = false },
+                    selectedImageUri = null,
+                    onNavigateBack = onNavigateBack,
+                    exhaustion = exhaustion
+                )
 
-                // Quick Stats
+                // Tab Selector
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 12.dp, horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { showTabSheet = true }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatIconBoxDetail(acValue, R.drawable.ic_shield, isActive = true)
-                        StatIconBoxDetail(initValue, R.drawable.ic_sword, isActive = true)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp)
-                            .height(55.dp)
-                            .border(1.5.dp, Color(0xFF00C46F), RoundedCornerShape(8.dp))
-                            .background(colorScheme.surface, RoundedCornerShape(8.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Image(painter = painterResource(id = R.drawable.ic_health), contentDescription = null, modifier = Modifier.size(32.dp), colorFilter = ColorFilter.tint(Color(0xFF00C46F)))
-                            Spacer(Modifier.width(6.dp))
-                            Text("${character.currentHp} / ${character.maxHp}", color = Color(0xFF00C46F), fontSize = 16.sp)
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatIconBoxDetail(
-                            value = if (exhaustion > 0) exhaustion.toString() else "",
-                            iconRes = R.drawable.ic_conditions,
-                            isActive = selectedConditions.isNotEmpty()
-                        )
-                        StatIconBoxDetail(speedValue, R.drawable.ic_speed, isActive = true)
-                    }
+                    Text(
+                        text = currentTab.title.uppercase(),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                        color = colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = colorScheme.onSurface, modifier = Modifier.size(24.dp))
                 }
             }
         }
@@ -251,177 +358,144 @@ fun CharacterDetailWindow(
             .fillMaxSize()
             .padding(paddingValues)
             .background(colorScheme.background)) {
+            
+            Column {
+                ExpandingPanelsSection(
+                    isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it },
+                    experience = experience, onExpChange = { experience = it },
+                    proficiencyBonus = "[НАСТ БМ]", onProfChange = { }, // Handled by passed lambda
+                    nextLevelExp = nextLevelExp, statsMap = statsMap,
+                    isHealthPanelVisible = isHealthPanelVisible, maxHp = maxHp, onMaxHpChange = { maxHp = it },
+                    tempHp = tempHp, onTempHpChange = { tempHp = it },
+                    currentHp = currentHp, onCurrentHpChange = { currentHp = it },
+                    onHealClick = { hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true },
+                    onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
+                    onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true },
+                    healthColor = healthColor, clampHp = { },
+                    isArmorClassPanelVisible = isArmorClassPanelVisible, armorClassEntries = armorClassEntries,
+                    activeArmorClassId = activeArmorClassId, acDeleteConfirmId = acDeleteConfirmId,
+                    onArmorClassEntries = { armorClassEntries = it }, onActiveArmorClass = { activeArmorClassId = it },
+                    onAcDeleteReq = { acDeleteConfirmId = it }, onAddArmorClass = { armorClassEntries = armorClassEntries + ArmorClassEntry() },
+                    isInitiativePanelVisible = isInitiativePanelVisible, initiativeEntries = initiativeEntries,
+                    activeInitiativeId = activeInitiativeId, initDeleteConfirmId = initDeleteConfirmId,
+                    onInitiativeEntries = { initiativeEntries = it }, onActiveInitiative = { activeInitiativeId = it },
+                    onInitDeleteReq = { initDeleteConfirmId = it }, onAddInitiative = { initiativeEntries = initiativeEntries + InitiativeEntry() },
+                    isConditionsPanelVisible = isConditionsPanelVisible, allConditions = allConditions,
+                    selectedConditions = selectedConditions,
+                    onToggleCondition = { cond -> selectedConditions = if (selectedConditions.contains(cond)) selectedConditions - cond else selectedConditions + cond },
+                    exhaustion = exhaustion,
+                    onExhaustionChange = { exhaustion = it },
+                    isShieldActive = isShieldActive,
+                    onShieldActiveChange = { isShieldActive = it },
+                    shieldEntries = shieldEntries,
+                    activeShieldId = activeShieldId,
+                    shieldDeleteConfirmId = shieldDeleteConfirmId,
+                    onShieldEntries = { shieldEntries = it },
+                    onActiveShield = { activeShieldId = it },
+                    onShieldDeleteReq = { shieldDeleteConfirmId = it },
+                    onAddShield = { shieldEntries = shieldEntries + ShieldEntry() },
+                    isSpeedPanelVisible = isSpeedPanelVisible, speedEntries = speedEntries,
+                    activeSpeedId = activeSpeedId, speedDeleteConfirmId = speedDeleteConfirmId,
+                    onSpeedEntries = { speedEntries = it }, onActiveSpeed = { activeSpeedId = it },
+                    onSpeedDeleteReq = { speedDeleteConfirmId = it }, onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
+                )
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f),
+                    beyondViewportPageCount = 1
+                ) { page ->
+                val tab = tabs[page % tabs.size]
+                
+                when (tab) {
+                    CharacterTab.STATS -> {
+                        StatsTab(
+                            character = character,
+                            level = level,
+                            statsState = statsState,
+                            onStatsStateChange = { statsState = it }
+                        )
+                    }
+                    CharacterTab.ATTACKS -> {
+                        AttacksTab(
+                            attacks = attacks,
+                            proficiencyBonus = pb,
+                            attributeModifiers = attributeModifiers,
+                            onUpdateAttacks = { attacks = it }
+                        )
+                    }
+                    CharacterTab.BIO -> {
+                        BioTab()
+                    }
+                    else -> {
+                        PlaceholderTab(title = tab.title)
+                    }
+                }
+            } // Pager end
+        } // Column end
+
+        HealthDialog(
+            showDialog = showHpDialog,
+            hpDialogType = hpDialogType,
+            hpDialogValue = hpDialogValue,
+            onValueChange = { newVal -> hpDialogValue = newVal },
+            onDismiss = { showHpDialog = false },
+            onConfirm = { value: Int ->
+                when(hpDialogType) {
+                    "heal" -> currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + value).toString()
+                    "damage" -> {
+                        var d = value; var t = tempHp.toIntOrNull() ?: 0; val c = currentHp.toIntOrNull() ?: 0
+                        if (t > 0) { val a = minOf(t, d); t -= a; d -= a; tempHp = t.toString() }
+                        if (d > 0) currentHp = maxOf(0, c - d).toString()
+                    }
+                    "temp" -> tempHp = minOf(9999, value).toString()
+                }
+                showHpDialog = false
+            }
+        )
+    } // Box end
+}
+
+    if (showTabSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showTabSheet = false },
+            sheetState = sheetState
+        ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .background(colorScheme.surface)
-                    .verticalScroll(rememberScrollState())
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
             ) {
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .height(12.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                colorScheme.onSurface.copy(
-                                    alpha = 0.15f
-                                ), Color.Transparent
-                            )
-                        )
-                    ))
-
-                // Characteristics Header
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                    .height(44.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-                    Row(modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text("Характеристики", fontSize = 18.sp, fontWeight = FontWeight.Normal, color = colorScheme.onPrimaryContainer, textAlign = TextAlign.Center, modifier = Modifier.weight(1.5f))
-                        Text("Характеристики", fontSize = 12.sp, color = colorScheme.onPrimaryContainer.copy(0.7f), maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.End, modifier = Modifier.weight(1f))
-                    }
-                }
-
-                // Profile Section
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(colorScheme.surfaceVariant)
-                        .clickable { imagePickerLauncher.launch("image/*") }, contentAlignment = Alignment.Center) {
-                        if (tempImageUri != null) {
-                            AsyncImage(model = tempImageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        } else if (character.imageData != null) {
-                            val decodedString = Base64.decode(character.imageData, Base64.DEFAULT)
-                            val bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
-                            Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        } else {
-                            Icon(Icons.Default.Person, null, modifier = Modifier.size(40.dp), tint = colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Имя") }, modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp))
-                        OutlinedTextField(value = characterClass, onValueChange = { characterClass = it }, label = { Text("Класс") }, modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp))
-                    }
-                }
-
-                // Compact Stats Grid
-                Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCardDetail("Сила", strength, Modifier.weight(1f)) { strength = it }
-                        StatCardDetail("Интеллект", intelligence, Modifier.weight(1f)) { intelligence = it }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCardDetail("Ловкость", dexterity, Modifier.weight(1f)) { dexterity = it }
-                        StatCardDetail("Мудрость", wisdom, Modifier.weight(1f)) { wisdom = it }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCardDetail("Телосложение", constitution, Modifier.weight(1f)) { constitution = it }
-                        StatCardDetail("Харизма", charisma, Modifier.weight(1f)) { charisma = it }
-                    }
-                }
-
-                Spacer(Modifier.height(16.dp))
-                
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { onDeleteCharacter(character) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error), modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp), shape = RoundedCornerShape(8.dp)) { Text("Удалить") }
-                    Button(onClick = {
-                        val imageDataString = tempImageUri?.let { uri -> context.contentResolver.openInputStream(uri)?.use { Base64.encodeToString(it.readBytes(), Base64.DEFAULT) } } ?: character.imageData
-                        onSaveChanges(character.copy(name = name, characterClass = characterClass, order = order, level = level, imageData = imageDataString, strength = strength, dexterity = dexterity, constitution = constitution, intelligence = intelligence, wisdom = wisdom, charisma = charisma, selectedConditions = selectedConditions, exhaustion = exhaustion))
-                    }, modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp), shape = RoundedCornerShape(8.dp)) { Text("Сохранить") }
-                }
-                Spacer(Modifier.height(24.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun StatIconBoxDetail(value: String, iconRes: Int, isActive: Boolean = true) {
-    val colorScheme = MaterialTheme.colorScheme
-    Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-        val tint = if (isActive) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.onSurface.copy(alpha = 0.12f)
-        if (iconRes == R.drawable.ic_sword) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
-                Image(painter = painterResource(id = R.drawable.ic_sword), contentDescription = null, modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
-            }
-        } else {
-            Image(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
-        }
-        Text(
-            text = value,
-            fontSize = 15.sp,
-            color = colorScheme.onSurface,
-            fontWeight = FontWeight.Bold,
-            style = TextStyle(
-                shadow = Shadow(
-                    color = colorScheme.surface,
-                    offset = Offset(0f, 0f),
-                    blurRadius = 14f
+                Text(
+                    "Перейти к вкладке",
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
-            )
-        )
+                tabs.forEachIndexed { index, tab ->
+                    ListItem(
+                        headlineContent = { 
+                            Text(
+                                tab.title,
+                                fontWeight = if (tab == currentTab) FontWeight.Bold else FontWeight.Normal,
+                                color = if (tab == currentTab) colorScheme.primary else colorScheme.onSurface
+                            ) 
+                        },
+                        modifier = Modifier.clickable {
+                            scope.launch {
+                                val currentP = pagerState.currentPage
+                                val currentIdx = currentP % tabs.size
+                                val diff = index - currentIdx
+                                pagerState.animateScrollToPage(currentP + diff)
+                                sheetState.hide()
+                            }.invokeOnCompletion {
+                                showTabSheet = false
+                            }
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 
-@Composable
-fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, onValueChange: (String) -> Unit) {
-    val colorScheme = MaterialTheme.colorScheme
-    val score = value.toIntOrNull() ?: 10
-    val mod = floor((score - 10) / 2.0).toInt()
-    val modStr = if (mod >= 0) "+$mod" else mod.toString()
-    Box(modifier = modifier
-        .height(104.dp)
-        .shadow(2.dp, RoundedCornerShape(8.dp))
-        .background(colorScheme.surface, RoundedCornerShape(8.dp))
-        .border(1.dp, colorScheme.outline.copy(0.5f), RoundedCornerShape(8.dp))
-        .padding(8.dp)) {
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
-        Box(modifier = Modifier
-            .align(Alignment.BottomStart)
-            .padding(start = 25.dp, bottom = 5.dp)
-            .size(40.dp)
-            .rotate(-45f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-            Text(modStr, modifier = Modifier.rotate(45f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onPrimaryContainer)
-        }
-        Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(colorScheme.surfaceVariant)
-                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                BasicTextField(value = value, onValueChange = { val num = it.filter { it.isDigit() }.toIntOrNull(); if (it.isEmpty()) onValueChange(""); else if (num != null && num in 1..30) onValueChange(it.filter { it.isDigit() }) }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.width(36.dp))
-            }
-            Box(modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(colorScheme.surface)
-                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                Text(modStr, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
-            }
-        }
-    }
-}

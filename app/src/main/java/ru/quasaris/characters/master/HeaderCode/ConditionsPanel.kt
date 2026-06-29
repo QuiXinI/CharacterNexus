@@ -8,8 +8,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -49,9 +51,11 @@ fun ConditionsPanel(
         ExhaustionSection(exhaustion, onExhaustionChange)
         HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.3f), thickness = 1.dp)
 
-        allConditions.forEach { condition ->
-            ConditionItem(condition, selectedConditions.contains(condition.name)) { onToggleCondition(condition.name) }
-            HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f), thickness = 1.dp)
+        Column(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+            allConditions.forEach { condition ->
+                ConditionItem(condition, selectedConditions.contains(condition.name)) { onToggleCondition(condition.name) }
+                HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f), thickness = 1.dp)
+            }
         }
     }
 }
@@ -143,7 +147,7 @@ fun ConditionItem(condition: Condition, isSelected: Boolean, onToggle: () -> Uni
     val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessHigh)
     
     Column(modifier = Modifier.fillMaxWidth().background(if (isSelected) colorScheme.primaryContainer else Color.Transparent).animateContentSize(animationSpec)) {
-        Row(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 44.dp).clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
             Text(condition.name, modifier = Modifier.weight(1f).padding(horizontal = 12.dp), fontSize = 16.sp, color = colorScheme.onSurface, textAlign = TextAlign.Center)
             Box(modifier = Modifier.width(1.2.dp).fillMaxHeight().background(sep))
             Box(modifier = Modifier.width(44.dp).fillMaxHeight().clickable { onToggle() }, contentAlignment = Alignment.Center) {

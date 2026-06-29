@@ -21,6 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
+import ru.quasaris.characters.master.ArchiveManager
 import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.HeaderCode.ExpandingPanelsSection
@@ -189,14 +190,14 @@ fun CreateWindow(
         onCharacterChange(updated)
     }
 
-    val fileCreator = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/lsskiller")) { uri ->
+    val fileCreator = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/${ArchiveManager.EXPORT_EXTENSION}")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val currentChar = CharacterDataHandler.createCharacter(
             charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
             speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-            characterImageData, skilledProficiencies, skilledExpertise
+            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb
         )
         val scope = CoroutineScope(Dispatchers.IO)
         CharacterDataHandler.exportToLssKiller(context, uri, currentChar, scope)
