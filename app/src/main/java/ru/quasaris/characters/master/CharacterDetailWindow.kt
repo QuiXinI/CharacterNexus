@@ -270,6 +270,16 @@ fun CharacterDetailWindow(
         ))
     }
 
+    LaunchedEffect(
+        name, characterClass, order, level, characterImageData,
+        statsState, maxHp, currentHp, tempHp, selectedConditions, exhaustion,
+        attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
+        activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
+        shieldEntries, activeShieldId, themeSeedColorArgb
+    ) {
+        saveCurrentCharacter()
+    }
+
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
@@ -405,8 +415,7 @@ fun CharacterDetailWindow(
                             character = character,
                             level = level,
                             statsState = statsState,
-                            onStatsStateChange = { statsState = it },
-                            onSaveChanges = saveCurrentCharacter
+                            onStatsStateChange = { statsState = it }
                         )
                     }
                     CharacterTab.ATTACKS -> {

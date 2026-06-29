@@ -35,13 +35,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.navigation.compose.currentBackStackEntryAsState
 import kotlinx.coroutines.launch
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val characterRepository = CharacterRepository(applicationContext)
+        val characterRepository = CharacterRepository(
+            context = applicationContext,
+            appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        )
+        
+        ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver(characterRepository))
 
         enableEdgeToEdge()
         setContent {
@@ -53,6 +63,14 @@ class MainActivity : ComponentActivity() {
                 mutableStateListOf<Character>().apply {
                     addAll(characterRepository.loadCharacters())
                 }
+            }
+
+            // Sync SnapshotStateList back to Repository for debounced saving
+            LaunchedEffect(characters) {
+                snapshotFlow { characters.toList() }
+                    .collectLatest { list ->
+                        characterRepository.updateCharacters(list)
+                    }
             }
             
             val lastCharacter = characters.find { it.id == lastCharacterId }

@@ -74,8 +74,7 @@ fun StatsTab(
     character: Character,
     level: String,
     statsState: StatsState,
-    onStatsStateChange: (StatsState) -> Unit,
-    onSaveChanges: () -> Unit
+    onStatsStateChange: (StatsState) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var isAdvancedMode by remember { mutableStateOf(false) }
