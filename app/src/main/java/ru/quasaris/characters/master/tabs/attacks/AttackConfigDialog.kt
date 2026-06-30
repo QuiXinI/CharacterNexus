@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.attacks
+package ru.quasaris.characters.master.tabs.attacks
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

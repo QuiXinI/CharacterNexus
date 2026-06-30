@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master
+package ru.quasaris.characters.master.backend
 
 import android.content.Context
 import android.graphics.Bitmap

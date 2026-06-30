@@ -1,6 +1,5 @@
 package ru.quasaris.characters.master
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -12,8 +11,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.quasaris.characters.master.backend.AppThemeMode
+import ru.quasaris.characters.master.backend.SettingsManager
 
-import ru.quasaris.characters.master.ui.SettingsViewModel
+import ru.quasaris.characters.master.backend.SettingsViewModel
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,7 +76,7 @@ fun SettingsWindow(
                         selected = themeMode == AppThemeMode.M3,
                         onClick = { 
                             themeMode = AppThemeMode.M3
-                            settingsManager.themeMode = AppThemeMode.M3 
+                            settingsManager.themeMode = AppThemeMode.M3
                             onThemeModeChange(AppThemeMode.M3)
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
@@ -84,7 +85,7 @@ fun SettingsWindow(
                         selected = themeMode == AppThemeMode.OFF,
                         onClick = { 
                             themeMode = AppThemeMode.OFF
-                            settingsManager.themeMode = AppThemeMode.OFF 
+                            settingsManager.themeMode = AppThemeMode.OFF
                             onThemeModeChange(AppThemeMode.OFF)
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
@@ -93,7 +94,7 @@ fun SettingsWindow(
                         selected = themeMode == AppThemeMode.CHARACTER,
                         onClick = { 
                             themeMode = AppThemeMode.CHARACTER
-                            settingsManager.themeMode = AppThemeMode.CHARACTER 
+                            settingsManager.themeMode = AppThemeMode.CHARACTER
                             onThemeModeChange(AppThemeMode.CHARACTER)
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)

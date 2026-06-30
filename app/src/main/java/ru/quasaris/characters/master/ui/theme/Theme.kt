@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
-import ru.quasaris.characters.master.AppThemeMode
+import ru.quasaris.characters.master.backend.AppThemeMode
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,

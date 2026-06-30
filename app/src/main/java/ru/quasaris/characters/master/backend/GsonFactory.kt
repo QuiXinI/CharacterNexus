@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.utils
+package ru.quasaris.characters.master.backend
 
 import com.google.gson.*
 import ru.quasaris.characters.master.Character

@@ -2,7 +2,6 @@ package ru.quasaris.characters.master.MainWindow
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,7 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
-import ru.quasaris.characters.master.ArchiveManager
+import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.HeaderCode.ExpandingPanelsSection
@@ -31,14 +30,13 @@ import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
-import ru.quasaris.characters.master.ImageManager
+import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.PaletteHelper
 import android.graphics.BitmapFactory
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import androidx.compose.ui.unit.IntOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -2,13 +2,12 @@ package ru.quasaris.characters.master
 
 import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import androidx.core.content.edit
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
-import ru.quasaris.characters.master.utils.GsonFactory
+import ru.quasaris.characters.master.backend.GsonFactory
 
 class CharacterRepository(
     context: Context,

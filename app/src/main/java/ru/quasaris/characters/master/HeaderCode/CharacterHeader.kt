@@ -46,6 +46,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import ru.quasaris.characters.master.backend.ImageManager
 
 @Composable
 fun CharacterHeader(

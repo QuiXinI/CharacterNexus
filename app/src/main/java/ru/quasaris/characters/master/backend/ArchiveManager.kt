@@ -1,12 +1,11 @@
-package ru.quasaris.characters.master
+package ru.quasaris.characters.master.backend
 
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
-import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import ru.quasaris.characters.master.utils.GsonFactory
+import ru.quasaris.characters.master.Character
 import java.io.*
 import java.util.UUID
 import java.util.zip.ZipEntry

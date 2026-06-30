@@ -2,18 +2,15 @@ package ru.quasaris.characters.master.MainWindow
 
 import android.content.Context
 import android.net.Uri
-import android.util.Base64
-import com.google.gson.Gson
 import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
 
-import ru.quasaris.characters.master.ArchiveManager
-import ru.quasaris.characters.master.utils.GsonFactory
+import ru.quasaris.characters.master.backend.ArchiveManager
+import ru.quasaris.characters.master.backend.GsonFactory
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object CharacterDataHandler {

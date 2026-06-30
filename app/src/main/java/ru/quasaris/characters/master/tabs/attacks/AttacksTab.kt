@@ -1,5 +1,6 @@
-package ru.quasaris.characters.master.tabs
+package ru.quasaris.characters.master.tabs.attacks
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,14 +16,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
-import ru.quasaris.characters.master.attacks.AttackBonusIndicator
-import ru.quasaris.characters.master.attacks.AttackConfigDialog
-import ru.quasaris.characters.master.attacks.DicePart
-import ru.quasaris.characters.master.attacks.formatFullDamage
-import ru.quasaris.characters.master.attacks.parseFormulaParts
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 
@@ -172,7 +169,7 @@ fun AttackItem(
                     if (showInfo) {
                         Popup(
                             alignment = Alignment.TopEnd,
-                            offset = androidx.compose.ui.unit.IntOffset(0, 40),
+                            offset = IntOffset(0, 40),
                             onDismissRequest = { showInfo = false },
                             properties = PopupProperties(
                                 focusable = false, // Allows clicks to pass through
@@ -187,7 +184,7 @@ fun AttackItem(
                                 color = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 8.dp,
                                 shadowElevation = 4.dp,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                             ) {
                                 Text(
                                     text = attack.notes.ifBlank { "Нет описания" },
@@ -249,7 +246,7 @@ fun AttackItem(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                attackDice.forEach { ru.quasaris.characters.master.attacks.DiceIcon(it) }
+                                attackDice.forEach { DiceIcon(it) }
                             }
                         }
                     }

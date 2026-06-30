@@ -3,6 +3,7 @@ package ru.quasaris.characters.master.MainWindow
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import ru.quasaris.characters.master.HeaderCode.CharacterHeader
+import ru.quasaris.characters.master.backend.ArchiveManager
 
 @Composable
 fun CharacterIdentitySection(
@@ -78,7 +79,7 @@ fun CharacterIdentitySection(
         },
         onDownloadClick = {
             onDismissAvatarMenu()
-            onDownloadClick("${name.ifEmpty { "character" }}.${ru.quasaris.characters.master.ArchiveManager.EXPORT_EXTENSION}")
+            onDownloadClick("${name.ifEmpty { "character" }}.${ArchiveManager.EXPORT_EXTENSION}")
         }
     )
 }

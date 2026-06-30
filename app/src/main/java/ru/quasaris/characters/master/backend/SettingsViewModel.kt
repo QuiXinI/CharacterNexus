@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.ui
+package ru.quasaris.characters.master.backend
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import ru.quasaris.characters.master.AppScaleManager
 import kotlin.math.roundToInt
 
 class SettingsViewModel(private val appScaleManager: AppScaleManager) : ViewModel() {

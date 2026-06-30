@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Person
@@ -36,8 +35,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import ru.quasaris.characters.master.ui.MorphingPolygonShape
+import ru.quasaris.characters.master.backend.MorphingPolygonShape
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
+import ru.quasaris.characters.master.backend.ImageManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

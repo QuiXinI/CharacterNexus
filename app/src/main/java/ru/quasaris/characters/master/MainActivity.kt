@@ -7,9 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -42,8 +40,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 
 import androidx.compose.runtime.collectAsState
-import ru.quasaris.characters.master.ui.AppScaleProvider
-import ru.quasaris.characters.master.ui.SettingsViewModel
+import ru.quasaris.characters.master.backend.AppLifecycleObserver
+import ru.quasaris.characters.master.backend.AppScaleManager
+import ru.quasaris.characters.master.backend.AppScaleProvider
+import ru.quasaris.characters.master.backend.SettingsManager
+import ru.quasaris.characters.master.backend.SettingsViewModel
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)

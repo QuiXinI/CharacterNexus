@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.ui
+package ru.quasaris.characters.master.backend
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
