@@ -15,7 +15,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
+import ru.quasaris.characters.master.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.attacks.AttackConfigDialog
+import ru.quasaris.characters.master.attacks.DicePart
+import ru.quasaris.characters.master.attacks.formatFullDamage
+import ru.quasaris.characters.master.attacks.parseFormulaParts
 
 @Composable
 fun AttacksTab(
@@ -94,9 +98,30 @@ fun AttackItem(
     attributeModifiers: Map<Attribute, Int>,
     onClick: () -> Unit
 ) {
-    val attrMod = attributeModifiers[attack.attribute] ?: 0
-    val bonus = attrMod + (if (attack.isProficient) proficiencyBonus else 0) + attack.attackBonus
-    val bonusText = if (bonus >= 0) "+$bonus" else bonus.toString()
+    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers) {
+        val attrMod = attributeModifiers[attack.attribute] ?: 0
+        val prof = if (attack.isProficient) proficiencyBonus else 0
+        var totalFlat = attrMod + prof + attack.attackBonus
+        val allDice = mutableMapOf<Int, Int>()
+        
+        attack.attackBonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus)
+            totalFlat += fFlat
+            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        }
+        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+    }
+    
+    val totalAttackBonus = attackCalculation.first
+    val attackDice = attackCalculation.second
+
+    val fullDamageText = formatFullDamage(
+        baseFormula = attack.damageFormula,
+        baseDamageBonus = attack.damageBonus,
+        bonusFormulas = attack.damageBonuses.map { it.formula },
+        attributeModifiers = attributeModifiers,
+        proficiencyBonus = proficiencyBonus
+    )
 
     Card(
         modifier = Modifier
@@ -123,18 +148,10 @@ fun AttackItem(
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "${attack.damageFormula} ${attack.damageType}".trim(),
+                        text = "$fullDamageText ${attack.damageType}".trim(),
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
-                    if (attack.damageBonus != 0) {
-                        Text(
-                            text = " +${attack.damageBonus}",
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
                 if (attack.showNotes && attack.notes.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
@@ -148,20 +165,13 @@ fun AttackItem(
                 }
             }
             
-            Surface(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                shape = androidx.compose.foundation.shape.CircleShape,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = bonusText,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
+            AttackBonusIndicator(
+                bonus = totalAttackBonus,
+                dice = attackDice,
+                size = 48.dp,
+                fontSize = 18.sp,
+                showLabel = false
+            )
         }
     }
 }

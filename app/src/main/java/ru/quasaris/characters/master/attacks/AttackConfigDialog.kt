@@ -24,8 +24,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.res.painterResource
+import ru.quasaris.characters.master.R
+import ru.quasaris.characters.master.AttackBonus
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
+import ru.quasaris.characters.master.DamageBonus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,11 +43,25 @@ fun AttackConfigDialog(
 ) {
     var state by remember { mutableStateOf(attack) }
 
-    val totalAttackBonus = remember(state, proficiencyBonus, attributeModifiers) {
+    val attackCalculation = remember(state, proficiencyBonus, attributeModifiers) {
         val attrMod = attributeModifiers[state.attribute] ?: 0
         val prof = if (state.isProficient) proficiencyBonus else 0
-        attrMod + prof + state.attackBonus
+        
+        // Sum up base bonus + all flat bonuses from additional bonus fields
+        var totalFlat = attrMod + prof + state.attackBonus
+        val allDice = mutableMapOf<Int, Int>()
+        
+        state.attackBonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus)
+            totalFlat += fFlat
+            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        }
+        
+        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
+    
+    val totalAttackBonus = attackCalculation.first
+    val attackDice = attackCalculation.second
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -52,7 +70,7 @@ fun AttackConfigDialog(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Настройки атаки", fontWeight = FontWeight.Bold) },
+                    title = { Text("Настройки атаки", fontWeight = FontWeight.Black) },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
                             Icon(Icons.Default.Close, contentDescription = "Закрыть")
@@ -85,19 +103,20 @@ fun AttackConfigDialog(
                         OutlinedTextField(
                             value = state.name,
                             onValueChange = { state = state.copy(name = it) },
-                            label = { Text("НАЗВАНИЕ") },
+                            label = { Text("Название") },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(8.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        AttackBonusIndicator(totalAttackBonus)
+                        AttackBonusIndicator(totalAttackBonus, attackDice)
                     }
 
                     // АТАКА Section
-                    SectionHeader("АТАКА")
+                    SectionHeader("Атака")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         ProficiencyToggle(
                             isProficient = state.isProficient,
@@ -111,13 +130,29 @@ fun AttackConfigDialog(
                             modifier = Modifier.weight(1f)
                         )
                     }
-                    AddBonusButton(
-                        currentBonus = state.attackBonus,
-                        onBonusChange = { state = state.copy(attackBonus = it) }
-                    )
+
+                    state.attackBonuses.forEachIndexed { index, bonus ->
+                        AttackBonusField(
+                            bonus = bonus,
+                            onUpdate = { updated ->
+                                val newList = state.attackBonuses.toMutableList()
+                                newList[index] = updated
+                                state = state.copy(attackBonuses = newList)
+                            },
+                            onDelete = {
+                                val newList = state.attackBonuses.toMutableList()
+                                newList.removeAt(index)
+                                state = state.copy(attackBonuses = newList)
+                            }
+                        )
+                    }
+
+                    AddBonusButton {
+                        state = state.copy(attackBonuses = state.attackBonuses + AttackBonus())
+                    }
 
                     // УРОН Section
-                    SectionHeader("УРОН")
+                    SectionHeader("Урон")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -125,7 +160,7 @@ fun AttackConfigDialog(
                         OutlinedTextField(
                             value = state.damageFormula,
                             onValueChange = { state = state.copy(damageFormula = it) },
-                            label = { Text("ФОРМУЛА") },
+                            label = { Text("Формула") },
                             modifier = Modifier.weight(1f),
                             placeholder = { Text("1d8+[STR]") },
                             shape = RoundedCornerShape(8.dp)
@@ -133,18 +168,34 @@ fun AttackConfigDialog(
                         OutlinedTextField(
                             value = state.damageType,
                             onValueChange = { state = state.copy(damageType = it) },
-                            label = { Text("ВИД УРОНА") },
+                            label = { Text("Вид Урона") },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(8.dp)
                         )
                     }
-                    AddBonusButton(
-                        currentBonus = state.damageBonus,
-                        onBonusChange = { state = state.copy(damageBonus = it) }
-                    )
 
-                    // ЗАМЕТКИ Section
-                    SectionHeader("ЗАМЕТКИ")
+                    state.damageBonuses.forEachIndexed { index, bonus ->
+                        DamageBonusField(
+                            bonus = bonus,
+                            onUpdate = { updated ->
+                                val newList = state.damageBonuses.toMutableList()
+                                newList[index] = updated
+                                state = state.copy(damageBonuses = newList)
+                            },
+                            onDelete = {
+                                val newList = state.damageBonuses.toMutableList()
+                                newList.removeAt(index)
+                                state = state.copy(damageBonuses = newList)
+                            }
+                        )
+                    }
+
+                    AddBonusButton {
+                        state = state.copy(damageBonuses = state.damageBonuses + DamageBonus())
+                    }
+
+                    // Notes Section
+                    SectionHeader("Заметки")
                     OutlinedTextField(
                         value = state.notes,
                         onValueChange = { state = state.copy(notes = it) },
@@ -162,7 +213,7 @@ fun AttackConfigDialog(
                             checked = state.showNotes,
                             onCheckedChange = { state = state.copy(showNotes = it) }
                         )
-                        Text("Отображать заметки")
+                        Text("Отображать Заметки")
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
@@ -170,7 +221,7 @@ fun AttackConfigDialog(
                     // Delete Button
                     OutlinedButton(
                         onClick = { onDelete(state) },
-                        modifier = Modifier.align(Alignment.End),
+                        modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
                         border = BorderStroke(1.dp, Color.Red),
                         shape = RoundedCornerShape(8.dp)
@@ -186,11 +237,12 @@ fun AttackConfigDialog(
                     onClick = { onSave(state) },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                        .fillMaxWidth(),
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .height(56.dp),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Сохранить")
+                    Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -198,24 +250,92 @@ fun AttackConfigDialog(
 }
 
 @Composable
-fun AttackBonusIndicator(bonus: Int) {
+fun AttackBonusIndicator(
+    bonus: Int,
+    dice: List<DicePart>,
+    size: androidx.compose.ui.unit.Dp = 60.dp,
+    fontSize: androidx.compose.ui.unit.TextUnit = 20.sp,
+    showLabel: Boolean = true
+) {
     val bonusText = if (bonus >= 0) "+$bonus" else bonus.toString()
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .size(60.dp)
+                .size(size)
                 .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = bonusText,
-                fontSize = 20.sp,
+                fontSize = fontSize,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        Text("АТАКА", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        if (showLabel) {
+            Text("Атака", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+
+        if (dice.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                dice.forEach { die ->
+                    DiceIcon(die)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DiceIcon(die: DicePart) {
+    val iconRes = when (die.sides) {
+        4 -> R.drawable.ic_d4_dice
+        6 -> R.drawable.ic_d6_dice
+        8 -> R.drawable.ic_d8_dice
+        10 -> R.drawable.ic_d10_dice
+        12 -> R.drawable.ic_d12_dice
+        20 -> R.drawable.ic_d20_dice
+        else -> null
+    }
+
+    if (iconRes != null) {
+        Box(
+            modifier = Modifier.size(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = "d${die.sides}",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            val textColor = MaterialTheme.colorScheme.primary
+            val outlineColor = MaterialTheme.colorScheme.background
+            
+            Box(modifier = Modifier.padding(top = 1.dp)) {
+                listOf(-0.5f to -0.5f, 0.5f to -0.5f, -0.5f to 0.5f, 0.5f to 0.5f).forEach { (dx, dy) ->
+                    Text(
+                        text = die.count.toString(),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        color = outlineColor,
+                        modifier = Modifier.offset(dx.dp, dy.dp)
+                    )
+                }
+                Text(
+                    text = die.count.toString(),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    color = textColor
+                )
+            }
+        }
     }
 }
 
@@ -223,8 +343,8 @@ fun AttackBonusIndicator(bonus: Int) {
 fun SectionHeader(title: String) {
     Text(
         text = title,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Black,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
         modifier = Modifier.padding(top = 8.dp)
     )
@@ -237,39 +357,49 @@ fun ProficiencyToggle(
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier
-            .height(56.dp)
-            .border(
-                1.dp,
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                RoundedCornerShape(8.dp)
-            )
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        val activeColor = MaterialTheme.colorScheme.primaryContainer
-        val inactiveColor = Color.Transparent
+    Column(modifier = modifier) {
+        Text(
+            "Мастерство",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    RoundedCornerShape(8.dp)
+                )
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            val activeColor = MaterialTheme.colorScheme.primaryContainer
+            val inactiveColor = Color.Transparent
 
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .background(if (!isProficient) activeColor else inactiveColor, RoundedCornerShape(6.dp))
-                .clickable { onToggle(false) },
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Нет", fontSize = 12.sp)
-        }
-        Box(
-            modifier = Modifier
-                .weight(1.5f)
-                .fillMaxHeight()
-                .background(if (isProficient) activeColor else inactiveColor, RoundedCornerShape(6.dp))
-                .clickable { onToggle(true) },
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Мастерство +$proficiencyBonus", fontSize = 12.sp, textAlign = TextAlign.Center)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(if (!isProficient) activeColor else inactiveColor, RoundedCornerShape(6.dp))
+                    .clickable { onToggle(false) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Нет", fontSize = 16.sp)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(if (isProficient) activeColor else inactiveColor, RoundedCornerShape(6.dp))
+                    .clickable { onToggle(true) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+$proficiencyBonus", fontSize = 16.sp, textAlign = TextAlign.Center)
+            }
         }
     }
 }
@@ -283,33 +413,43 @@ fun AttributeDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier) {
-        OutlinedTextField(
-            value = selectedAttribute.fullName,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("ХАРАКТЕРИСТИКА") },
-            trailingIcon = {
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(Icons.Default.ArrowDropDown, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+    Column(modifier = modifier) {
+        Text(
+            "Характеристика",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
         )
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth(0.45f)
-        ) {
-            Attribute.entries.filter { it != Attribute.NONE }.forEach { attr ->
-                DropdownMenuItem(
-                    text = { Text(attr.fullName) },
-                    onClick = {
-                        onAttributeSelected(attr)
-                        expanded = false
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = selectedAttribute.fullName,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = {
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(Icons.Default.ArrowDropDown, null)
                     }
-                )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(8.dp)
+            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.fillMaxWidth(0.45f)
+            ) {
+                Attribute.entries.filter { it != Attribute.NONE }.forEach { attr ->
+                    DropdownMenuItem(
+                        text = { Text(attr.fullName) },
+                        onClick = {
+                            onAttributeSelected(attr)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -317,21 +457,102 @@ fun AttributeDropdown(
 
 @Composable
 fun AddBonusButton(
-    currentBonus: Int,
-    onBonusChange: (Int) -> Unit
+    onClick: () -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable { /* Could open a small number picker or just increment */ }
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 8.dp)
     ) {
-        IconButton(onClick = { onBonusChange(currentBonus + 1) }) {
-            Icon(Icons.Default.Add, contentDescription = "Добавить бонус", tint = MaterialTheme.colorScheme.primary)
-        }
+        Icon(
+            Icons.Default.Add,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(end = 8.dp)
+        )
         Text(
-            text = if (currentBonus == 0) "+ ДОБАВИТЬ БОНУС" else "Бонус: +$currentBonus",
+            text = "Добавить бонус",
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp
         )
+    }
+}
+
+@Composable
+fun AttackBonusField(
+    bonus: AttackBonus,
+    onUpdate: (AttackBonus) -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = bonus.name,
+                onValueChange = { onUpdate(bonus.copy(name = it)) },
+                label = { Text("Название") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Close, contentDescription = "Удалить", tint = Color.Red)
+            }
+        }
+        OutlinedTextField(
+            value = bonus.formula,
+            onValueChange = { onUpdate(bonus.copy(formula = it)) },
+            label = { Text("Формула") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
+        )
+    }
+}
+
+@Composable
+fun DamageBonusField(
+    bonus: DamageBonus,
+    onUpdate: (DamageBonus) -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = bonus.name,
+                onValueChange = { onUpdate(bonus.copy(name = it)) },
+                label = { Text("Название") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Close, contentDescription = "Удалить", tint = Color.Red)
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = bonus.formula,
+                onValueChange = { onUpdate(bonus.copy(formula = it)) },
+                label = { Text("Формула") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            OutlinedTextField(
+                value = bonus.damageType,
+                onValueChange = { onUpdate(bonus.copy(damageType = it)) },
+                label = { Text("Вид Урона") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp)
+            )
+        }
     }
 }

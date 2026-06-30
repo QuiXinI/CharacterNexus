@@ -105,7 +105,7 @@ fun SettingsWindow(
             )
             
             Text(
-                text = "Мастер Персонажей\nВерсия 1.7",
+                text = "Мастер Персонажей\nВерсия ${BuildConfig.VERSION_NAME}",
                 fontSize = 14.sp,
                 color = colorScheme.onSurfaceVariant
             )

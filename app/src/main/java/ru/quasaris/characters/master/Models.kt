@@ -46,18 +46,34 @@ enum class Attribute(val fullName: String, val shortName: String) {
     NONE("Нет", "НЕТ")
 }
 
+data class AttackBonus(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val formula: String = ""
+)
+
+data class DamageBonus(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val formula: String = "",
+    val damageType: String = ""
+)
+
 data class AttackEntry(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
     val isProficient: Boolean = false,
     val attribute: Attribute = Attribute.STRENGTH,
     val attackBonus: Int = 0,
+    val attackBonuses: List<AttackBonus> = emptyList(),
     val damageFormula: String = "",
     val damageType: String = "",
     val damageBonus: Int = 0,
+    val damageBonuses: List<DamageBonus> = emptyList(),
     val notes: String = "",
     val showNotes: Boolean = false
 )
+
 
 data class Character(
     val id: Int,
