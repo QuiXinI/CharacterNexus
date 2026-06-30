@@ -2,8 +2,8 @@ package ru.quasaris.characters.master.MainWindow
 
 import android.content.Context
 import androidx.compose.runtime.*
-import ru.quasaris.characters.master.HeaderCode.Condition
-import ru.quasaris.characters.master.HeaderCode.parseConditions
+import ru.quasaris.characters.master.backend.Condition
+import ru.quasaris.characters.master.backend.parseConditions
 
 @Composable
 fun rememberAllConditions(context: Context): List<Condition> {

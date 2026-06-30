@@ -46,7 +46,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import ru.quasaris.characters.master.backend.Condition
 import ru.quasaris.characters.master.backend.ImageManager
+import ru.quasaris.characters.master.backend.getPreviousLevelThreshold
 
 @Composable
 fun CharacterHeader(
@@ -240,7 +242,7 @@ fun ExpandingPanelsSection(
     onProfChange: (String) -> Unit,
     nextLevelExp: String,
     statsMap: Map<String, String>,
-    
+
     isHealthPanelVisible: Boolean,
     maxHp: String,
     onMaxHpChange: (String) -> Unit,
@@ -253,7 +255,7 @@ fun ExpandingPanelsSection(
     onTempClick: () -> Unit,
     healthColor: Color,
     clampHp: () -> Unit,
-    
+
     isArmorClassPanelVisible: Boolean,
     armorClassEntries: List<ArmorClassEntry>,
     activeArmorClassId: String?,
@@ -262,7 +264,7 @@ fun ExpandingPanelsSection(
     onActiveArmorClass: (String?) -> Unit,
     onAcDeleteReq: (String?) -> Unit,
     onAddArmorClass: () -> Unit,
-    
+
     isInitiativePanelVisible: Boolean,
     initiativeEntries: List<InitiativeEntry>,
     activeInitiativeId: String?,
@@ -271,14 +273,14 @@ fun ExpandingPanelsSection(
     onActiveInitiative: (String?) -> Unit,
     onInitDeleteReq: (String?) -> Unit,
     onAddInitiative: () -> Unit,
-    
+
     isConditionsPanelVisible: Boolean,
     allConditions: List<Condition>,
     selectedConditions: List<String>,
     onToggleCondition: (String) -> Unit,
     exhaustion: Int,
     onExhaustionChange: (Int) -> Unit,
-    
+
     isShieldActive: Boolean,
     onShieldActiveChange: (Boolean) -> Unit,
     shieldEntries: List<ShieldEntry>,
@@ -288,7 +290,7 @@ fun ExpandingPanelsSection(
     onActiveShield: (String?) -> Unit,
     onShieldDeleteReq: (String?) -> Unit,
     onAddShield: () -> Unit,
-    
+
     isSpeedPanelVisible: Boolean,
     speedEntries: List<SpeedEntry>,
     activeSpeedId: String?,

@@ -24,8 +24,8 @@ import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.HeaderCode.ExpandingPanelsSection
-import ru.quasaris.characters.master.HeaderCode.getNextLevelThreshold
-import ru.quasaris.characters.master.HeaderCode.evaluateFormula
+import ru.quasaris.characters.master.backend.getNextLevelThreshold
+import ru.quasaris.characters.master.backend.evaluateFormula
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.SpeedEntry
@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ru.quasaris.characters.master.HeaderCode.HealthDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -343,7 +344,7 @@ fun CreateWindow(
                 Spacer(Modifier.height(24.dp))
             }
         }
-        
+
         HealthDialog(
             showDialog = showHpDialog,
             hpDialogType = hpDialogType,
@@ -351,13 +352,22 @@ fun CreateWindow(
             onValueChange = { hpDialogValue = it },
             onDismiss = { showHpDialog = false },
             onConfirm = { v ->
-                when(hpDialogType) {
-                    "heal" -> currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + v).toString()
+                when (hpDialogType) {
+                    "heal" -> currentHp = minOf(
+                        maxHp.toIntOrNull() ?: 0,
+                        (currentHp.toIntOrNull() ?: 0) + v
+                    ).toString()
+
                     "damage" -> {
-                        var d = v; var t = tempHp.toIntOrNull() ?: 0; val c = currentHp.toIntOrNull() ?: 0
-                        if (t > 0) { val a = minOf(t, d); t -= a; d -= a; tempHp = t.toString() }
+                        var d = v;
+                        var t = tempHp.toIntOrNull() ?: 0;
+                        val c = currentHp.toIntOrNull() ?: 0
+                        if (t > 0) {
+                            val a = minOf(t, d); t -= a; d -= a; tempHp = t.toString()
+                        }
                         if (d > 0) currentHp = maxOf(0, c - d).toString()
                     }
+
                     "temp" -> tempHp = minOf(9999, v).toString()
                 }
                 showHpDialog = false

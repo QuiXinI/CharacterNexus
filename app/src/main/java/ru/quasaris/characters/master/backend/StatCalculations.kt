@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.HeaderCode
+package ru.quasaris.characters.master.backend
 
 import java.util.Stack
 import kotlin.math.floor
@@ -16,7 +16,7 @@ fun calculateModifier(scoreStr: String): Int {
  */
 fun getProficiencyBonus(levelStr: String): Int {
     val level = levelStr.toIntOrNull() ?: 1
-    return kotlin.math.floor((level - 1) / 4.0).toInt() + 2
+    return floor((level - 1) / 4.0).toInt() + 2
 }
 
 /**
@@ -126,17 +126,14 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
             .replace("[$key]", " $mod ")
             .replace("[$key ", " $mod ")
     }
-    val pb = stats["proficiencyBonus"] ?: "2"
     val level = stats["level"] ?: "1"
     val realPb = getProficiencyBonus(level).toString()
-    
-    // Заменяем [БМ] на реальный бонус или на то, что введено в поле "Бонус Мастерства"
-    processed = processed.replace("[БМ]", " $pb ").replace("[PB]", " $pb ")
-        .replace("[НАСТ БМ]", " $realPb ").replace("[REAL PB]", " $realPb ")
-    
-    if (processed.contains("[БМ]") || processed.contains("[PB]")) {
-        processed = processed.replace("[БМ]", " $realPb ").replace("[PB]", " $realPb ")
-    }
+    val pb = stats["proficiencyBonus"] ?: realPb
+
+    val safePb = if (pb.contains("[БМ]") || pb.contains("[PB]") || pb.contains("[PB]")) realPb else pb
+
+    processed = processed.replace("[БМ]", " $safePb ").replace("[PB]", " $safePb ").replace("[PROF]", " $safePb ")
+        .replace("[НАСТ БМ]", " $realPb ").replace("[REAL PB]", " $realPb ").replace("[REAL PROF]", " $realPb ")
     
     fun processFunctions(input: String): String {
         var current = input

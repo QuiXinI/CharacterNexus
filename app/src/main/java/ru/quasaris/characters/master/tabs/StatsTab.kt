@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -32,13 +31,12 @@ import androidx.compose.ui.text.style.TextAlign
 import ru.quasaris.characters.master.R
 import kotlin.math.floor
 import ru.quasaris.characters.master.Attribute
-import ru.quasaris.characters.master.HeaderCode.calculateModifier
+import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.StatBonus
 import ru.quasaris.characters.master.SkillBonus
-import ru.quasaris.characters.master.StatBonusType
 import ru.quasaris.characters.master.MainWindow.AttributesSection
-import ru.quasaris.characters.master.HeaderCode.getProficiencyBonus
+import ru.quasaris.characters.master.backend.getProficiencyBonus
 
 data class StatsState(
     val strength: String = "10",
@@ -58,10 +56,10 @@ data class StatsState(
     val statBonuses: List<StatBonus> = emptyList(),
     val skillBonuses: List<SkillBonus> = emptyList()
 ) {
-    fun toStatsMap(level: String) = mapOf(
+    fun toStatsMap(level: String, proficiencyBonus: String) = mapOf(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
         "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma,
-        "level" to level
+        "level" to level, "proficiencyBonus" to proficiencyBonus
     )
 
     fun toAttributeModifiers() = mapOf(

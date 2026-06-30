@@ -33,6 +33,8 @@ import kotlinx.coroutines.Dispatchers
 import ru.quasaris.characters.master.tabs.attacks.AttacksTab
 import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.ImageManager
+import ru.quasaris.characters.master.backend.getNextLevelThreshold
+import ru.quasaris.characters.master.backend.getProficiencyBonus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +50,7 @@ fun CharacterDetailWindow(
     var order by remember { mutableStateOf(character?.order ?: "") }
     var level by remember { mutableStateOf(character?.level ?: "1") }
     var experience by remember { mutableStateOf(character?.experience ?: "50") }
+    var proficiencyBonus by remember { mutableStateOf(character?.proficiencyBonus ?: "[НАСТ БМ]") }
     var nextLevelExp by remember { mutableStateOf(getNextLevelThreshold(character?.level ?: "1")) }
 
     LaunchedEffect(level) {
@@ -134,6 +137,7 @@ fun CharacterDetailWindow(
             strengthProficient = statsState.strProf, dexterityProficient = statsState.dexProf, constitutionProficient = statsState.conProf,
             intelligenceProficient = statsState.intProf, wisdomProficient = statsState.wisProf, charismaProficient = statsState.chaProf,
             maxHp = maxHp, currentHp = currentHp, tempHp = tempHp,
+            proficiencyBonus = proficiencyBonus,
             selectedConditions = selectedConditions, exhaustion = exhaustion,
             armorClassEntries = armorClassEntries, activeArmorClassId = activeArmorClassId,
             initiativeEntries = initiativeEntries, activeInitiativeId = activeInitiativeId,
@@ -174,7 +178,7 @@ fun CharacterDetailWindow(
         return
     }
 
-    val statsMap = remember(statsState, level) { statsState.toStatsMap(level) }
+    val statsMap = remember(statsState, level, proficiencyBonus) { statsState.toStatsMap(level, proficiencyBonus) }
 
     val attributeModifiers = remember(statsState) { statsState.toAttributeModifiers() }
     val pb = getProficiencyBonus(level)
@@ -221,7 +225,8 @@ fun CharacterDetailWindow(
             maxHp = maxHp,
             currentHp = currentHp,
             tempHp = tempHp,
-            selectedConditions = selectedConditions, 
+            proficiencyBonus = proficiencyBonus,
+            selectedConditions = selectedConditions,
             exhaustion = exhaustion, 
             attacks = attacks,
             armorClassEntries = armorClassEntries,
@@ -243,7 +248,7 @@ fun CharacterDetailWindow(
 
     LaunchedEffect(
         name, characterClass, order, level, characterImageData,
-        statsState, maxHp, currentHp, tempHp, selectedConditions, exhaustion,
+        statsState, maxHp, currentHp, tempHp, proficiencyBonus, selectedConditions, exhaustion,
         attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
         shieldEntries, activeShieldId, themeSeedColorArgb
@@ -336,7 +341,7 @@ fun CharacterDetailWindow(
                 ExpandingPanelsSection(
                     isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it },
                     experience = experience, onExpChange = { experience = it },
-                    proficiencyBonus = "[НАСТ БМ]", onProfChange = { }, // Handled by passed lambda
+                    proficiencyBonus = proficiencyBonus, onProfChange = { proficiencyBonus = it },
                     nextLevelExp = nextLevelExp, statsMap = statsMap,
                     isHealthPanelVisible = isHealthPanelVisible, maxHp = maxHp, onMaxHpChange = { maxHp = it },
                     tempHp = tempHp, onTempHpChange = { tempHp = it },

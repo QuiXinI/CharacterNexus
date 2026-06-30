@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.Attribute
-import ru.quasaris.characters.master.HeaderCode.calculateModifier
+import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.StatBonusType
 import ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus
 

@@ -4,7 +4,7 @@ import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
-import ru.quasaris.characters.master.HeaderCode.evaluateFormula
+import ru.quasaris.characters.master.backend.evaluateFormula
 
 object CombatCalculations {
     fun calculateAC(

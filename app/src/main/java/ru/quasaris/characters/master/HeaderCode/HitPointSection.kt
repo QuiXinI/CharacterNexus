@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.MainWindow
+package ru.quasaris.characters.master.HeaderCode
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
