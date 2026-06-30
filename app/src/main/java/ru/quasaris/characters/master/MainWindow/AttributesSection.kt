@@ -2,9 +2,12 @@ package ru.quasaris.characters.master.MainWindow
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +26,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.HeaderCode.calculateModifier
+import ru.quasaris.characters.master.StatBonusType
+import ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus
 
 @Composable
 fun AttributesSection(
@@ -55,9 +61,23 @@ fun AttributesSection(
     isAdvancedMode: Boolean,
     skilledProficiencies: List<String>,
     skilledExpertise: List<String>,
-    onSkillClick: (String) -> Unit
+    statBonuses: List<ru.quasaris.characters.master.StatBonus> = emptyList(),
+    skillBonuses: List<ru.quasaris.characters.master.SkillBonus> = emptyList(),
+    onSkillClick: (String) -> Unit,
+    onSkillLongClick: (String) -> Unit = {},
+    onStatClick: (Attribute) -> Unit = {}
 ) {
     val animDuration = 600
+    
+    val attributeModifiers = mapOf(
+        Attribute.STRENGTH to calculateModifier(strength),
+        Attribute.DEXTERITY to calculateModifier(dexterity),
+        Attribute.CONSTITUTION to calculateModifier(constitution),
+        Attribute.INTELLIGENCE to calculateModifier(intelligence),
+        Attribute.WISDOM to calculateModifier(wisdom),
+        Attribute.CHARISMA to calculateModifier(charisma)
+    )
+    val pb = evalPB.replace("+", "").toIntOrNull() ?: 0
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
@@ -71,16 +91,34 @@ fun AttributesSection(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange)
-                        StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange)
+                        StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange, onClick = { onStatClick(Attribute.STRENGTH) },
+                            saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                        )
+                        StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange, onClick = { onStatClick(Attribute.INTELLIGENCE) },
+                            saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                        )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange)
-                        StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange)
+                        StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange, onClick = { onStatClick(Attribute.DEXTERITY) },
+                            saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                        )
+                        StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange, onClick = { onStatClick(Attribute.WISDOM) },
+                            saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                        )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Тело.", constitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange)
-                        StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange)
+                        StatCard("Тело.", constitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange, onClick = { onStatClick(Attribute.CONSTITUTION) },
+                            saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                        )
+                        StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange, onClick = { onStatClick(Attribute.CHARISMA) },
+                            saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                        )
                     }
                 }
             }
@@ -91,20 +129,25 @@ fun AttributesSection(
                 exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(animDuration)) + fadeOut()
             ) {
                 val stats = listOf(
-                    StatInfo("STR", "Сила", strength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
-                    StatInfo("DEX", "Ловкость", dexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
-                    StatInfo("CON", "Телосложение", constitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
-                    StatInfo("INT", "Интеллект", intelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
-                    StatInfo("WIS", "Мудрость", wisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
-                    StatInfo("CHA", "Харизма", charisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
+                    StatInfo(Attribute.STRENGTH, "Сила", strength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
+                    StatInfo(Attribute.DEXTERITY, "Ловкость", dexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
+                    StatInfo(Attribute.CONSTITUTION, "Телосложение", constitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
+                    StatInfo(Attribute.INTELLIGENCE, "Интеллект", intelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
+                    StatInfo(Attribute.WISDOM, "Мудрость", wisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
+                    StatInfo(Attribute.CHARISMA, "Харизма", charisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
                 )
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     stats.forEach { stat ->
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange)
+                            StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { onStatClick(stat.attribute) },
+                                saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                                checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                            )
                             stat.skills.forEach { skill ->
-                                SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick)
+                                SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick, onLongClick = onSkillLongClick,
+                                    bonus = calculateTotalBonus(skillBonuses.filter { it.skillName == skill }.map { it.formula }, attributeModifiers, pb)
+                                )
                             }
                         }
                     }
@@ -144,7 +187,7 @@ fun AttributesSection(
 }
 
 data class StatInfo(
-    val id: String,
+    val attribute: Attribute,
     val label: String,
     val value: String,
     val isProf: Boolean,
@@ -154,17 +197,30 @@ data class StatInfo(
 )
 
 @Composable
-fun StatCard(label: String, value: String, profB: String, isP: Boolean, modifier: Modifier = Modifier, onValue: (String) -> Unit, onPToggle: (Boolean) -> Unit) {
+fun StatCard(
+    label: String, 
+    value: String, 
+    profB: String, 
+    isP: Boolean, 
+    modifier: Modifier = Modifier, 
+    onValue: (String) -> Unit, 
+    onPToggle: (Boolean) -> Unit, 
+    onClick: () -> Unit,
+    saveBonus: Int = 0,
+    checkBonus: Int = 0
+) {
     val colorScheme = MaterialTheme.colorScheme
     val base = calculateModifier(value)
     val pb = profB.toIntOrNull() ?: 0
-    val total = base + (if (isP) pb else 0)
+    val totalSave = base + (if (isP) pb else 0) + saveBonus
+    val totalCheck = base + checkBonus
     
     Box(modifier = modifier
         .height(96.dp)
         .clip(RoundedCornerShape(12.dp))
         .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
         .border(1.dp, colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+        .clickable { onClick() }
         .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Column(
@@ -236,14 +292,16 @@ fun StatCard(label: String, value: String, profB: String, isP: Boolean, modifier
                     )
                     Spacer(Modifier.width(8.dp))
                     ModifierBubble(
-                        text = if (total >= 0) "+$total" else "$total",
-                        color = if (isP) colorScheme.primary else colorScheme.onSurface
+                        text = if (totalSave >= 0) "+$totalSave" else "$totalSave",
+                        color = if (isP) colorScheme.primary else colorScheme.onSurface,
+                        onClick = { /* TODO: Roll Save */ }
                     )
                 }
 
                 ModifierBubble(
-                    text = if (base >= 0) "+$base" else "$base",
-                    color = colorScheme.primary
+                    text = if (totalCheck >= 0) "+$totalCheck" else "$totalCheck",
+                    color = colorScheme.primary,
+                    onClick = { /* TODO: Roll Check */ }
                 )
             }
         }
@@ -274,6 +332,7 @@ fun ModifierBubble(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SkillSubPlate(
     name: String,
@@ -281,12 +340,14 @@ fun SkillSubPlate(
     isExpert: Boolean,
     pbStr: String,
     attrValue: String,
-    onClick: (String) -> Unit
+    onClick: (String) -> Unit,
+    onLongClick: (String) -> Unit = {},
+    bonus: Int = 0
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val pb = pbStr.toIntOrNull() ?: 0
     val baseMod = calculateModifier(attrValue)
-    val total = baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0)
+    val total = baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0) + bonus
 
     Row(
         modifier = Modifier
@@ -299,7 +360,10 @@ fun SkillSubPlate(
                 else if (isProficient) colorScheme.primary.copy(alpha = 0.1f)
                 else colorScheme.surfaceVariant.copy(alpha = 0.25f)
             )
-            .clickable { onClick(name) }
+            .combinedClickable(
+                onClick = { onClick(name) },
+                onLongClick = { onLongClick(name) }
+            )
             .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -327,7 +391,8 @@ fun SkillSubPlate(
         )
         ModifierBubble(
             text = if (total >= 0) "+$total" else "$total",
-            color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface
+            color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface,
+            onClick = { /* TODO: Roll Skill */ }
         )
     }
 }

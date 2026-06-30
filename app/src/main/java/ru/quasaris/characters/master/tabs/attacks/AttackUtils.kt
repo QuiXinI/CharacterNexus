@@ -86,3 +86,16 @@ fun formatFullDamage(
     
     return parts.joinToString(" + ").replace("+ -", "- ")
 }
+
+fun calculateTotalBonus(
+    formulas: List<String>,
+    attributeModifiers: Map<Attribute, Int>,
+    proficiencyBonus: Int
+): Int {
+    var total = 0
+    formulas.forEach { formula ->
+        val (flat, _) = parseFormulaParts(formula, attributeModifiers, proficiencyBonus)
+        total += flat
+    }
+    return total
+}

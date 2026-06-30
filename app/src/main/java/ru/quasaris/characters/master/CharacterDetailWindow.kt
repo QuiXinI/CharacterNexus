@@ -75,7 +75,9 @@ fun CharacterDetailWindow(
                 wisProf = character?.wisdomProficient ?: false,
                 chaProf = character?.charismaProficient ?: false,
                 skilledProficiencies = character?.skilledProficiencies ?: emptyList(),
-                skilledExpertise = character?.skilledExpertise ?: emptyList()
+                skilledExpertise = character?.skilledExpertise ?: emptyList(),
+                statBonuses = character?.statBonuses ?: emptyList(),
+                skillBonuses = character?.skillBonuses ?: emptyList()
             )
         )
     }
@@ -233,6 +235,8 @@ fun CharacterDetailWindow(
             activeShieldId = activeShieldId,
             skilledProficiencies = statsState.skilledProficiencies,
             skilledExpertise = statsState.skilledExpertise,
+            statBonuses = statsState.statBonuses,
+            skillBonuses = statsState.skillBonuses,
             themeSeedColorArgb = themeSeedColorArgb
         ))
     }

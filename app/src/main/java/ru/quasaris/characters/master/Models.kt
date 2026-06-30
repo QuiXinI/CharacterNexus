@@ -59,6 +59,26 @@ data class DamageBonus(
     val damageType: String = ""
 )
 
+enum class StatBonusType {
+    SAVING_THROW,
+    ABILITY_CHECK
+}
+
+data class StatBonus(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val formula: String = "",
+    val attribute: Attribute = Attribute.STRENGTH,
+    val type: StatBonusType = StatBonusType.SAVING_THROW
+)
+
+data class SkillBonus(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val formula: String = "",
+    val skillName: String = ""
+)
+
 data class AttackEntry(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
@@ -104,6 +124,7 @@ data class Character(
     val maxHp: String = "0",
     val currentHp: String = "0",
     val tempHp: String = "0",
+    val proficiencyBonus: String = "[НАСТ БМ]",
     val selectedConditions: List<String> = emptyList(),
     val exhaustion: Int = 0,
     val isShieldActive: Boolean = false,
@@ -111,6 +132,8 @@ data class Character(
     val activeShieldId: String? = shieldEntries.firstOrNull()?.id,
     val skilledProficiencies: List<String> = emptyList(), // Track proficient skills
     val skilledExpertise: List<String> = emptyList(), // Track expertise skills
+    val statBonuses: List<StatBonus> = emptyList(),
+    val skillBonuses: List<SkillBonus> = emptyList(),
     val themeSeedColorArgb: Int? = null,
     val attacks: List<AttackEntry> = emptyList()
 )

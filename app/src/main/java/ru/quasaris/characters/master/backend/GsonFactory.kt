@@ -20,6 +20,14 @@ class CharacterDeserializer : JsonDeserializer<Character> {
         if (!jsonObject.has("attacks") || jsonObject.get("attacks").isJsonNull) {
             jsonObject.add("attacks", JsonArray())
         }
+
+        if (!jsonObject.has("statBonuses") || jsonObject.get("statBonuses").isJsonNull) {
+            jsonObject.add("statBonuses", JsonArray())
+        }
+
+        if (!jsonObject.has("skillBonuses") || jsonObject.get("skillBonuses").isJsonNull) {
+            jsonObject.add("skillBonuses", JsonArray())
+        }
         
         // Fallback for other potential missing fields if necessary
         // ...

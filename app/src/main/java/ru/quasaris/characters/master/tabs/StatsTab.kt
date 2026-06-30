@@ -34,6 +34,9 @@ import kotlin.math.floor
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.HeaderCode.calculateModifier
 import ru.quasaris.characters.master.Character
+import ru.quasaris.characters.master.StatBonus
+import ru.quasaris.characters.master.SkillBonus
+import ru.quasaris.characters.master.StatBonusType
 import ru.quasaris.characters.master.MainWindow.AttributesSection
 import ru.quasaris.characters.master.HeaderCode.getProficiencyBonus
 
@@ -51,7 +54,9 @@ data class StatsState(
     val wisProf: Boolean = false,
     val chaProf: Boolean = false,
     val skilledProficiencies: List<String> = emptyList(),
-    val skilledExpertise: List<String> = emptyList()
+    val skilledExpertise: List<String> = emptyList(),
+    val statBonuses: List<StatBonus> = emptyList(),
+    val skillBonuses: List<SkillBonus> = emptyList()
 ) {
     fun toStatsMap(level: String) = mapOf(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
@@ -78,6 +83,9 @@ fun StatsTab(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var isAdvancedMode by remember { mutableStateOf(false) }
+    
+    var showBonusDialogForAttribute by remember { mutableStateOf<Attribute?>(null) }
+    var showBonusDialogForSkill by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -127,6 +135,8 @@ fun StatsTab(
                 isAdvancedMode = isAdvancedMode,
                 skilledProficiencies = statsState.skilledProficiencies,
                 skilledExpertise = statsState.skilledExpertise,
+                statBonuses = statsState.statBonuses,
+                skillBonuses = statsState.skillBonuses,
                 onSkillClick = { skill: String ->
                     val newProf = if (!statsState.skilledProficiencies.contains(skill) && !statsState.skilledExpertise.contains(skill)) {
                         statsState.skilledProficiencies + skill
@@ -141,11 +151,101 @@ fun StatsTab(
                     } else statsState.skilledExpertise
 
                     onStatsStateChange(statsState.copy(skilledProficiencies = newProf, skilledExpertise = newExp))
-                }
+                },
+                onStatClick = { showBonusDialogForAttribute = it },
+                onSkillLongClick = { showBonusDialogForSkill = it }
             )
         }
 
         Spacer(Modifier.height(24.dp))
+    }
+
+    // --- Bonus Config Dialogs ---
+    showBonusDialogForAttribute?.let { attr ->
+        val skills = when (attr) {
+            Attribute.STRENGTH -> listOf("Атлетика")
+            Attribute.DEXTERITY -> listOf("Акробатика", "Ловкость рук", "Скрытность")
+            Attribute.CONSTITUTION -> emptyList()
+            Attribute.INTELLIGENCE -> listOf("Анализ", "История", "Магия", "Природа", "Религия")
+            Attribute.WISDOM -> listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")
+            Attribute.CHARISMA -> listOf("Выступление", "Запугивание", "Обман", "Убеждение")
+            else -> emptyList()
+        }
+        
+        BonusConfigDialog(
+            title = "Бонусы: ${attr.fullName}",
+            attribute = attr,
+            proficiencyBonus = getProficiencyBonus(level),
+            attributeModifiers = statsState.toAttributeModifiers(),
+            initialStatBonuses = statsState.statBonuses,
+            initialIsStatProficient = when(attr) {
+                Attribute.STRENGTH -> statsState.strProf
+                Attribute.DEXTERITY -> statsState.dexProf
+                Attribute.CONSTITUTION -> statsState.conProf
+                Attribute.INTELLIGENCE -> statsState.intProf
+                Attribute.WISDOM -> statsState.wisProf
+                Attribute.CHARISMA -> statsState.chaProf
+                else -> false
+            },
+            initialSkillBonuses = statsState.skillBonuses,
+            initialSkillProficiencies = statsState.skilledProficiencies,
+            initialSkillExpertise = statsState.skilledExpertise,
+            skillsToDisplay = skills,
+            onDismiss = { showBonusDialogForAttribute = null },
+            onSave = { statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise ->
+                var newState = statsState.copy(
+                    statBonuses = statBonuses,
+                    skillBonuses = skillBonuses,
+                    skilledProficiencies = skillProficiencies,
+                    skilledExpertise = skillExpertise
+                )
+                newState = when(attr) {
+                    Attribute.STRENGTH -> newState.copy(strProf = isStatProficient)
+                    Attribute.DEXTERITY -> newState.copy(dexProf = isStatProficient)
+                    Attribute.CONSTITUTION -> newState.copy(conProf = isStatProficient)
+                    Attribute.INTELLIGENCE -> newState.copy(intProf = isStatProficient)
+                    Attribute.WISDOM -> newState.copy(wisProf = isStatProficient)
+                    Attribute.CHARISMA -> newState.copy(chaProf = isStatProficient)
+                    else -> newState
+                }
+                onStatsStateChange(newState)
+                showBonusDialogForAttribute = null
+            }
+        )
+    }
+
+    showBonusDialogForSkill?.let { skillName ->
+        val attr = when (skillName) {
+            "Атлетика" -> Attribute.STRENGTH
+            "Акробатика", "Ловкость рук", "Скрытность" -> Attribute.DEXTERITY
+            "Анализ", "История", "Магия", "Природа", "Религия" -> Attribute.INTELLIGENCE
+            "Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными" -> Attribute.WISDOM
+            "Выступление", "Запугивание", "Обман", "Убеждение" -> Attribute.CHARISMA
+            else -> Attribute.NONE
+        }
+
+        BonusConfigDialog(
+            title = "Бонусы: $skillName",
+            attribute = attr,
+            proficiencyBonus = getProficiencyBonus(level),
+            attributeModifiers = statsState.toAttributeModifiers(),
+            initialStatBonuses = emptyList(), // Not needed for single skill
+            initialIsStatProficient = false, // Not needed
+            initialSkillBonuses = statsState.skillBonuses,
+            initialSkillProficiencies = statsState.skilledProficiencies,
+            initialSkillExpertise = statsState.skilledExpertise,
+            skillsToDisplay = listOf(skillName),
+            showStatBonuses = false,
+            onDismiss = { showBonusDialogForSkill = null },
+            onSave = { _, _, skillBonuses, skillProficiencies, skillExpertise ->
+                onStatsStateChange(statsState.copy(
+                    skillBonuses = skillBonuses,
+                    skilledProficiencies = skillProficiencies,
+                    skilledExpertise = skillExpertise
+                ))
+                showBonusDialogForSkill = null
+            }
+        )
     }
 }
 
