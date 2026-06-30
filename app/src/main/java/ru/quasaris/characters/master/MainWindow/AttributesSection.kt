@@ -60,7 +60,7 @@ fun AttributesSection(
     val animDuration = 600
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -165,7 +165,7 @@ fun StatCard(label: String, value: String, profB: String, isP: Boolean, modifier
         .clip(RoundedCornerShape(12.dp))
         .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
         .border(1.dp, colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-        .padding(horizontal = 12.dp, vertical = 8.dp)
+        .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxHeight(),
@@ -235,23 +235,42 @@ fun StatCard(label: String, value: String, profB: String, isP: Boolean, modifier
                         color = colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (total >= 0) "+$total" else "$total",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
+                    ModifierBubble(
+                        text = if (total >= 0) "+$total" else "$total",
                         color = if (isP) colorScheme.primary else colorScheme.onSurface
                     )
                 }
 
-                Text(
-                    if (base >= 0) "+$base" else "$base",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = colorScheme.primary,
-                    modifier = Modifier.padding(end = 4.dp)
+                ModifierBubble(
+                    text = if (base >= 0) "+$base" else "$base",
+                    color = colorScheme.primary
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ModifierBubble(
+    text: String,
+    color: Color,
+    clickable: Boolean = true,
+    onClick: () -> Unit = {}
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.1f))
+            .then(if (clickable) Modifier.clickable { onClick() } else Modifier)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            color = color
+        )
     }
 }
 
@@ -273,7 +292,7 @@ fun SkillSubPlate(
         modifier = Modifier
             .fillMaxWidth()
             .height(38.dp)
-            .padding(start = 16.dp)
+            .padding(start = 8.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(
                 if (isExpert) colorScheme.primary.copy(alpha = 0.18f)
@@ -281,7 +300,7 @@ fun SkillSubPlate(
                 else colorScheme.surfaceVariant.copy(alpha = 0.25f)
             )
             .clickable { onClick(name) }
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -306,10 +325,8 @@ fun SkillSubPlate(
             fontWeight = FontWeight.ExtraBold, 
             color = colorScheme.onSurface
         )
-        Text(
-            if (total >= 0) "+$total" else "$total",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
+        ModifierBubble(
+            text = if (total >= 0) "+$total" else "$total",
             color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface
         )
     }
@@ -332,7 +349,7 @@ fun PassiveCheckRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp)
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

@@ -13,16 +13,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import ru.quasaris.characters.master.ui.SettingsViewModel
+import kotlin.math.roundToInt
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsWindow(
     onOpenDrawer: () -> Unit,
-    onThemeModeChange: (AppThemeMode) -> Unit
+    onThemeModeChange: (AppThemeMode) -> Unit,
+    settingsViewModel: SettingsViewModel
 ) {
     val context = LocalContext.current
     val settingsManager = remember { SettingsManager(context) }
     var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
     val colorScheme = MaterialTheme.colorScheme
+
+    val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
 
     Scaffold(
         topBar = {
@@ -94,6 +100,13 @@ fun SettingsWindow(
                     ) { Text("Персонаж BETA") }
                 }
             }
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            ScaleSettingsSection(
+                scaleFactor = scaleFactor,
+                onScaleChange = { settingsViewModel.updateScaleFactor(it) }
+            )
             
             HorizontalDivider(color = colorScheme.outlineVariant)
             
@@ -110,5 +123,44 @@ fun SettingsWindow(
                 color = colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+fun ScaleSettingsSection(
+    scaleFactor: Float,
+    onScaleChange: (Float) -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Масштаб интерфейса",
+                fontSize = 16.sp,
+                color = colorScheme.onSurface
+            )
+            Text(
+                text = "${(scaleFactor * 100).roundToInt()}%",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary
+            )
+        }
+        
+        Slider(
+            value = scaleFactor,
+            onValueChange = onScaleChange,
+            valueRange = 0.7f..1.5f,
+            steps = 7, // (1.5 - 0.7) / 0.1 - 1 = 8 - 1 = 7 steps
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

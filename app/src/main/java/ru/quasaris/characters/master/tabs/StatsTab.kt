@@ -109,7 +109,7 @@ fun StatsTab(
         }
 
         // Stats Section
-        Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 3.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AttributesSection(
                 strength = statsState.strength, onStrengthChange = { onStatsStateChange(statsState.copy(strength = it)) }, 
                 strProf = statsState.strProf, onStrProfChange = { onStatsStateChange(statsState.copy(strProf = it)) },
@@ -199,7 +199,8 @@ fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, 
             .size(40.dp)
             .rotate(-45f)
             .clip(RoundedCornerShape(12.dp))
-            .background(colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            .background(colorScheme.primaryContainer)
+            .clickable { /* TODO: Implement action */ }, contentAlignment = Alignment.Center) {
             Text(modStr, modifier = Modifier.rotate(45f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onPrimaryContainer)
         }
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -214,7 +215,8 @@ fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, 
                 .size(44.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(colorScheme.surface)
-                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp))
+                .clickable { /* TODO: Implement action */ }, contentAlignment = Alignment.Center) {
                 Text(modStr, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
             }
         }

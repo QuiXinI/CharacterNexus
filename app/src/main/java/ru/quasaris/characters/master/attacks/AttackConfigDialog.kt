@@ -255,7 +255,8 @@ fun AttackBonusIndicator(
     dice: List<DicePart>,
     size: androidx.compose.ui.unit.Dp = 60.dp,
     fontSize: androidx.compose.ui.unit.TextUnit = 20.sp,
-    showLabel: Boolean = true
+    showLabel: Boolean = true,
+    showDice: Boolean = true
 ) {
     val bonusText = if (bonus >= 0) "+$bonus" else bonus.toString()
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -277,7 +278,7 @@ fun AttackBonusIndicator(
             Text("Атака", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
 
-        if (dice.isNotEmpty()) {
+        if (showDice && dice.isNotEmpty()) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.padding(top = 4.dp),

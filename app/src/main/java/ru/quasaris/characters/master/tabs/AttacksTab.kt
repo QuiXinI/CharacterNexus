@@ -21,6 +21,11 @@ import ru.quasaris.characters.master.attacks.DicePart
 import ru.quasaris.characters.master.attacks.formatFullDamage
 import ru.quasaris.characters.master.attacks.parseFormulaParts
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
+
 @Composable
 fun AttacksTab(
     attacks: List<AttackEntry>,
@@ -123,6 +128,8 @@ fun AttackItem(
         proficiencyBonus = proficiencyBonus
     )
 
+    var showInfo by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -132,46 +139,122 @@ fun AttackItem(
         ),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(12.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = attack.name.ifBlank { "Безымянная атака" },
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "$fullDamageText ${attack.damageType}".trim(),
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
-                if (attack.showNotes && attack.notes.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = attack.notes,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        maxLines = 2,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
+
+                Box {
+                    IconButton(
+                        onClick = { showInfo = !showInfo },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "Описание",
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    if (showInfo) {
+                        Popup(
+                            alignment = Alignment.TopEnd,
+                            offset = androidx.compose.ui.unit.IntOffset(0, 40),
+                            onDismissRequest = { showInfo = false },
+                            properties = PopupProperties(
+                                focusable = false, // Allows clicks to pass through
+                                dismissOnClickOutside = true
+                            )
+                        ) {
+                            Surface(
+                                modifier = Modifier
+                                    .widthIn(max = 280.dp)
+                                    .clickable { showInfo = false }, // Popup itself closes on click
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 8.dp,
+                                shadowElevation = 4.dp,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            ) {
+                                Text(
+                                    text = attack.notes.ifBlank { "Нет описания" },
+                                    modifier = Modifier.padding(12.dp),
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
                 }
             }
             
-            AttackBonusIndicator(
-                bonus = totalAttackBonus,
-                dice = attackDice,
-                size = 48.dp,
-                fontSize = 18.sp,
-                showLabel = false
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Damage Section
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { /* TODO: Damage click placeholder */ },
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "$fullDamageText ${attack.damageType}".trim(),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                // Modifier Section
+                Surface(
+                    modifier = Modifier
+                        .clickable { /* TODO: Modifier click placeholder */ },
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AttackBonusIndicator(
+                            bonus = totalAttackBonus,
+                            dice = attackDice,
+                            size = 48.dp,
+                            fontSize = 18.sp,
+                            showLabel = false,
+                            showDice = false // Dice drawn separately
+                        )
+                        
+                        if (attackDice.isNotEmpty()) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                attackDice.forEach { ru.quasaris.characters.master.attacks.DiceIcon(it) }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

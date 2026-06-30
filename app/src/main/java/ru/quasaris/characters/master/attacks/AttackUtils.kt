@@ -31,10 +31,14 @@ fun parseFormulaParts(
     var flat = 0
     val dice = mutableMapOf<Int, Int>() // Sides -> Count
     
-    val diceRegex = Regex("(\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
+    val diceRegex = Regex("([+-]?\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
     val remainingFormula = diceRegex.replace(processed) { match ->
         val countStr = match.groupValues[1]
-        val count = if (countStr.isEmpty()) 1 else countStr.toInt()
+        val count = when (countStr) {
+            "", "+" -> 1
+            "-" -> -1
+            else -> countStr.toIntOrNull() ?: 1
+        }
         val sides = match.groupValues[2].toInt()
         if (sides > 0) {
             dice[sides] = (dice[sides] ?: 0) + count
@@ -47,7 +51,9 @@ fun parseFormulaParts(
         flat += match.groupValues[1].toIntOrNull() ?: 0
     }
     
-    val diceList = dice.map { DicePart(it.value, it.key) }.sortedBy { it.sides }
+    val diceList = dice.map { DicePart(it.value, it.key) }
+        .filter { it.count != 0 }
+        .sortedBy { it.sides }
     
     return Pair(flat, diceList)
 }

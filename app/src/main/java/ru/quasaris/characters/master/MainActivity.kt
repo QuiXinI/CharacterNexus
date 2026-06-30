@@ -41,10 +41,17 @@ import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 
+import androidx.compose.runtime.collectAsState
+import ru.quasaris.characters.master.ui.AppScaleProvider
+import ru.quasaris.characters.master.ui.SettingsViewModel
+
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val appScaleManager = AppScaleManager(applicationContext)
+        val settingsViewModel = SettingsViewModel(appScaleManager)
 
         val characterRepository = CharacterRepository(
             context = applicationContext,
@@ -55,6 +62,8 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
+            val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
+
             val settingsManager = remember { SettingsManager(applicationContext) }
             var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
             var lastCharacterId by remember { mutableIntStateOf(settingsManager.lastCharacterId) }
@@ -76,118 +85,120 @@ class MainActivity : ComponentActivity() {
             val lastCharacter = characters.find { it.id == lastCharacterId }
             val avatarColor = lastCharacter?.themeSeedColorArgb ?: settingsManager.lastCharacterSeedColor
 
-            quasarisTheme(themeMode = themeMode, avatarColor = avatarColor) {
-                val navController = rememberNavController()
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                val scope = rememberCoroutineScope()
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
+            AppScaleProvider(scaleFactor = scaleFactor) {
+                quasarisTheme(themeMode = themeMode, avatarColor = avatarColor) {
+                    val navController = rememberNavController()
+                    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                    val scope = rememberCoroutineScope()
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = navBackStackEntry?.destination?.route
 
-                val animDuration = 550
-                val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
+                    val animDuration = 550
+                    val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
 
-                ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
-                    drawerContent = {
-                        ModalDrawerSheet {
-                            Spacer(Modifier.height(12.dp))
-                            NavigationDrawerItem(
-                                label = { Text("Главный экран") },
-                                selected = currentRoute == "menu",
-                                onClick = {
-                                    scope.launch { drawerState.close() }
-                                    if (currentRoute != "menu") {
-                                        navController.navigate("menu") {
-                                            popUpTo("menu") { inclusive = true }
-                                        }
-                                    }
-                                },
-                                icon = { Icon(Icons.Default.Person, null) },
-                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                            )
-                            
-                            if (lastCharacterId != -1) {
+                    ModalNavigationDrawer(
+                        drawerState = drawerState,
+                        gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
+                        drawerContent = {
+                            ModalDrawerSheet {
+                                Spacer(Modifier.height(12.dp))
                                 NavigationDrawerItem(
-                                    label = { Text("Последний персонаж") },
-                                    selected = false,
+                                    label = { Text("Главный экран") },
+                                    selected = currentRoute == "menu",
                                     onClick = {
                                         scope.launch { drawerState.close() }
-                                        navController.navigate("edit/$lastCharacterId")
+                                        if (currentRoute != "menu") {
+                                            navController.navigate("menu") {
+                                                popUpTo("menu") { inclusive = true }
+                                            }
+                                        }
                                     },
-                                    icon = { Icon(Icons.Default.History, null) },
+                                    icon = { Icon(Icons.Default.Person, null) },
+                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                )
+                                
+                                if (lastCharacterId != -1) {
+                                    NavigationDrawerItem(
+                                        label = { Text("Последний персонаж") },
+                                        selected = false,
+                                        onClick = {
+                                            scope.launch { drawerState.close() }
+                                            navController.navigate("edit/$lastCharacterId")
+                                        },
+                                        icon = { Icon(Icons.Default.History, null) },
+                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                    )
+                                }
+                                
+                                NavigationDrawerItem(
+                                    label = { Text("Настройки") },
+                                    selected = currentRoute == "settings",
+                                    onClick = {
+                                        scope.launch { drawerState.close() }
+                                        if (currentRoute != "settings") {
+                                            navController.navigate("settings")
+                                        }
+                                    },
+                                    icon = { Icon(Icons.Default.Settings, null) },
                                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                                 )
                             }
-                            
-                            NavigationDrawerItem(
-                                label = { Text("Настройки") },
-                                selected = currentRoute == "settings",
-                                onClick = {
-                                    scope.launch { drawerState.close() }
-                                    if (currentRoute != "settings") {
-                                        navController.navigate("settings")
-                                    }
-                                },
-                                icon = { Icon(Icons.Default.Settings, null) },
-                                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                            )
                         }
-                    }
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.surface,
                     ) {
-                        NavHost(
-                            navController = navController,
-                            startDestination = "menu",
-                            enterTransition = {
-                                slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                            },
-                            exitTransition = {
-                                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                            },
-                            popEnterTransition = {
-                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                            },
-                            popExitTransition = {
-                                slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                            }
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.surface,
                         ) {
-                            composable("menu") {
-                                MenuWindow(
-                                    characters = characters,
-                                    onNavigateToCreate = { navController.navigate("create_setup") },
-                                    onCharacterClick = { characterId ->
-                                        val char = characters.find { it.id == characterId }
-                                        lastCharacterId = characterId
-                                        settingsManager.lastCharacterId = characterId
-                                        settingsManager.lastCharacterSeedColor = char?.themeSeedColorArgb
-                                        navController.navigate("edit/$characterId")
-                                    },
-                                    onImportCharacter = { importedCharacter ->
-                                        characters.add(importedCharacter)
-                                        characterRepository.saveCharacters(characters)
-                                    },
-                                    onDeleteCharacters = { idsToDelete ->
-                                        characters.removeAll { it.id in idsToDelete }
-                                        characterRepository.saveCharacters(characters)
-                                        if (lastCharacterId in idsToDelete) {
-                                            lastCharacterId = -1
-                                            settingsManager.lastCharacterId = -1
-                                        }
-                                    },
-                                    onOpenDrawer = { scope.launch { drawerState.open() } }
-                                )
-                            }
+                            NavHost(
+                                navController = navController,
+                                startDestination = "menu",
+                                enterTransition = {
+                                    slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                                },
+                                exitTransition = {
+                                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                                },
+                                popEnterTransition = {
+                                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                                },
+                                popExitTransition = {
+                                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                                }
+                            ) {
+                                composable("menu") {
+                                    MenuWindow(
+                                        characters = characters,
+                                        onNavigateToCreate = { navController.navigate("create_setup") },
+                                        onCharacterClick = { characterId ->
+                                            val char = characters.find { it.id == characterId }
+                                            lastCharacterId = characterId
+                                            settingsManager.lastCharacterId = characterId
+                                            settingsManager.lastCharacterSeedColor = char?.themeSeedColorArgb
+                                            navController.navigate("edit/$characterId")
+                                        },
+                                        onImportCharacter = { importedCharacter ->
+                                            characters.add(importedCharacter)
+                                            characterRepository.saveCharacters(characters)
+                                        },
+                                        onDeleteCharacters = { idsToDelete ->
+                                            characters.removeAll { it.id in idsToDelete }
+                                            characterRepository.saveCharacters(characters)
+                                            if (lastCharacterId in idsToDelete) {
+                                                lastCharacterId = -1
+                                                settingsManager.lastCharacterId = -1
+                                            }
+                                        },
+                                        onOpenDrawer = { scope.launch { drawerState.open() } }
+                                    )
+                                }
 
-                            composable("settings") {
-                                SettingsWindow(
-                                    onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onThemeModeChange = { themeMode = it }
-                                )
-                            }
+                                composable("settings") {
+                                    SettingsWindow(
+                                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                                        onThemeModeChange = { themeMode = it },
+                                        settingsViewModel = settingsViewModel
+                                    )
+                                }
 
                             composable(
                                 "create_setup"
@@ -247,4 +258,5 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
 }
