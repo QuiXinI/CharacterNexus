@@ -48,11 +48,12 @@ fun AttackConfigDialog(
     onSave: (AttackEntry) -> Unit,
     onDelete: (AttackEntry) -> Unit,
     hazeState: HazeState? = null,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    exhaustion: Int = 0
 ) {
     var state by remember { mutableStateOf(attack) }
 
-    val attackCalculation = remember(state, proficiencyBonus, attributeModifiers) {
+    val attackCalculation = remember(state, proficiencyBonus, attributeModifiers, exhaustion) {
         if (state.attribute == Attribute.NONE) {
             return@remember Pair(0, emptyList<DicePart>())
         }
@@ -60,7 +61,7 @@ fun AttackConfigDialog(
         val prof = if (state.isProficient) proficiencyBonus else 0
         
         // Sum up base bonus + all flat bonuses from additional bonus fields
-        var totalFlat = attrMod + prof + state.attackBonus
+        var totalFlat = attrMod + prof + state.attackBonus - (exhaustion * 2)
         val allDice = mutableMapOf<Int, Int>()
         
         state.attackBonuses.forEach { bonus ->

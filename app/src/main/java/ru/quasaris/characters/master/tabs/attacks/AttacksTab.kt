@@ -128,7 +128,8 @@ fun AttacksTab(
                 editingAttack = null
             },
             hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled
+            forceBlurEnabled = forceBlurEnabled,
+            exhaustion = exhaustion
         )
     }
 }
@@ -145,13 +146,13 @@ fun AttackItem(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false
 ) {
-    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers) {
+    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion) {
         if (attack.attribute == Attribute.NONE) {
             return@remember Pair(0, emptyList<DicePart>())
         }
         val attrMod = attributeModifiers[attack.attribute] ?: 0
         val prof = if (attack.isProficient) proficiencyBonus else 0
-        var totalFlat = attrMod + prof + attack.attackBonus
+        var totalFlat = attrMod + prof + attack.attackBonus - (exhaustion * 2)
         val allDice = mutableMapOf<Int, Int>()
         
         attack.attackBonuses.forEach { bonus ->
@@ -161,6 +162,7 @@ fun AttackItem(
         }
         Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
+
     
     val totalAttackBonus = attackCalculation.first
     val attackDice = attackCalculation.second
@@ -349,7 +351,7 @@ fun AttackItem(
                             .clickable {
                                 onRoll(DiceRoller.roll(
                                     title = "Атака: ${attack.name}",
-                                    baseModifier = totalAttackBonus,
+                                    baseModifier = totalAttackBonus + (exhaustion * 2),
                                     bonusFormulas = attack.attackBonuses.map { it.formula },
                                     isDamage = false,
                                     stats = stats,

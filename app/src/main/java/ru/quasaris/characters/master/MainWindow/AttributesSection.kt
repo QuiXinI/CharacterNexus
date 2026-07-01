@@ -107,7 +107,8 @@ fun AttributesSection(
                             onRollCheck = {
                                 val base = calculateModifier(strength)
                                 onRoll(DiceRoller.roll("Проверка Силы", base, statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                            }
+                            },
+                            exhaustion = exhaustion
                         )
                         StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange, onClick = { onStatClick(Attribute.INTELLIGENCE) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
@@ -119,7 +120,8 @@ fun AttributesSection(
                             onRollCheck = {
                                 val base = calculateModifier(intelligence)
                                 onRoll(DiceRoller.roll("Проверка Интеллекта", base, statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                            }
+                            },
+                            exhaustion = exhaustion
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -133,7 +135,8 @@ fun AttributesSection(
                             onRollCheck = {
                                 val base = calculateModifier(dexterity)
                                 onRoll(DiceRoller.roll("Проверка Ловкости", base, statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                            }
+                            },
+                            exhaustion = exhaustion
                         )
                         StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange, onClick = { onStatClick(Attribute.WISDOM) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
@@ -145,7 +148,8 @@ fun AttributesSection(
                             onRollCheck = {
                                 val base = calculateModifier(wisdom)
                                 onRoll(DiceRoller.roll("Проверка Мудрости", base, statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                            }
+                            },
+                            exhaustion = exhaustion
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -159,7 +163,8 @@ fun AttributesSection(
                             onRollCheck = {
                                 val base = calculateModifier(constitution)
                                 onRoll(DiceRoller.roll("Проверка Телосложения", base, statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                            }
+                            },
+                            exhaustion = exhaustion
                         )
                         StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange, onClick = { onStatClick(Attribute.CHARISMA) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
@@ -171,9 +176,11 @@ fun AttributesSection(
                             onRollCheck = {
                                 val base = calculateModifier(charisma)
                                 onRoll(DiceRoller.roll("Проверка Харизмы", base, statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                            }
+                            },
+                            exhaustion = exhaustion
                         )
                     }
+
                 }
             }
 
@@ -204,7 +211,8 @@ fun AttributesSection(
                                 onRollCheck = {
                                     val base = calculateModifier(stat.value)
                                     onRoll(DiceRoller.roll("Проверка: ${stat.label}", base, statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                                }
+                                },
+                                exhaustion = exhaustion
                             )
                             stat.skills.forEach { skill ->
                                 SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick, onLongClick = onSkillLongClick,
@@ -213,7 +221,8 @@ fun AttributesSection(
                                         val base = calculateModifier(stat.value); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
                                         val totalMod = base + (if (skilledExpertise.contains(skill)) pbVal * 2 else if (skilledProficiencies.contains(skill)) pbVal else 0)
                                         onRoll(DiceRoller.roll(skill, totalMod, skillBonuses.filter { it.skillName == skill }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.SKILL))
-                                    }
+                                    },
+                                    exhaustion = exhaustion
                                 )
                             }
                         }
@@ -244,11 +253,11 @@ fun AttributesSection(
                 thickness = 1.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
             )
-            PassiveCheckRow("Пассивный Анализ", intelligence, evalPB, skilledProficiencies.contains("Анализ"), skilledExpertise.contains("Анализ"))
+            PassiveCheckRow("Пассивный Анализ", intelligence, evalPB, skilledProficiencies.contains("Анализ"), skilledExpertise.contains("Анализ"), exhaustion = exhaustion)
             androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            PassiveCheckRow("Пассивная Внимательность", wisdom, evalPB, skilledProficiencies.contains("Внимательность"), skilledExpertise.contains("Внимательность"))
+            PassiveCheckRow("Пассивная Внимательность", wisdom, evalPB, skilledProficiencies.contains("Внимательность"), skilledExpertise.contains("Внимательность"), exhaustion = exhaustion)
             androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            PassiveCheckRow("Пассивная Проницательность", wisdom, evalPB, skilledProficiencies.contains("Проницательность"), skilledExpertise.contains("Проницательность"))
+            PassiveCheckRow("Пассивная Проницательность", wisdom, evalPB, skilledProficiencies.contains("Проницательность"), skilledExpertise.contains("Проницательность"), exhaustion = exhaustion)
         }
     }
 }
@@ -276,16 +285,17 @@ fun StatCard(
     saveBonus: Int = 0,
     checkBonus: Int = 0,
     onRollSave: () -> Unit = {},
-    onRollCheck: () -> Unit = {}
+    onRollCheck: () -> Unit = {},
+    exhaustion: Int = 0
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val base = calculateModifier(value)
     val pb = profB.toIntOrNull() ?: 0
-    val totalSave = base + (if (isP) pb else 0) + saveBonus
-    val totalCheck = base + checkBonus
+    val totalSave = base + (if (isP) pb else 0) + saveBonus - (exhaustion * 2)
+    val totalCheck = base + checkBonus - (exhaustion * 2)
     
     Box(modifier = modifier
-        .height(96.dp)
+        .heightIn(min = 100.dp)
         .clip(RoundedCornerShape(12.dp))
         .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
         .border(1.dp, colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
@@ -386,15 +396,15 @@ fun ModifierBubble(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.1f))
-            .then(if (clickable) Modifier.clickable { onClick() } else Modifier)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .size(42.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.12f))
+            .then(if (clickable) Modifier.clickable { onClick() } else Modifier),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            fontSize = 20.sp,
+            fontSize = 19.sp,
             fontWeight = FontWeight.Black,
             color = color
         )
@@ -412,17 +422,18 @@ fun SkillSubPlate(
     onClick: (String) -> Unit,
     onLongClick: (String) -> Unit = {},
     bonus: Int = 0,
-    onRoll: () -> Unit = {}
+    onRoll: () -> Unit = {},
+    exhaustion: Int = 0
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val pb = pbStr.toIntOrNull() ?: 0
     val baseMod = calculateModifier(attrValue)
-    val total = baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0) + bonus
+    val total = baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0) + bonus - (exhaustion * 2)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(38.dp)
+            .heightIn(min = 48.dp)
             .padding(start = 8.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(
@@ -473,12 +484,13 @@ fun PassiveCheckRow(
     attrValue: String,
     pbStr: String,
     isProficient: Boolean,
-    isExpert: Boolean
+    isExpert: Boolean,
+    exhaustion: Int = 0
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val pb = pbStr.toIntOrNull() ?: 0
     val baseMod = calculateModifier(attrValue)
-    val total = 10 + baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0)
+    val total = 10 + baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0) - (exhaustion * 2)
 
     Row(
         modifier = Modifier
