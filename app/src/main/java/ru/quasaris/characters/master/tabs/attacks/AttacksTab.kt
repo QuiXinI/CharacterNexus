@@ -2,6 +2,7 @@ package ru.quasaris.characters.master.tabs.attacks
 
 import android.os.Build
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -15,7 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,7 +31,25 @@ import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.backend.DiceRoller
 import ru.quasaris.characters.master.backend.RollResult
+import ru.quasaris.characters.master.backend.RollSourceType
 import androidx.compose.foundation.shape.RoundedCornerShape
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
+
+import androidx.compose.ui.draw.clip
+import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.LocalHazeStyle
+import androidx.compose.runtime.CompositionLocalProvider
+
+/**
+ * Стиль размытия для инфо-панелей атак.
+ */
+val AttackInfoHazeStyle = HazeStyle(
+    blurRadius = 20.dp,
+    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
+)
 
 @Composable
 fun AttacksTab(
@@ -37,7 +59,9 @@ fun AttacksTab(
     onUpdateAttacks: (List<AttackEntry>) -> Unit,
     onRoll: (RollResult) -> Unit = {},
     stats: Map<String, String> = emptyMap(),
-    exhaustion: Int = 0
+    exhaustion: Int = 0,
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
 
@@ -64,7 +88,9 @@ fun AttacksTab(
                         onClick = { editingAttack = attack },
                         onRoll = onRoll,
                         stats = stats,
-                        exhaustion = exhaustion
+                        exhaustion = exhaustion,
+                        hazeState = hazeState,
+                        forceBlurEnabled = forceBlurEnabled
                     )
                 }
             }
@@ -100,7 +126,9 @@ fun AttacksTab(
             onDelete = { attackToDelete ->
                 onUpdateAttacks(attacks.filter { it.id != attackToDelete.id })
                 editingAttack = null
-            }
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
         )
     }
 }
@@ -113,9 +141,14 @@ fun AttackItem(
     onClick: () -> Unit,
     onRoll: (RollResult) -> Unit = {},
     stats: Map<String, String> = emptyMap(),
-    exhaustion: Int = 0
+    exhaustion: Int = 0,
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers) {
+        if (attack.attribute == Attribute.NONE) {
+            return@remember Pair(0, emptyList<DicePart>())
+        }
         val attrMod = attributeModifiers[attack.attribute] ?: 0
         val prof = if (attack.isProficient) proficiencyBonus else 0
         var totalFlat = attrMod + prof + attack.attackBonus
@@ -141,6 +174,7 @@ fun AttackItem(
     )
 
     var showInfo by remember { mutableStateOf(false) }
+    var iconPosition by remember { mutableStateOf(Offset.Zero) }
 
     Card(
         modifier = Modifier
@@ -172,7 +206,11 @@ fun AttackItem(
                 Box {
                     IconButton(
                         onClick = { showInfo = true },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier
+                            .size(32.dp)
+                            .onGloballyPositioned { coordinates ->
+                                iconPosition = coordinates.positionInWindow()
+                            }
                     ) {
                         Icon(
                             Icons.Default.Info,
@@ -200,37 +238,71 @@ fun AttackItem(
                                 window?.let { w ->
                                     w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
                                     w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                                    w.addFlags(WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH)
                                     w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                                     w.setDimAmount(0f)
                                     
                                     val params = w.attributes
                                     params.width = WindowManager.LayoutParams.WRAP_CONTENT
                                     params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                                    
+                                    // Position precisely to the left of the button
+                                    params.gravity = Gravity.TOP or Gravity.END
+                                    val screenWidth = view.context.resources.displayMetrics.widthPixels
+                                    params.x = (screenWidth - iconPosition.x).toInt() + 8 // 8px margin from icon
+                                    params.y = iconPosition.y.toInt() - 16 // Slight upward offset for better alignment
+                                    
                                     w.attributes = params
 
+                                    w.decorView.setOnTouchListener { _, event ->
+                                        if (event.action == MotionEvent.ACTION_OUTSIDE) {
+                                            showInfo = false
+                                        }
+                                        false
+                                    }
+
                                     if (!isOled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                        w.setBackgroundBlurRadius(100)
+                                        w.setBackgroundBlurRadius(80)
                                     }
                                     w.setBackgroundDrawableResource(android.R.color.transparent)
                                 }
                             }
                             
-                            Surface(
-                                modifier = Modifier
-                                    .widthIn(max = 280.dp)
-                                    .padding(16.dp)
-                                    .clickable { showInfo = false },
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = 0.2f),
-                                tonalElevation = 8.dp,
-                                border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = if (isOled) 0.3f else 0.1f))
-                            ) {
-                                Text(
-                                    text = attack.notes.ifBlank { "Нет описания" },
-                                    modifier = Modifier.padding(16.dp),
-                                    fontSize = 15.sp,
-                                    color = colorScheme.onSurface
-                                )
+                            CompositionLocalProvider(LocalHazeStyle provides AttackInfoHazeStyle) {
+                                Surface(
+                                    modifier = Modifier
+                                        .padding(8.dp) // Smaller padding for "popover" look
+                                        .widthIn(max = 260.dp)
+                                        .run {
+                                            if (forceBlurEnabled && hazeState != null && !isOled) {
+                                                this.clip(RoundedCornerShape(16.dp))
+                                                    .hazeEffect(state = hazeState) {
+                                                        inputScale = HazeInputScale.Fixed(0.6f)
+                                                    }
+                                            } else this
+                                        }
+                                        .clickable { showInfo = false },
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = if (forceBlurEnabled) 0.4f else 0.85f),
+                                    tonalElevation = 8.dp,
+                                    border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = if (isOled) 0.3f else 0.15f))
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                            text = attack.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = colorScheme.primary,
+                                            modifier = Modifier.padding(bottom = 4.dp)
+                                        )
+                                        Text(
+                                            text = attack.notes.ifBlank { "Нет описания" },
+                                            fontSize = 14.sp,
+                                            lineHeight = 18.sp,
+                                            color = colorScheme.onSurface
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -247,15 +319,15 @@ fun AttackItem(
                     modifier = Modifier
                         .weight(1f)
                         .clickable {
-                            val attrMod = attributeModifiers[attack.attribute] ?: 0
-                            val damageFlat = attrMod + attack.damageBonus
+                            val damageFlat = attack.damageBonus
                             val bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula
                             onRoll(DiceRoller.roll(
                                 title = "Урон: ${attack.name}",
                                 baseModifier = damageFlat,
                                 bonusFormulas = bonusFormulas,
                                 isDamage = true,
-                                stats = stats
+                                stats = stats,
+                                sourceType = RollSourceType.ATTACK
                             ))
                         },
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
@@ -271,41 +343,44 @@ fun AttackItem(
                 }
 
                 // Modifier Section
-                Surface(
-                    modifier = Modifier
-                        .clickable {
-                            onRoll(DiceRoller.roll(
-                                title = "Атака: ${attack.name}",
-                                baseModifier = totalAttackBonus,
-                                bonusFormulas = attack.attackBonuses.map { it.formula },
-                                isDamage = false,
-                                stats = stats,
-                                exhaustion = exhaustion
-                            ))
-                        },
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                if (attack.attribute != Attribute.NONE) {
+                    Surface(
+                        modifier = Modifier
+                            .clickable {
+                                onRoll(DiceRoller.roll(
+                                    title = "Атака: ${attack.name}",
+                                    baseModifier = totalAttackBonus,
+                                    bonusFormulas = attack.attackBonuses.map { it.formula },
+                                    isDamage = false,
+                                    stats = stats,
+                                    exhaustion = exhaustion,
+                                    sourceType = RollSourceType.ATTACK
+                                ))
+                            },
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        AttackBonusIndicator(
-                            bonus = totalAttackBonus,
-                            dice = attackDice,
-                            size = 48.dp,
-                            fontSize = 18.sp,
-                            showLabel = false,
-                            showDice = false
-                        )
-                        
-                        if (attackDice.isNotEmpty()) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                attackDice.forEach { DiceIcon(it) }
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            AttackBonusIndicator(
+                                bonus = totalAttackBonus,
+                                dice = attackDice,
+                                size = 48.dp,
+                                fontSize = 18.sp,
+                                showLabel = false,
+                                showDice = false
+                            )
+                            
+                            if (attackDice.isNotEmpty()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    attackDice.forEach { DiceIcon(it) }
+                                }
                             }
                         }
                     }

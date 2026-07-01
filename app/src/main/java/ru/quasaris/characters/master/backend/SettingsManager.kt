@@ -32,4 +32,8 @@ class SettingsManager(context: Context) {
     var customRollHistorySize: Int
         get() = prefs.getInt("custom_roll_history_size", 10)
         set(value) = prefs.edit { putInt("custom_roll_history_size", value) }
+
+    var forceBlurEnabled: Boolean
+        get() = prefs.getBoolean("force_blur_enabled", false)
+        set(value) = prefs.edit { putBoolean("force_blur_enabled", value) }
 }

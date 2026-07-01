@@ -22,6 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.HazeInputScale
 import ru.quasaris.characters.master.*
 import ru.quasaris.characters.master.tabs.attacks.AddBonusButton
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
@@ -55,7 +60,9 @@ fun BonusConfigDialog(
         skillBonuses: List<SkillBonus>,
         skillProficiencies: List<String>,
         skillExpertise: List<String>
-    ) -> Unit
+    ) -> Unit,
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     var statBonuses by remember { mutableStateOf(initialStatBonuses) }
     var isStatProficient by remember { mutableStateOf(initialIsStatProficient) }
@@ -68,6 +75,9 @@ fun BonusConfigDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val colorScheme = MaterialTheme.colorScheme
+        val isOled = colorScheme.background == Color.Black
+
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
@@ -78,11 +88,19 @@ fun BonusConfigDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
                     )
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+            modifier = Modifier.run {
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    hazeEffect(state = hazeState) {
+                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
+                        inputScale = HazeInputScale.Fixed(0.7f)
+                    }
+                } else this
+            }
         ) { paddingValues ->
             Box(
                 modifier = Modifier

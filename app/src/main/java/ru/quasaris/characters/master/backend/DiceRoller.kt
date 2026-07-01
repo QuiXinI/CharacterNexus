@@ -9,6 +9,14 @@ data class DieRoll(
     val sides: Int
 )
 
+enum class RollSourceType {
+    ABILITY,
+    SKILL,
+    SAVING_THROW,
+    ATTACK,
+    OTHER
+}
+
 data class RollResult(
     val title: String,
     val total: Int,
@@ -18,7 +26,8 @@ data class RollResult(
     val isDamage: Boolean = false,
     val mainD20: Int? = null,
     val bonusDice: List<DieRoll> = emptyList(),
-    val flatBonuses: List<Int> = emptyList()
+    val flatBonuses: List<Int> = emptyList(),
+    val sourceType: RollSourceType = RollSourceType.OTHER
 )
 
 object DiceRoller {
@@ -29,7 +38,8 @@ object DiceRoller {
         bonusFormulas: List<String> = emptyList(),
         isDamage: Boolean = false,
         stats: Map<String, String> = emptyMap(),
-        exhaustion: Int = 0
+        exhaustion: Int = 0,
+        sourceType: RollSourceType = RollSourceType.OTHER
     ): RollResult {
         val components = mutableListOf<String>()
         val bonusDiceValues = mutableListOf<DieRoll>()
@@ -55,7 +65,8 @@ object DiceRoller {
                     breakdown = "1",
                     isCriticalFailure = true,
                     isDamage = false,
-                    mainD20 = 1
+                    mainD20 = 1,
+                    sourceType = sourceType
                 )
             }
             
@@ -105,7 +116,8 @@ object DiceRoller {
                 isDamage = false,
                 mainD20 = d20,
                 bonusDice = bonusDiceValues,
-                flatBonuses = flatBonusValues
+                flatBonuses = flatBonusValues,
+                sourceType = sourceType
             )
         } else {
             total = baseModifier
@@ -139,7 +151,8 @@ object DiceRoller {
                 breakdown = components.joinToString(" + ").replace("+ -", "- ").replace("+ (-", "- "),
                 isDamage = true,
                 bonusDice = bonusDiceValues,
-                flatBonuses = flatBonusValues
+                flatBonuses = flatBonusValues,
+                sourceType = sourceType
             )
         }
     }

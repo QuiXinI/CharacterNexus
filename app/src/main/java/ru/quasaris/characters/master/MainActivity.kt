@@ -50,6 +50,10 @@ import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.SettingsManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import ru.quasaris.characters.master.ui.DiceRollOverlay
+import ru.quasaris.characters.master.ui.DiceRollHazeStyle
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.HazeInputScale
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -76,6 +80,8 @@ class MainActivity : ComponentActivity() {
 
             var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
             var lastCharacterId by remember { mutableIntStateOf(settingsManager.lastCharacterId) }
+            val forceBlurEnabled by settingsViewModel.forceBlurEnabled.collectAsState()
+            val hazeState = remember { HazeState() }
 
             val characters: SnapshotStateList<Character> = remember {
                 mutableStateListOf<Character>().apply {
@@ -107,7 +113,7 @@ class MainActivity : ComponentActivity() {
                     val animDuration = 550
                     val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
 
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize().hazeSource(state = hazeState)) {
                         ModalNavigationDrawer(
                             drawerState = drawerState,
                             gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
@@ -264,7 +270,9 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onRoll = { res -> 
                                             rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
-                                        }
+                                        },
+                                        hazeState = hazeState,
+                                        forceBlurEnabled = forceBlurEnabled
                                     )
                                 }
                             }
@@ -275,6 +283,8 @@ class MainActivity : ComponentActivity() {
                                 history = rollHistory,
                                 onClose = { rollHistory = emptyList() },
                                 themeMode = themeMode,
+                                forceBlurEnabled = forceBlurEnabled,
+                                hazeState = hazeState,
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
                                     .navigationBarsPadding()

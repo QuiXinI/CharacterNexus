@@ -83,7 +83,7 @@ data class AttackEntry(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
     val isProficient: Boolean = false,
-    val attribute: Attribute = Attribute.STRENGTH,
+    val attribute: Attribute = Attribute.NONE,
     val attackBonus: Int = 0,
     val attackBonuses: List<AttackBonus> = emptyList(),
     val damageFormula: String = "",

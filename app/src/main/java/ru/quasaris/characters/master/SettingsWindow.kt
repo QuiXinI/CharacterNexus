@@ -1,8 +1,12 @@
 package ru.quasaris.characters.master
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
@@ -10,16 +14,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characters.master.backend.AppThemeMode
 import ru.quasaris.characters.master.backend.SettingsManager
-
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import kotlin.math.roundToInt
 
@@ -58,7 +66,8 @@ fun SettingsWindow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
@@ -122,6 +131,12 @@ fun SettingsWindow(
                 scaleFactor = scaleFactor,
                 onScaleChange = { settingsViewModel.updateScaleFactor(it) }
             )
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            BlurSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
             
             HorizontalDivider(color = colorScheme.outlineVariant)
             
@@ -139,6 +154,115 @@ fun SettingsWindow(
             )
         }
     }
+}
+
+@Composable
+fun BlurSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val forceBlurEnabled by settingsViewModel.forceBlurEnabled.collectAsState()
+    var showWarningDialog by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Принудительно включить размытие",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Использовать real-time размытие (Haze)",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = forceBlurEnabled,
+                onCheckedChange = { checked ->
+                    if (checked) {
+                        showWarningDialog = true
+                    } else {
+                        settingsViewModel.updateForceBlurEnabled(false)
+                    }
+                }
+            )
+        }
+    }
+
+    if (showWarningDialog) {
+        WarningBlurDialog(
+            onConfirm = {
+                settingsViewModel.updateForceBlurEnabled(true)
+                showWarningDialog = false
+            },
+            onDismiss = {
+                showWarningDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun WarningBlurDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .border(2.dp, Color.Red, RoundedCornerShape(28.dp)),
+        containerColor = Color(0xFF121212),
+        tonalElevation = 8.dp,
+        title = {
+            Text(
+                text = "⚠️ ВНИМАНИЕ: ОПАСНО ДЛЯ ЖЕЛЕЗА",
+                color = Color.Red,
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+        },
+        text = {
+            val annotatedString = buildAnnotatedString {
+                append("Вы собираетесь принудительно включить real-time размытие на неподдерживаемом устройстве. Это может привести к дикому троттлингу, лагам, критическому перегреву и даже выходу из строя железа при долгой игре. Вы рискуете исключительно ")
+                withStyle(style = SpanStyle(color = Color.Red, fontWeight = FontWeight.Bold)) {
+                    append("собственной жопой")
+                }
+                append("! Команда ")
+                withStyle(style = SpanStyle(color = Color(0xFF00E1FF), fontWeight = FontWeight.Bold)) {
+                    append("quasaris")
+                }
+                append(" не несет вообще никакой ответственности за ваши расплавленные процессоры и вздувшиеся аккумуляторы. Продолжаем?")
+            }
+            Text(
+                text = annotatedString,
+                color = Color.White,
+                fontSize = 16.sp
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Да, я готов рисковать жопой", color = Color.Red, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Ну нафиг, отмена", color = Color.White)
+            }
+        },
+        shape = RoundedCornerShape(28.dp),
+    )
 }
 
 @Composable

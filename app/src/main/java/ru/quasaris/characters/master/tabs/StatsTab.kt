@@ -38,6 +38,7 @@ import ru.quasaris.characters.master.SkillBonus
 import ru.quasaris.characters.master.MainWindow.AttributesSection
 import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.backend.RollResult
+import dev.chrisbanes.haze.HazeState
 
 data class StatsState(
     val strength: String = "10",
@@ -79,7 +80,9 @@ fun StatsTab(
     level: String,
     statsState: StatsState,
     onStatsStateChange: (StatsState) -> Unit,
-    onRoll: (RollResult) -> Unit = {}
+    onRoll: (RollResult) -> Unit = {},
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var isAdvancedMode by remember { mutableStateOf(false) }
@@ -217,7 +220,9 @@ fun StatsTab(
                 }
                 onStatsStateChange(newState)
                 showBonusDialogForAttribute = null
-            }
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
         )
     }
 
@@ -251,7 +256,9 @@ fun StatsTab(
                     skilledExpertise = skillExpertise
                 ))
                 showBonusDialogForSkill = null
-            }
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
         )
     }
 }

@@ -25,6 +25,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.painterResource
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.HazeInputScale
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.AttackBonus
 import ru.quasaris.characters.master.AttackEntry
@@ -39,11 +46,16 @@ fun AttackConfigDialog(
     attributeModifiers: Map<Attribute, Int>,
     onDismiss: () -> Unit,
     onSave: (AttackEntry) -> Unit,
-    onDelete: (AttackEntry) -> Unit
+    onDelete: (AttackEntry) -> Unit,
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     var state by remember { mutableStateOf(attack) }
 
     val attackCalculation = remember(state, proficiencyBonus, attributeModifiers) {
+        if (state.attribute == Attribute.NONE) {
+            return@remember Pair(0, emptyList<DicePart>())
+        }
         val attrMod = attributeModifiers[state.attribute] ?: 0
         val prof = if (state.isProficient) proficiencyBonus else 0
         
@@ -67,6 +79,9 @@ fun AttackConfigDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val colorScheme = MaterialTheme.colorScheme
+        val isOled = colorScheme.background == Color.Black
+
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
@@ -77,11 +92,19 @@ fun AttackConfigDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
                     )
                 )
             },
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+            modifier = Modifier.run {
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    hazeEffect(state = hazeState) {
+                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
+                        inputScale = HazeInputScale.Fixed(0.7f)
+                    }
+                } else this
+            }
         ) { paddingValues ->
             Box(
                 modifier = Modifier
@@ -132,22 +155,26 @@ fun AttackConfigDialog(
                     }
 
                     state.attackBonuses.forEachIndexed { index, bonus ->
-                        AttackBonusField(
-                            bonus = bonus,
-                            onUpdate = { updated ->
-                                val newList = state.attackBonuses.toMutableList()
-                                newList[index] = updated
-                                state = state.copy(attackBonuses = newList)
-                            },
-                            onDelete = {
-                                val newList = state.attackBonuses.toMutableList()
-                                newList.removeAt(index)
-                                state = state.copy(attackBonuses = newList)
-                            }
-                        )
+                        CompositionLocalProvider(
+                            LocalContentColor provides if (state.attribute != Attribute.NONE) LocalContentColor.current else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        ) {
+                            AttackBonusField(
+                                bonus = bonus,
+                                onUpdate = { updated ->
+                                    val newList = state.attackBonuses.toMutableList()
+                                    newList[index] = updated
+                                    state = state.copy(attackBonuses = newList)
+                                },
+                                onDelete = {
+                                    val newList = state.attackBonuses.toMutableList()
+                                    newList.removeAt(index)
+                                    state = state.copy(attackBonuses = newList)
+                                }
+                            )
+                        }
                     }
 
-                    AddBonusButton {
+                    AddBonusButton(enabled = state.attribute != Attribute.NONE) {
                         state = state.copy(attackBonuses = state.attackBonuses + AttackBonus())
                     }
 
@@ -442,7 +469,7 @@ fun AttributeDropdown(
                 onDismissRequest = { expanded = false },
                 modifier = Modifier.fillMaxWidth(0.45f)
             ) {
-                Attribute.entries.filter { it != Attribute.NONE }.forEach { attr ->
+                Attribute.entries.forEach { attr ->
                     DropdownMenuItem(
                         text = { Text(attr.fullName) },
                         onClick = {
@@ -458,24 +485,27 @@ fun AttributeDropdown(
 
 @Composable
 fun AddBonusButton(
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    val contentColor = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable(enabled = enabled) { onClick() }
             .padding(vertical = 8.dp)
     ) {
         Icon(
             Icons.Default.Add,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = contentColor,
             modifier = Modifier.padding(end = 8.dp)
         )
         Text(
             text = "Добавить бонус",
-            color = MaterialTheme.colorScheme.primary,
+            color = contentColor,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp
         )

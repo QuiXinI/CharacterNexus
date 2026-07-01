@@ -21,6 +21,9 @@ class SettingsViewModel(
     private val _customRollHistorySize = MutableStateFlow(settingsManager?.customRollHistorySize ?: 10)
     val customRollHistorySize = _customRollHistorySize.asStateFlow()
 
+    private val _forceBlurEnabled = MutableStateFlow(settingsManager?.forceBlurEnabled ?: false)
+    val forceBlurEnabled = _forceBlurEnabled.asStateFlow()
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size
@@ -29,6 +32,11 @@ class SettingsViewModel(
     fun updateCustomRollHistorySize(size: Int) {
         _customRollHistorySize.value = size
         settingsManager?.customRollHistorySize = size
+    }
+
+    fun updateForceBlurEnabled(enabled: Boolean) {
+        _forceBlurEnabled.value = enabled
+        settingsManager?.forceBlurEnabled = enabled
     }
 
     val scaleFactor: StateFlow<Float> = appScaleManager.scaleFactor

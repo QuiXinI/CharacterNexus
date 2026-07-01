@@ -4,7 +4,6 @@ import android.os.Build
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,10 +14,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import ru.quasaris.characters.master.backend.RollSourceType
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
@@ -27,21 +31,41 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.clip
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.LocalHazeStyle
 import ru.quasaris.characters.master.backend.AppThemeMode
 import ru.quasaris.characters.master.backend.RollResult
+
+/**
+ * Глобальный стиль для оверлея бросков кубов.
+ * Настроен для оптимальной производительности и корректного отображения углов.
+ */
+val DiceRollHazeStyle = HazeStyle(
+    blurRadius = 24.dp,
+    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
+)
 
 @Composable
 fun DiceRollOverlay(
     history: List<RollResult>,
     onClose: () -> Unit,
     themeMode: AppThemeMode = AppThemeMode.M3,
+    forceBlurEnabled: Boolean = false,
+    hazeState: HazeState? = null,
     modifier: Modifier = Modifier
 ) {
     if (history.isEmpty()) return
 
     val isOled = themeMode == AppThemeMode.OFF
-    val latest = history.first()
-    val previous = history.drop(1).reversed()
+    val latest = remember(history, history.size) { history.firstOrNull() }
+    val previous = remember(history, history.size) { history.drop(1).reversed() }
     val colorScheme = MaterialTheme.colorScheme
 
     Dialog(
@@ -57,13 +81,12 @@ fun DiceRollOverlay(
 
         SideEffect {
             window?.let { w ->
-                // FLAG_NOT_TOUCH_MODAL + FLAG_NOT_FOCUSABLE allows interaction with what's behind
+                // Настройка параметров окна для позиционирования в углу и прозрачности
                 w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
                 w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                 w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                 w.setDimAmount(0f)
 
-                // Position the window in the bottom-left corner
                 val params = w.attributes
                 params.gravity = Gravity.BOTTOM or Gravity.START
                 params.width = WindowManager.LayoutParams.WRAP_CONTENT
@@ -77,50 +100,70 @@ fun DiceRollOverlay(
             }
         }
 
-        Surface(
-            modifier = Modifier
-                .padding(16.dp)
-                .widthIn(min = 280.dp, max = 340.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = 0.2f),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
-            tonalElevation = if (isOled) 0.dp else 8.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        // Оборачиваем в CompositionLocalProvider для передачи стиля в hazeEffect
+        CompositionLocalProvider(LocalHazeStyle provides DiceRollHazeStyle) {
+            Surface(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .widthIn(min = 280.dp, max = 340.dp)
+                    .run {
+                        if (forceBlurEnabled && hazeState != null && !isOled) {
+                            // ПРАВИЛЬНЫЙ порядок: сначала clip для формы, потом hazeEffect для размытия.
+                            // Используем remember(history.size) как динамический ключ для принудительного обновления (Freeze Fix).
+                            this.clip(RoundedCornerShape(24.dp))
+                                .then(
+                                    remember(history.size) {
+                                        Modifier.hazeEffect(state = hazeState) {
+                                            // Разгоняем FPS: даунскейлинг текстуры фона на 40%
+                                            inputScale = HazeInputScale.Fixed(0.6f)
+                                        }
+                                    }
+                                )
+                        } else this
+                    },
+                shape = RoundedCornerShape(24.dp),
+                color = if (isOled) Color.Black else if (forceBlurEnabled) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
+                tonalElevation = if (isOled) 0.dp else 8.dp
             ) {
-                // History (Previous) at the top
-                if (previous.isNotEmpty()) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        previous.forEach { roll ->
-                            RollItem(roll, isCompact = true, isOled = isOled)
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // История предыдущих бросков
+                    if (previous.isNotEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            previous.forEach { roll ->
+                                RollItem(roll, isCompact = true, isOled = isOled)
+                            }
+                            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.3f))
                         }
-                        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.3f))
                     }
-                }
 
-                // Latest Roll at the bottom
-                RollItem(latest, isCompact = false, isOled = isOled)
+                    // Последний результат
+                    latest?.let {
+                        RollItem(it, isCompact = false, isOled = isOled)
+                    }
 
-                // Small Circular Close Button
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier
-                            .align(Alignment.CenterEnd)
-                            .size(32.dp)
-                            .border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                    ) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Закрыть",
-                            modifier = Modifier.size(20.dp),
-                            tint = colorScheme.onSurfaceVariant
-                        )
+                    // Кнопка закрытия
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        IconButton(
+                            onClick = onClose,
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .size(32.dp)
+                                .border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Закрыть",
+                                modifier = Modifier.size(20.dp),
+                                tint = colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -139,37 +182,49 @@ fun RollItem(result: RollResult, isCompact: Boolean, isOled: Boolean) {
         ) {
             Text(
                 text = result.title,
-                color = colorScheme.onSurface.copy(alpha = if (isCompact) 0.6f else 0.9f),
+                color = getRollSourceColor(result.sourceType, colorScheme).copy(alpha = if (isCompact) 0.6f else 0.9f),
                 fontSize = if (isCompact) 15.sp else 18.sp,
                 fontWeight = if (isCompact) FontWeight.Bold else FontWeight.ExtraBold,
                 modifier = Modifier.weight(1f)
             )
 
-            val totalColor = when {
+            val isCrit = result.isCriticalFailure || result.isCriticalSuccess
+            val fontSize = when {
+                !isCompact -> 42.sp
+                isCrit -> 42.sp
+                else -> 28.sp
+            }
+
+            val resultColor = when {
                 result.isCriticalFailure -> Color(0xFFEF5350)
                 result.isCriticalSuccess -> if (isOled) Color(0xFF00E1FF) else colorScheme.primary
                 else -> colorScheme.onSurface
             }
 
-            // Sizes for crit 20 and crit 1 should be the same as current even in compact
-            val isCrit = result.isCriticalFailure || result.isCriticalSuccess
-            val fontSize = when {
-                !isCompact -> 42.sp
-                isCrit -> 42.sp // Same as current for crits
-                else -> 28.sp
-            }
+            val brush = if (result.isCriticalSuccess) {
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF00E1FF), Color(0xFF00ffd9))
+                )
+            } else if (result.isCriticalFailure) {
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFFFF5252), Color(0xFFFFB74D))
+                )
+            } else null
 
             Text(
                 text = if (result.isCriticalFailure && !result.isDamage) "1" else result.total.toString(),
-                color = totalColor,
-                fontSize = fontSize,
-                fontWeight = FontWeight.Black
+                color = if (brush == null) resultColor else Color.Unspecified,
+                style = TextStyle(
+                    brush = brush,
+                    fontSize = fontSize,
+                    fontWeight = FontWeight.Black
+                )
             )
         }
 
         Spacer(modifier = Modifier.height(if (isCompact) 2.dp else 4.dp))
         Text(
-            text = buildStyledBreakdown(result, colorScheme),
+            text = buildStyledBreakdown(result, colorScheme, isOled),
             fontSize = if (isCompact) 14.sp else 18.sp,
             lineHeight = if (isCompact) 16.sp else 22.sp,
             modifier = Modifier.fillMaxWidth()
@@ -177,23 +232,25 @@ fun RollItem(result: RollResult, isCompact: Boolean, isOled: Boolean) {
     }
 }
 
-fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme): AnnotatedString {
+fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme, isOled: Boolean): AnnotatedString {
     return buildAnnotatedString {
         var first = true
 
-        // Main D20
-        result.mainD20?.let {
-            withStyle(SpanStyle(color = colorScheme.onSurface, fontWeight = FontWeight.Black)) {
-                append(it.toString())
+        result.mainD20?.let { value ->
+            val d20Color = getD20Color(value, colorScheme.primary, isOled)
+            withStyle(SpanStyle(color = d20Color, fontWeight = FontWeight.Black)) {
+                append(value.toString())
             }
             first = false
         }
 
-        // Bonus Dice
         result.bonusDice.forEach { dice ->
             val diceVal = dice.value
-            if (!first) append(if (diceVal >= 0) " + " else " - ")
-            else if (diceVal < 0) append("-")
+            val sign = if (diceVal >= 0) " + " else " - "
+            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.7f), fontWeight = FontWeight.Light)) {
+                if (!first) append(sign)
+                else if (diceVal < 0) append("-")
+            }
 
             withStyle(SpanStyle(color = getDiceColor(kotlin.math.abs(diceVal), dice.sides), fontWeight = FontWeight.Bold)) {
                 append(kotlin.math.abs(diceVal).toString())
@@ -201,10 +258,12 @@ fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme): Annotate
             first = false
         }
 
-        // Flat Bonuses
         result.flatBonuses.forEach { bonusVal ->
-            if (!first) append(if (bonusVal >= 0) " + " else " - ")
-            else if (bonusVal < 0) append("-")
+            val sign = if (bonusVal >= 0) " + " else " - "
+            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.7f), fontWeight = FontWeight.Light)) {
+                if (!first) append(sign)
+                else if (bonusVal < 0) append("-")
+            }
 
             withStyle(SpanStyle(color = colorScheme.onSurface, fontWeight = FontWeight.Normal)) {
                 append(kotlin.math.abs(bonusVal).toString())
@@ -220,15 +279,40 @@ fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme): Annotate
     }
 }
 
+fun getRollSourceColor(sourceType: RollSourceType, colorScheme: ColorScheme): Color {
+    val isDark = colorScheme.surface.luminance() < 0.5f
+    return when (sourceType) {
+        RollSourceType.ABILITY -> if (isDark) Color(0xFF81D4FA) else Color(0xFF0288D1)
+        RollSourceType.SKILL -> if (isDark) Color(0xFFA5D6A7) else Color(0xFF388E3C)
+        RollSourceType.SAVING_THROW -> if (isDark) Color(0xFFFFCC80) else Color(0xFFF57C00)
+        RollSourceType.ATTACK -> if (isDark) Color(0xFFEF9A9A) else Color(0xFFD32F2F)
+        RollSourceType.OTHER -> colorScheme.onSurface
+    }
+}
+
 fun getDiceColor(value: Int, sides: Int): Color {
     if (sides <= 1) return Color.White
-    val ratio = (value - 1).toFloat() / (sides - 1).toFloat()
+    val ratio = ((value - 1).toFloat() / (sides - 1).toFloat()).coerceIn(0f, 1f)
 
     return if (ratio < 0.5f) {
-        val localRatio = ratio * 2f
+        val localRatio = (ratio * 2f).coerceIn(0f, 1f)
         Color(red = 1f, green = localRatio, blue = 0f)
     } else {
-        val localRatio = (ratio - 0.5f) * 2f
-        Color(red = 1f - localRatio, green = 1f, blue = 0f)
+        val localRatio = ((ratio - 0.5f) * 2f).coerceIn(0f, 1f)
+        Color(red = (1f - localRatio).coerceIn(0f, 1f), green = 1f, blue = 0f)
+    }
+}
+
+fun getD20Color(value: Int, themeColor: Color, isOled: Boolean): Color {
+    val ratio = ((value - 1).toFloat() / 19f).coerceIn(0f, 1f)
+    return if (isOled) {
+        if (value == 1) Color.Red
+        else {
+            val blue = Color(0xFF00E1FF)
+            val purple = Color(0xFF868efc)
+            lerp(blue, purple, ratio)
+        }
+    } else {
+        lerp(Color.Red, themeColor, ratio)
     }
 }
