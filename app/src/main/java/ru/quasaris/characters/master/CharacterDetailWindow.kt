@@ -35,6 +35,8 @@ import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.getNextLevelThreshold
 import ru.quasaris.characters.master.backend.getProficiencyBonus
+import ru.quasaris.characters.master.backend.RollResult
+import ru.quasaris.characters.master.backend.DiceRoller
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +45,8 @@ fun CharacterDetailWindow(
     onNavigateBack: () -> Unit,
     onDeleteCharacter: (Character) -> Unit,
     onSaveChanges: (Character) -> Unit,
-    onOpenDrawer: () -> Unit = {}
+    onOpenDrawer: () -> Unit = {},
+    onRoll: (RollResult) -> Unit = {}
 ) {
     var name by remember { mutableStateOf(character?.name ?: "") }
     var characterClass by remember { mutableStateOf(character?.characterClass ?: "") }
@@ -279,6 +282,10 @@ fun CharacterDetailWindow(
                     isShieldActive = isShieldActive,
                     activeInitValue = initValue,
                     onInitClick = {
+                        val baseInit = (initValue.replace("+", "").toIntOrNull() ?: 0) + (exhaustion * 2)
+                        onRoll(DiceRoller.roll("Инициатива", baseInit, stats = statsMap, exhaustion = exhaustion))
+                    },
+                    onInitLongClick = {
                         isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
                         isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
@@ -391,7 +398,8 @@ fun CharacterDetailWindow(
                             character = character,
                             level = level,
                             statsState = statsState,
-                            onStatsStateChange = { statsState = it }
+                            onStatsStateChange = { statsState = it },
+                            onRoll = onRoll
                         )
                     }
                     CharacterTab.ATTACKS -> {
@@ -399,7 +407,10 @@ fun CharacterDetailWindow(
                             attacks = attacks,
                             proficiencyBonus = pb,
                             attributeModifiers = attributeModifiers,
-                            onUpdateAttacks = { attacks = it }
+                            onUpdateAttacks = { attacks = it },
+                            onRoll = onRoll,
+                            stats = statsMap,
+                            exhaustion = exhaustion
                         )
                     }
                     CharacterTab.BIO -> {

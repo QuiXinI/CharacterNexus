@@ -24,4 +24,12 @@ class SettingsManager(context: Context) {
             if (value != null) putInt("last_character_seed_color", value)
             else remove("last_character_seed_color")
         }
+
+    var rollHistorySize: Int
+        get() = prefs.getInt("roll_history_size", 5)
+        set(value) = prefs.edit { putInt("roll_history_size", value) }
+
+    var customRollHistorySize: Int
+        get() = prefs.getInt("custom_roll_history_size", 10)
+        set(value) = prefs.edit { putInt("custom_roll_history_size", value) }
 }

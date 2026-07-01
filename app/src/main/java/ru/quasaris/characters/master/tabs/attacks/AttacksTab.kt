@@ -1,5 +1,8 @@
 package ru.quasaris.characters.master.tabs.attacks
 
+import android.os.Build
+import android.view.Gravity
+import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,28 +10,34 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
-
+import ru.quasaris.characters.master.backend.DiceRoller
+import ru.quasaris.characters.master.backend.RollResult
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 
 @Composable
 fun AttacksTab(
     attacks: List<AttackEntry>,
     proficiencyBonus: Int,
     attributeModifiers: Map<Attribute, Int>,
-    onUpdateAttacks: (List<AttackEntry>) -> Unit
+    onUpdateAttacks: (List<AttackEntry>) -> Unit,
+    onRoll: (RollResult) -> Unit = {},
+    stats: Map<String, String> = emptyMap(),
+    exhaustion: Int = 0
 ) {
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
 
@@ -52,7 +61,10 @@ fun AttacksTab(
                         attack = attack,
                         proficiencyBonus = proficiencyBonus,
                         attributeModifiers = attributeModifiers,
-                        onClick = { editingAttack = attack }
+                        onClick = { editingAttack = attack },
+                        onRoll = onRoll,
+                        stats = stats,
+                        exhaustion = exhaustion
                     )
                 }
             }
@@ -98,7 +110,10 @@ fun AttackItem(
     attack: AttackEntry,
     proficiencyBonus: Int,
     attributeModifiers: Map<Attribute, Int>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onRoll: (RollResult) -> Unit = {},
+    stats: Map<String, String> = emptyMap(),
+    exhaustion: Int = 0
 ) {
     val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers) {
         val attrMod = attributeModifiers[attack.attribute] ?: 0
@@ -134,7 +149,7 @@ fun AttackItem(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier
@@ -156,7 +171,7 @@ fun AttackItem(
 
                 Box {
                     IconButton(
-                        onClick = { showInfo = !showInfo },
+                        onClick = { showInfo = true },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
@@ -167,30 +182,54 @@ fun AttackItem(
                     }
 
                     if (showInfo) {
-                        Popup(
-                            alignment = Alignment.TopEnd,
-                            offset = IntOffset(0, 40),
+                        val colorScheme = MaterialTheme.colorScheme
+                        val isOled = colorScheme.background == Color.Black
+                        
+                        Dialog(
                             onDismissRequest = { showInfo = false },
-                            properties = PopupProperties(
-                                focusable = false, // Allows clicks to pass through
+                            properties = DialogProperties(
+                                usePlatformDefaultWidth = false,
+                                dismissOnBackPress = true,
                                 dismissOnClickOutside = true
                             )
                         ) {
+                            val view = LocalView.current
+                            val window = (view.parent as? DialogWindowProvider)?.window
+                            
+                            SideEffect {
+                                window?.let { w ->
+                                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+                                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                                    w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                                    w.setDimAmount(0f)
+                                    
+                                    val params = w.attributes
+                                    params.width = WindowManager.LayoutParams.WRAP_CONTENT
+                                    params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                                    w.attributes = params
+
+                                    if (!isOled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        w.setBackgroundBlurRadius(100)
+                                    }
+                                    w.setBackgroundDrawableResource(android.R.color.transparent)
+                                }
+                            }
+                            
                             Surface(
                                 modifier = Modifier
                                     .widthIn(max = 280.dp)
-                                    .clickable { showInfo = false }, // Popup itself closes on click
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surface,
+                                    .padding(16.dp)
+                                    .clickable { showInfo = false },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = 0.2f),
                                 tonalElevation = 8.dp,
-                                shadowElevation = 4.dp,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                                border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = if (isOled) 0.3f else 0.1f))
                             ) {
                                 Text(
                                     text = attack.notes.ifBlank { "Нет описания" },
-                                    modifier = Modifier.padding(12.dp),
-                                    fontSize = 14.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    modifier = Modifier.padding(16.dp),
+                                    fontSize = 15.sp,
+                                    color = colorScheme.onSurface
                                 )
                             }
                         }
@@ -207,7 +246,18 @@ fun AttackItem(
                 Surface(
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { /* TODO: Damage click placeholder */ },
+                        .clickable {
+                            val attrMod = attributeModifiers[attack.attribute] ?: 0
+                            val damageFlat = attrMod + attack.damageBonus
+                            val bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula
+                            onRoll(DiceRoller.roll(
+                                title = "Урон: ${attack.name}",
+                                baseModifier = damageFlat,
+                                bonusFormulas = bonusFormulas,
+                                isDamage = true,
+                                stats = stats
+                            ))
+                        },
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -223,7 +273,16 @@ fun AttackItem(
                 // Modifier Section
                 Surface(
                     modifier = Modifier
-                        .clickable { /* TODO: Modifier click placeholder */ },
+                        .clickable {
+                            onRoll(DiceRoller.roll(
+                                title = "Атака: ${attack.name}",
+                                baseModifier = totalAttackBonus,
+                                bonusFormulas = attack.attackBonuses.map { it.formula },
+                                isDamage = false,
+                                stats = stats,
+                                exhaustion = exhaustion
+                            ))
+                        },
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
@@ -238,7 +297,7 @@ fun AttackItem(
                             size = 48.dp,
                             fontSize = 18.sp,
                             showLabel = false,
-                            showDice = false // Dice drawn separately
+                            showDice = false
                         )
                         
                         if (attackDice.isNotEmpty()) {

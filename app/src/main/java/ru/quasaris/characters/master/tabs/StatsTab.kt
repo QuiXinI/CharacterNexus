@@ -37,6 +37,7 @@ import ru.quasaris.characters.master.StatBonus
 import ru.quasaris.characters.master.SkillBonus
 import ru.quasaris.characters.master.MainWindow.AttributesSection
 import ru.quasaris.characters.master.backend.getProficiencyBonus
+import ru.quasaris.characters.master.backend.RollResult
 
 data class StatsState(
     val strength: String = "10",
@@ -77,13 +78,18 @@ fun StatsTab(
     character: Character,
     level: String,
     statsState: StatsState,
-    onStatsStateChange: (StatsState) -> Unit
+    onStatsStateChange: (StatsState) -> Unit,
+    onRoll: (RollResult) -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var isAdvancedMode by remember { mutableStateOf(false) }
     
     var showBonusDialogForAttribute by remember { mutableStateOf<Attribute?>(null) }
     var showBonusDialogForSkill by remember { mutableStateOf<String?>(null) }
+    
+    val statsMap = remember(statsState, level) { 
+        statsState.toStatsMap(level, getProficiencyBonus(level).toString()) 
+    }
 
     Column(
         modifier = Modifier
@@ -151,7 +157,10 @@ fun StatsTab(
                     onStatsStateChange(statsState.copy(skilledProficiencies = newProf, skilledExpertise = newExp))
                 },
                 onStatClick = { showBonusDialogForAttribute = it },
-                onSkillLongClick = { showBonusDialogForSkill = it }
+                onSkillLongClick = { showBonusDialogForSkill = it },
+                onRoll = onRoll,
+                statsMap = statsMap,
+                exhaustion = character.exhaustion
             )
         }
 

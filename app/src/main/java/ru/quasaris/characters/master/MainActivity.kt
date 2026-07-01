@@ -14,7 +14,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.IntOffset
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -43,16 +45,20 @@ import androidx.compose.runtime.collectAsState
 import ru.quasaris.characters.master.backend.AppLifecycleObserver
 import ru.quasaris.characters.master.backend.AppScaleManager
 import ru.quasaris.characters.master.backend.AppScaleProvider
+import ru.quasaris.characters.master.backend.DiceRoller
+import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.SettingsManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
+import ru.quasaris.characters.master.ui.DiceRollOverlay
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val settingsManager = SettingsManager(applicationContext)
         val appScaleManager = AppScaleManager(applicationContext)
-        val settingsViewModel = SettingsViewModel(appScaleManager)
+        val settingsViewModel = SettingsViewModel(appScaleManager, settingsManager)
 
         val characterRepository = CharacterRepository(
             context = applicationContext,
@@ -64,8 +70,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
+            val sliderHistorySize by settingsViewModel.rollHistorySize.collectAsState()
+            val customHistorySize by settingsViewModel.customRollHistorySize.collectAsState()
+            val historyLimit = if (sliderHistorySize >= 10) customHistorySize else sliderHistorySize
 
-            val settingsManager = remember { SettingsManager(applicationContext) }
             var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
             var lastCharacterId by remember { mutableIntStateOf(settingsManager.lastCharacterId) }
 
@@ -74,6 +82,8 @@ class MainActivity : ComponentActivity() {
                     addAll(characterRepository.loadCharacters())
                 }
             }
+
+            var rollHistory by remember { mutableStateOf(listOf<RollResult>()) }
 
             // Sync SnapshotStateList back to Repository for debounced saving
             LaunchedEffect(characters) {
@@ -97,162 +107,178 @@ class MainActivity : ComponentActivity() {
                     val animDuration = 550
                     val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
 
-                    ModalNavigationDrawer(
-                        drawerState = drawerState,
-                        gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
-                        drawerContent = {
-                            ModalDrawerSheet {
-                                Spacer(Modifier.height(12.dp))
-                                NavigationDrawerItem(
-                                    label = { Text("Главный экран") },
-                                    selected = currentRoute == "menu",
-                                    onClick = {
-                                        scope.launch { drawerState.close() }
-                                        if (currentRoute != "menu") {
-                                            navController.navigate("menu") {
-                                                popUpTo("menu") { inclusive = true }
-                                            }
-                                        }
-                                    },
-                                    icon = { Icon(Icons.Default.Person, null) },
-                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                )
-                                
-                                if (lastCharacterId != -1) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        ModalNavigationDrawer(
+                            drawerState = drawerState,
+                            gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
+                            drawerContent = {
+                                ModalDrawerSheet {
+                                    Spacer(Modifier.height(12.dp))
                                     NavigationDrawerItem(
-                                        label = { Text("Последний персонаж") },
-                                        selected = false,
+                                        label = { Text("Главный экран") },
+                                        selected = currentRoute == "menu",
                                         onClick = {
                                             scope.launch { drawerState.close() }
-                                            navController.navigate("edit/$lastCharacterId")
+                                            if (currentRoute != "menu") {
+                                                navController.navigate("menu") {
+                                                    popUpTo("menu") { inclusive = true }
+                                                }
+                                            }
                                         },
-                                        icon = { Icon(Icons.Default.History, null) },
+                                        icon = { Icon(Icons.Default.Person, null) },
+                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                    )
+                                    
+                                    if (lastCharacterId != -1) {
+                                        NavigationDrawerItem(
+                                            label = { Text("Последний персонаж") },
+                                            selected = false,
+                                            onClick = {
+                                                scope.launch { drawerState.close() }
+                                                navController.navigate("edit/$lastCharacterId")
+                                            },
+                                            icon = { Icon(Icons.Default.History, null) },
+                                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                        )
+                                    }
+                                    
+                                    NavigationDrawerItem(
+                                        label = { Text("Настройки") },
+                                        selected = currentRoute == "settings",
+                                        onClick = {
+                                            scope.launch { drawerState.close() }
+                                            if (currentRoute != "settings") {
+                                                navController.navigate("settings")
+                                            }
+                                        },
+                                        icon = { Icon(Icons.Default.Settings, null) },
                                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                                     )
                                 }
-                                
-                                NavigationDrawerItem(
-                                    label = { Text("Настройки") },
-                                    selected = currentRoute == "settings",
-                                    onClick = {
-                                        scope.launch { drawerState.close() }
-                                        if (currentRoute != "settings") {
-                                            navController.navigate("settings")
-                                        }
-                                    },
-                                    icon = { Icon(Icons.Default.Settings, null) },
-                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                )
                             }
-                        }
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.surface,
                         ) {
-                            NavHost(
-                                navController = navController,
-                                startDestination = "menu",
-                                enterTransition = {
-                                    slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                                },
-                                exitTransition = {
-                                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                                },
-                                popEnterTransition = {
-                                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                                },
-                                popExitTransition = {
-                                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                                }
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.surface,
                             ) {
-                                composable("menu") {
-                                    MenuWindow(
-                                        characters = characters,
-                                        onNavigateToCreate = { navController.navigate("create_setup") },
-                                        onCharacterClick = { characterId ->
-                                            val char = characters.find { it.id == characterId }
-                                            lastCharacterId = characterId
-                                            settingsManager.lastCharacterId = characterId
-                                            settingsManager.lastCharacterSeedColor = char?.themeSeedColorArgb
-                                            navController.navigate("edit/$characterId")
-                                        },
-                                        onImportCharacter = { importedCharacter ->
-                                            characters.add(importedCharacter)
+                                NavHost(
+                                    navController = navController,
+                                    startDestination = "menu",
+                                    enterTransition = {
+                                        slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                                    },
+                                    exitTransition = {
+                                        slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                                    },
+                                    popEnterTransition = {
+                                        slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                                    },
+                                    popExitTransition = {
+                                        slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                                    }
+                                ) {
+                                    composable("menu") {
+                                        MenuWindow(
+                                            characters = characters,
+                                            onNavigateToCreate = { navController.navigate("create_setup") },
+                                            onCharacterClick = { characterId ->
+                                                val char = characters.find { it.id == characterId }
+                                                lastCharacterId = characterId
+                                                settingsManager.lastCharacterId = characterId
+                                                settingsManager.lastCharacterSeedColor = char?.themeSeedColorArgb
+                                                navController.navigate("edit/$characterId")
+                                            },
+                                            onImportCharacter = { importedCharacter ->
+                                                characters.add(importedCharacter)
+                                                characterRepository.saveCharacters(characters)
+                                            },
+                                            onDeleteCharacters = { idsToDelete ->
+                                                characters.removeAll { it.id in idsToDelete }
+                                                characterRepository.saveCharacters(characters)
+                                                if (lastCharacterId in idsToDelete) {
+                                                    lastCharacterId = -1
+                                                    settingsManager.lastCharacterId = -1
+                                                }
+                                            },
+                                            onOpenDrawer = { scope.launch { drawerState.open() } }
+                                        )
+                                    }
+
+                                    composable("settings") {
+                                        SettingsWindow(
+                                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                                            onThemeModeChange = { themeMode = it },
+                                            settingsViewModel = settingsViewModel
+                                        )
+                                    }
+
+                                composable(
+                                    "create_setup"
+                                ) {
+                                    CharacterCreationWindow(
+                                        onNavigateBack = { navController.popBackStack() },
+                                        onCharacterCreate = { newChar ->
+                                            characters.add(newChar)
                                             characterRepository.saveCharacters(characters)
+                                            lastCharacterId = newChar.id
+                                            settingsManager.lastCharacterId = newChar.id
+                                            settingsManager.lastCharacterSeedColor = newChar.themeSeedColorArgb
+                                            navController.navigate("edit/${newChar.id}") {
+                                                popUpTo("menu")
+                                            }
+                                        }
+                                    )
+                                }
+
+                                composable(
+                                    route = "edit/{characterId}",
+                                    arguments = listOf(navArgument("characterId") { type = NavType.IntType })
+                                ) { backStackEntry ->
+                                    val characterId = backStackEntry.arguments?.getInt("characterId")
+                                    val character = characters.find { it.id == characterId }
+
+                                    CharacterDetailWindow(
+                                        character = character,
+                                        onNavigateBack = {
+                                            navController.popBackStack()
                                         },
-                                        onDeleteCharacters = { idsToDelete ->
-                                            characters.removeAll { it.id in idsToDelete }
+                                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                                        onDeleteCharacter = { charToDelete ->
+                                            characters.removeAll { it.id == charToDelete.id }
                                             characterRepository.saveCharacters(characters)
-                                            if (lastCharacterId in idsToDelete) {
+                                            if (lastCharacterId == charToDelete.id) {
                                                 lastCharacterId = -1
                                                 settingsManager.lastCharacterId = -1
                                             }
+                                            navController.popBackStack()
                                         },
-                                        onOpenDrawer = { scope.launch { drawerState.open() } }
-                                    )
-                                }
-
-                                composable("settings") {
-                                    SettingsWindow(
-                                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                                        onThemeModeChange = { themeMode = it },
-                                        settingsViewModel = settingsViewModel
-                                    )
-                                }
-
-                            composable(
-                                "create_setup"
-                            ) {
-                                CharacterCreationWindow(
-                                    onNavigateBack = { navController.popBackStack() },
-                                    onCharacterCreate = { newChar ->
-                                        characters.add(newChar)
-                                        characterRepository.saveCharacters(characters)
-                                        lastCharacterId = newChar.id
-                                        settingsManager.lastCharacterId = newChar.id
-                                        settingsManager.lastCharacterSeedColor = newChar.themeSeedColorArgb
-                                        navController.navigate("edit/${newChar.id}") {
-                                            popUpTo("menu")
-                                        }
-                                    }
-                                )
-                            }
-
-                            composable(
-                                route = "edit/{characterId}",
-                                arguments = listOf(navArgument("characterId") { type = NavType.IntType })
-                            ) { backStackEntry ->
-                                val characterId = backStackEntry.arguments?.getInt("characterId")
-                                val character = characters.find { it.id == characterId }
-
-                                CharacterDetailWindow(
-                                    character = character,
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                    },
-                                    onOpenDrawer = { scope.launch { drawerState.open() } },
-                                    onDeleteCharacter = { charToDelete ->
-                                        characters.removeAll { it.id == charToDelete.id }
-                                        characterRepository.saveCharacters(characters)
-                                        if (lastCharacterId == charToDelete.id) {
-                                            lastCharacterId = -1
-                                            settingsManager.lastCharacterId = -1
-                                        }
-                                        navController.popBackStack()
-                                    },
-                                    onSaveChanges = { updatedCharacter ->
-                                        val index = characters.indexOfFirst { it.id == updatedCharacter.id }
-                                        if (index != -1) {
-                                            characters[index] = updatedCharacter
-                                            characterRepository.saveCharacters(characters)
-                                            if (updatedCharacter.id == lastCharacterId) {
-                                                settingsManager.lastCharacterSeedColor = updatedCharacter.themeSeedColorArgb
+                                        onSaveChanges = { updatedCharacter ->
+                                            val index = characters.indexOfFirst { it.id == updatedCharacter.id }
+                                            if (index != -1) {
+                                                characters[index] = updatedCharacter
+                                                characterRepository.saveCharacters(characters)
+                                                if (updatedCharacter.id == lastCharacterId) {
+                                                    settingsManager.lastCharacterSeedColor = updatedCharacter.themeSeedColorArgb
+                                                }
                                             }
+                                        },
+                                        onRoll = { res -> 
+                                            rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
+                        }
+
+                        if (rollHistory.isNotEmpty()) {
+                            DiceRollOverlay(
+                                history = rollHistory,
+                                onClose = { rollHistory = emptyList() },
+                                themeMode = themeMode,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .navigationBarsPadding()
+                            )
                         }
                     }
                 }

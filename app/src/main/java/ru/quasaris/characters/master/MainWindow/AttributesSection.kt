@@ -30,6 +30,8 @@ import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.StatBonusType
 import ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus
+import ru.quasaris.characters.master.backend.DiceRoller
+import ru.quasaris.characters.master.backend.RollResult
 
 @Composable
 fun AttributesSection(
@@ -65,7 +67,10 @@ fun AttributesSection(
     skillBonuses: List<ru.quasaris.characters.master.SkillBonus> = emptyList(),
     onSkillClick: (String) -> Unit,
     onSkillLongClick: (String) -> Unit = {},
-    onStatClick: (Attribute) -> Unit = {}
+    onStatClick: (Attribute) -> Unit = {},
+    onRoll: (RollResult) -> Unit = {},
+    statsMap: Map<String, String> = emptyMap(),
+    exhaustion: Int = 0
 ) {
     val animDuration = 600
     
@@ -93,31 +98,79 @@ fun AttributesSection(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange, onClick = { onStatClick(Attribute.STRENGTH) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                            onRollSave = {
+                                val base = calculateModifier(strength); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                onRoll(DiceRoller.roll("Спасбросок Силы", base + (if (strProf) pbVal else 0), statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            },
+                            onRollCheck = {
+                                val base = calculateModifier(strength)
+                                onRoll(DiceRoller.roll("Проверка Силы", base, statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            }
                         )
                         StatCard("Интеллект", intelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange, onClick = { onStatClick(Attribute.INTELLIGENCE) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                            onRollSave = {
+                                val base = calculateModifier(intelligence); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                onRoll(DiceRoller.roll("Спасбросок Интеллекта", base + (if (intProf) pbVal else 0), statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            },
+                            onRollCheck = {
+                                val base = calculateModifier(intelligence)
+                                onRoll(DiceRoller.roll("Проверка Интеллекта", base, statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            }
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatCard("Ловкость", dexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange, onClick = { onStatClick(Attribute.DEXTERITY) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                            onRollSave = {
+                                val base = calculateModifier(dexterity); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                onRoll(DiceRoller.roll("Спасбросок Ловкости", base + (if (dexProf) pbVal else 0), statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            },
+                            onRollCheck = {
+                                val base = calculateModifier(dexterity)
+                                onRoll(DiceRoller.roll("Проверка Ловкости", base, statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            }
                         )
                         StatCard("Мудрость", wisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange, onClick = { onStatClick(Attribute.WISDOM) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                            onRollSave = {
+                                val base = calculateModifier(wisdom); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                onRoll(DiceRoller.roll("Спасбросок Мудрости", base + (if (wisProf) pbVal else 0), statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            },
+                            onRollCheck = {
+                                val base = calculateModifier(wisdom)
+                                onRoll(DiceRoller.roll("Проверка Мудрости", base, statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            }
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatCard("Тело.", constitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange, onClick = { onStatClick(Attribute.CONSTITUTION) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                            onRollSave = {
+                                val base = calculateModifier(constitution); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                onRoll(DiceRoller.roll("Спасбросок Телосложения", base + (if (conProf) pbVal else 0), statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            },
+                            onRollCheck = {
+                                val base = calculateModifier(constitution)
+                                onRoll(DiceRoller.roll("Проверка Телосложения", base, statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            }
                         )
                         StatCard("Харизма", charisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange, onClick = { onStatClick(Attribute.CHARISMA) },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                            checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                            onRollSave = {
+                                val base = calculateModifier(charisma); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                onRoll(DiceRoller.roll("Спасбросок Харизмы", base + (if (chaProf) pbVal else 0), statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            },
+                            onRollCheck = {
+                                val base = calculateModifier(charisma)
+                                onRoll(DiceRoller.roll("Проверка Харизмы", base, statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                            }
                         )
                     }
                 }
@@ -142,11 +195,24 @@ fun AttributesSection(
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { onStatClick(stat.attribute) },
                                 saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                                checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb)
+                                checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                                onRollSave = {
+                                    val base = calculateModifier(stat.value); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                    onRoll(DiceRoller.roll("Спасбросок: ${stat.label}", base + (if (stat.isProf) pbVal else 0), statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                                },
+                                onRollCheck = {
+                                    val base = calculateModifier(stat.value)
+                                    onRoll(DiceRoller.roll("Проверка: ${stat.label}", base, statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                                }
                             )
                             stat.skills.forEach { skill ->
                                 SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick, onLongClick = onSkillLongClick,
-                                    bonus = calculateTotalBonus(skillBonuses.filter { it.skillName == skill }.map { it.formula }, attributeModifiers, pb)
+                                    bonus = calculateTotalBonus(skillBonuses.filter { it.skillName == skill }.map { it.formula }, attributeModifiers, pb),
+                                    onRoll = {
+                                        val base = calculateModifier(stat.value); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                        val totalMod = base + (if (skilledExpertise.contains(skill)) pbVal * 2 else if (skilledProficiencies.contains(skill)) pbVal else 0)
+                                        onRoll(DiceRoller.roll(skill, totalMod, skillBonuses.filter { it.skillName == skill }.map { it.formula }, stats = statsMap, exhaustion = exhaustion))
+                                    }
                                 )
                             }
                         }
@@ -207,7 +273,9 @@ fun StatCard(
     onPToggle: (Boolean) -> Unit, 
     onClick: () -> Unit,
     saveBonus: Int = 0,
-    checkBonus: Int = 0
+    checkBonus: Int = 0,
+    onRollSave: () -> Unit = {},
+    onRollCheck: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val base = calculateModifier(value)
@@ -294,14 +362,14 @@ fun StatCard(
                     ModifierBubble(
                         text = if (totalSave >= 0) "+$totalSave" else "$totalSave",
                         color = if (isP) colorScheme.primary else colorScheme.onSurface,
-                        onClick = { /* TODO: Roll Save */ }
+                        onClick = onRollSave
                     )
                 }
 
                 ModifierBubble(
                     text = if (totalCheck >= 0) "+$totalCheck" else "$totalCheck",
                     color = colorScheme.primary,
-                    onClick = { /* TODO: Roll Check */ }
+                    onClick = onRollCheck
                 )
             }
         }
@@ -342,7 +410,8 @@ fun SkillSubPlate(
     attrValue: String,
     onClick: (String) -> Unit,
     onLongClick: (String) -> Unit = {},
-    bonus: Int = 0
+    bonus: Int = 0,
+    onRoll: () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val pb = pbStr.toIntOrNull() ?: 0
@@ -392,7 +461,7 @@ fun SkillSubPlate(
         ModifierBubble(
             text = if (total >= 0) "+$total" else "$total",
             color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface,
-            onClick = { /* TODO: Roll Skill */ }
+            onClick = onRoll
         )
     }
 }

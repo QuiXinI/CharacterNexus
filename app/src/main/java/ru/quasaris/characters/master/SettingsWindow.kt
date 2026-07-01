@@ -1,14 +1,20 @@
 package ru.quasaris.characters.master
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.backend.AppThemeMode
@@ -79,8 +85,9 @@ fun SettingsWindow(
                             settingsManager.themeMode = AppThemeMode.M3
                             onThemeModeChange(AppThemeMode.M3)
                         },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                    ) { Text("M3") }
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                        modifier = Modifier.weight(1.4f)
+                    ) { Text("Material You") }
                     SegmentedButton(
                         selected = themeMode == AppThemeMode.OFF,
                         onClick = { 
@@ -88,8 +95,8 @@ fun SettingsWindow(
                             settingsManager.themeMode = AppThemeMode.OFF
                             onThemeModeChange(AppThemeMode.OFF)
                         },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                    ) { Text("Oled") }
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                    ) { Text("OLED") }
                     SegmentedButton(
                         selected = themeMode == AppThemeMode.CHARACTER,
                         onClick = { 
@@ -97,10 +104,17 @@ fun SettingsWindow(
                             settingsManager.themeMode = AppThemeMode.CHARACTER
                             onThemeModeChange(AppThemeMode.CHARACTER)
                         },
-                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                    ) { Text("Персонаж BETA") }
+                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                        modifier = Modifier.weight(1.4f)
+                    ) { Text("Персонаж") }
                 }
             }
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            RollHistorySettingsSection(
+                settingsViewModel = settingsViewModel
+            )
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
@@ -124,6 +138,81 @@ fun SettingsWindow(
                 color = colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+fun RollHistorySettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val historySize by settingsViewModel.rollHistorySize.collectAsState()
+    val customSize by settingsViewModel.customRollHistorySize.collectAsState()
+    var customSizeText by remember(customSize) { mutableStateOf(customSize.toString()) }
+    val isCustomActive = historySize >= 10
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Количество прошлых бросков",
+                fontSize = 16.sp,
+                color = colorScheme.onSurface
+            )
+            Text(
+                text = if (isCustomActive) "$customSize (Своё)" else historySize.toString(),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary
+            )
+        }
+
+        Slider(
+            value = historySize.coerceIn(1, 10).toFloat(),
+            onValueChange = { 
+                val newSize = it.roundToInt()
+                settingsViewModel.updateRollHistorySize(newSize)
+            },
+            valueRange = 1f..10f,
+            steps = 8,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        val focusManager = LocalFocusManager.current
+        OutlinedTextField(
+            value = customSizeText,
+            onValueChange = {
+                customSizeText = it.filter { it.isDigit() }
+            },
+            enabled = isCustomActive,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    val n = customSizeText.toIntOrNull() ?: 10
+                    settingsViewModel.updateCustomRollHistorySize(maxOf(1, n))
+                    focusManager.clearFocus()
+                }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        val n = customSizeText.toIntOrNull() ?: 10
+                        settingsViewModel.updateCustomRollHistorySize(maxOf(1, n))
+                    }
+                },
+            label = { Text("Свое количество (активно при 10+)") },
+            singleLine = true
+        )
     }
 }
 

@@ -67,6 +67,7 @@ fun CharacterHeader(
     isShieldActive: Boolean,
     activeInitValue: String,
     onInitClick: () -> Unit,
+    onInitLongClick: () -> Unit = {},
     currentHp: String,
     maxHp: String,
     tempHp: String,
@@ -206,7 +207,7 @@ fun CharacterHeader(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatIconBox(activeACValue,
                     R.drawable.ic_shield, onClick = onACClick, onLongClick = onACLongClick, isHighlighted = isShieldActive)
-                StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = onInitClick, isHighlighted = true)
+                StatIconBox(activeInitValue, R.drawable.ic_sword, onClick = onInitClick, onLongClick = onInitLongClick, isHighlighted = true)
             }
             Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, healthColor, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).clickable { 
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
