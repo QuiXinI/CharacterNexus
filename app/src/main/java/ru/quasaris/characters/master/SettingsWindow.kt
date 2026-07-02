@@ -31,6 +31,8 @@ import ru.quasaris.characters.master.backend.SettingsManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import kotlin.math.roundToInt
 
+private const val SHOW_DEBUG_SETTINGS = false
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsWindow(
@@ -44,6 +46,7 @@ fun SettingsWindow(
     val colorScheme = MaterialTheme.colorScheme
 
     val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
+    val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
 
     Scaffold(
         topBar = {
@@ -137,6 +140,33 @@ fun SettingsWindow(
             BlurSettingsSection(
                 settingsViewModel = settingsViewModel
             )
+
+            if (SHOW_DEBUG_SETTINGS) {
+                HorizontalDivider(color = colorScheme.outlineVariant)
+
+                Text(
+                    text = "Отладка",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Включить информацию для отладки",
+                        fontSize = 16.sp,
+                        color = colorScheme.onSurface
+                    )
+                    Switch(
+                        checked = debugInfoEnabled,
+                        onCheckedChange = { settingsViewModel.updateDebugInfoEnabled(it) }
+                    )
+                }
+            }
             
             HorizontalDivider(color = colorScheme.outlineVariant)
             
@@ -162,6 +192,8 @@ fun BlurSettingsSection(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val forceBlurEnabled by settingsViewModel.forceBlurEnabled.collectAsState()
+    val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
+    val performanceClass = settingsViewModel.performanceClass
     var showWarningDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -175,12 +207,18 @@ fun BlurSettingsSection(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Принудительно включить размытие",
+                    text = "Эффекты размытия.",
                     fontSize = 16.sp,
                     color = colorScheme.onSurface
                 )
+                val isDebugMode = SHOW_DEBUG_SETTINGS && debugInfoEnabled
+                val description = if (isDebugMode) {
+                    "Использовать эффекты размытия \nКласс мощности: $performanceClass"
+                } else {
+                    "Использовать эффекты размытия"
+                }
                 Text(
-                    text = "Использовать real-time размытие (Haze)",
+                    text = description,
                     fontSize = 12.sp,
                     color = colorScheme.onSurfaceVariant
                 )
@@ -188,10 +226,10 @@ fun BlurSettingsSection(
             Switch(
                 checked = forceBlurEnabled,
                 onCheckedChange = { checked ->
-                    if (checked) {
+                    if (checked && performanceClass < 33) {
                         showWarningDialog = true
                     } else {
-                        settingsViewModel.updateForceBlurEnabled(false)
+                        settingsViewModel.updateForceBlurEnabled(checked)
                     }
                 }
             )
@@ -235,13 +273,13 @@ fun WarningBlurDialog(
         },
         text = {
             val annotatedString = buildAnnotatedString {
-                append("Вы собираетесь принудительно включить real-time размытие на неподдерживаемом устройстве. Это может привести к дикому троттлингу, лагам, критическому перегреву и даже выходу из строя железа при долгой игре. Вы рискуете исключительно ")
+                append("Вы собираетесь принудительно включить эффекты размытия на неподдерживаемом устройстве. Это может привести к дикому троттлингу, лагам, критическому перегреву и даже выходу из строя железа при долгой партии. Вы рискуете ")
                 withStyle(style = SpanStyle(color = Color.Red, fontWeight = FontWeight.Bold)) {
-                    append("собственной жопой")
+                    append("своим железом")
                 }
-                append("! Команда ")
-                withStyle(style = SpanStyle(color = Color(0xFF00E1FF), fontWeight = FontWeight.Bold)) {
-                    append("quasaris")
+                append(" по собственной воле! Команда ")
+                withStyle(style = SpanStyle(color = Color(0xFF00E1FF), fontWeight = FontWeight.Black)) {
+                    append("Quasaris")
                 }
                 append(" не несет вообще никакой ответственности за ваши расплавленные процессоры и вздувшиеся аккумуляторы. Продолжаем?")
             }

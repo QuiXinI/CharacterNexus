@@ -1,6 +1,7 @@
 package ru.quasaris.characters.master.backend
 
 import android.content.Context
+import android.os.Build
 import androidx.core.content.edit
 
 enum class AppThemeMode {
@@ -34,6 +35,15 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit { putInt("custom_roll_history_size", value) }
 
     var forceBlurEnabled: Boolean
-        get() = prefs.getBoolean("force_blur_enabled", false)
+        get() {
+            val default = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Build.VERSION.MEDIA_PERFORMANCE_CLASS >= 33
+            } else false
+            return prefs.getBoolean("force_blur_enabled", default)
+        }
         set(value) = prefs.edit { putBoolean("force_blur_enabled", value) }
+
+    var debugInfoEnabled: Boolean
+        get() = prefs.getBoolean("debug_info_enabled", false)
+        set(value) = prefs.edit { putBoolean("debug_info_enabled", value) }
 }

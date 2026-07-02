@@ -1,5 +1,6 @@
 package ru.quasaris.characters.master.backend
 
+import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,9 @@ class SettingsViewModel(
     private val _forceBlurEnabled = MutableStateFlow(settingsManager?.forceBlurEnabled ?: false)
     val forceBlurEnabled = _forceBlurEnabled.asStateFlow()
 
+    private val _debugInfoEnabled = MutableStateFlow(settingsManager?.debugInfoEnabled ?: false)
+    val debugInfoEnabled = _debugInfoEnabled.asStateFlow()
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size
@@ -38,6 +42,18 @@ class SettingsViewModel(
         _forceBlurEnabled.value = enabled
         settingsManager?.forceBlurEnabled = enabled
     }
+
+    fun updateDebugInfoEnabled(enabled: Boolean) {
+        _debugInfoEnabled.value = enabled
+        settingsManager?.debugInfoEnabled = enabled
+    }
+
+    val performanceClass: Int
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Build.VERSION.MEDIA_PERFORMANCE_CLASS
+        } else {
+            0
+        }
 
     val scaleFactor: StateFlow<Float> = appScaleManager.scaleFactor
         .stateIn(
