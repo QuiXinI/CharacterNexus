@@ -79,6 +79,13 @@ data class SkillBonus(
     val skillName: String = ""
 )
 
+data class DynamicNoteState(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String = "",
+    val content: String = "",
+    val isExpanded: Boolean = true
+)
+
 data class AttackEntry(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
@@ -135,7 +142,8 @@ data class Character(
     val statBonuses: List<StatBonus> = emptyList(),
     val skillBonuses: List<SkillBonus> = emptyList(),
     val themeSeedColorArgb: Int? = null,
-    val attacks: List<AttackEntry> = emptyList()
+    val attacks: List<AttackEntry> = emptyList(),
+    val notes: List<DynamicNoteState> = listOf(DynamicNoteState())
 )
 
 data class ShieldEntry(

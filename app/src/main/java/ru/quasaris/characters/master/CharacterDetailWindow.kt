@@ -143,6 +143,8 @@ fun CharacterDetailWindow(
     var activeShieldId by remember { mutableStateOf(character?.activeShieldId ?: shieldEntries.firstOrNull()?.id) }
     var shieldDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
+    var notes by remember { mutableStateOf(character?.notes ?: listOf(DynamicNoteState())) }
+
     var characterImageData by remember { mutableStateOf(character?.imageData) }
     var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
     var showAvatarMenu by remember { mutableStateOf(false) }
@@ -170,7 +172,8 @@ fun CharacterDetailWindow(
             speedEntries = speedEntries, activeSpeedId = activeSpeedId,
             isShieldActive = isShieldActive, shieldEntries = shieldEntries, activeShieldId = activeShieldId,
             skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
-            imageData = characterImageData, themeSeedColorArgb = themeSeedColorArgb
+            imageData = characterImageData, themeSeedColorArgb = themeSeedColorArgb,
+            notes = notes
         )
         scope.launch {
             ArchiveManager.exportCharacter(context, currentCharacterState, uri)
@@ -268,7 +271,8 @@ fun CharacterDetailWindow(
             skilledExpertise = statsState.skilledExpertise,
             statBonuses = statsState.statBonuses,
             skillBonuses = statsState.skillBonuses,
-            themeSeedColorArgb = themeSeedColorArgb
+            themeSeedColorArgb = themeSeedColorArgb,
+            notes = notes
         ))
     }
 
@@ -277,7 +281,7 @@ fun CharacterDetailWindow(
         statsState, maxHp, currentHp, tempHp, proficiencyBonus, selectedConditions, exhaustion,
         attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
-        shieldEntries, activeShieldId, themeSeedColorArgb
+        shieldEntries, activeShieldId, themeSeedColorArgb, notes
     ) {
         saveCurrentCharacter()
     }
@@ -459,6 +463,14 @@ fun CharacterDetailWindow(
                     }
                     CharacterTab.BIO -> {
                         BioTab()
+                    }
+                    CharacterTab.NOTES -> {
+                        NotesTab(
+                            notes = notes,
+                            onNotesChange = { notes = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled
+                        )
                     }
                     else -> {
                         PlaceholderTab(title = tab.title)

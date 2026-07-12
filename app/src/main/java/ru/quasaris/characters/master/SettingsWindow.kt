@@ -265,7 +265,7 @@ fun WarningBlurDialog(
         tonalElevation = 8.dp,
         title = {
             Text(
-                text = "⚠️ ВНИМАНИЕ: ОПАСНО ДЛЯ ЖЕЛЕЗА",
+                text = "⚠️ ВНИМАНИЕ: ОПАСНО ДЛЯ УСТРОЙСТВА",
                 color = Color.Red,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
@@ -291,12 +291,12 @@ fun WarningBlurDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Да, я готов рисковать жопой", color = Color.Red, fontWeight = FontWeight.Bold)
+                Text("Да, я готов рисковать", color = Color.Red, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Ну нафиг, отмена", color = Color.White)
+                Text("Не включать", color = Color.White)
             }
         },
         shape = RoundedCornerShape(28.dp),

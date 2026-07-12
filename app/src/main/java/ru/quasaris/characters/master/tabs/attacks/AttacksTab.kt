@@ -6,9 +6,12 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
@@ -65,6 +68,10 @@ fun AttacksTab(
 ) {
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
 
+    val listState = rememberLazyListState()
+    var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
+    var draggingOffset by remember { mutableStateOf(0f) }
+
     Box(modifier = Modifier.fillMaxSize()) {
         if (attacks.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -76,11 +83,12 @@ fun AttacksTab(
             }
         } else {
             LazyColumn(
+                state = listState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 80.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(attacks, key = { it.id }) { attack ->
+                itemsIndexed(attacks, key = { _, attack -> attack.id }) { index, attack ->
                     AttackItem(
                         attack = attack,
                         proficiencyBonus = proficiencyBonus,
@@ -90,7 +98,33 @@ fun AttacksTab(
                         stats = stats,
                         exhaustion = exhaustion,
                         hazeState = hazeState,
-                        forceBlurEnabled = forceBlurEnabled
+                        forceBlurEnabled = forceBlurEnabled,
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { draggedItemIndex = index },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    draggingOffset += dragAmount.y
+                                    
+                                    val newIndex = (index + (draggingOffset / 100).toInt()).coerceIn(0, attacks.size - 1)
+                                    if (newIndex != draggedItemIndex) {
+                                        val newList = attacks.toMutableList()
+                                        val item = newList.removeAt(draggedItemIndex!!)
+                                        newList.add(newIndex, item)
+                                        onUpdateAttacks(newList)
+                                        draggedItemIndex = newIndex
+                                    }
+                                },
+                                onDragEnd = {
+                                    draggedItemIndex = null
+                                    draggingOffset = 0f
+                                },
+                                onDragCancel = {
+                                    draggedItemIndex = null
+                                    draggingOffset = 0f
+                                }
+                            )
+                        }
                     )
                 }
             }
@@ -144,7 +178,8 @@ fun AttackItem(
     stats: Map<String, String> = emptyMap(),
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion) {
         if (attack.attribute == Attribute.NONE) {
@@ -179,7 +214,7 @@ fun AttackItem(
     var iconPosition by remember { mutableStateOf(Offset.Zero) }
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
