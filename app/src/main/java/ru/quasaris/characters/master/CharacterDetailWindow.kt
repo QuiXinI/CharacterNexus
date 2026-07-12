@@ -231,6 +231,13 @@ fun CharacterDetailWindow(
     var showTabSheet by remember { mutableStateOf(false) }
     val currentTab = tabs[pagerState.currentPage % tabs.size]
     val sheetState = rememberModalBottomSheetState()
+    
+    var isEditMode by remember { mutableStateOf(false) }
+    
+    // Reset edit mode when changing tabs
+    LaunchedEffect(pagerState.currentPage) {
+        isEditMode = false
+    }
 
     val saveCurrentCharacter = {
         onSaveChanges(character.copy(
@@ -346,18 +353,27 @@ fun CharacterDetailWindow(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { showTabSheet = true }
-                        .padding(vertical = 8.dp),
+                        .height(52.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
+                    val hasContentToEdit = when(currentTab) {
+                        CharacterTab.ATTACKS -> attacks.isNotEmpty()
+                        CharacterTab.NOTES -> notes.isNotEmpty()
+                        else -> false
+                    }
+                    
+                    // Left spacer to balance the icon on the right
+                    Spacer(modifier = Modifier.weight(1f))
+
                     Surface(
                         color = colorScheme.primary.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(horizontal = 16.dp)
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { showTabSheet = true }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -377,6 +393,24 @@ fun CharacterDetailWindow(
                                 tint = colorScheme.primary,
                                 modifier = Modifier.size(20.dp)
                             )
+                        }
+                    }
+                    
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        if (hasContentToEdit) {
+                            IconButton(
+                                onClick = { isEditMode = !isEditMode },
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                Icon(
+                                    if (isEditMode) Icons.Default.EditOff else Icons.Default.Edit,
+                                    contentDescription = "Toggle Edit Mode",
+                                    tint = if (isEditMode) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
                         }
                     }
                 }
@@ -458,7 +492,8 @@ fun CharacterDetailWindow(
                             stats = statsMap,
                             exhaustion = exhaustion,
                             hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled
+                            forceBlurEnabled = forceBlurEnabled,
+                            isEditMode = isEditMode
                         )
                     }
                     CharacterTab.BIO -> {
@@ -469,7 +504,8 @@ fun CharacterDetailWindow(
                             notes = notes,
                             onNotesChange = { notes = it },
                             hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled
+                            forceBlurEnabled = forceBlurEnabled,
+                            isEditMode = isEditMode
                         )
                     }
                     else -> {
