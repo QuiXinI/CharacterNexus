@@ -43,6 +43,7 @@ import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.backend.DiceRoller
+import ru.quasaris.characters.master.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
@@ -69,7 +70,8 @@ fun CharacterDetailWindow(
     onOpenDrawer: () -> Unit = {},
     onRoll: (RollResult) -> Unit = {},
     hazeState: HazeState? = null,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     var name by remember { mutableStateOf(character?.name ?: "") }
     var characterClass by remember { mutableStateOf(character?.characterClass ?: "") }
@@ -144,6 +146,9 @@ fun CharacterDetailWindow(
     var shieldDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
     var notes by remember { mutableStateOf(character?.notes ?: listOf(DynamicNoteState())) }
+    var skillsAndTraits by remember { mutableStateOf(character?.skillsAndTraits ?: emptyList()) }
+    var inventory by remember { mutableStateOf(character?.inventory ?: emptyList()) }
+    var spells by remember { mutableStateOf(character?.spells ?: emptyList()) }
 
     var characterImageData by remember { mutableStateOf(character?.imageData) }
     var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
@@ -279,7 +284,10 @@ fun CharacterDetailWindow(
             statBonuses = statsState.statBonuses,
             skillBonuses = statsState.skillBonuses,
             themeSeedColorArgb = themeSeedColorArgb,
-            notes = notes
+            notes = notes,
+            skillsAndTraits = skillsAndTraits,
+            inventory = inventory,
+            spells = spells
         ))
     }
 
@@ -288,7 +296,8 @@ fun CharacterDetailWindow(
         statsState, maxHp, currentHp, tempHp, proficiencyBonus, selectedConditions, exhaustion,
         attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
-        shieldEntries, activeShieldId, themeSeedColorArgb, notes
+        shieldEntries, activeShieldId, themeSeedColorArgb, notes,
+        skillsAndTraits, inventory, spells
     ) {
         saveCurrentCharacter()
     }
@@ -360,6 +369,9 @@ fun CharacterDetailWindow(
                     val hasContentToEdit = when(currentTab) {
                         CharacterTab.ATTACKS -> attacks.isNotEmpty()
                         CharacterTab.NOTES -> notes.isNotEmpty()
+                        CharacterTab.SKILLS_FEATS -> skillsAndTraits.isNotEmpty()
+                        CharacterTab.INVENTORY -> inventory.isNotEmpty()
+                        CharacterTab.SPELLS -> spells.isNotEmpty()
                         else -> false
                     }
                     
@@ -493,11 +505,42 @@ fun CharacterDetailWindow(
                             exhaustion = exhaustion,
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
-                            isEditMode = isEditMode
+                            isEditMode = isEditMode,
+                            settingsViewModel = settingsViewModel
                         )
                     }
                     CharacterTab.BIO -> {
                         BioTab()
+                    }
+                    CharacterTab.SKILLS_FEATS -> {
+                        SkillsFeatsTab(
+                            skillsAndTraits = skillsAndTraits,
+                            onSkillsAndTraitsChange = { skillsAndTraits = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            isEditMode = isEditMode,
+                            settingsViewModel = settingsViewModel
+                        )
+                    }
+                    CharacterTab.INVENTORY -> {
+                        InventoryTab(
+                            inventory = inventory,
+                            onInventoryChange = { inventory = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            isEditMode = isEditMode,
+                            settingsViewModel = settingsViewModel
+                        )
+                    }
+                    CharacterTab.SPELLS -> {
+                        SpellsTab(
+                            spells = spells,
+                            onSpellsChange = { spells = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            isEditMode = isEditMode,
+                            settingsViewModel = settingsViewModel
+                        )
                     }
                     CharacterTab.NOTES -> {
                         NotesTab(
@@ -505,7 +548,8 @@ fun CharacterDetailWindow(
                             onNotesChange = { notes = it },
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
-                            isEditMode = isEditMode
+                            isEditMode = isEditMode,
+                            settingsViewModel = settingsViewModel
                         )
                     }
                     else -> {

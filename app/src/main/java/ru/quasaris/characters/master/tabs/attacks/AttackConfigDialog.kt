@@ -37,6 +37,8 @@ import ru.quasaris.characters.master.AttackBonus
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.DamageBonus
+import ru.quasaris.characters.master.backend.SettingsViewModel
+import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,9 +51,11 @@ fun AttackConfigDialog(
     onDelete: (AttackEntry) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
-    exhaustion: Int = 0
+    exhaustion: Int = 0,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     var state by remember { mutableStateOf(attack) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val attackCalculation = remember(state, proficiencyBonus, attributeModifiers, exhaustion) {
         if (state.attribute == Attribute.NONE) {
@@ -248,7 +252,7 @@ fun AttackConfigDialog(
 
                     // Delete Button
                     OutlinedButton(
-                        onClick = { onDelete(state) },
+                        onClick = { showDeleteConfirm = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
                         border = BorderStroke(1.dp, Color.Red),
@@ -259,6 +263,17 @@ fun AttackConfigDialog(
 
                     Spacer(modifier = Modifier.height(32.dp))
                 }
+
+                DeleteConfirmationDialog(
+                    showDialog = showDeleteConfirm,
+                    onDismiss = { showDeleteConfirm = false },
+                    onConfirm = {
+                        onDelete(state)
+                        showDeleteConfirm = false
+                    },
+                    title = "Удалить атаку?",
+                    settingsViewModel = settingsViewModel
+                )
 
                 // Save FAB or Button (Optional, usually dialogs have Save/Cancel, but let's add a Save button)
                 Button(

@@ -143,7 +143,19 @@ data class Character(
     val skillBonuses: List<SkillBonus> = emptyList(),
     val themeSeedColorArgb: Int? = null,
     val attacks: List<AttackEntry> = emptyList(),
-    val notes: List<DynamicNoteState> = listOf(DynamicNoteState())
+    val notes: List<DynamicNoteState> = listOf(DynamicNoteState()),
+    val skillsAndTraits: List<DynamicNoteState> = listOf(
+        DynamicNoteState(title = "Умения"),
+        DynamicNoteState(title = "Черты", content = "**_Черты происхождения:_**\n\n\n**_Общие черты_**\n")
+    ),
+    val inventory: List<DynamicNoteState> = listOf(
+        DynamicNoteState(title = "Снаряжение"),
+        DynamicNoteState(title = "Сокровища"),
+        DynamicNoteState(title = "Экипировано", content = "\n\n**_Настройки_**\n1. \n2. \n3. ")
+    ),
+    val spells: List<DynamicNoteState> = listOf(DynamicNoteState(title = "Заговоры")) + (1..9).map {
+        DynamicNoteState(title = "$it уровень")
+    }
 )
 
 data class ShieldEntry(

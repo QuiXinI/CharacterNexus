@@ -6,24 +6,24 @@ import ru.quasaris.characters.master.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
 
 @Composable
-fun NotesTab(
-    notes: List<DynamicNoteState>,
-    onNotesChange: (List<DynamicNoteState>) -> Unit,
+fun SkillsFeatsTab(
+    skillsAndTraits: List<DynamicNoteState>,
+    onSkillsAndTraitsChange: (List<DynamicNoteState>) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null
 ) {
     DynamicFieldsTab(
-        fields = notes,
-        onFieldsChange = onNotesChange,
+        fields = skillsAndTraits,
+        onFieldsChange = onSkillsAndTraitsChange,
         hazeState = hazeState,
         forceBlurEnabled = forceBlurEnabled,
         isEditMode = isEditMode,
-        addButtonText = "ДОБАВИТЬ ЗАМЕТКУ",
-        emptyListText = "Список заметок пуст",
-        titlePlaceholder = "Заголовок заметки",
-        contentPlaceholder = "Текст заметки...",
+        addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
+        emptyListText = "Список умений и черт пуст",
+        titlePlaceholder = "Название умения/черты",
+        contentPlaceholder = "Описание...",
         settingsViewModel = settingsViewModel
     )
 }

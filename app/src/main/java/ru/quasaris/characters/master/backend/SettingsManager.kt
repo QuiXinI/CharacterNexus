@@ -46,4 +46,8 @@ class SettingsManager(context: Context) {
     var debugInfoEnabled: Boolean
         get() = prefs.getBoolean("debug_info_enabled", false)
         set(value) = prefs.edit { putBoolean("debug_info_enabled", value) }
+
+    var deletionWarningEnabled: Boolean
+        get() = prefs.getBoolean("deletion_warning_enabled", true)
+        set(value) = prefs.edit { putBoolean("deletion_warning_enabled", value) }
 }

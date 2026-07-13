@@ -51,9 +51,13 @@ object CharacterDataHandler {
         skilledProficiencies: List<String> = emptyList(),
         skilledExpertise: List<String> = emptyList(),
         themeSeedColorArgb: Int? = null,
-        attacks: List<ru.quasaris.characters.master.AttackEntry> = emptyList()
+        attacks: List<ru.quasaris.characters.master.AttackEntry> = emptyList(),
+        notes: List<ru.quasaris.characters.master.DynamicNoteState> = listOf(ru.quasaris.characters.master.DynamicNoteState()),
+        skillsAndTraits: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
+        inventory: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
+        spells: List<ru.quasaris.characters.master.DynamicNoteState>? = null
     ): Character {
-        return Character(
+        val baseChar = Character(
             id = id,
             name = name,
             characterClass = "", // Can be extended
@@ -90,7 +94,13 @@ object CharacterDataHandler {
             skilledProficiencies = skilledProficiencies,
             skilledExpertise = skilledExpertise,
             themeSeedColorArgb = themeSeedColorArgb,
-            attacks = attacks
+            attacks = attacks,
+            notes = notes
+        )
+        return baseChar.copy(
+            skillsAndTraits = skillsAndTraits ?: baseChar.skillsAndTraits,
+            inventory = inventory ?: baseChar.inventory,
+            spells = spells ?: baseChar.spells
         )
     }
 

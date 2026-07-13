@@ -272,7 +272,8 @@ class MainActivity : ComponentActivity() {
                                             rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
                                         },
                                         hazeState = hazeState,
-                                        forceBlurEnabled = forceBlurEnabled
+                                        forceBlurEnabled = forceBlurEnabled,
+                                        settingsViewModel = settingsViewModel
                                     )
                                 }
                             }

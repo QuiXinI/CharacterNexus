@@ -34,6 +34,8 @@ import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.backend.DiceRoller
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
+import ru.quasaris.characters.master.backend.SettingsViewModel
+import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 import androidx.compose.foundation.shape.RoundedCornerShape
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -64,9 +66,11 @@ fun AttacksTab(
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
-    isEditMode: Boolean = false
+    isEditMode: Boolean = false,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
+    var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
 
     val listState = rememberLazyListState()
     val items = remember(attacks) { mutableStateListOf<AttackEntry>().apply { addAll(attacks) } }
@@ -148,8 +152,7 @@ fun AttacksTab(
                         attributeModifiers = attributeModifiers,
                         onClick = { if (!isEditMode) editingAttack = attack },
                         onDelete = {
-                            items.removeAt(index)
-                            onUpdateAttacks(items.toList())
+                            attackToDeleteIndex = index
                         },
                         onRoll = onRoll,
                         stats = stats,
@@ -174,6 +177,21 @@ fun AttacksTab(
             Icon(Icons.Default.Add, contentDescription = "Добавить атаку")
         }
     }
+
+    DeleteConfirmationDialog(
+        showDialog = attackToDeleteIndex != null,
+        onDismiss = { attackToDeleteIndex = null },
+        onConfirm = {
+            attackToDeleteIndex?.let { index ->
+                if (index in items.indices) {
+                    items.removeAt(index)
+                    onUpdateAttacks(items.toList())
+                }
+            }
+            attackToDeleteIndex = null
+        },
+        settingsViewModel = settingsViewModel
+    )
 
     editingAttack?.let { attack ->
         AttackConfigDialog(

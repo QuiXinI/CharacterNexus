@@ -28,6 +28,9 @@ class SettingsViewModel(
     private val _debugInfoEnabled = MutableStateFlow(settingsManager?.debugInfoEnabled ?: false)
     val debugInfoEnabled = _debugInfoEnabled.asStateFlow()
 
+    private val _deletionWarningEnabled = MutableStateFlow(settingsManager?.deletionWarningEnabled ?: true)
+    val deletionWarningEnabled = _deletionWarningEnabled.asStateFlow()
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size
@@ -46,6 +49,11 @@ class SettingsViewModel(
     fun updateDebugInfoEnabled(enabled: Boolean) {
         _debugInfoEnabled.value = enabled
         settingsManager?.debugInfoEnabled = enabled
+    }
+
+    fun updateDeletionWarningEnabled(enabled: Boolean) {
+        _deletionWarningEnabled.value = enabled
+        settingsManager?.deletionWarningEnabled = enabled
     }
 
     val performanceClass: Int

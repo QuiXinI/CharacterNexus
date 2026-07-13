@@ -141,6 +141,12 @@ fun SettingsWindow(
                 settingsViewModel = settingsViewModel
             )
 
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            DeletionWarningSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
+
             if (SHOW_DEBUG_SETTINGS) {
                 HorizontalDivider(color = colorScheme.outlineVariant)
 
@@ -246,6 +252,42 @@ fun BlurSettingsSection(
                 showWarningDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun DeletionWarningSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val deletionWarningEnabled by settingsViewModel.deletionWarningEnabled.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Предупреждение об удалении",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Показывать подтверждение при удалении элементов",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = deletionWarningEnabled,
+                onCheckedChange = { settingsViewModel.updateDeletionWarningEnabled(it) }
+            )
+        }
     }
 }
 
