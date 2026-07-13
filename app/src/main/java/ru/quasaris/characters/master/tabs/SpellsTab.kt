@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ru.quasaris.characters.master.DynamicNoteState
+import ru.quasaris.characters.master.SpellSettings
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
 
@@ -14,21 +15,22 @@ import dev.chrisbanes.haze.HazeState
 fun SpellsTab(
     spells: List<DynamicNoteState>,
     onSpellsChange: (List<DynamicNoteState>) -> Unit,
+    spellSettings: SpellSettings = SpellSettings(),
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null
 ) {
     DynamicFieldsTab(
-        fields = spells,
+        fields = if (spellSettings.isMagicEnabled) spells else emptyList(),
         onFieldsChange = onSpellsChange,
         hazeState = hazeState,
         forceBlurEnabled = forceBlurEnabled,
         isEditMode = isEditMode,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
-        emptyListText = "Книга заклинаний пуста",
-        titlePlaceholder = "Название заклинания",
-        contentPlaceholder = "Описание заклинания...",
+        emptyListText = if (spellSettings.isMagicEnabled) "Список заклинаний пуст" else "Магия нужна слабым",
+        titlePlaceholder = "Название группы заклинаний",
+        contentPlaceholder = "Список заклинаний...",
         settingsViewModel = settingsViewModel,
         extraContent = { spell ->
             // TODO: Реализовать счетчики ячеек заклинаний для каждого уровня

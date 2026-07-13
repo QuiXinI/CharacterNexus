@@ -145,10 +145,34 @@ fun CharacterDetailWindow(
     var activeShieldId by remember { mutableStateOf(character?.activeShieldId ?: shieldEntries.firstOrNull()?.id) }
     var shieldDeleteConfirmId by remember { mutableStateOf<String?>(null) }
 
+    var showSpellSettings by remember { mutableStateOf(false) }
+
     var notes by remember { mutableStateOf(character?.notes ?: listOf(DynamicNoteState())) }
-    var skillsAndTraits by remember { mutableStateOf(character?.skillsAndTraits ?: emptyList()) }
-    var inventory by remember { mutableStateOf(character?.inventory ?: emptyList()) }
-    var spells by remember { mutableStateOf(character?.spells ?: emptyList()) }
+    var skillsAndTraits by remember { mutableStateOf(
+        if (character?.skillsAndTraits.isNullOrEmpty()) {
+            listOf(
+                DynamicNoteState(title = "Умения"),
+                DynamicNoteState(title = "Черты", content = "**_Черты происхождения:_**\n\n\n**_Общие черты_**\n")
+            )
+        } else character?.skillsAndTraits!!
+    ) }
+    var inventory by remember { mutableStateOf(
+        if (character?.inventory.isNullOrEmpty()) {
+            listOf(
+                DynamicNoteState(title = "Снаряжение"),
+                DynamicNoteState(title = "Сокровища"),
+                DynamicNoteState(title = "Экипировано", content = "\n\n**_Настройки_**\n1. \n2. \n3. ")
+            )
+        } else character?.inventory!!
+    ) }
+    var spells by remember { mutableStateOf(
+        if (character?.spells.isNullOrEmpty()) {
+            listOf(DynamicNoteState(title = "Заговоры")) + (1..9).map {
+                DynamicNoteState(title = "$it уровень")
+            }
+        } else character?.spells!!
+    ) }
+    var spellSettings by remember { mutableStateOf(character?.spellSettings ?: SpellSettings()) }
 
     var characterImageData by remember { mutableStateOf(character?.imageData) }
     var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
@@ -178,7 +202,11 @@ fun CharacterDetailWindow(
             isShieldActive = isShieldActive, shieldEntries = shieldEntries, activeShieldId = activeShieldId,
             skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
             imageData = characterImageData, themeSeedColorArgb = themeSeedColorArgb,
-            notes = notes
+            notes = notes,
+            skillsAndTraits = skillsAndTraits,
+            inventory = inventory,
+            spells = spells,
+            spellSettings = spellSettings
         )
         scope.launch {
             ArchiveManager.exportCharacter(context, currentCharacterState, uri)
@@ -212,7 +240,14 @@ fun CharacterDetailWindow(
         return
     }
 
-    val statsMap = remember(statsState, level, proficiencyBonus) { statsState.toStatsMap(level, proficiencyBonus) }
+    val statsMap = remember(statsState, level, proficiencyBonus, spellSettings) { 
+        statsState.toStatsMap(level, proficiencyBonus).toMutableMap().apply {
+            put("[MAG ATC BON]", spellSettings.spellAttackBonus.ifBlank { "0" })
+            put("[МАГ АТК БОН]", spellSettings.spellAttackBonus.ifBlank { "0" })
+            put("[MAG SAVE BON]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
+            put("[МАГ СПАС БОН]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
+        }
+    }
 
     val attributeModifiers = remember(statsState) { statsState.toAttributeModifiers() }
     val pb = getProficiencyBonus(level)
@@ -287,7 +322,8 @@ fun CharacterDetailWindow(
             notes = notes,
             skillsAndTraits = skillsAndTraits,
             inventory = inventory,
-            spells = spells
+            spells = spells,
+            spellSettings = spellSettings
         ))
     }
 
@@ -297,7 +333,7 @@ fun CharacterDetailWindow(
         attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
         shieldEntries, activeShieldId, themeSeedColorArgb, notes,
-        skillsAndTraits, inventory, spells
+        skillsAndTraits, inventory, spells, spellSettings
     ) {
         saveCurrentCharacter()
     }
@@ -374,9 +410,24 @@ fun CharacterDetailWindow(
                         CharacterTab.SPELLS -> spells.isNotEmpty()
                         else -> false
                     }
-                    
-                    // Left spacer to balance the icon on the right
-                    Spacer(modifier = Modifier.weight(1f))
+
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (currentTab == CharacterTab.SPELLS) {
+                            IconButton(
+                                onClick = { showSpellSettings = true },
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoFixHigh,
+                                    contentDescription = "Spell Settings",
+                                    tint = colorScheme.primary
+                                )
+                            }
+                        }
+                    }
 
                     Surface(
                         color = colorScheme.primary.copy(alpha = 0.1f),
@@ -536,6 +587,7 @@ fun CharacterDetailWindow(
                         SpellsTab(
                             spells = spells,
                             onSpellsChange = { spells = it },
+                            spellSettings = spellSettings,
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             isEditMode = isEditMode,
@@ -579,6 +631,16 @@ fun CharacterDetailWindow(
             }
         )
     } // Box end
+
+    if (showSpellSettings) {
+        SpellSettingsDialog(
+            settings = spellSettings,
+            onSettingsChange = { spellSettings = it },
+            onDismiss = { showSpellSettings = false },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
+        )
+    }
 }
 
     if (showTabSheet) {

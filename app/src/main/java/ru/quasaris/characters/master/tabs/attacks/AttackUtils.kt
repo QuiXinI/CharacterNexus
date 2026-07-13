@@ -7,7 +7,8 @@ data class DicePart(val count: Int, val sides: Int)
 fun parseFormulaParts(
     formula: String,
     attributeModifiers: Map<Attribute, Int> = emptyMap(),
-    proficiencyBonus: Int = 0
+    proficiencyBonus: Int = 0,
+    stats: Map<String, String> = emptyMap()
 ): Pair<Int, List<DicePart>> {
     var processed = formula.uppercase()
     
@@ -27,6 +28,15 @@ fun parseFormulaParts(
     
     processed = processed.replace("[БМ]", " $proficiencyBonus ")
         .replace("[PB]", " $proficiencyBonus ")
+
+    // Add Magic Bonuses
+    val magAtk = stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: "0"
+    val magSave = stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: "0"
+    
+    processed = processed.replace("[MAG ATC BON]", " $magAtk ")
+        .replace("[МАГ АТК БОН]", " $magAtk ")
+        .replace("[MAG SAVE BON]", " $magSave ")
+        .replace("[МАГ СПАС БОН]", " $magSave ")
     
     var flat = 0
     val dice = mutableMapOf<Int, Int>() // Sides -> Count
@@ -63,12 +73,13 @@ fun formatFullDamage(
     baseDamageBonus: Int,
     bonusFormulas: List<String>,
     attributeModifiers: Map<Attribute, Int>,
-    proficiencyBonus: Int
+    proficiencyBonus: Int,
+    stats: Map<String, String> = emptyMap()
 ): String {
     val parts = mutableListOf<String>()
     
     // Process base formula
-    val (baseFlat, baseDice) = parseFormulaParts(baseFormula, attributeModifiers, proficiencyBonus)
+    val (baseFlat, baseDice) = parseFormulaParts(baseFormula, attributeModifiers, proficiencyBonus, stats)
     baseDice.forEach { parts.add("${it.count}d${it.sides}") }
     if (baseFlat != 0) parts.add(if (baseFlat > 0) baseFlat.toString() else "($baseFlat)")
     
@@ -79,7 +90,7 @@ fun formatFullDamage(
     
     // Process additional bonuses
     bonusFormulas.forEach { formula ->
-        val (fFlat, fDice) = parseFormulaParts(formula, attributeModifiers, proficiencyBonus)
+        val (fFlat, fDice) = parseFormulaParts(formula, attributeModifiers, proficiencyBonus, stats)
         fDice.forEach { parts.add("${it.count}d${it.sides}") }
         if (fFlat != 0) parts.add(if (fFlat > 0) fFlat.toString() else "($fFlat)")
     }
@@ -90,11 +101,12 @@ fun formatFullDamage(
 fun calculateTotalBonus(
     formulas: List<String>,
     attributeModifiers: Map<Attribute, Int>,
-    proficiencyBonus: Int
+    proficiencyBonus: Int,
+    stats: Map<String, String> = emptyMap()
 ): Int {
     var total = 0
     formulas.forEach { formula ->
-        val (flat, _) = parseFormulaParts(formula, attributeModifiers, proficiencyBonus)
+        val (flat, _) = parseFormulaParts(formula, attributeModifiers, proficiencyBonus, stats)
         total += flat
     }
     return total

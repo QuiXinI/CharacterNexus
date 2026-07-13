@@ -214,7 +214,9 @@ fun AttacksTab(
             },
             hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
-            exhaustion = exhaustion
+            exhaustion = exhaustion,
+            settingsViewModel = settingsViewModel,
+            stats = stats
         )
     }
 }
@@ -239,7 +241,7 @@ fun AttackItem(
     val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
     
-    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion) {
+    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion, stats) {
         if (attack.attribute == Attribute.NONE) {
             return@remember Pair(0, emptyList<DicePart>())
         }
@@ -249,7 +251,7 @@ fun AttackItem(
         val allDice = mutableMapOf<Int, Int>()
         
         attack.attackBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus)
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
             totalFlat += fFlat
             fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
         }
@@ -265,7 +267,8 @@ fun AttackItem(
         baseDamageBonus = attack.damageBonus,
         bonusFormulas = attack.damageBonuses.map { it.formula },
         attributeModifiers = attributeModifiers,
-        proficiencyBonus = proficiencyBonus
+        proficiencyBonus = proficiencyBonus,
+        stats = stats
     )
 
     var showInfo by remember { mutableStateOf(false) }

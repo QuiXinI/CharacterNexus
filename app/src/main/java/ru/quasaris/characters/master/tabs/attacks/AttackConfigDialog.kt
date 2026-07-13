@@ -52,12 +52,13 @@ fun AttackConfigDialog(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     exhaustion: Int = 0,
-    settingsViewModel: SettingsViewModel? = null
+    settingsViewModel: SettingsViewModel? = null,
+    stats: Map<String, String> = emptyMap()
 ) {
     var state by remember { mutableStateOf(attack) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    val attackCalculation = remember(state, proficiencyBonus, attributeModifiers, exhaustion) {
+    val attackCalculation = remember(state, proficiencyBonus, attributeModifiers, exhaustion, stats) {
         if (state.attribute == Attribute.NONE) {
             return@remember Pair(0, emptyList<DicePart>())
         }
@@ -69,7 +70,7 @@ fun AttackConfigDialog(
         val allDice = mutableMapOf<Int, Int>()
         
         state.attackBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus)
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
             totalFlat += fFlat
             fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
         }

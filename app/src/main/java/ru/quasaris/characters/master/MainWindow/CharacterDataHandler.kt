@@ -55,7 +55,8 @@ object CharacterDataHandler {
         notes: List<ru.quasaris.characters.master.DynamicNoteState> = listOf(ru.quasaris.characters.master.DynamicNoteState()),
         skillsAndTraits: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
         inventory: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
-        spells: List<ru.quasaris.characters.master.DynamicNoteState>? = null
+        spells: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
+        spellSettings: ru.quasaris.characters.master.SpellSettings? = null
     ): Character {
         val baseChar = Character(
             id = id,
@@ -100,7 +101,8 @@ object CharacterDataHandler {
         return baseChar.copy(
             skillsAndTraits = skillsAndTraits ?: baseChar.skillsAndTraits,
             inventory = inventory ?: baseChar.inventory,
-            spells = spells ?: baseChar.spells
+            spells = spells ?: baseChar.spells,
+            spellSettings = spellSettings ?: baseChar.spellSettings
         )
     }
 

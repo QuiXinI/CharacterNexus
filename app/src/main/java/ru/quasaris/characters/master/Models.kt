@@ -101,6 +101,12 @@ data class AttackEntry(
     val showNotes: Boolean = false
 )
 
+data class SpellSettings(
+    val isMagicEnabled: Boolean = true,
+    val spellAttackBonus: String = "",
+    val spellSaveDcBonus: String = ""
+)
+
 
 data class Character(
     val id: Int,
@@ -155,7 +161,8 @@ data class Character(
     ),
     val spells: List<DynamicNoteState> = listOf(DynamicNoteState(title = "Заговоры")) + (1..9).map {
         DynamicNoteState(title = "$it уровень")
-    }
+    },
+    val spellSettings: SpellSettings = SpellSettings()
 )
 
 data class ShieldEntry(
