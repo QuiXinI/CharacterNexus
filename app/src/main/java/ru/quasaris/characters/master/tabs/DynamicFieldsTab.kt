@@ -55,6 +55,10 @@ fun DynamicFieldsTab(
     titlePlaceholder: String = "Заголовок",
     contentPlaceholder: String = "Текст...",
     settingsViewModel: SettingsViewModel? = null,
+    isCollapsible: Boolean = true,
+    isTitleReadOnly: Boolean = false,
+    isAddButtonVisible: Boolean = true,
+    isReorderButtonVisible: Boolean = true,
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
@@ -93,7 +97,7 @@ fun DynamicFieldsTab(
             itemsIndexed(items, key = { _, field -> field.id }) { index, field ->
                 val isDragging = draggedItemIndex == index
                 
-                val dragModifier = if (isEditMode) {
+                val dragModifier = if (isEditMode && isReorderButtonVisible) {
                     Modifier.pointerInput(index) {
                         detectDragGestures(
                             onDragStart = { 
@@ -150,27 +154,32 @@ fun DynamicFieldsTab(
                     onFullscreenRequest = { fullscreenFieldIndex = index },
                     dragModifier = dragModifier,
                     modifier = Modifier.animateItem(),
-                    extraContent = extraContent
+                    extraContent = extraContent,
+                    isCollapsible = isCollapsible,
+                    isTitleReadOnly = isTitleReadOnly,
+                    isReorderButtonVisible = isReorderButtonVisible
                 )
             }
 
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = {
-                        val newFields = items.toList() + DynamicNoteState()
-                        onFieldsChange(newFields)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(addButtonText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            if (isAddButtonVisible) {
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            val newFields = items.toList() + DynamicNoteState()
+                            onFieldsChange(newFields)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(addButtonText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -230,9 +239,13 @@ fun DynamicFieldItem(
     onFullscreenRequest: () -> Unit,
     dragModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
+    isCollapsible: Boolean = true,
+    isTitleReadOnly: Boolean = false,
+    isReorderButtonVisible: Boolean = true,
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
-    val rotation by animateFloatAsState(targetValue = if (field.isExpanded) 0f else 180f)
+    val isExpanded = if (isCollapsible) field.isExpanded else true
+    val rotation by animateFloatAsState(targetValue = if (isExpanded) 0f else 180f)
     val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
 
@@ -242,17 +255,17 @@ fun DynamicFieldItem(
             .scale(scale)
             .padding(padding),
         shape = RoundedCornerShape(12.dp),
-        color = if (field.isExpanded || isEditMode) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isEditMode) 0.6f else 0.3f) 
+        color = if (isExpanded || isEditMode) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isEditMode) 0.6f else 0.3f) 
                 else Color.Transparent,
-        shadowElevation = if (isDragging) 8.dp else (if (field.isExpanded || isEditMode) 1.dp else 0.dp),
-        border = if (field.isExpanded || isEditMode) BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+        shadowElevation = if (isDragging) 8.dp else (if (isExpanded || isEditMode) 1.dp else 0.dp),
+        border = if (isExpanded || isEditMode) BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
                  else null
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isEditMode) {
+            if (isEditMode && isReorderButtonVisible) {
                 Icon(
                     imageVector = Icons.Default.UnfoldMore,
                     contentDescription = "Drag",
@@ -268,7 +281,7 @@ fun DynamicFieldItem(
                 modifier = Modifier
                     .weight(1f)
                     .run {
-                        if (isEditMode) this else this.clickable { onFieldChange(field.copy(isExpanded = !field.isExpanded)) }
+                        if (isEditMode || !isCollapsible) this else this.clickable { onFieldChange(field.copy(isExpanded = !isExpanded)) }
                     }
                     .padding(vertical = if (isEditMode) 12.dp else 0.dp)
             ) {
@@ -281,7 +294,7 @@ fun DynamicFieldItem(
                     BasicTextField(
                         value = field.title,
                         onValueChange = { onFieldChange(field.copy(title = it)) },
-                        enabled = !isEditMode,
+                        enabled = !isEditMode && !isTitleReadOnly,
                         textStyle = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
@@ -306,30 +319,37 @@ fun DynamicFieldItem(
                     )
 
                     if (!isEditMode) {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { onFieldChange(field.copy(isExpanded = !field.isExpanded)) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowUp,
-                                contentDescription = null,
+                        if (isCollapsible) {
+                            Box(
                                 modifier = Modifier
-                                    .size(28.dp)
-                                    .rotate(rotation),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
+                                    .size(56.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { onFieldChange(field.copy(isExpanded = !isExpanded)) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .rotate(rotation),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                        } else {
+                            // Slot trackers or other content can be placed here if we move them
+                            extraContent(field)
                         }
                     }
                 }
 
-                AnimatedVisibility(visible = field.isExpanded && !isEditMode) {
+                AnimatedVisibility(visible = isExpanded && !isEditMode) {
                     Column {
-                        extraContent(field)
+                        if (isCollapsible) {
+                            extraContent(field)
+                        }
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()

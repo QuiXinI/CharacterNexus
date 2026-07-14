@@ -51,6 +51,9 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
 
 import dev.chrisbanes.haze.LocalHazeStyle
+import ru.quasaris.characters.master.backend.evaluateFormula
+import ru.quasaris.characters.master.tabs.spells.SpellSettingsDialog
+import ru.quasaris.characters.master.tabs.spells.SpellsTab
 
 /**
  * Стиль размытия для нижней панели выбора вкладок.
@@ -246,6 +249,25 @@ fun CharacterDetailWindow(
             put("[МАГ АТК БОН]", spellSettings.spellAttackBonus.ifBlank { "0" })
             put("[MAG SAVE BON]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
             put("[МАГ СПАС БОН]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
+
+            // Add spellcasting ability modifier
+            if (spellSettings.spellcastingAbility != Attribute.NONE) {
+                val score = when(spellSettings.spellcastingAbility) {
+                    Attribute.STRENGTH -> statsState.strength
+                    Attribute.DEXTERITY -> statsState.dexterity
+                    Attribute.CONSTITUTION -> statsState.constitution
+                    Attribute.INTELLIGENCE -> statsState.intelligence
+                    Attribute.WISDOM -> statsState.wisdom
+                    Attribute.CHARISMA -> statsState.charisma
+                    else -> "10"
+                }
+                val mod = ru.quasaris.characters.master.backend.calculateModifier(score)
+                put("[MAG MOD]", mod.toString())
+                put("[МАГ МОД]", mod.toString())
+            } else {
+                put("[MAG MOD]", "0")
+                put("[МАГ МОД]", "0")
+            }
         }
     }
 
@@ -587,11 +609,16 @@ fun CharacterDetailWindow(
                         SpellsTab(
                             spells = spells,
                             onSpellsChange = { spells = it },
+                            characterLevel = level.toIntOrNull() ?: 1,
                             spellSettings = spellSettings,
+                            onSpellSettingsChange = { spellSettings = it },
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            onRoll = onRoll,
+                            statsMap = statsMap,
+                            exhaustion = exhaustion
                         )
                     }
                     CharacterTab.NOTES -> {
@@ -635,10 +662,12 @@ fun CharacterDetailWindow(
     if (showSpellSettings) {
         SpellSettingsDialog(
             settings = spellSettings,
+            characterLevel = level.toIntOrNull() ?: 1,
             onSettingsChange = { spellSettings = it },
             onDismiss = { showSpellSettings = false },
             hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled
+            forceBlurEnabled = forceBlurEnabled,
+            statsMap = statsMap
         )
     }
 }

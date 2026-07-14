@@ -46,6 +46,18 @@ enum class Attribute(val fullName: String, val shortName: String) {
     NONE("Нет", "НЕТ")
 }
 
+enum class SpellMode {
+    TEXT,
+    CARDS
+}
+
+enum class CasterType(val displayName: String) {
+    NONE("Нет"),
+    FULL("Заклинатель"),
+    HALF("Полузаклинатель"),
+    THIRD("Особый заклинатель")
+}
+
 data class AttackBonus(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
@@ -104,7 +116,29 @@ data class AttackEntry(
 data class SpellSettings(
     val isMagicEnabled: Boolean = true,
     val spellAttackBonus: String = "",
-    val spellSaveDcBonus: String = ""
+    val spellSaveDcBonus: String = "",
+    val spellcastingAbility: Attribute = Attribute.NONE,
+    val spellMode: SpellMode = SpellMode.TEXT,
+    val casterType: CasterType = CasterType.NONE,
+    val isMulticlass: Boolean = false,
+    val fullCasterLevel: Int = 0,
+    val halfCasterLevel: Int = 0,
+    val thirdCasterLevel: Int = 0,
+    val isPactEnabled: Boolean = false,
+    val specialSlots: List<SpecialSlotSettings> = emptyList(),
+    val overrideSlots: Map<Int, Int> = emptyMap(),
+    val pactSlotLevel: Int = 1,
+    val pactSlotsCount: Int = 0,
+    val usedSlots: Map<Int, Int> = emptyMap(), // Key 1-9 are levels (Long Rest)
+    val usedSlotsShortRest: Map<Int, Int> = emptyMap() // Key 0 is Pact (if not merged), 1-9 are levels
+)
+
+data class SpecialSlotSettings(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val level: Int = 1,
+    val count: Int = 0,
+    val restoreOnShortRest: Boolean = false
 )
 
 

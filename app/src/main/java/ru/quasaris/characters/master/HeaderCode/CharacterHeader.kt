@@ -46,6 +46,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import ru.quasaris.characters.master.backend.Condition
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.getPreviousLevelThreshold
@@ -89,8 +91,29 @@ fun CharacterHeader(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val haptic = LocalHapticFeedback.current
+
+    var totalDrag by remember { mutableStateOf(0f) }
     
-    Column(modifier = Modifier.background(colorScheme.surface).statusBarsPadding()) {
+    Column(
+        modifier = Modifier
+            .background(colorScheme.surface)
+            .statusBarsPadding()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragStart = { totalDrag = 0f },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        totalDrag += dragAmount
+                    },
+                    onDragEnd = {
+                        if (totalDrag > 150) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onOpenDrawer()
+                        }
+                    }
+                )
+            }
+    ) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)

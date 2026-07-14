@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.fillMaxSize().hazeSource(state = hazeState)) {
                         ModalNavigationDrawer(
                             drawerState = drawerState,
-                            gesturesEnabled = currentRoute == "menu" || currentRoute == "settings",
+                            gesturesEnabled = currentRoute == "menu" || currentRoute == "settings" || currentRoute?.startsWith("edit/") == true,
                             drawerContent = {
                                 ModalDrawerSheet {
                                     Spacer(Modifier.height(12.dp))
