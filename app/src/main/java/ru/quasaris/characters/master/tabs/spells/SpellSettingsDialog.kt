@@ -36,6 +36,9 @@ import ru.quasaris.characters.master.SpellMode
 import ru.quasaris.characters.master.SpellSettings
 import ru.quasaris.characters.master.SpecialSlotSettings
 import ru.quasaris.characters.master.backend.SpellSlotCalculator
+import ru.quasaris.characters.master.tabs.attacks.DiceIcon
+import ru.quasaris.characters.master.tabs.attacks.DicePart
+import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
@@ -58,9 +61,12 @@ fun SpellSettingsDialog(
     val focusManager = LocalFocusManager.current
     var isMagicEnabled by remember { mutableStateOf(settings.isMagicEnabled) }
     var spellcastingAbility by remember { mutableStateOf(settings.spellcastingAbility) }
-    var spellAttackBonus by remember { mutableStateOf(settings.spellAttackBonus) }
-    var spellSaveDcBonus by remember { mutableStateOf(settings.spellSaveDcBonus) }
+    var spellAttackBonuses by remember { mutableStateOf(settings.spellAttackBonuses) }
+    var spellSaveDcBonuses by remember { mutableStateOf(settings.spellSaveDcBonuses) }
     var spellMode by remember { mutableStateOf(settings.spellMode) }
+
+    var showAttackBonusDialog by remember { mutableStateOf(false) }
+    var showSaveDcBonusDialog by remember { mutableStateOf(false) }
 
     val pb = getProficiencyBonus(characterLevel.toString())
     val currentAbilityModifier = remember(spellcastingAbility, statsMap) {
@@ -78,11 +84,30 @@ fun SpellSettingsDialog(
         } else 0
     }
 
-    val currentAttackBonusValue = pb + currentAbilityModifier + (spellAttackBonus.toIntOrNull() ?: 0)
-    val currentSaveDcValue = 8 + pb + currentAbilityModifier + (spellSaveDcBonus.toIntOrNull() ?: 0)
+    val currentAttackBonus = remember(spellAttackBonuses, currentAbilityModifier, pb, statsMap) {
+        var totalFlat = pb + currentAbilityModifier
+        val allDice = mutableMapOf<Int, Int>()
+        spellAttackBonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
+            totalFlat += fFlat
+            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        }
+        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+    }
 
-    val spellAttackBonusPreview = if (currentAttackBonusValue >= 0) "+$currentAttackBonusValue" else currentAttackBonusValue.toString()
-    val spellSaveDcPreview = currentSaveDcValue.toString()
+    val currentSaveDc = remember(spellSaveDcBonuses, currentAbilityModifier, pb, statsMap) {
+        var totalFlat = 8 + pb + currentAbilityModifier
+        val allDice = mutableMapOf<Int, Int>()
+        spellSaveDcBonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
+            totalFlat += fFlat
+            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        }
+        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+    }
+
+    val spellAttackBonusPreview = if (currentAttackBonus.first >= 0) "+${currentAttackBonus.first}" else currentAttackBonus.first.toString()
+    val spellSaveDcPreview = currentSaveDc.first.toString()
 
     var casterType by remember { mutableStateOf(settings.casterType) }
     var isMulticlass by remember { mutableStateOf(settings.isMulticlass) }
@@ -219,24 +244,40 @@ fun SpellSettingsDialog(
 
                     // Bonuses with Preview
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = spellSaveDcBonus,
-                            onValueChange = { spellSaveDcBonus = it },
-                            label = { Text("Спасбросок") },
-                            placeholder = { Text("0") },
+                        OutlinedCard(
+                            onClick = { showSaveDcBonusDialog = true },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            supportingText = { Text("Итого: $spellSaveDcPreview") }
-                        )
-                        OutlinedTextField(
-                            value = spellAttackBonus,
-                            onValueChange = { spellAttackBonus = it },
-                            label = { Text("Бонус атаки") },
-                            placeholder = { Text("0") },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Спасбросок", style = MaterialTheme.typography.labelSmall, color = colorScheme.primary)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(spellSaveDcPreview, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    if (currentSaveDc.second.isNotEmpty()) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            currentSaveDc.second.forEach { DiceIcon(it) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        OutlinedCard(
+                            onClick = { showAttackBonusDialog = true },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            supportingText = { Text("Итого: $spellAttackBonusPreview") }
-                        )
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Бонус атаки", style = MaterialTheme.typography.labelSmall, color = colorScheme.primary)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(spellAttackBonusPreview, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    if (currentAttackBonus.second.isNotEmpty()) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            currentAttackBonus.second.forEach { DiceIcon(it) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     // Spell Mode
@@ -484,8 +525,8 @@ fun SpellSettingsDialog(
                             settings.copy(
                                 isMagicEnabled = isMagicEnabled,
                                 spellcastingAbility = spellcastingAbility,
-                                spellAttackBonus = spellAttackBonus,
-                                spellSaveDcBonus = spellSaveDcBonus,
+                                spellAttackBonuses = spellAttackBonuses,
+                                spellSaveDcBonuses = spellSaveDcBonuses,
                                 spellMode = spellMode,
                                 casterType = casterType,
                                 isMulticlass = isMulticlass,
@@ -508,6 +549,40 @@ fun SpellSettingsDialog(
                 }
             }
         }
+    }
+
+    if (showAttackBonusDialog) {
+        MagicBonusSettingsDialog(
+            title = "Магическая атака",
+            bonuses = spellAttackBonuses,
+            baseModifier = pb + currentAbilityModifier,
+            stats = statsMap,
+            proficiencyBonus = pb,
+            onDismiss = { showAttackBonusDialog = false },
+            onSave = {
+                spellAttackBonuses = it
+                showAttackBonusDialog = false
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
+        )
+    }
+
+    if (showSaveDcBonusDialog) {
+        MagicBonusSettingsDialog(
+            title = "Магическая сложность",
+            bonuses = spellSaveDcBonuses,
+            baseModifier = 8 + pb + currentAbilityModifier,
+            stats = statsMap,
+            proficiencyBonus = pb,
+            onDismiss = { showSaveDcBonusDialog = false },
+            onSave = {
+                spellSaveDcBonuses = it
+                showSaveDcBonusDialog = false
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
+        )
     }
 }
 

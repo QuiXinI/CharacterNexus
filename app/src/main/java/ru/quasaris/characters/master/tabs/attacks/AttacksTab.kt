@@ -31,6 +31,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
+import ru.quasaris.characters.master.MagicAttackType
 import ru.quasaris.characters.master.backend.DiceRoller
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
@@ -46,6 +47,8 @@ import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.LocalHazeStyle
 import androidx.compose.runtime.CompositionLocalProvider
+import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
+import ru.quasaris.characters.master.tabs.attacks.DiceIcon
 
 /**
  * Стиль размытия для инфо-панелей атак.
@@ -67,7 +70,8 @@ fun AttacksTab(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     isEditMode: Boolean = false,
-    settingsViewModel: SettingsViewModel? = null
+    settingsViewModel: SettingsViewModel? = null,
+    spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings()
 ) {
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
     var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
@@ -160,7 +164,8 @@ fun AttacksTab(
                         hazeState = hazeState,
                         forceBlurEnabled = forceBlurEnabled,
                         dragModifier = dragModifier,
-                        modifier = Modifier.animateItem()
+                        modifier = Modifier.animateItem(),
+                        spellSettings = spellSettings
                     )
                 }
             }
@@ -216,7 +221,8 @@ fun AttacksTab(
             forceBlurEnabled = forceBlurEnabled,
             exhaustion = exhaustion,
             settingsViewModel = settingsViewModel,
-            stats = stats
+            stats = stats,
+            spellSettings = spellSettings
         )
     }
 }
@@ -236,12 +242,40 @@ fun AttackItem(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     dragModifier: Modifier = Modifier,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings()
 ) {
     val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
     
-    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion, stats) {
+    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion, stats, spellSettings) {
+        if (attack.isMagic) {
+            val bonuses = if (attack.magicType == MagicAttackType.ATTACK) spellSettings.spellAttackBonuses else spellSettings.spellSaveDcBonuses
+            
+            val abilityModifier = if (spellSettings.spellcastingAbility != Attribute.NONE) {
+                val statKey = when (spellSettings.spellcastingAbility) {
+                    Attribute.STRENGTH -> "strength"
+                    Attribute.DEXTERITY -> "dexterity"
+                    Attribute.CONSTITUTION -> "constitution"
+                    Attribute.INTELLIGENCE -> "intelligence"
+                    Attribute.WISDOM -> "wisdom"
+                    Attribute.CHARISMA -> "charisma"
+                    else -> ""
+                }
+                ru.quasaris.characters.master.backend.calculateModifier(stats[statKey] ?: "10")
+            } else 0
+            
+            var totalFlat = (if (attack.magicType == MagicAttackType.SAVE) 8 else 0) + proficiencyBonus + abilityModifier - (if (attack.magicType == MagicAttackType.ATTACK) exhaustion * 2 else 0)
+            val allDice = mutableMapOf<Int, Int>()
+            
+            bonuses.forEach { bonus ->
+                val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
+                totalFlat += fFlat
+                fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+            }
+            return@remember Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+        }
+
         if (attack.attribute == Attribute.NONE) {
             return@remember Pair(0, emptyList<DicePart>())
         }
@@ -463,14 +497,47 @@ fun AttackItem(
                         }
 
                         // Modifier Section
-                        if (attack.attribute != Attribute.NONE) {
+                        if (attack.isMagic && attack.magicType == MagicAttackType.SAVE) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "СЛОЖНОСТЬ",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 10.sp
+                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = totalAttackBonus.toString(),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (attackDice.isNotEmpty()) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                attackDice.forEach { DiceIcon(it) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (attack.isMagic || attack.attribute != Attribute.NONE) {
                             Surface(
                                 modifier = Modifier
                                     .clickable {
+                                        val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
                                         onRoll(DiceRoller.roll(
-                                            title = "Атака: ${attack.name}",
-                                            baseModifier = totalAttackBonus + (exhaustion * 2),
-                                            bonusFormulas = attack.attackBonuses.map { it.formula },
+                                            title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
+                                            baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
+                                            bonusFormulas = bonuses,
                                             isDamage = false,
                                             stats = stats,
                                             exhaustion = exhaustion,
@@ -491,17 +558,8 @@ fun AttackItem(
                                         size = 48.dp,
                                         fontSize = 18.sp,
                                         showLabel = false,
-                                        showDice = false
+                                        showDice = true
                                     )
-                                    
-                                    if (attackDice.isNotEmpty()) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            attackDice.forEach { DiceIcon(it) }
-                                        }
-                                    }
                                 }
                             }
                         }

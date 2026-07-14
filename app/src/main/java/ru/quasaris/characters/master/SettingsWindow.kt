@@ -147,6 +147,12 @@ fun SettingsWindow(
                 settingsViewModel = settingsViewModel
             )
 
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            FullscreenEditingSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
+
             if (SHOW_DEBUG_SETTINGS) {
                 HorizontalDivider(color = colorScheme.outlineVariant)
 
@@ -286,6 +292,42 @@ fun DeletionWarningSettingsSection(
             Switch(
                 checked = deletionWarningEnabled,
                 onCheckedChange = { settingsViewModel.updateDeletionWarningEnabled(it) }
+            )
+        }
+    }
+}
+
+@Composable
+fun FullscreenEditingSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val fullscreenEditingOnly by settingsViewModel.fullscreenEditingOnly.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Редактирование только в полноэкранном режиме",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Блокирует редактирование полей в обычном режиме просмотра (заметки, черты, инвентарь, заклинания)",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = fullscreenEditingOnly,
+                onCheckedChange = { settingsViewModel.updateFullscreenEditingOnly(it) }
             )
         }
     }

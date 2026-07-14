@@ -50,4 +50,8 @@ class SettingsManager(context: Context) {
     var deletionWarningEnabled: Boolean
         get() = prefs.getBoolean("deletion_warning_enabled", true)
         set(value) = prefs.edit { putBoolean("deletion_warning_enabled", value) }
+
+    var fullscreenEditingOnly: Boolean
+        get() = prefs.getBoolean("fullscreen_editing_only", false)
+        set(value) = prefs.edit { putBoolean("fullscreen_editing_only", value) }
 }

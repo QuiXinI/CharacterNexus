@@ -1,5 +1,6 @@
 package ru.quasaris.characters.master.tabs.spells
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -8,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.DynamicNoteState
 import ru.quasaris.characters.master.SpellSettings
@@ -19,6 +21,10 @@ import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.DiceRoller
 import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.tabs.DynamicFieldsTab
+import ru.quasaris.characters.master.tabs.attacks.DiceIcon
+import ru.quasaris.characters.master.tabs.attacks.DicePart
+import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import dev.chrisbanes.haze.HazeState
 
 @Composable
@@ -55,11 +61,35 @@ fun SpellsTab(
             Attribute.CHARISMA -> "charisma"
             else -> ""
         }
-        calculateModifier(statsMap[statKey] ?: "10")
+        ru.quasaris.characters.master.backend.calculateModifier(statsMap[statKey] ?: "10")
     } else 0
 
-    val spellAttackBonus = pb + abilityModifier + (spellSettings.spellAttackBonus.toIntOrNull() ?: 0)
-    val spellSaveDc = 8 + pb + abilityModifier + (spellSettings.spellSaveDcBonus.toIntOrNull() ?: 0)
+    val magicAtkCalculation = remember(spellSettings.spellAttackBonuses, pb, abilityModifier, statsMap, exhaustion) {
+        var totalFlat = pb + abilityModifier - (exhaustion * 2)
+        val allDice = mutableMapOf<Int, Int>()
+        spellSettings.spellAttackBonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
+            totalFlat += fFlat
+            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        }
+        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+    }
+
+    val magicSaveCalculation = remember(spellSettings.spellSaveDcBonuses, pb, abilityModifier, statsMap) {
+        var totalFlat = 8 + pb + abilityModifier
+        val allDice = mutableMapOf<Int, Int>()
+        spellSettings.spellSaveDcBonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
+            totalFlat += fFlat
+            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        }
+        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+    }
+
+    val spellAttackBonus = magicAtkCalculation.first
+    val spellAttackDice = magicAtkCalculation.second
+    val spellSaveDc = magicSaveCalculation.first
+    val spellSaveDice = magicSaveCalculation.second
 
     val processedSpells = remember(spells, spellSettings.specialSlots) {
         val currentSpells = spells.toMutableList()
@@ -100,34 +130,63 @@ fun SpellsTab(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Спасбросок",
+                            text = "Сложность спасброска",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 10.sp
                         )
-                        Text(
-                            text = spellSaveDc.toString(),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = spellSaveDc.toString(),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (spellSaveDice.isNotEmpty()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    spellSaveDice.forEach { DiceIcon(it) }
+                                }
+                            }
+                        }
                     }
                 }
 
                 // Right: Spell Attack Bonus Roll Button
-                Button(
-                    onClick = { onRoll(DiceRoller.roll("Атака заклинанием", spellAttackBonus, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ATTACK)) },
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    modifier = Modifier.height(IntrinsicSize.Min)
+                Surface(
+                    modifier = Modifier
+                        .clickable { 
+                            onRoll(DiceRoller.roll(
+                                title = "Атака заклинанием", 
+                                baseModifier = spellAttackBonus + (exhaustion * 2), 
+                                bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
+                                stats = statsMap, 
+                                exhaustion = exhaustion, 
+                                sourceType = RollSourceType.ATTACK
+                            )) 
+                        },
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
-                            text = "АТАКА МАГИЕЙ",
-                            style = MaterialTheme.typography.labelSmall
+                            text = "Атака заклинанием",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 10.sp
                         )
-                        Text(
-                            text = if (spellAttackBonus >= 0) "+$spellAttackBonus" else spellAttackBonus.toString(),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                        AttackBonusIndicator(
+                            bonus = spellAttackBonus,
+                            dice = spellAttackDice,
+                            size = 42.dp,
+                            fontSize = 16.sp,
+                            showLabel = false,
+                            showDice = true,
+                            diceOnLeft = true
                         )
                     }
                 }

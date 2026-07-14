@@ -31,6 +31,9 @@ class SettingsViewModel(
     private val _deletionWarningEnabled = MutableStateFlow(settingsManager?.deletionWarningEnabled ?: true)
     val deletionWarningEnabled = _deletionWarningEnabled.asStateFlow()
 
+    private val _fullscreenEditingOnly = MutableStateFlow(settingsManager?.fullscreenEditingOnly ?: false)
+    val fullscreenEditingOnly = _fullscreenEditingOnly.asStateFlow()
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size
@@ -54,6 +57,11 @@ class SettingsViewModel(
     fun updateDeletionWarningEnabled(enabled: Boolean) {
         _deletionWarningEnabled.value = enabled
         settingsManager?.deletionWarningEnabled = enabled
+    }
+
+    fun updateFullscreenEditingOnly(enabled: Boolean) {
+        _fullscreenEditingOnly.value = enabled
+        settingsManager?.fullscreenEditingOnly = enabled
     }
 
     val performanceClass: Int

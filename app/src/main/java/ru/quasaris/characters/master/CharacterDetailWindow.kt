@@ -190,7 +190,7 @@ fun CharacterDetailWindow(
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         val currentCharacterState = character!!.copy(
-            name = name, characterClass = characterClass, order = order, level = level,
+            name = name, characterClass = characterClass, order = order, level = level, experience = experience,
             strength = statsState.strength, dexterity = statsState.dexterity, constitution = statsState.constitution,
             intelligence = statsState.intelligence, wisdom = statsState.wisdom, charisma = statsState.charisma,
             attacks = attacks,
@@ -204,6 +204,7 @@ fun CharacterDetailWindow(
             speedEntries = speedEntries, activeSpeedId = activeSpeedId,
             isShieldActive = isShieldActive, shieldEntries = shieldEntries, activeShieldId = activeShieldId,
             skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
+            statBonuses = statsState.statBonuses, skillBonuses = statsState.skillBonuses,
             imageData = characterImageData, themeSeedColorArgb = themeSeedColorArgb,
             notes = notes,
             skillsAndTraits = skillsAndTraits,
@@ -307,6 +308,7 @@ fun CharacterDetailWindow(
             characterClass = characterClass, 
             order = order, 
             level = level, 
+            experience = experience,
             imageData = characterImageData, 
             strength = statsState.strength, 
             dexterity = statsState.dexterity, 
@@ -350,7 +352,7 @@ fun CharacterDetailWindow(
     }
 
     LaunchedEffect(
-        name, characterClass, order, level, characterImageData,
+        name, characterClass, order, level, experience, characterImageData,
         statsState, maxHp, currentHp, tempHp, proficiencyBonus, selectedConditions, exhaustion,
         attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
@@ -579,7 +581,8 @@ fun CharacterDetailWindow(
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            spellSettings = spellSettings
                         )
                     }
                     CharacterTab.BIO -> {

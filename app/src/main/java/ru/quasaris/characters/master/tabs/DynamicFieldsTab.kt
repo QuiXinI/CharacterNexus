@@ -42,6 +42,51 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.platform.LocalTextToolbar
+
+@Composable
+fun HyperlinkDialog(
+    initialText: String,
+    initialUrl: String,
+    onConfirm: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var text by remember { mutableStateOf(initialText) }
+    var url by remember { mutableStateOf(initialUrl) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Вставить гиперссылку") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("Текст") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("Ссылка (URL)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(text, url) }) {
+                Text("ОК")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
 
 @Composable
 fun DynamicFieldsTab(
@@ -70,6 +115,8 @@ fun DynamicFieldsTab(
     
     var fullscreenFieldIndex by remember { mutableStateOf<Int?>(null) }
     var fieldToDeleteIndex by remember { mutableStateOf<Int?>(null) }
+    
+    val fullscreenEditingOnly by settingsViewModel?.fullscreenEditingOnly?.collectAsState() ?: remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -157,7 +204,8 @@ fun DynamicFieldsTab(
                     extraContent = extraContent,
                     isCollapsible = isCollapsible,
                     isTitleReadOnly = isTitleReadOnly,
-                    isReorderButtonVisible = isReorderButtonVisible
+                    isReorderButtonVisible = isReorderButtonVisible,
+                    isLockedGlobal = fullscreenEditingOnly
                 )
             }
 
@@ -242,12 +290,70 @@ fun DynamicFieldItem(
     isCollapsible: Boolean = true,
     isTitleReadOnly: Boolean = false,
     isReorderButtonVisible: Boolean = true,
+    isLockedGlobal: Boolean = false,
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
     val isExpanded = if (isCollapsible) field.isExpanded else true
     val rotation by animateFloatAsState(targetValue = if (isExpanded) 0f else 180f)
     val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
+    
+    val canEdit = !isEditMode && !isLockedGlobal && !field.isLocked
+
+    var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
+    LaunchedEffect(field.content) {
+        if (field.content != contentValue.text) {
+            contentValue = contentValue.copy(text = field.content)
+        }
+    }
+    var showLinkDialog by remember { mutableStateOf(false) }
+
+    val toolbar = remember {
+        MarkdownTextToolbar(
+            onBold = {
+                val new = MarkdownHelper.applyMarkdown(contentValue, "**", "**")
+                contentValue = new
+                onFieldChange(field.copy(content = new.text))
+            },
+            onItalic = {
+                val new = MarkdownHelper.applyMarkdown(contentValue, "*", "*")
+                contentValue = new
+                onFieldChange(field.copy(content = new.text))
+            },
+            onStrike = {
+                val new = MarkdownHelper.applyMarkdown(contentValue, "~", "~")
+                contentValue = new
+                onFieldChange(field.copy(content = new.text))
+            },
+            onLink = { showLinkDialog = true },
+            onQuote = {
+                val new = MarkdownHelper.applyMarkdown(contentValue, "> ", "")
+                contentValue = new
+                onFieldChange(field.copy(content = new.text))
+            }
+        )
+    }
+
+    if (showLinkDialog) {
+        val selection = contentValue.selection
+        val selectedText = contentValue.text.substring(selection.start, selection.end)
+        HyperlinkDialog(
+            initialText = selectedText,
+            initialUrl = "",
+            onConfirm = { text, url ->
+                val prefix = "["
+                val middle = "]("
+                val suffix = ")"
+                val newText = contentValue.text.substring(0, selection.start) + prefix + text + middle + url + suffix + contentValue.text.substring(selection.end)
+                val newSelection = TextRange(selection.start + prefix.length + text.length + middle.length + url.length + suffix.length)
+                val new = contentValue.copy(text = newText, selection = newSelection)
+                contentValue = new
+                onFieldChange(field.copy(content = new.text))
+                showLinkDialog = false
+            },
+            onDismiss = { showLinkDialog = false }
+        )
+    }
 
     Surface(
         modifier = modifier
@@ -294,7 +400,7 @@ fun DynamicFieldItem(
                     BasicTextField(
                         value = field.title,
                         onValueChange = { onFieldChange(field.copy(title = it)) },
-                        enabled = !isEditMode && !isTitleReadOnly,
+                        enabled = canEdit && !isTitleReadOnly,
                         textStyle = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
@@ -305,16 +411,27 @@ fun DynamicFieldItem(
                             .weight(1f)
                             .padding(horizontal = 8.dp),
                         decorationBox = { innerTextField ->
-                            if (field.title.isEmpty()) {
-                                Text(
-                                    titlePlaceholder,
-                                    style = MaterialTheme.typography.titleLarge.copy(
-                                        fontSize = 18.sp,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (field.title.isEmpty()) {
+                                    Text(
+                                        titlePlaceholder,
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontSize = 18.sp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        )
                                     )
-                                )
+                                }
+                                innerTextField()
+                                if (field.isLocked || isLockedGlobal) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.Lock,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                    )
+                                }
                             }
-                            innerTextField()
                         }
                     )
 
@@ -363,46 +480,53 @@ fun DynamicFieldItem(
                         ) {
                             var isFocused by remember { mutableStateOf(false) }
 
-                            BasicTextField(
-                                value = field.content,
-                                onValueChange = { onFieldChange(field.copy(content = it)) },
-                                enabled = !isEditMode,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { isFocused = it.isFocused },
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 17.sp,
-                                    lineHeight = 24.sp,
-                                    color = if (isFocused) MaterialTheme.colorScheme.onSurface else Color.Transparent
-                                ),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                decorationBox = { innerTextField ->
-                                    Box(modifier = Modifier.fillMaxWidth()) {
-                                        if (!isFocused) {
-                                            val annotatedContent = remember(field.content) { MarkdownHelper.parseMarkdown(field.content) }
-                                            Text(
-                                                text = annotatedContent,
-                                                fontSize = 17.sp,
-                                                lineHeight = 24.sp,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                        
-                                        if (field.content.isEmpty() && !isFocused) {
-                                            Text(
-                                                contentPlaceholder,
-                                                fontSize = 17.sp,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                            )
-                                        }
-                                        Column {
-                                            innerTextField()
-                                            Spacer(modifier = Modifier.height(16.dp))
+                            CompositionLocalProvider(LocalTextToolbar provides toolbar) {
+                                toolbar.Content()
+                                BasicTextField(
+                                    value = contentValue,
+                                    onValueChange = { 
+                                        contentValue = it
+                                        onFieldChange(field.copy(content = it.text))
+                                    },
+                                    enabled = canEdit,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onFocusChanged { isFocused = it.isFocused },
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 17.sp,
+                                        lineHeight = 24.sp,
+                                        color = if (isFocused) MaterialTheme.colorScheme.onSurface else Color.Transparent
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    decorationBox = { innerTextField ->
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                            if (!isFocused) {
+                                                val annotatedContent = remember(field.content) { MarkdownHelper.parseMarkdown(field.content) }
+                                                Text(
+                                                    text = annotatedContent,
+                                                    fontSize = 17.sp,
+                                                    lineHeight = 24.sp,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    onTextLayout = { /* required for link click */ }
+                                                )
+                                            }
+                                            
+                                            if (field.content.isEmpty() && !isFocused) {
+                                                Text(
+                                                    contentPlaceholder,
+                                                    fontSize = 17.sp,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                                )
+                                            }
+                                            Column {
+                                                innerTextField()
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                            }
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
 
                             IconButton(
                                 onClick = { onFullscreenRequest() },
@@ -452,9 +576,40 @@ fun DynamicFieldFullscreenDialog(
     settingsViewModel: SettingsViewModel? = null
 ) {
     var title by remember { mutableStateOf(field.title) }
-    var content by remember { mutableStateOf(field.content) }
+    var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
+    var isLocked by remember { mutableStateOf(field.isLocked) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var isPreviewMode by remember { mutableStateOf(false) }
+    var showLinkDialog by remember { mutableStateOf(false) }
+
+    val toolbar = remember {
+        MarkdownTextToolbar(
+            onBold = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "**", "**") },
+            onItalic = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "*", "*") },
+            onStrike = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "~", "~") },
+            onLink = { showLinkDialog = true },
+            onQuote = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "> ", "") }
+        )
+    }
+
+    if (showLinkDialog) {
+        val selection = contentValue.selection
+        val selectedText = contentValue.text.substring(selection.start, selection.end)
+        HyperlinkDialog(
+            initialText = selectedText,
+            initialUrl = "",
+            onConfirm = { text, url ->
+                val prefix = "["
+                val middle = "]("
+                val suffix = ")"
+                val newText = contentValue.text.substring(0, selection.start) + prefix + text + middle + url + suffix + contentValue.text.substring(selection.end)
+                val newSelection = TextRange(selection.start + prefix.length + text.length + middle.length + url.length + suffix.length)
+                contentValue = contentValue.copy(text = newText, selection = newSelection)
+                showLinkDialog = false
+            },
+            onDismiss = { showLinkDialog = false }
+        )
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -528,36 +683,63 @@ fun DynamicFieldFullscreenDialog(
                             .fillMaxWidth()
                     ) {
                         if (isPreviewMode) {
-                            val annotated = remember(content) { MarkdownHelper.parseMarkdown(content) }
+                            val annotated = remember(contentValue.text) { MarkdownHelper.parseMarkdown(contentValue.text) }
                             Text(
                                 text = annotated,
                                 modifier = Modifier.fillMaxWidth(),
                                 fontSize = 18.sp,
                                 lineHeight = 26.sp,
-                                color = colorScheme.onSurface
+                                color = colorScheme.onSurface,
+                                onTextLayout = { /* required for link click */ }
                             )
                         } else {
-                            BasicTextField(
-                                value = content,
-                                onValueChange = { content = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 18.sp,
-                                    lineHeight = 26.sp,
-                                    color = colorScheme.onSurface
-                                ),
-                                cursorBrush = SolidColor(colorScheme.primary),
-                                decorationBox = { innerTextField ->
-                                    if (content.isEmpty()) {
-                                        Text(contentPlaceholder, fontSize = 18.sp, color = colorScheme.onSurface.copy(alpha = 0.4f))
+                            CompositionLocalProvider(LocalTextToolbar provides toolbar) {
+                                toolbar.Content()
+                                BasicTextField(
+                                    value = contentValue,
+                                    onValueChange = { contentValue = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        fontSize = 18.sp,
+                                        lineHeight = 26.sp,
+                                        color = colorScheme.onSurface
+                                    ),
+                                    cursorBrush = SolidColor(colorScheme.primary),
+                                    decorationBox = { innerTextField ->
+                                        if (contentValue.text.isEmpty()) {
+                                            Text(contentPlaceholder, fontSize = 18.sp, color = colorScheme.onSurface.copy(alpha = 0.4f))
+                                        }
+                                        innerTextField()
                                     }
-                                    innerTextField()
-                                }
-                            )
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
+
+                    OutlinedButton(
+                        onClick = { isLocked = !isLocked },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (isLocked) colorScheme.primary else colorScheme.onSurfaceVariant
+                        ),
+                        border = BorderStroke(1.dp, if (isLocked) colorScheme.primary else colorScheme.outline),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isLocked) "Заблокировано" else "Разблокировано",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedButton(
                         onClick = { showDeleteConfirm = true },
@@ -576,7 +758,7 @@ fun DynamicFieldFullscreenDialog(
 
                 Button(
                     onClick = {
-                        onFieldChange(field.copy(title = title, content = content))
+                        onFieldChange(field.copy(title = title, content = contentValue.text, isLocked = isLocked))
                         onDismiss()
                     },
                     modifier = Modifier

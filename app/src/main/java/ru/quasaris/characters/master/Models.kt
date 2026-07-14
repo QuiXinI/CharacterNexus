@@ -58,6 +58,11 @@ enum class CasterType(val displayName: String) {
     THIRD("Особый заклинатель")
 }
 
+enum class MagicAttackType {
+    ATTACK,
+    SAVE
+}
+
 data class AttackBonus(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
@@ -95,7 +100,8 @@ data class DynamicNoteState(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
     val content: String = "",
-    val isExpanded: Boolean = true
+    val isExpanded: Boolean = true,
+    val isLocked: Boolean = false
 )
 
 data class AttackEntry(
@@ -110,13 +116,17 @@ data class AttackEntry(
     val damageBonus: Int = 0,
     val damageBonuses: List<DamageBonus> = emptyList(),
     val notes: String = "",
-    val showNotes: Boolean = false
+    val showNotes: Boolean = false,
+    val isMagic: Boolean = false,
+    val magicType: MagicAttackType = MagicAttackType.ATTACK
 )
 
 data class SpellSettings(
     val isMagicEnabled: Boolean = true,
     val spellAttackBonus: String = "",
+    val spellAttackBonuses: List<AttackBonus> = emptyList(),
     val spellSaveDcBonus: String = "",
+    val spellSaveDcBonuses: List<AttackBonus> = emptyList(),
     val spellcastingAbility: Attribute = Attribute.NONE,
     val spellMode: SpellMode = SpellMode.TEXT,
     val casterType: CasterType = CasterType.NONE,
