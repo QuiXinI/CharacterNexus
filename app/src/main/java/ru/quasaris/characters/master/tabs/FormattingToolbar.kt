@@ -13,15 +13,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
-import kotlin.math.roundToInt
+import androidx.compose.ui.zIndex
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
@@ -31,88 +28,89 @@ import dev.chrisbanes.haze.HazeTint
 fun FormattingToolbar(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
-    textLayoutResult: TextLayoutResult?,
+    isFocused: Boolean,
     onLinkRequest: () -> Unit,
+    modifier: Modifier = Modifier,
     hazeState: HazeState? = null
 ) {
+    if (!isFocused) return
+
     val configuration = LocalConfiguration.current
     val hasPhysicalKeyboard = configuration.keyboard == Configuration.KEYBOARD_QWERTY || 
                              configuration.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
 
-    val density = LocalDensity.current
+    val isSelectionActive = value.selection.length > 0
+    var yOffset by remember { mutableFloatStateOf(0f) }
 
-    Popup(
-        alignment = if (hasPhysicalKeyboard) Alignment.TopStart else Alignment.BottomCenter,
-        offset = if (hasPhysicalKeyboard) {
-            textLayoutResult?.let { layout ->
-                val cursorRect = try { layout.getCursorRect(value.selection.start) } catch (_: Exception) { null }
-                cursorRect?.let { rect ->
-                    with(density) {
-                        IntOffset(
-                            x = rect.left.roundToInt(),
-                            y = (rect.top - 56.dp.toPx()).roundToInt()
-                        )
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .zIndex(1f)
+            .onGloballyPositioned { coordinates ->
+                val layoutParent = coordinates.parentLayoutCoordinates ?: return@onGloballyPositioned
+                val parentY = layoutParent.positionInWindow().y
+                val parentHeight = layoutParent.size.height
+                val myHeight = coordinates.size.height
+                
+                val targetOffset = if (parentY < 0) -parentY else 0f
+                yOffset = targetOffset.coerceAtMost((parentHeight - myHeight).toFloat())
+            }
+            .graphicsLayer { 
+                translationY = yOffset 
+            }
+            .run {
+                if (hazeState != null) {
+                    this.hazeEffect(state = hazeState) {
+                        style = HazeStyle(blurRadius = 15.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
                     }
-                }
-            } ?: IntOffset.Zero
-        } else {
-            IntOffset.Zero
-        },
-        properties = PopupProperties(
-            focusable = false,
-            dismissOnClickOutside = false,
-            dismissOnBackPress = false,
-            usePlatformDefaultWidth = false
-        )
+                } else this
+            }
+            .then(if (hasPhysicalKeyboard) Modifier.graphicsLayer { alpha = 0.5f } else Modifier),
+        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+        color = Color.Transparent,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp
     ) {
-        Surface(
+        Box(
             modifier = Modifier
-                .padding(bottom = if (!hasPhysicalKeyboard) 16.dp else 0.dp)
-                .run {
-                    if (hazeState != null) {
-                        this.hazeEffect(state = hazeState) {
-                            style = HazeStyle(blurRadius = 15.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
-                        }
-                    } else this
-                }
-                .then(if (hasPhysicalKeyboard) Modifier.graphicsLayer { alpha = 0.5f } else Modifier),
-            shape = RoundedCornerShape(12.dp),
-            color = if (hazeState != null) Color.Transparent else MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp),
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp
+                .background(Color.Transparent),
+            contentAlignment = Alignment.Center
         ) {
-            Box(Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(8.dp).copy(alpha = if (hazeState != null) 0.4f else 1f))) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    FormattingButton(
-                        icon = Icons.Default.FormatBold,
-                        isActive = MarkdownHelper.isFormatActive(value, "**", "**"),
-                        onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "**", "**")) }
-                    )
-                    FormattingButton(
-                        icon = Icons.Default.FormatItalic,
-                        isActive = MarkdownHelper.isFormatActive(value, "_", "_"),
-                        onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "_", "_")) }
-                    )
-                    FormattingButton(
-                        icon = Icons.Default.FormatStrikethrough,
-                        isActive = MarkdownHelper.isFormatActive(value, "~~", "~~"),
-                        onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "~~", "~~")) }
-                    )
-                    FormattingButton(
-                        icon = Icons.Default.FormatQuote,
-                        isActive = MarkdownHelper.isFormatActive(value, "> ", ""),
-                        onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "> ", "")) }
-                    )
-                    FormattingButton(
-                        icon = Icons.Default.Link,
-                        isActive = MarkdownHelper.isFormatActive(value, "[", "]("),
-                        onClick = onLinkRequest
-                    )
-                }
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FormattingButton(
+                    icon = Icons.Default.FormatBold,
+                    isActive = MarkdownHelper.isFormatActive(value, "**", "**"),
+                    enabled = isSelectionActive,
+                    onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "**", "**")) }
+                )
+                FormattingButton(
+                    icon = Icons.Default.FormatItalic,
+                    isActive = MarkdownHelper.isFormatActive(value, "_", "_"),
+                    enabled = isSelectionActive,
+                    onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "_", "_")) }
+                )
+                FormattingButton(
+                    icon = Icons.Default.FormatStrikethrough,
+                    isActive = MarkdownHelper.isFormatActive(value, "~~", "~~"),
+                    enabled = isSelectionActive,
+                    onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "~~", "~~")) }
+                )
+                FormattingButton(
+                    icon = Icons.Default.FormatQuote,
+                    isActive = MarkdownHelper.isFormatActive(value, "> ", ""),
+                    enabled = isSelectionActive,
+                    onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "> ", "")) }
+                )
+                FormattingButton(
+                    icon = Icons.Default.Link,
+                    isActive = MarkdownHelper.isFormatActive(value, "[", "]("),
+                    enabled = isSelectionActive,
+                    onClick = onLinkRequest
+                )
             }
         }
     }
@@ -122,13 +120,16 @@ fun FormattingToolbar(
 private fun FormattingButton(
     icon: ImageVector,
     isActive: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
     IconButton(
         onClick = onClick,
+        enabled = enabled,
         colors = IconButtonDefaults.iconButtonColors(
             containerColor = if (isActive) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-            contentColor = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+            contentColor = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
         ),
         modifier = Modifier.size(40.dp)
     ) {

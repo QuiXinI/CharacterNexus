@@ -54,4 +54,12 @@ class SettingsManager(context: Context) {
     var fullscreenEditingOnly: Boolean
         get() = prefs.getBoolean("fullscreen_editing_only", false)
         set(value) = prefs.edit { putBoolean("fullscreen_editing_only", value) }
+
+    var topMarginStep: Int
+        get() = prefs.getInt("top_margin_step", 2)
+        set(value) = prefs.edit { putInt("top_margin_step", value) }
+
+    var customTopMargin: Int
+        get() = prefs.getInt("custom_top_margin", 96)
+        set(value) = prefs.edit { putInt("custom_top_margin", value) }
 }

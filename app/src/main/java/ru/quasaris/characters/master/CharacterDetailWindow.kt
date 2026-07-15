@@ -294,12 +294,14 @@ fun CharacterDetailWindow(
     var showTabSheet by remember { mutableStateOf(false) }
     val currentTab = tabs[pagerState.currentPage % tabs.size]
     val sheetState = rememberModalBottomSheetState()
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     
     var isEditMode by remember { mutableStateOf(false) }
     
-    // Reset edit mode when changing tabs
+    // Reset edit mode and clear focus when changing tabs
     LaunchedEffect(pagerState.currentPage) {
         isEditMode = false
+        focusManager.clearFocus()
     }
 
     val saveCurrentCharacter = {

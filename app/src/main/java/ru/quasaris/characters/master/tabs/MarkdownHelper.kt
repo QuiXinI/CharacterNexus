@@ -78,14 +78,31 @@ object MarkdownHelper {
         val selection = value.selection
         val text = value.text
         if (selection.length == 0) {
+            // Special case for links [text](url)
+            if (prefix == "[" && suffix == "](") {
+                // Check if cursor is inside [text](url) or surrounding it
+                // This is a bit complex, but let's do a simple check
+                val before = text.substring(0, selection.start)
+                val after = text.substring(selection.end)
+                return before.contains("[") && after.contains(")")
+            }
+
             if (selection.start >= prefix.length && selection.end <= text.length - suffix.length) {
                 val before = text.substring(selection.start - prefix.length, selection.start)
                 val after = text.substring(selection.end, selection.end + suffix.length)
-                return before == prefix && (suffix.isEmpty() || after == suffix)
+                return before == prefix && (suffix.isEmpty() || after.startsWith(suffix))
             }
             return false
         }
         val selectedText = text.substring(selection.start, selection.end)
+        
+        // Special case for links [text](url)
+        if (prefix == "[" && suffix == "](") {
+            return selectedText.startsWith("[") && selectedText.contains("](") && selectedText.endsWith(")") ||
+                   (selection.start > 0 && text.substring(0, selection.start).contains("[") && 
+                    text.substring(selection.end).contains(")"))
+        }
+
         return (selectedText.startsWith(prefix) && (suffix.isEmpty() || selectedText.endsWith(suffix))) || 
                (selection.start >= prefix.length && selection.end <= text.length - suffix.length && 
                 text.substring(selection.start - prefix.length, selection.start) == prefix && 
@@ -227,13 +244,17 @@ object MarkdownHelper {
                 )
             }
 
-            val linkAccent = Color(0xFF2196F3)
-            val finalLinkColor = if (onSurface != Color.Unspecified) lerp(onSurface, linkAccent, 0.8f) else linkAccent
+            val urlAccent = Color(0xFF2196F3)
+            val finalLinkColor = if (onSurface != Color.Unspecified) lerp(onSurface, urlAccent, 0.8f) else urlAccent
             
             linkRanges.forEach { (range, _, url) ->
+                val validatedUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                    "https://$url"
+                } else url
+
                 addLink(
                     LinkAnnotation.Url(
-                        url = url,
+                        url = validatedUrl,
                         styles = TextLinkStyles(
                             style = SpanStyle(
                                 color = finalLinkColor,
@@ -245,14 +266,17 @@ object MarkdownHelper {
                 )
             }
             
-            // Automatic link detection (simple regex)
-            val urlRegex = Regex("(https?://[\\w:#@%/;$()~_?+\\-=\\.&]*)")
+            // Automatic link detection (improved regex)
+            val urlRegex = Regex("(?:https?://|www\\.)[\\w:#@%/;$()~_?+\\-=\\.&]+[\\w#@%/;$()~_?+\\-=]")
             urlRegex.findAll(result.toString()).forEach { match ->
                 // Check if this range is already covered by a markdown link
                 if (linkRanges.none { it.first.first <= match.range.first && it.first.last >= match.range.last }) {
+                    val url = match.value
+                    val validatedUrl = if (url.startsWith("www.")) "https://$url" else url
+                    
                     addLink(
                         LinkAnnotation.Url(
-                            url = match.value,
+                            url = validatedUrl,
                             styles = TextLinkStyles(
                                 style = SpanStyle(
                                     color = finalLinkColor,

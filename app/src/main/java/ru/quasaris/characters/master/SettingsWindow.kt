@@ -153,6 +153,17 @@ fun SettingsWindow(
                 settingsViewModel = settingsViewModel
             )
 
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            Text(
+                text = "Форматирование текста",
+                style = MaterialTheme.typography.titleMedium,
+                color = colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            
+            TopMarginSettingsSection(settingsViewModel = settingsViewModel)
+
             if (SHOW_DEBUG_SETTINGS) {
                 HorizontalDivider(color = colorScheme.outlineVariant)
 
@@ -385,6 +396,85 @@ fun WarningBlurDialog(
         },
         shape = RoundedCornerShape(28.dp),
     )
+}
+
+@Composable
+fun TopMarginSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val marginStep by settingsViewModel.topMarginStep.collectAsState()
+    val customMargin by settingsViewModel.customTopMargin.collectAsState()
+    var customMarginText by remember(customMargin) { mutableStateOf(customMargin.toString()) }
+    val isCustomActive = marginStep >= 5
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Верхний отступ текста",
+                fontSize = 16.sp,
+                color = colorScheme.onSurface
+            )
+            val displayText = when {
+                isCustomActive -> "$customMargin dp (Своё)"
+                else -> "${marginStep * 48} dp"
+            }
+            Text(
+                text = displayText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary
+            )
+        }
+
+        Slider(
+            value = marginStep.coerceIn(1, 5).toFloat(),
+            onValueChange = { 
+                val newStep = it.roundToInt()
+                settingsViewModel.updateTopMarginStep(newStep)
+            },
+            valueRange = 1f..5f,
+            steps = 3,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        OutlinedTextField(
+            value = customMarginText,
+            onValueChange = {
+                customMarginText = it.filter { it.isDigit() }
+            },
+            enabled = isCustomActive,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    val n = customMarginText.toIntOrNull() ?: 96
+                    settingsViewModel.updateCustomTopMargin(maxOf(0, n))
+                    focusManager.clearFocus()
+                }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        val n = customMarginText.toIntOrNull() ?: 96
+                        settingsViewModel.updateCustomTopMargin(maxOf(0, n))
+                    }
+                },
+            label = { Text("Свой отступ в dp (активно при 5+)") },
+            singleLine = true
+        )
+    }
 }
 
 @Composable

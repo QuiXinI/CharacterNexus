@@ -34,6 +34,12 @@ class SettingsViewModel(
     private val _fullscreenEditingOnly = MutableStateFlow(settingsManager?.fullscreenEditingOnly ?: false)
     val fullscreenEditingOnly = _fullscreenEditingOnly.asStateFlow()
 
+    private val _topMarginStep = MutableStateFlow(settingsManager?.topMarginStep ?: 2)
+    val topMarginStep = _topMarginStep.asStateFlow()
+
+    private val _customTopMargin = MutableStateFlow(settingsManager?.customTopMargin ?: 96)
+    val customTopMargin = _customTopMargin.asStateFlow()
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size
@@ -62,6 +68,16 @@ class SettingsViewModel(
     fun updateFullscreenEditingOnly(enabled: Boolean) {
         _fullscreenEditingOnly.value = enabled
         settingsManager?.fullscreenEditingOnly = enabled
+    }
+
+    fun updateTopMarginStep(step: Int) {
+        _topMarginStep.value = step
+        settingsManager?.topMarginStep = step
+    }
+
+    fun updateCustomTopMargin(margin: Int) {
+        _customTopMargin.value = margin
+        settingsManager?.customTopMargin = margin
     }
 
     val performanceClass: Int
