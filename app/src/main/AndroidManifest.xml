@@ -18,7 +18,8 @@
             android:name="ru.quasaris.characters.master.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.quasaris">
+            android:theme="@style/Theme.quasaris"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

@@ -28,8 +28,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -125,7 +128,6 @@ fun DynamicFieldsTab(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { focusManager.clearFocus() }
-            .imePadding()
     ) {
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -138,7 +140,7 @@ fun DynamicFieldsTab(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 8.dp),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             itemsIndexed(items, key = { _, field -> field.id }) { index, field ->
@@ -205,7 +207,8 @@ fun DynamicFieldsTab(
                     isCollapsible = isCollapsible,
                     isTitleReadOnly = isTitleReadOnly,
                     isReorderButtonVisible = isReorderButtonVisible,
-                    isLockedGlobal = fullscreenEditingOnly
+                    isLockedGlobal = fullscreenEditingOnly,
+                    hazeState = hazeState
                 )
             }
 
@@ -291,6 +294,7 @@ fun DynamicFieldItem(
     isTitleReadOnly: Boolean = false,
     isReorderButtonVisible: Boolean = true,
     isLockedGlobal: Boolean = false,
+    hazeState: HazeState? = null,
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
     val isExpanded = if (isCollapsible) field.isExpanded else true
@@ -455,17 +459,18 @@ fun DynamicFieldItem(
                             var isFocused by remember { mutableStateOf(false) }
                             var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-                            if (isFocused) {
-                                FormattingToolbar(
-                                    value = contentValue,
-                                    onValueChange = {
-                                        contentValue = it
-                                        onFieldChange(field.copy(content = it.text))
-                                    },
-                                    textLayoutResult = textLayoutResult,
-                                    onLinkRequest = { showLinkDialog = true }
-                                )
-                            }
+                                if (isFocused) {
+                                    FormattingToolbar(
+                                        value = contentValue,
+                                        onValueChange = {
+                                            contentValue = it
+                                            onFieldChange(field.copy(content = it.text))
+                                        },
+                                        textLayoutResult = textLayoutResult,
+                                        onLinkRequest = { showLinkDialog = true },
+                                        hazeState = hazeState
+                                    )
+                                }
 
                             BasicTextField(
                                 value = contentValue,
@@ -485,16 +490,42 @@ fun DynamicFieldItem(
                                     ),
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                     decorationBox = { innerTextField ->
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            if (!isFocused) {
-                                                val annotatedContent = remember(field.content) { MarkdownHelper.parseMarkdown(field.content) }
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                val onSurface = MaterialTheme.colorScheme.onSurface
+                                                val annotatedContent = remember(field.content, onSurface, isFocused) { 
+                                                    MarkdownHelper.parseMarkdown(field.content, onSurface, isEditing = isFocused) 
+                                                }
+                                                val uriHandler = LocalUriHandler.current
+                                                var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+                                                
+                                                if (!isFocused) {
+                                                
                                                 Text(
                                                     text = annotatedContent,
                                                     fontSize = 17.sp,
                                                     lineHeight = 24.sp,
                                                     color = MaterialTheme.colorScheme.onSurface,
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    onTextLayout = { /* required for link click */ }
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .pointerInput(annotatedContent) {
+                                                            detectTapGestures { offset ->
+                                                                var linkClicked = false
+                                                                layoutResult?.let { textLayoutResult ->
+                                                                    val position = textLayoutResult.getOffsetForPosition(offset)
+                                                                    annotatedContent.getLinkAnnotations(position, position)
+                                                                        .firstOrNull()?.let { annotation ->
+                                                                            if (annotation.item is LinkAnnotation.Url) {
+                                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
+                                                                                linkClicked = true
+                                                                            }
+                                                                        }
+                                                                }
+                                                                if (!linkClicked) {
+                                                                    isFocused = true
+                                                                }
+                                                            }
+                                                        },
+                                                    onTextLayout = { layoutResult = it }
                                                 )
                                             }
                                             
@@ -653,55 +684,108 @@ fun DynamicFieldFullscreenDialog(
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                    ) {
-                        if (isPreviewMode) {
-                            val annotated = remember(contentValue.text) { MarkdownHelper.parseMarkdown(contentValue.text) }
-                            Text(
-                                text = annotated,
-                                modifier = Modifier.fillMaxWidth(),
-                                fontSize = 18.sp,
-                                lineHeight = 26.sp,
-                                color = colorScheme.onSurface,
-                                onTextLayout = { /* required for link click */ }
-                            )
-                        } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                        ) {
                             var isFocused by remember { mutableStateOf(false) }
-                            var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+                            val onSurface = colorScheme.onSurface
+                            val annotated = remember(contentValue.text, onSurface, isPreviewMode, isFocused) { 
+                                MarkdownHelper.parseMarkdown(contentValue.text, onSurface, isEditing = !isPreviewMode && isFocused) 
+                            }
+                            val uriHandler = LocalUriHandler.current
+                            var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-                            if (isFocused) {
-                                FormattingToolbar(
+                            if (isPreviewMode) {
+                                Text(
+                                    text = annotated,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .pointerInput(annotated) {
+                                            detectTapGestures { offset ->
+                                                layoutResult?.let { textLayoutResult ->
+                                                    val position = textLayoutResult.getOffsetForPosition(offset)
+                                                    annotated.getLinkAnnotations(position, position)
+                                                        .firstOrNull()?.let { annotation ->
+                                                            if (annotation.item is LinkAnnotation.Url) {
+                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
+                                                            }
+                                                        }
+                                                }
+                                            }
+                                        },
+                                    fontSize = 18.sp,
+                                    lineHeight = 26.sp,
+                                    color = colorScheme.onSurface,
+                                    onTextLayout = { layoutResult = it }
+                                )
+                            } else {
+                                var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+                                if (isFocused) {
+                                    FormattingToolbar(
+                                        value = contentValue,
+                                        onValueChange = { contentValue = it },
+                                        textLayoutResult = textLayoutResult,
+                                        onLinkRequest = { showLinkDialog = true },
+                                        hazeState = hazeState
+                                    )
+                                }
+
+                                BasicTextField(
                                     value = contentValue,
                                     onValueChange = { contentValue = it },
-                                    textLayoutResult = textLayoutResult,
-                                    onLinkRequest = { showLinkDialog = true }
-                                )
-                            }
-
-                            BasicTextField(
-                                value = contentValue,
-                                onValueChange = { contentValue = it },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .onFocusChanged { isFocused = it.isFocused },
-                                onTextLayout = { textLayoutResult = it },
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        fontSize = 18.sp,
-                                        lineHeight = 26.sp,
-                                        color = colorScheme.onSurface
-                                    ),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .onFocusChanged { isFocused = it.isFocused },
+                                    onTextLayout = { textLayoutResult = it },
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                            fontSize = 18.sp,
+                                            lineHeight = 26.sp,
+                                            color = if (isFocused) colorScheme.onSurface else Color.Transparent
+                                        ),
                                     cursorBrush = SolidColor(colorScheme.primary),
                                     decorationBox = { innerTextField ->
-                                        if (contentValue.text.isEmpty()) {
-                                            Text(contentPlaceholder, fontSize = 18.sp, color = colorScheme.onSurface.copy(alpha = 0.4f))
+                                        Box(modifier = Modifier.fillMaxWidth()) {
+                                            if (!isFocused) {
+                                                Text(
+                                                    text = annotated,
+                                                    fontSize = 18.sp,
+                                                    lineHeight = 26.sp,
+                                                    color = colorScheme.onSurface,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .pointerInput(annotated) {
+                                                            detectTapGestures { offset ->
+                                                                var linkClicked = false
+                                                                layoutResult?.let { textLayoutResult ->
+                                                                    val position = textLayoutResult.getOffsetForPosition(offset)
+                                                                    annotated.getLinkAnnotations(position, position)
+                                                                        .firstOrNull()?.let { annotation ->
+                                                                            if (annotation.item is LinkAnnotation.Url) {
+                                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
+                                                                                linkClicked = true
+                                                                            }
+                                                                        }
+                                                                }
+                                                                if (!linkClicked) {
+                                                                    isFocused = true
+                                                                }
+                                                            }
+                                                        },
+                                                    onTextLayout = { layoutResult = it }
+                                                )
+                                            }
+                                            
+                                            if (contentValue.text.isEmpty() && !isFocused) {
+                                                Text(contentPlaceholder, fontSize = 18.sp, color = colorScheme.onSurface.copy(alpha = 0.4f))
+                                            }
+                                            innerTextField()
                                         }
-                                        innerTextField()
                                     }
                                 )
+                            }
                         }
-                    }
 
                     Spacer(modifier = Modifier.height(32.dp))
 
@@ -739,8 +823,6 @@ fun DynamicFieldFullscreenDialog(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Удалить", fontWeight = FontWeight.Bold)
                     }
-
-                    Spacer(modifier = Modifier.height(80.dp))
                 }
 
                 Button(

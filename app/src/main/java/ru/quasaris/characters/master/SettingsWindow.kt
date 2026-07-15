@@ -108,7 +108,7 @@ fun SettingsWindow(
                             onThemeModeChange(AppThemeMode.OFF)
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                    ) { Text("OLED") }
+                    ) { Text("BLACK") }
                     SegmentedButton(
                         selected = themeMode == AppThemeMode.CHARACTER,
                         onClick = { 
@@ -375,7 +375,7 @@ fun WarningBlurDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Да, я готов рисковать", color = Color.Red, fontWeight = FontWeight.Bold)
+                Text("Да, я понимаю риски и беру ответственность на себя", color = Color.Red, fontWeight = FontWeight.Black)
             }
         },
         dismissButton = {

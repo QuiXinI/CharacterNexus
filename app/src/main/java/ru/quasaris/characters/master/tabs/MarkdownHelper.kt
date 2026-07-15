@@ -1,5 +1,7 @@
 package ru.quasaris.characters.master.tabs
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -15,30 +17,83 @@ object MarkdownHelper {
     fun applyMarkdown(value: TextFieldValue, prefix: String, suffix: String): TextFieldValue {
         val selection = value.selection
         val text = value.text
-        
-        // If no selection, just insert tags at cursor
+
+        // 1. Cursor case (selection length is 0)
         if (selection.length == 0) {
+            // Check if cursor is immediately surrounded by tags: **|**
+            if (selection.start >= prefix.length && selection.end <= text.length - suffix.length) {
+                val before = text.substring(selection.start - prefix.length, selection.start)
+                val after = text.substring(selection.end, selection.end + suffix.length)
+                if (before == prefix && after == suffix) {
+                    // Toggle OFF: Remove tags
+                    val newText = text.substring(0, selection.start - prefix.length) + text.substring(selection.end + suffix.length)
+                    val newPos = selection.start - prefix.length
+                    return value.copy(text = newText, selection = TextRange(newPos))
+                }
+            }
+            // Toggle ON: Insert empty tags and place cursor between them
             val newText = text.substring(0, selection.start) + prefix + suffix + text.substring(selection.end)
-            val newSelection = TextRange(selection.start + prefix.length)
-            return value.copy(text = newText, selection = newSelection)
+            val newPos = selection.start + prefix.length
+            return value.copy(text = newText, selection = TextRange(newPos))
         }
 
         val selectedText = text.substring(selection.start, selection.end)
-        
-        // Simple toggle logic: if already surrounded by the same prefix/suffix, remove them
+
+        // 2. Selection matches exactly or is wrapped: **word**
         if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
             val unwrappedText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
             val newText = text.substring(0, selection.start) + unwrappedText + text.substring(selection.end)
-            val newSelection = TextRange(selection.start, selection.start + unwrappedText.length)
-            return value.copy(text = newText, selection = newSelection)
+            return value.copy(text = newText, selection = TextRange(selection.start, selection.start + unwrappedText.length))
         }
 
+        // 3. Selection is immediately inside tags: **|word|**
+        if (selection.start >= prefix.length && selection.end <= text.length - suffix.length) {
+            val before = text.substring(selection.start - prefix.length, selection.start)
+            val after = text.substring(selection.end, selection.end + suffix.length)
+            if (before == prefix && after == suffix) {
+                // Toggle OFF: Remove surrounding tags
+                val newText = text.substring(0, selection.start - prefix.length) + selectedText + text.substring(selection.end + suffix.length)
+                return value.copy(text = newText, selection = TextRange(selection.start - prefix.length, selection.end - prefix.length))
+            }
+        }
+
+        // 4. Selection contains tags anywhere: [**word**](url)
+        // We look for any occurrences of prefix and suffix within the selection and remove them.
+        if (selectedText.contains(prefix) && (suffix.isEmpty() || selectedText.contains(suffix))) {
+            val newSelectedText = if (suffix.isNotEmpty()) {
+                selectedText.replace(prefix, "").replace(suffix, "")
+            } else {
+                selectedText.replace(prefix, "")
+            }
+            val newText = text.substring(0, selection.start) + newSelectedText + text.substring(selection.end)
+            return value.copy(text = newText, selection = TextRange(selection.start, selection.start + newSelectedText.length))
+        }
+
+        // 5. Default: Toggle ON (Apply tags)
         val newText = text.substring(0, selection.start) + prefix + selectedText + suffix + text.substring(selection.end)
-        val newSelection = TextRange(selection.start, selection.start + prefix.length + selectedText.length + suffix.length)
-        return value.copy(text = newText, selection = newSelection)
+        return value.copy(text = newText, selection = TextRange(selection.start, selection.start + prefix.length + selectedText.length + suffix.length))
     }
 
-    fun parseMarkdown(text: String): AnnotatedString {
+    fun isFormatActive(value: TextFieldValue, prefix: String, suffix: String): Boolean {
+        val selection = value.selection
+        val text = value.text
+        if (selection.length == 0) {
+            if (selection.start >= prefix.length && selection.end <= text.length - suffix.length) {
+                val before = text.substring(selection.start - prefix.length, selection.start)
+                val after = text.substring(selection.end, selection.end + suffix.length)
+                return before == prefix && (suffix.isEmpty() || after == suffix)
+            }
+            return false
+        }
+        val selectedText = text.substring(selection.start, selection.end)
+        return (selectedText.startsWith(prefix) && (suffix.isEmpty() || selectedText.endsWith(suffix))) || 
+               (selection.start >= prefix.length && selection.end <= text.length - suffix.length && 
+                text.substring(selection.start - prefix.length, selection.start) == prefix && 
+                (suffix.isEmpty() || text.substring(selection.end, selection.end + suffix.length) == suffix)) ||
+               (selectedText.contains(prefix) && (suffix.isEmpty() || selectedText.contains(suffix)))
+    }
+
+    fun parseMarkdown(text: String, onSurface: Color = Color.Unspecified, isEditing: Boolean = false): AnnotatedString {
         val result = StringBuilder()
         val boldStarts = mutableListOf<Int>()
         val italicStarts = mutableListOf<Int>()
@@ -49,44 +104,68 @@ object MarkdownHelper {
         val strikeRanges = mutableListOf<IntRange>()
         val linkRanges = mutableListOf<Triple<IntRange, String, String>>() // Range, Text, URL
         val quoteRanges = mutableListOf<IntRange>()
+        val markerRanges = mutableListOf<IntRange>()
 
         var i = 0
         while (i < text.length) {
             when {
                 text.startsWith("**", i) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 2)
+                    val markerVisible = isEditing
                     if (boldStarts.isNotEmpty()) {
                         boldRanges.add(boldStarts.removeAt(boldStarts.size - 1) until result.length)
                     } else {
-                        boldStarts.add(result.length)
+                        boldStarts.add(result.length + if (markerVisible) 2 else 0)
                     }
+                    if (markerVisible) result.append("**")
                     i += 2
                 }
-                text.startsWith("*", i) || text.startsWith("_", i) -> {
+                text.startsWith("_", i) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 1)
+                    val markerVisible = isEditing
                     if (italicStarts.isNotEmpty()) {
                         italicRanges.add(italicStarts.removeAt(italicStarts.size - 1) until result.length)
                     } else {
-                        italicStarts.add(result.length)
+                        italicStarts.add(result.length + if (markerVisible) 1 else 0)
                     }
+                    if (markerVisible) result.append("_")
                     i += 1
                 }
-                text.startsWith("~", i) -> {
+                text.startsWith("~~", i) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 2)
+                    val markerVisible = isEditing
                     if (strikeStarts.isNotEmpty()) {
                         strikeRanges.add(strikeStarts.removeAt(strikeStarts.size - 1) until result.length)
                     } else {
-                        strikeStarts.add(result.length)
+                        strikeStarts.add(result.length + if (markerVisible) 2 else 0)
                     }
-                    i += 1
+                    if (markerVisible) result.append("~~")
+                    i += 2
                 }
                 text.startsWith("[", i) -> {
                     val endBracket = text.indexOf("]", i)
                     if (endBracket != -1 && endBracket + 1 < text.length && text[endBracket + 1] == '(') {
                         val endParen = text.indexOf(")", endBracket + 2)
                         if (endParen != -1) {
+                            if (isEditing) markerRanges.add(result.length until result.length + 1) // [
+                            if (isEditing) result.append("[")
+                            
                             val linkText = text.substring(i + 1, endBracket)
                             val url = text.substring(endBracket + 2, endParen)
                             val start = result.length
                             result.append(linkText)
-                            linkRanges.add(Triple(start until result.length, linkText, url))
+                            val linkEnd = result.length
+                            
+                            if (isEditing) {
+                                markerRanges.add(linkEnd until linkEnd + 2) // ](
+                                result.append("](")
+                                markerRanges.add(result.length until result.length + url.length) // url
+                                result.append(url)
+                                markerRanges.add(result.length until result.length + 1) // )
+                                result.append(")")
+                            }
+                            
+                            linkRanges.add(Triple(start until linkEnd, linkText, url))
                             i = endParen + 1
                         } else {
                             result.append(text[i])
@@ -97,7 +176,9 @@ object MarkdownHelper {
                         i++
                     }
                 }
-                (i == 0 || text[i-1] == '\n') && text.startsWith("> ", i) -> {
+                (i == 0 || (i > 0 && text[i-1] == '\n')) && text.startsWith("> ", i) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 2) // > 
+                    if (isEditing) result.append("> ")
                     val start = result.length
                     i += 2
                     val endOfLine = text.indexOf('\n', i)
@@ -120,6 +201,13 @@ object MarkdownHelper {
 
         return buildAnnotatedString {
             append(result.toString())
+            
+            // Apply 50% opacity to markers
+            val markerStyle = if (onSurface != Color.Unspecified) SpanStyle(color = onSurface.copy(alpha = 0.5f)) else SpanStyle(color = Color.Unspecified.copy(alpha = 0.5f))
+            markerRanges.forEach { range ->
+                addStyle(markerStyle, range.first, range.last + 1)
+            }
+
             boldRanges.filter { it.first < it.last + 1 }.forEach { 
                 addStyle(SpanStyle(fontWeight = FontWeight.Bold), it.first, it.last + 1) 
             }
@@ -132,19 +220,23 @@ object MarkdownHelper {
             quoteRanges.filter { it.first < it.last + 1 }.forEach {
                 addStyle(
                     SpanStyle(
-                        background = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.1f),
+                        background = Color.Gray.copy(alpha = 0.1f),
                         fontStyle = FontStyle.Italic
                     ),
                     it.first, it.last + 1
                 )
             }
+
+            val linkAccent = Color(0xFF2196F3)
+            val finalLinkColor = if (onSurface != Color.Unspecified) lerp(onSurface, linkAccent, 0.8f) else linkAccent
+            
             linkRanges.forEach { (range, _, url) ->
                 addLink(
                     LinkAnnotation.Url(
                         url = url,
                         styles = TextLinkStyles(
                             style = SpanStyle(
-                                color = androidx.compose.ui.graphics.Color(0xFF2196F3),
+                                color = finalLinkColor,
                                 textDecoration = TextDecoration.Underline
                             )
                         )
@@ -163,7 +255,7 @@ object MarkdownHelper {
                             url = match.value,
                             styles = TextLinkStyles(
                                 style = SpanStyle(
-                                    color = androidx.compose.ui.graphics.Color(0xFF2196F3),
+                                    color = finalLinkColor,
                                     textDecoration = TextDecoration.Underline
                                 )
                             )

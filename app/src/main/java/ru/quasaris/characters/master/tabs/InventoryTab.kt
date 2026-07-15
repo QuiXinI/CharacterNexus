@@ -22,8 +22,8 @@ fun InventoryTab(
         isEditMode = isEditMode,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Инвентарь пуст",
-        titlePlaceholder = "Название предмета",
-        contentPlaceholder = "Описание предмета...",
+        titlePlaceholder = "Название раздела",
+        contentPlaceholder = "Содержимое раздела...",
         settingsViewModel = settingsViewModel
     )
 }

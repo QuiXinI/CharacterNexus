@@ -22,8 +22,8 @@ fun SkillsFeatsTab(
         isEditMode = isEditMode,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Список умений и черт пуст",
-        titlePlaceholder = "Название умения/черты",
-        contentPlaceholder = "Описание...",
+        titlePlaceholder = "Название раздела",
+        contentPlaceholder = "Описание раздела...",
         settingsViewModel = settingsViewModel
     )
 }
