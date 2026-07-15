@@ -15,9 +15,26 @@ object MarkdownHelper {
     fun applyMarkdown(value: TextFieldValue, prefix: String, suffix: String): TextFieldValue {
         val selection = value.selection
         val text = value.text
+        
+        // If no selection, just insert tags at cursor
+        if (selection.length == 0) {
+            val newText = text.substring(0, selection.start) + prefix + suffix + text.substring(selection.end)
+            val newSelection = TextRange(selection.start + prefix.length)
+            return value.copy(text = newText, selection = newSelection)
+        }
+
         val selectedText = text.substring(selection.start, selection.end)
+        
+        // Simple toggle logic: if already surrounded by the same prefix/suffix, remove them
+        if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
+            val unwrappedText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
+            val newText = text.substring(0, selection.start) + unwrappedText + text.substring(selection.end)
+            val newSelection = TextRange(selection.start, selection.start + unwrappedText.length)
+            return value.copy(text = newText, selection = newSelection)
+        }
+
         val newText = text.substring(0, selection.start) + prefix + selectedText + suffix + text.substring(selection.end)
-        val newSelection = TextRange(selection.start + prefix.length, selection.end + prefix.length)
+        val newSelection = TextRange(selection.start, selection.start + prefix.length + selectedText.length + suffix.length)
         return value.copy(text = newText, selection = newSelection)
     }
 

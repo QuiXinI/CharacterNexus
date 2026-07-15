@@ -44,7 +44,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.platform.LocalTextToolbar
+import androidx.compose.ui.text.TextLayoutResult
 
 @Composable
 fun HyperlinkDialog(
@@ -308,32 +308,6 @@ fun DynamicFieldItem(
     }
     var showLinkDialog by remember { mutableStateOf(false) }
 
-    val toolbar = remember {
-        MarkdownTextToolbar(
-            onBold = {
-                val new = MarkdownHelper.applyMarkdown(contentValue, "**", "**")
-                contentValue = new
-                onFieldChange(field.copy(content = new.text))
-            },
-            onItalic = {
-                val new = MarkdownHelper.applyMarkdown(contentValue, "*", "*")
-                contentValue = new
-                onFieldChange(field.copy(content = new.text))
-            },
-            onStrike = {
-                val new = MarkdownHelper.applyMarkdown(contentValue, "~", "~")
-                contentValue = new
-                onFieldChange(field.copy(content = new.text))
-            },
-            onLink = { showLinkDialog = true },
-            onQuote = {
-                val new = MarkdownHelper.applyMarkdown(contentValue, "> ", "")
-                contentValue = new
-                onFieldChange(field.copy(content = new.text))
-            }
-        )
-    }
-
     if (showLinkDialog) {
         val selection = contentValue.selection
         val selectedText = contentValue.text.substring(selection.start, selection.end)
@@ -479,19 +453,31 @@ fun DynamicFieldItem(
                                 .padding(12.dp)
                         ) {
                             var isFocused by remember { mutableStateOf(false) }
+                            var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-                            CompositionLocalProvider(LocalTextToolbar provides toolbar) {
-                                toolbar.Content()
-                                BasicTextField(
+                            if (isFocused) {
+                                FormattingToolbar(
                                     value = contentValue,
-                                    onValueChange = { 
+                                    onValueChange = {
                                         contentValue = it
                                         onFieldChange(field.copy(content = it.text))
                                     },
-                                    enabled = canEdit,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .onFocusChanged { isFocused = it.isFocused },
+                                    textLayoutResult = textLayoutResult,
+                                    onLinkRequest = { showLinkDialog = true }
+                                )
+                            }
+
+                            BasicTextField(
+                                value = contentValue,
+                                onValueChange = { 
+                                    contentValue = it
+                                    onFieldChange(field.copy(content = it.text))
+                                },
+                                enabled = canEdit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { isFocused = it.isFocused },
+                                onTextLayout = { textLayoutResult = it },
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                                         fontSize = 17.sp,
                                         lineHeight = 24.sp,
@@ -526,7 +512,6 @@ fun DynamicFieldItem(
                                         }
                                     }
                                 )
-                            }
 
                             IconButton(
                                 onClick = { onFullscreenRequest() },
@@ -581,16 +566,6 @@ fun DynamicFieldFullscreenDialog(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var isPreviewMode by remember { mutableStateOf(false) }
     var showLinkDialog by remember { mutableStateOf(false) }
-
-    val toolbar = remember {
-        MarkdownTextToolbar(
-            onBold = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "**", "**") },
-            onItalic = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "*", "*") },
-            onStrike = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "~", "~") },
-            onLink = { showLinkDialog = true },
-            onQuote = { contentValue = MarkdownHelper.applyMarkdown(contentValue, "> ", "") }
-        )
-    }
 
     if (showLinkDialog) {
         val selection = contentValue.selection
@@ -693,13 +668,26 @@ fun DynamicFieldFullscreenDialog(
                                 onTextLayout = { /* required for link click */ }
                             )
                         } else {
-                            CompositionLocalProvider(LocalTextToolbar provides toolbar) {
-                                toolbar.Content()
-                                BasicTextField(
+                            var isFocused by remember { mutableStateOf(false) }
+                            var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+                            if (isFocused) {
+                                FormattingToolbar(
                                     value = contentValue,
                                     onValueChange = { contentValue = it },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    textLayoutResult = textLayoutResult,
+                                    onLinkRequest = { showLinkDialog = true }
+                                )
+                            }
+
+                            BasicTextField(
+                                value = contentValue,
+                                onValueChange = { contentValue = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .onFocusChanged { isFocused = it.isFocused },
+                                onTextLayout = { textLayoutResult = it },
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
                                         fontSize = 18.sp,
                                         lineHeight = 26.sp,
                                         color = colorScheme.onSurface
@@ -712,7 +700,6 @@ fun DynamicFieldFullscreenDialog(
                                         innerTextField()
                                     }
                                 )
-                            }
                         }
                     }
 
