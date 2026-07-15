@@ -48,6 +48,10 @@ import dev.chrisbanes.haze.HazeInputScale
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import kotlinx.coroutines.launch
+import androidx.compose.ui.geometry.Rect
 
 @Composable
 fun HyperlinkDialog(
@@ -124,6 +128,7 @@ fun DynamicFieldsTab(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -307,6 +312,26 @@ fun DynamicFieldItem(
     val canEdit = !isEditMode && !isLockedGlobal && !field.isLocked
 
     var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var isFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(contentValue.selection, contentValue.text, isFocused) {
+        val layoutResult = textLayoutResult
+        if (isFocused && layoutResult != null && contentValue.selection.collapsed) {
+            val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
+            coroutineScope.launch {
+                bringIntoViewRequester.bringIntoView(
+                    cursorRect.copy(
+                        top = cursorRect.top - 40f, // Margin for toolbar
+                        bottom = cursorRect.bottom + 40f
+                    )
+                )
+            }
+        }
+    }
+
     LaunchedEffect(field.content) {
         if (field.content != contentValue.text) {
             contentValue = contentValue.copy(text = field.content)
@@ -481,7 +506,9 @@ fun DynamicFieldItem(
                                 enabled = canEdit,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .bringIntoViewRequester(bringIntoViewRequester)
                                     .onFocusChanged { isFocused = it.isFocused },
+                                onTextLayout = { textLayoutResult = it },
                                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                                     fontSize = 17.sp,
                                     lineHeight = 24.sp,
@@ -629,6 +656,25 @@ fun DynamicFieldFullscreenDialog(
     ) {
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
+        val bringIntoViewRequester = remember { BringIntoViewRequester() }
+        val coroutineScope = rememberCoroutineScope()
+        var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+        var isFocused by remember { mutableStateOf(false) }
+
+        LaunchedEffect(contentValue.selection, contentValue.text, isFocused) {
+            val layoutResult = textLayoutResult
+            if (isFocused && layoutResult != null && contentValue.selection.collapsed && !isPreviewMode) {
+                val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
+                coroutineScope.launch {
+                    bringIntoViewRequester.bringIntoView(
+                        cursorRect.copy(
+                            top = cursorRect.top - 60f,
+                            bottom = cursorRect.bottom + 60f
+                        )
+                    )
+                }
+            }
+        }
 
         Scaffold(
             topBar = {
@@ -670,7 +716,9 @@ fun DynamicFieldFullscreenDialog(
                 )
             },
             containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
-            modifier = Modifier.run {
+            modifier = Modifier
+                .imePadding()
+                .run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
                     hazeEffect(state = hazeState) {
                         style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
@@ -695,7 +743,6 @@ fun DynamicFieldFullscreenDialog(
                                 .fillMaxWidth(),
                             contentAlignment = Alignment.TopCenter
                         ) {
-                            var isFocused by remember { mutableStateOf(false) }
                             val onSurface = colorScheme.onSurface
                             val annotated = remember(contentValue.text, onSurface, isPreviewMode, isFocused) { 
                                 MarkdownHelper.parseMarkdown(contentValue.text, onSurface, isEditing = !isPreviewMode && isFocused) 
@@ -740,7 +787,9 @@ fun DynamicFieldFullscreenDialog(
                                     onValueChange = { contentValue = it },
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .bringIntoViewRequester(bringIntoViewRequester)
                                         .onFocusChanged { isFocused = it.isFocused },
+                                    onTextLayout = { textLayoutResult = it },
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
                                             fontSize = 18.sp,
                                             lineHeight = 26.sp,
