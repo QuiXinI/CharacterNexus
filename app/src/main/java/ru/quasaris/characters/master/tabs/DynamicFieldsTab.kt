@@ -32,6 +32,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import ru.quasaris.characters.master.backend.evaluateFormula
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -339,6 +342,12 @@ fun DynamicFieldItem(
     }
     var showLinkDialog by remember { mutableStateOf(false) }
 
+    val statsMap = remember(settingsViewModel) {
+        // We'll need to pass statsMap from the parent if we want full formula support
+        // For now, try to get it from settingsViewModel if available, but it might be null here
+        emptyMap<String, String>() 
+    }
+
     if (showLinkDialog) {
         val selection = contentValue.selection
         val selectedText = contentValue.text.substring(selection.start, selection.end)
@@ -518,11 +527,12 @@ fun DynamicFieldItem(
                                 decorationBox = { innerTextField ->
                                             Box(modifier = Modifier.fillMaxWidth()) {
                                                 val onSurface = MaterialTheme.colorScheme.onSurface
-                                                val annotatedContent = remember(field.content, onSurface, isFocused) { 
-                                                    MarkdownHelper.parseMarkdown(field.content, onSurface, isEditing = isFocused) 
-                                                }
                                                 val uriHandler = LocalUriHandler.current
                                                 var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+                                                
+                                                val blocks = remember(field.content) {
+                                                    DynamicContentParser.parse(field.content)
+                                                }
                                                 
                                     val marginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
                                     val customMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
@@ -537,33 +547,69 @@ fun DynamicFieldItem(
                                     }
 
                                                 if (!isFocused) {
-                                                    Text(
-                                                        text = annotatedContent,
-                                                        fontSize = 17.sp,
-                                                        lineHeight = 24.sp,
-                                                        color = MaterialTheme.colorScheme.onSurface,
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .pointerInput(annotatedContent) {
-                                                                detectTapGestures { offset ->
-                                                                    var linkClicked = false
-                                                                    layoutResult?.let { textLayoutResult ->
-                                                                        val position = textLayoutResult.getOffsetForPosition(offset)
-                                                                        annotatedContent.getLinkAnnotations(position, position)
-                                                                            .firstOrNull()?.let { annotation ->
-                                                                                if (annotation.item is LinkAnnotation.Url) {
-                                                                                    uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
-                                                                                    linkClicked = true
+                                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                                        blocks.forEach { block ->
+                                                            when (block) {
+                                                                is DynamicContentBlock.Text -> {
+                                                                    val annotated = remember(block.content, onSurface) {
+                                                                        MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                    }
+                                                                    Text(
+                                                                        text = annotated,
+                                                                        fontSize = 17.sp,
+                                                                        lineHeight = 24.sp,
+                                                                        color = onSurface,
+                                                                        modifier = Modifier
+                                                                            .fillMaxWidth()
+                                                                            .pointerInput(annotated) {
+                                                                                detectTapGestures { offset ->
+                                                                                    var linkClicked = false
+                                                                                    layoutResult?.let { textLayoutResult ->
+                                                                                        val position = textLayoutResult.getOffsetForPosition(offset)
+                                                                                        annotated.getLinkAnnotations(position, position)
+                                                                                            .firstOrNull()?.let { annotation ->
+                                                                                                if (annotation.item is LinkAnnotation.Url) {
+                                                                                                    uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
+                                                                                                    linkClicked = true
+                                                                                                }
+                                                                                            }
+                                                                                    }
+                                                                                    if (!linkClicked) {
+                                                                                        isFocused = true
+                                                                                    }
                                                                                 }
-                                                                            }
-                                                                    }
-                                                                    if (!linkClicked) {
-                                                                        isFocused = true
-                                                                    }
+                                                                            },
+                                                                        onTextLayout = { layoutResult = it }
+                                                                    )
                                                                 }
-                                                            },
-                                                        onTextLayout = { layoutResult = it }
-                                                    )
+                                                                is DynamicContentBlock.Divider -> {
+                                                                    HorizontalDivider(
+                                                                        modifier = Modifier.padding(vertical = 12.dp),
+                                                                        thickness = 1.dp,
+                                                                        color = onSurface.copy(alpha = 0.1f)
+                                                                    )
+                                                                }
+                                                                is DynamicContentBlock.Spoiler -> {
+                                                                    val annotated = remember(block.content, onSurface) {
+                                                                        MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                    }
+                                                                    SpoilerComponent(content = annotated)
+                                                                }
+                                                                is DynamicContentBlock.Resource -> {
+                                                                    ResourceComponent(
+                                                                        resource = block,
+                                                                        statsMap = statsMap,
+                                                                        onResourceUpdate = { newTag ->
+                                                                            val newContent = field.content.replace(block.originalTag, newTag)
+                                                                            onFieldChange(field.copy(content = newContent))
+                                                                        },
+                                                                        hazeState = hazeState,
+                                                                        settingsViewModel = settingsViewModel
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                                 
                                                 if (field.content.isEmpty() && !isFocused) {
@@ -630,6 +676,12 @@ fun DynamicFieldFullscreenDialog(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var isPreviewMode by remember { mutableStateOf(false) }
     var showLinkDialog by remember { mutableStateOf(false) }
+
+    val statsMap = remember(settingsViewModel) {
+        // We'll need to pass statsMap from the parent if we want full formula support
+        // For now, try to get it from settingsViewModel if available, but it might be null here
+        emptyMap<String, String>() 
+    }
 
     if (showLinkDialog) {
         val selection = contentValue.selection
@@ -744,35 +796,72 @@ fun DynamicFieldFullscreenDialog(
                             contentAlignment = Alignment.TopCenter
                         ) {
                             val onSurface = colorScheme.onSurface
-                            val annotated = remember(contentValue.text, onSurface, isPreviewMode, isFocused) { 
-                                MarkdownHelper.parseMarkdown(contentValue.text, onSurface, isEditing = !isPreviewMode && isFocused) 
-                            }
                             val uriHandler = LocalUriHandler.current
                             var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+                            
+                            val blocks = remember(contentValue.text) {
+                                DynamicContentParser.parse(contentValue.text)
+                            }
 
                             if (isPreviewMode) {
-                                Text(
-                                    text = annotated,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .pointerInput(annotated) {
-                                            detectTapGestures { offset ->
-                                                layoutResult?.let { textLayoutResult ->
-                                                    val position = textLayoutResult.getOffsetForPosition(offset)
-                                                    annotated.getLinkAnnotations(position, position)
-                                                        .firstOrNull()?.let { annotation ->
-                                                            if (annotation.item is LinkAnnotation.Url) {
-                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
-                                                            }
-                                                        }
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    blocks.forEach { block ->
+                                        when (block) {
+                                            is DynamicContentBlock.Text -> {
+                                                val annotated = remember(block.content, onSurface) {
+                                                    MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
                                                 }
+                                                Text(
+                                                    text = annotated,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .pointerInput(annotated) {
+                                                            detectTapGestures { offset ->
+                                                                layoutResult?.let { textLayoutResult ->
+                                                                    val position = textLayoutResult.getOffsetForPosition(offset)
+                                                                    annotated.getLinkAnnotations(position, position)
+                                                                        .firstOrNull()?.let { annotation ->
+                                                                            if (annotation.item is LinkAnnotation.Url) {
+                                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
+                                                                            }
+                                                                        }
+                                                                }
+                                                            }
+                                                        },
+                                                    fontSize = 18.sp,
+                                                    lineHeight = 26.sp,
+                                                    color = colorScheme.onSurface,
+                                                    onTextLayout = { layoutResult = it }
+                                                )
                                             }
-                                        },
-                                    fontSize = 18.sp,
-                                    lineHeight = 26.sp,
-                                    color = colorScheme.onSurface,
-                                    onTextLayout = { layoutResult = it }
-                                )
+                                            is DynamicContentBlock.Divider -> {
+                                                HorizontalDivider(
+                                                    modifier = Modifier.padding(vertical = 12.dp),
+                                                    thickness = 1.dp,
+                                                    color = onSurface.copy(alpha = 0.1f)
+                                                )
+                                            }
+                                            is DynamicContentBlock.Spoiler -> {
+                                                val annotated = remember(block.content, onSurface) {
+                                                    MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                }
+                                                SpoilerComponent(content = annotated)
+                                            }
+                                            is DynamicContentBlock.Resource -> {
+                                                ResourceComponent(
+                                                    resource = block,
+                                                    statsMap = statsMap,
+                                                    onResourceUpdate = { newTag ->
+                                                        val newText = contentValue.text.replace(block.originalTag, newTag)
+                                                        contentValue = contentValue.copy(text = newText)
+                                                    },
+                                                    hazeState = hazeState,
+                                                    settingsViewModel = settingsViewModel
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             } else {
                                 FormattingToolbar(
                                     value = contentValue,
@@ -810,33 +899,69 @@ fun DynamicFieldFullscreenDialog(
                                             }
                                             
                                             if (!isFocused) {
-                                                Text(
-                                                    text = annotated,
-                                                    fontSize = 18.sp,
-                                                    lineHeight = 26.sp,
-                                                    color = colorScheme.onSurface,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .pointerInput(annotated) {
-                                                            detectTapGestures { offset ->
-                                                                var linkClicked = false
-                                                                layoutResult?.let { textLayoutResult ->
-                                                                    val position = textLayoutResult.getOffsetForPosition(offset)
-                                                                    annotated.getLinkAnnotations(position, position)
-                                                                        .firstOrNull()?.let { annotation ->
-                                                                            if (annotation.item is LinkAnnotation.Url) {
-                                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
-                                                                                linkClicked = true
+                                                Column(modifier = Modifier.fillMaxWidth()) {
+                                                    blocks.forEach { block ->
+                                                        when (block) {
+                                                            is DynamicContentBlock.Text -> {
+                                                                val annotated = remember(block.content, onSurface) {
+                                                                    MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                }
+                                                                Text(
+                                                                    text = annotated,
+                                                                    fontSize = 18.sp,
+                                                                    lineHeight = 26.sp,
+                                                                    color = colorScheme.onSurface,
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .pointerInput(annotated) {
+                                                                            detectTapGestures { offset ->
+                                                                                var linkClicked = false
+                                                                                layoutResult?.let { textLayoutResult ->
+                                                                                    val position = textLayoutResult.getOffsetForPosition(offset)
+                                                                                    annotated.getLinkAnnotations(position, position)
+                                                                                        .firstOrNull()?.let { annotation ->
+                                                                                            if (annotation.item is LinkAnnotation.Url) {
+                                                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
+                                                                                                linkClicked = true
+                                                                                            }
+                                                                                        }
+                                                                                }
+                                                                                if (!linkClicked) {
+                                                                                    isFocused = true
+                                                                                }
                                                                             }
-                                                                        }
-                                                                }
-                                                                if (!linkClicked) {
-                                                                    isFocused = true
-                                                                }
+                                                                        },
+                                                                    onTextLayout = { layoutResult = it }
+                                                                )
                                                             }
-                                                        },
-                                                    onTextLayout = { layoutResult = it }
-                                                )
+                                                            is DynamicContentBlock.Divider -> {
+                                                                HorizontalDivider(
+                                                                    modifier = Modifier.padding(vertical = 12.dp),
+                                                                    thickness = 1.dp,
+                                                                    color = onSurface.copy(alpha = 0.1f)
+                                                                )
+                                                            }
+                                                            is DynamicContentBlock.Spoiler -> {
+                                                                val annotated = remember(block.content, onSurface) {
+                                                                    MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                }
+                                                                SpoilerComponent(content = annotated)
+                                                            }
+                                                            is DynamicContentBlock.Resource -> {
+                                                                ResourceComponent(
+                                                                    resource = block,
+                                                                    statsMap = statsMap,
+                                                                    onResourceUpdate = { newTag ->
+                                                                        val newText = contentValue.text.replace(block.originalTag, newTag)
+                                                                        contentValue = contentValue.copy(text = newText)
+                                                                    },
+                                                                    hazeState = hazeState,
+                                                                    settingsViewModel = settingsViewModel
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
                                             
                                             if (contentValue.text.isEmpty() && !isFocused) {

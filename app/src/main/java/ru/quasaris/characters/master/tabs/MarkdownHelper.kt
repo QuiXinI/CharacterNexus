@@ -159,6 +159,13 @@ object MarkdownHelper {
                     if (markerVisible) result.append("~~")
                     i += 2
                 }
+                text.startsWith("::", i) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 2)
+                    // We don't apply a SpanStyle for the content of the spoiler in the editor, 
+                    // just highlight the markers
+                    if (isEditing) result.append("::")
+                    i += 2
+                }
                 text.startsWith("[", i) -> {
                     val endBracket = text.indexOf("]", i)
                     if (endBracket != -1 && endBracket + 1 < text.length && text[endBracket + 1] == '(') {

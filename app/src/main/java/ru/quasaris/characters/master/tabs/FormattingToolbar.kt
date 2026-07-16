@@ -1,6 +1,8 @@
 package ru.quasaris.characters.master.tabs
 
 import android.content.res.Configuration
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,14 +75,18 @@ fun FormattingToolbar(
     ) {
         Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .background(Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Spacer(modifier = Modifier.width(8.dp))
                 FormattingButton(
                     icon = Icons.Default.FormatBold,
                     isActive = MarkdownHelper.isFormatActive(value, "**", "**"),
@@ -100,6 +106,12 @@ fun FormattingToolbar(
                     onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "~~", "~~")) }
                 )
                 FormattingButton(
+                    icon = Icons.Default.VisibilityOff,
+                    isActive = MarkdownHelper.isFormatActive(value, "::", "::"),
+                    enabled = isSelectionActive,
+                    onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "::", "::")) }
+                )
+                FormattingButton(
                     icon = Icons.Default.FormatQuote,
                     isActive = MarkdownHelper.isFormatActive(value, "> ", ""),
                     enabled = isSelectionActive,
@@ -111,6 +123,36 @@ fun FormattingToolbar(
                     enabled = isSelectionActive,
                     onClick = onLinkRequest
                 )
+                
+                VerticalDivider(
+                    modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                )
+
+                FormattingButton(
+                    icon = Icons.Default.HorizontalRule,
+                    isActive = false,
+                    enabled = true,
+                    onClick = { 
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val suffix = "\n"
+                        val insert = prefix + "---" + suffix
+                        val newText = value.text.substring(0, value.selection.start) + insert + value.text.substring(value.selection.end)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.start + insert.length)))
+                    }
+                )
+                FormattingButton(
+                    icon = Icons.Default.AddBox,
+                    isActive = false,
+                    enabled = true,
+                    onClick = {
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val insert = prefix + "[Ресурс: Новый ресурс | cur=0 | max=0 | sr=0 | lr=all]\n"
+                        val newText = value.text.substring(0, value.selection.start) + insert + value.text.substring(value.selection.end)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.start + insert.length)))
+                    }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
         }
     }
@@ -131,7 +173,7 @@ private fun FormattingButton(
             contentColor = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
             disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
         ),
-        modifier = Modifier.size(40.dp)
+        modifier = Modifier.size(36.dp)
     ) {
         Icon(
             imageVector = icon,
