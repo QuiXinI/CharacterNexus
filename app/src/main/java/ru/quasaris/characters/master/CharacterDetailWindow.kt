@@ -298,6 +298,13 @@ fun CharacterDetailWindow(
     
     var isEditMode by remember { mutableStateOf(false) }
     
+    // Clear focus on dispose to prevent context menu hierarchy crashes
+    DisposableEffect(Unit) {
+        onDispose {
+            focusManager.clearFocus()
+        }
+    }
+    
     // Reset edit mode and clear focus when changing tabs
     LaunchedEffect(pagerState.currentPage) {
         isEditMode = false
@@ -597,7 +604,8 @@ fun CharacterDetailWindow(
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
                         )
                     }
                     CharacterTab.INVENTORY -> {
@@ -607,7 +615,8 @@ fun CharacterDetailWindow(
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
                         )
                     }
                     CharacterTab.SPELLS -> {
@@ -633,7 +642,8 @@ fun CharacterDetailWindow(
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
                         )
                     }
                     else -> {

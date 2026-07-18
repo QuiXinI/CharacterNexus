@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import android.util.Log
 import ru.quasaris.characters.master.backend.evaluateFormula
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
@@ -101,6 +102,7 @@ fun ResourceComponent(
     var showSettings by remember { mutableStateOf(false) }
     var showNotesDialog by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     val curValue = evaluateFormula(resource.current, statsMap)
     val maxValue = evaluateFormula(resource.max, statsMap)
@@ -155,14 +157,23 @@ fun ResourceComponent(
                 }
             }
 
-            if (resource.link != null) {
-                IconButton(
-                    onClick = { uriHandler.openUri(resource.link) },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.OpenInNew, null, modifier = Modifier.size(20.dp))
+    if (resource.link != null) {
+        val fullLink = remember(resource.link) {
+            if (resource.link.contains("://")) resource.link else "https://${resource.link}"
+        }
+        IconButton(
+            onClick = { 
+                try {
+                    uriHandler.openUri(fullLink) 
+                } catch (e: Exception) {
+                    Log.e("ResourceComponent", "Failed to open URI: $fullLink", e)
                 }
-            }
+            },
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(Icons.AutoMirrored.Filled.OpenInNew, null, modifier = Modifier.size(20.dp))
+        }
+    }
 
             Text("-", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
 
@@ -183,14 +194,15 @@ fun ResourceComponent(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    modifier = Modifier.size(height = 36.dp, width = 48.dp)
+                    modifier = Modifier.size(64.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (maxValue > 0) curValue.toString() else curValue.toString(),
+                            text = if (maxValue > 0) "$curValue/$maxValue" else curValue.toString(),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -210,11 +222,17 @@ fun ResourceComponent(
 
     if (showNotesDialog) {
         AlertDialog(
-            onDismissRequest = { showNotesDialog = false },
+            onDismissRequest = { 
+                focusManager.clearFocus()
+                showNotesDialog = false 
+            },
             title = { Text(resource.name) },
             text = { Text(resource.notes) },
             confirmButton = {
-                TextButton(onClick = { showNotesDialog = false }) {
+                TextButton(onClick = { 
+                    focusManager.clearFocus()
+                    showNotesDialog = false 
+                }) {
                     Text("ОК")
                 }
             }
@@ -272,6 +290,7 @@ fun ResourceSettingsDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
@@ -280,7 +299,10 @@ fun ResourceSettingsDialog(
                 CenterAlignedTopAppBar(
                     title = { Text("Настройка ресурса", fontWeight = FontWeight.Black) },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
+                        IconButton(onClick = {
+                            focusManager.clearFocus()
+                            onDismiss()
+                        }) {
                             Icon(Icons.Default.Close, contentDescription = "Закрыть")
                         }
                     },
@@ -292,6 +314,10 @@ fun ResourceSettingsDialog(
             containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.background,
             modifier = Modifier
                 .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) { focusManager.clearFocus() }
                 .run {
                     if (hazeState != null && !isOled) {
                         hazeEffect(state = hazeState) {
@@ -425,6 +451,7 @@ fun ResourceSettingsDialog(
 
                 Button(
                     onClick = {
+                        focusManager.clearFocus()
                         val tag = "[Ресурс: $name | cur=$current | max=$max | sr=$shortRest | lr=$longRest${if (link.isNotEmpty()) " | link=$link" else ""}${if (notes.isNotEmpty()) " | notes=$notes" else ""}${if (showNotes) " | showNotes=true" else ""}]"
                         onSave(tag)
                     },

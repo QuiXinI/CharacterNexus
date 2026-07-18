@@ -94,19 +94,23 @@ object MarkdownHelper {
             }
             return false
         }
-        val selectedText = text.substring(selection.start, selection.end)
+        
+        // Safety check for selection bounds
+        val start = selection.start.coerceIn(0, text.length)
+        val end = selection.end.coerceIn(0, text.length)
+        val selectedText = if (start < end) text.substring(start, end) else ""
         
         // Special case for links [text](url)
         if (prefix == "[" && suffix == "](") {
             return selectedText.startsWith("[") && selectedText.contains("](") && selectedText.endsWith(")") ||
-                   (selection.start > 0 && text.substring(0, selection.start).contains("[") && 
-                    text.substring(selection.end).contains(")"))
+                   (start > 0 && text.substring(0, start).contains("[") && 
+                    text.substring(end).contains(")"))
         }
 
         return (selectedText.startsWith(prefix) && (suffix.isEmpty() || selectedText.endsWith(suffix))) || 
-               (selection.start >= prefix.length && selection.end <= text.length - suffix.length && 
-                text.substring(selection.start - prefix.length, selection.start) == prefix && 
-                (suffix.isEmpty() || text.substring(selection.end, selection.end + suffix.length) == suffix)) ||
+               (start >= prefix.length && end <= text.length - suffix.length && 
+                text.substring(start - prefix.length, start) == prefix && 
+                (suffix.isEmpty() || text.substring(end, end + suffix.length) == suffix)) ||
                (selectedText.contains(prefix) && (suffix.isEmpty() || selectedText.contains(suffix)))
     }
 

@@ -12,7 +12,8 @@ fun InventoryTab(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     isEditMode: Boolean = false,
-    settingsViewModel: SettingsViewModel? = null
+    settingsViewModel: SettingsViewModel? = null,
+    statsMap: Map<String, String> = emptyMap()
 ) {
     DynamicFieldsTab(
         fields = inventory,
@@ -24,6 +25,7 @@ fun InventoryTab(
         emptyListText = "Инвентарь пуст",
         titlePlaceholder = "Название раздела",
         contentPlaceholder = "Содержимое раздела...",
-        settingsViewModel = settingsViewModel
+        settingsViewModel = settingsViewModel,
+        statsMap = statsMap
     )
 }

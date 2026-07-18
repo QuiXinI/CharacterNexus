@@ -92,17 +92,21 @@ fun SpellsTab(
     val spellSaveDice = magicSaveCalculation.second
 
     val processedSpells = remember(spells, spellSettings.specialSlots) {
-        val currentSpells = spells.toMutableList()
         val specialLevels = spellSettings.specialSlots.map { it.level }.filter { it > 9 }.distinct()
-        
-        specialLevels.forEach { level ->
+        val missingLevels = specialLevels.filter { level ->
             val title = "$level уровень"
-            if (currentSpells.none { it.title.equals(title, ignoreCase = true) }) {
-                currentSpells.add(DynamicNoteState(title = title))
+            spells.none { it.title.equals(title, ignoreCase = true) }
+        }
+        
+        if (missingLevels.isEmpty()) {
+            spells
+        } else {
+            spells.toMutableList().apply {
+                missingLevels.forEach { level ->
+                    add(DynamicNoteState(title = "$level уровень"))
+                }
             }
         }
-
-        currentSpells
     }
 
     LaunchedEffect(processedSpells.size) {
@@ -203,6 +207,7 @@ fun SpellsTab(
             titlePlaceholder = "Заголовок",
             contentPlaceholder = "Список заклинаний...",
             settingsViewModel = settingsViewModel,
+            statsMap = statsMap,
             isCollapsible = false,
             isTitleReadOnly = true,
             isAddButtonVisible = false,

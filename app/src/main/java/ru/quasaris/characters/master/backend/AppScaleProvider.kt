@@ -15,7 +15,7 @@ fun AppScaleProvider(
     val density = LocalDensity.current
 
     // Override configuration with new fontScale
-    val newConfiguration = configuration.apply {
+    val newConfiguration = android.content.res.Configuration(configuration).apply {
         fontScale *= scaleFactor
     }
 

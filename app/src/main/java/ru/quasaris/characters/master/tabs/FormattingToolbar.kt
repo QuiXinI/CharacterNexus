@@ -31,6 +31,7 @@ fun FormattingToolbar(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     isFocused: Boolean,
+    isSelectionActive: Boolean,
     onLinkRequest: () -> Unit,
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null
@@ -41,7 +42,6 @@ fun FormattingToolbar(
     val hasPhysicalKeyboard = configuration.keyboard == Configuration.KEYBOARD_QWERTY || 
                              configuration.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_NO
 
-    val isSelectionActive = value.selection.length > 0
     var yOffset by remember { mutableFloatStateOf(0f) }
 
     Surface(

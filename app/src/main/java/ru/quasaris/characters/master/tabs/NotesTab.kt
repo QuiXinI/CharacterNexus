@@ -12,7 +12,8 @@ fun NotesTab(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     isEditMode: Boolean = false,
-    settingsViewModel: SettingsViewModel? = null
+    settingsViewModel: SettingsViewModel? = null,
+    statsMap: Map<String, String> = emptyMap()
 ) {
     DynamicFieldsTab(
         fields = notes,
@@ -24,6 +25,7 @@ fun NotesTab(
         emptyListText = "Список заметок пуст",
         titlePlaceholder = "Заголовок заметки",
         contentPlaceholder = "Текст заметки...",
-        settingsViewModel = settingsViewModel
+        settingsViewModel = settingsViewModel,
+        statsMap = statsMap
     )
 }

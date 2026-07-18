@@ -196,12 +196,12 @@ data class Character(
     val notes: List<DynamicNoteState> = listOf(DynamicNoteState()),
     val skillsAndTraits: List<DynamicNoteState> = listOf(
         DynamicNoteState(title = "Умения"),
-        DynamicNoteState(title = "Черты", content = "**_Черты происхождения:_**\n\n\n**_Общие черты_**\n")
+        DynamicNoteState(title = "Черты", content = "**_Черты происхождения:_**\n\n\n---\n**_Общие черты_**\n")
     ),
     val inventory: List<DynamicNoteState> = listOf(
         DynamicNoteState(title = "Снаряжение"),
         DynamicNoteState(title = "Сокровища"),
-        DynamicNoteState(title = "Экипировано", content = "\n\n**_Настройки_**\n1. \n2. \n3. ")
+        DynamicNoteState(title = "Экипировано", content = "\n\n---\n**_Настройки_**\n1. \n2. \n3. ")
     ),
     val spells: List<DynamicNoteState> = listOf(DynamicNoteState(title = "Заговоры")) + (1..9).map {
         DynamicNoteState(title = "$it уровень")

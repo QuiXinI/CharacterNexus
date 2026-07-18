@@ -31,7 +31,7 @@ import ru.quasaris.characters.master.backend.SettingsManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import kotlin.math.roundToInt
 
-private const val SHOW_DEBUG_SETTINGS = false
+private const val SHOW_DEBUG_SETTINGS = true
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

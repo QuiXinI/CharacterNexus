@@ -12,7 +12,8 @@ fun SkillsFeatsTab(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     isEditMode: Boolean = false,
-    settingsViewModel: SettingsViewModel? = null
+    settingsViewModel: SettingsViewModel? = null,
+    statsMap: Map<String, String> = emptyMap()
 ) {
     DynamicFieldsTab(
         fields = skillsAndTraits,
@@ -24,6 +25,7 @@ fun SkillsFeatsTab(
         emptyListText = "Список умений и черт пуст",
         titlePlaceholder = "Название раздела",
         contentPlaceholder = "Описание раздела...",
-        settingsViewModel = settingsViewModel
+        settingsViewModel = settingsViewModel,
+        statsMap = statsMap
     )
 }

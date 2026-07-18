@@ -143,7 +143,10 @@ fun SpellSettingsDialog(
                 CenterAlignedTopAppBar(
                     title = { Text("Настройки заклинаний", fontWeight = FontWeight.Black) },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
+                        IconButton(onClick = {
+                            focusManager.clearFocus()
+                            onDismiss()
+                        }) {
                             Icon(Icons.Default.Close, contentDescription = "Закрыть")
                         }
                     },
@@ -521,6 +524,7 @@ fun SpellSettingsDialog(
 
                 Button(
                     onClick = {
+                        focusManager.clearFocus()
                         onSettingsChange(
                             settings.copy(
                                 isMagicEnabled = isMagicEnabled,
