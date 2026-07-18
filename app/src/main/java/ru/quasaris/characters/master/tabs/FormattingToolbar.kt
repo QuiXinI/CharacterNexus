@@ -33,6 +33,7 @@ fun FormattingToolbar(
     isFocused: Boolean,
     isSelectionActive: Boolean,
     onLinkRequest: () -> Unit,
+    onSave: () -> Unit = {},
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null
 ) {
@@ -147,10 +148,22 @@ fun FormattingToolbar(
                     enabled = true,
                     onClick = {
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
-                        val insert = prefix + "[Ресурс: Новый ресурс | cur=0 | max=0 | sr=0 | lr=all]\n"
+                        val insert = prefix + "{Ресурс: Новый ресурс | cur=0 | max=0 | sr=0 | lr=all}\n"
                         val newText = value.text.substring(0, value.selection.start) + insert + value.text.substring(value.selection.end)
                         onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.start + insert.length)))
                     }
+                )
+
+                VerticalDivider(
+                    modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                )
+
+                FormattingButton(
+                    icon = Icons.Default.Done,
+                    isActive = false,
+                    enabled = true,
+                    onClick = onSave
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }

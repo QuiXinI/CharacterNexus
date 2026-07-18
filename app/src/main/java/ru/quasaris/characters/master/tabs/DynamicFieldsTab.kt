@@ -328,6 +328,7 @@ fun DynamicFieldItem(
     val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
     
+    val focusManager = LocalFocusManager.current
     val canEdit = !isEditMode && !isLockedGlobal && !field.isLocked
 
     var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
@@ -526,6 +527,7 @@ fun DynamicFieldItem(
                                 isFocused = toolbarState.second,
                                 isSelectionActive = toolbarState.third,
                                 onLinkRequest = { showLinkDialog = true },
+                                onSave = { focusManager.clearFocus() },
                                 hazeState = hazeState
                             )
 
@@ -940,6 +942,10 @@ fun DynamicFieldFullscreenDialog(
                                     isFocused = toolbarState.second,
                                     isSelectionActive = toolbarState.third,
                                     onLinkRequest = { showLinkDialog = true },
+                                    onSave = {
+                                        focusManager.clearFocus()
+                                        onFieldChange(field.copy(title = title, content = contentValue.text, isLocked = isLocked))
+                                    },
                                     hazeState = hazeState
                                 )
 
