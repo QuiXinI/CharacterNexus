@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -329,6 +331,7 @@ fun DynamicFieldItem(
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
     
     val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
     val canEdit = !isEditMode && !isLockedGlobal && !field.isLocked
 
     var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
@@ -545,6 +548,7 @@ fun DynamicFieldItem(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .bringIntoViewRequester(bringIntoViewRequester)
+                                        .focusRequester(focusRequester)
                                         .onFocusChanged { isFocused = it.isFocused },
                                     onTextLayout = { textLayoutResult = it },
                                     textStyle = MaterialTheme.typography.bodyLarge.copy(
@@ -604,7 +608,6 @@ fun DynamicFieldItem(
                                                                                                 }
                                                                                         }
                                                                                         if (!linkClicked) {
-                                                                                            isFocused = true
                                                                                         }
                                                                                     }
                                                                                 },
@@ -668,18 +671,38 @@ fun DynamicFieldItem(
                                     )
                                 }
 
-                            IconButton(
-                                onClick = { onFullscreenRequest() },
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .size(32.dp)
+                            Row(
+                                modifier = Modifier.align(Alignment.BottomEnd),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.OpenInFull,
-                                    contentDescription = "Fullscreen",
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                                )
+                                if (canEdit) {
+                                    IconButton(
+                                        onClick = { 
+                                            if (isFocused) focusManager.clearFocus() 
+                                            else focusRequester.requestFocus()
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isFocused) Icons.Default.Check else Icons.Default.Edit,
+                                            contentDescription = "Edit/Save",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                IconButton(
+                                    onClick = { onFullscreenRequest() },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.OpenInFull,
+                                        contentDescription = "Fullscreen",
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                    )
+                                }
                             }
                         }
                     }
@@ -721,7 +744,7 @@ fun DynamicFieldFullscreenDialog(
     
     var isLocked by remember { mutableStateOf(field.isLocked) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var isPreviewMode by remember { mutableStateOf(false) }
+    var isPreviewMode by remember { mutableStateOf(true) }
     var showLinkDialog by remember { mutableStateOf(false) }
 
     if (showLinkDialog) {
@@ -748,6 +771,7 @@ fun DynamicFieldFullscreenDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         val focusManager = LocalFocusManager.current
+        val focusRequester = remember { FocusRequester() }
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
         val bringIntoViewRequester = remember { BringIntoViewRequester() }
@@ -811,7 +835,18 @@ fun DynamicFieldFullscreenDialog(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { isPreviewMode = !isPreviewMode }) {
+                        IconButton(onClick = { 
+                            if (isPreviewMode) {
+                                isPreviewMode = false
+                                // Request focus on next frame
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(100)
+                                    focusRequester.requestFocus()
+                                }
+                            } else {
+                                isPreviewMode = true
+                            }
+                        }) {
                             Icon(
                                 if (isPreviewMode) Icons.Default.Edit else Icons.Default.Visibility,
                                 contentDescription = "Toggle Preview"
@@ -944,6 +979,7 @@ fun DynamicFieldFullscreenDialog(
                                     onLinkRequest = { showLinkDialog = true },
                                     onSave = {
                                         focusManager.clearFocus()
+                                        isPreviewMode = true
                                         onFieldChange(field.copy(title = title, content = contentValue.text, isLocked = isLocked))
                                     },
                                     hazeState = hazeState
@@ -958,6 +994,7 @@ fun DynamicFieldFullscreenDialog(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .bringIntoViewRequester(bringIntoViewRequester)
+                                            .focusRequester(focusRequester)
                                             .onFocusChanged { isFocused = it.isFocused },
                                         onTextLayout = { textLayoutResult = it },
                                         textStyle = MaterialTheme.typography.bodyLarge.copy(
@@ -1008,7 +1045,7 @@ fun DynamicFieldFullscreenDialog(
                                                                                             }
                                                                                     }
                                                                                     if (!linkClicked) {
-                                                                                        isFocused = true
+                                                                                        // Nothing
                                                                                     }
                                                                                 }
                                                                             },
