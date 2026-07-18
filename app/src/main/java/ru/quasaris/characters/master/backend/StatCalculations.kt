@@ -127,6 +127,29 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
             .replace("[$key ", " $mod ")
     }
     val level = stats["level"] ?: "1"
+    processed = processed.replace("[LVL]", " $level ").replace("[УР]", " $level ").replace("[LEVEL]", " $level ")
+
+    val xp = stats["xp"] ?: "0"
+    processed = processed.replace("[XP]", " $xp ").replace("[ОП]", " $xp ")
+
+    val hp = stats["hp"] ?: "0"
+    processed = processed.replace("[HP]", " $hp ").replace("[ХП]", " $hp ")
+
+    val mhp = stats["max_hp"] ?: "0"
+    processed = processed.replace("[MHP]", " $mhp ").replace("[МХП]", " $mhp ")
+
+    val thp = stats["temp_hp"] ?: "0"
+    processed = processed.replace("[THP]", " $thp ").replace("[ВХП]", " $thp ")
+
+    val ac = stats["ac"] ?: "10"
+    processed = processed.replace("[AC]", " $ac ").replace("[КД]", " $ac ")
+
+    val ex = stats["exhaustion"] ?: "0"
+    processed = processed.replace("[EX]", " $ex ").replace("[ИСТ]", " $ex ")
+
+    val cond = stats["conditions"] ?: "0"
+    processed = processed.replace("[COND]", " $cond ").replace("[СОСТ]", " $cond ")
+
     val realPb = getProficiencyBonus(level).toString()
     val pb = stats["proficiencyBonus"] ?: realPb
 
@@ -134,6 +157,18 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
 
     processed = processed.replace("[БМ]", " $safePb ").replace("[PB]", " $safePb ").replace("[PROF]", " $safePb ")
         .replace("[НАСТ БМ]", " $realPb ").replace("[REAL PB]", " $realPb ").replace("[REAL PROF]", " $realPb ")
+
+    // Add Magic Bonuses
+    val magAtk = stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: "0"
+    val magSave = stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: "0"
+    val magMod = stats["[MAG MOD]"] ?: stats["[МАГ МОД]"] ?: "0"
+
+    processed = processed.replace("[MAG ATC BON]", " $magAtk ")
+        .replace("[МАГ АТК БОН]", " $magAtk ")
+        .replace("[MAG SAVE BON]", " $magSave ")
+        .replace("[МАГ СПАС БОН]", " $magSave ")
+        .replace("[MAG MOD]", " $magMod ")
+        .replace("[МАГ МОД]", " $magMod ")
     
     fun processFunctions(input: String): String {
         var current = input

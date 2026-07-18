@@ -8,19 +8,32 @@ sealed class DynamicContentBlock {
         val name: String,
         val current: String,
         val max: String,
-        val shortRest: String, // "all" or number
-        val longRest: String,  // "all" or number
-        val link: String?,
-        val notes: String,
-        val showNotes: Boolean,
-        val originalTag: String
-    ) : DynamicContentBlock()
+        val shortRest: String = "0",
+        val longRest: String = "0",
+        val link: String? = null,
+        val notes: String = "",
+        val showNotes: Boolean = false
+    ) : DynamicContentBlock() {
+        fun toTag(): String {
+            val parts = mutableListOf<String>()
+            parts.add(name)
+            parts.add("cur=$current")
+            parts.add("max=$max")
+            if (shortRest != "0") parts.add("sr=$shortRest")
+            if (longRest != "0") parts.add("lr=$longRest")
+            if (link != null) parts.add("link=$link")
+            if (notes.isNotEmpty()) parts.add("notes=$notes")
+            if (showNotes) parts.add("showNotes=true")
+            
+            return "{Ресурс: ${parts.joinToString(" | ")}}"
+        }
+    }
 }
 
 object DynamicContentParser {
     private val dividerRegex = Regex("^---$", RegexOption.MULTILINE)
     private val spoilerRegex = Regex("::(.*?)::", RegexOption.DOT_MATCHES_ALL)
-    private val resourceRegex = Regex("\\[Ресурс:\\s*([^|]+)\\|\\s*cur=([^|]+)\\|\\s*max=([^|]+)(?:\\|\\s*sr=([^|]+))?(?:\\|\\s*lr=([^|]+))?(?:\\|\\s*link=([^|]+))?(?:\\|\\s*notes=([^|]*))?(?:\\|\\s*showNotes=(true|false))?]", RegexOption.IGNORE_CASE)
+    private val resourceRegex = Regex("\\{(?:Ресурс|Resource):\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
 
     fun parse(text: String): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
@@ -38,20 +51,32 @@ object DynamicContentParser {
             allMatches.add(match.range to DynamicContentBlock.Spoiler(match.groupValues[1]))
         }
 
-        // Find resources
+        // Find resources using flexible parser
         resourceRegex.findAll(text).forEach { match ->
-            val block = DynamicContentBlock.Resource(
-                name = match.groupValues[1].trim(),
-                current = match.groupValues[2].trim(),
-                max = match.groupValues[3].trim(),
-                shortRest = match.groupValues[4].trim().ifEmpty { "0" },
-                longRest = match.groupValues[5].trim().ifEmpty { "0" },
-                link = match.groupValues[6].trim().takeIf { it.isNotEmpty() },
-                notes = match.groupValues[7].trim(),
-                showNotes = match.groupValues[8].toBoolean(),
-                originalTag = match.value
-            )
-            allMatches.add(match.range to block)
+            val content = match.groupValues[1]
+            val parts = content.split("|").map { it.trim() }
+            if (parts.isNotEmpty()) {
+                val name = parts[0]
+                val params = mutableMapOf<String, String>()
+                parts.drop(1).forEach { part ->
+                    val kv = part.split("=", limit = 2)
+                    if (kv.size == 2) {
+                        params[kv[0].trim().lowercase()] = kv[1].trim()
+                    }
+                }
+
+                val block = DynamicContentBlock.Resource(
+                    name = name,
+                    current = params["cur"] ?: "0",
+                    max = params["max"] ?: "0",
+                    shortRest = params["sr"] ?: params["shortrest"] ?: "0",
+                    longRest = params["lr"] ?: params["longrest"] ?: "0",
+                    link = params["link"],
+                    notes = params["notes"] ?: "",
+                    showNotes = params["shownotes"]?.toBoolean() ?: false
+                )
+                allMatches.add(match.range to block)
+            }
         }
 
         // Sort matches by start position
@@ -88,5 +113,16 @@ object DynamicContentParser {
         }
 
         return if (blocks.isEmpty() && text.isNotEmpty()) listOf(DynamicContentBlock.Text(text)) else blocks
+    }
+    
+    fun render(blocks: List<DynamicContentBlock>): String {
+        return blocks.joinToString("") { block ->
+            when (block) {
+                is DynamicContentBlock.Text -> block.content
+                is DynamicContentBlock.Divider -> "---"
+                is DynamicContentBlock.Spoiler -> "::${block.content}::"
+                is DynamicContentBlock.Resource -> block.toTag()
+            }
+        }
     }
 }

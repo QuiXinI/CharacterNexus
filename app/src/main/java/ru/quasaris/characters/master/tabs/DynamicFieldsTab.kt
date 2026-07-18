@@ -32,8 +32,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import ru.quasaris.characters.master.backend.evaluateFormula
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.unit.dp
@@ -54,7 +52,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import kotlinx.coroutines.launch
-import androidx.compose.ui.geometry.Rect
 
 @Composable
 fun HyperlinkDialog(
@@ -231,6 +228,7 @@ fun DynamicFieldsTab(
                     isReorderButtonVisible = isReorderButtonVisible,
                     isLockedGlobal = fullscreenEditingOnly,
                     hazeState = hazeState,
+                    forceBlurEnabled = forceBlurEnabled,
                     settingsViewModel = settingsViewModel,
                     statsMap = statsMap
                 )
@@ -320,6 +318,7 @@ fun DynamicFieldItem(
     isReorderButtonVisible: Boolean = true,
     isLockedGlobal: Boolean = false,
     hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
@@ -624,15 +623,30 @@ fun DynamicFieldItem(
                                                                         SpoilerComponent(content = annotated)
                                                                     }
                                                                     is DynamicContentBlock.Resource -> {
-                                                                        ResourceComponent(
+                                                                        ResourceBlock(
                                                                             resource = block,
                                                                             statsMap = statsMap,
-                                                                            onResourceUpdate = { newTag ->
-                                                                                val newContent = field.content.replace(block.originalTag, newTag)
-                                                                                onFieldChange(field.copy(content = newContent))
+                                                                            onUpdate = { updatedResource ->
+                                                                                val newBlocks = blocks.toMutableList()
+                                                                                val blockIndex = newBlocks.indexOf(block)
+                                                                                if (blockIndex != -1) {
+                                                                                    newBlocks[blockIndex] = updatedResource
+                                                                                    val newContent = DynamicContentParser.render(newBlocks)
+                                                                                    onFieldChange(field.copy(content = newContent))
+                                                                                }
                                                                             },
                                                                             hazeState = hazeState,
-                                                                            settingsViewModel = settingsViewModel
+                                                                            forceBlurEnabled = forceBlurEnabled,
+                                                                            settingsViewModel = settingsViewModel,
+                                                                            onDeleteRequest = {
+                                                                                val newBlocks = blocks.toMutableList()
+                                                                                val blockIndex = newBlocks.indexOf(block)
+                                                                                if (blockIndex != -1) {
+                                                                                    newBlocks.removeAt(blockIndex)
+                                                                                    val newContent = DynamicContentParser.render(newBlocks)
+                                                                                    onFieldChange(field.copy(content = newContent))
+                                                                                }
+                                                                            }
                                                                         )
                                                                     }
                                                                 }
@@ -888,15 +902,30 @@ fun DynamicFieldFullscreenDialog(
                                                 SpoilerComponent(content = annotated)
                                             }
                                             is DynamicContentBlock.Resource -> {
-                                                ResourceComponent(
+                                                ResourceBlock(
                                                     resource = block,
                                                     statsMap = statsMap,
-                                                    onResourceUpdate = { newTag ->
-                                                        val newText = contentValue.text.replace(block.originalTag, newTag)
-                                                        contentValue = contentValue.copy(text = newText)
+                                                    onUpdate = { updatedResource ->
+                                                        val newBlocks = blocks.toMutableList()
+                                                        val blockIndex = newBlocks.indexOf(block)
+                                                        if (blockIndex != -1) {
+                                                            newBlocks[blockIndex] = updatedResource
+                                                            val newContent = DynamicContentParser.render(newBlocks)
+                                                            contentValue = contentValue.copy(text = newContent)
+                                                        }
                                                     },
                                                     hazeState = hazeState,
-                                                    settingsViewModel = settingsViewModel
+                                                    forceBlurEnabled = forceBlurEnabled,
+                                                    settingsViewModel = settingsViewModel,
+                                                    onDeleteRequest = {
+                                                        val newBlocks = blocks.toMutableList()
+                                                        val blockIndex = newBlocks.indexOf(block)
+                                                        if (blockIndex != -1) {
+                                                            newBlocks.removeAt(blockIndex)
+                                                            val newContent = DynamicContentParser.render(newBlocks)
+                                                            contentValue = contentValue.copy(text = newContent)
+                                                        }
+                                                    }
                                                 )
                                             }
                                         }
@@ -994,15 +1023,30 @@ fun DynamicFieldFullscreenDialog(
                                                                     SpoilerComponent(content = annotated)
                                                                 }
                                                                 is DynamicContentBlock.Resource -> {
-                                                                    ResourceComponent(
+                                                                    ResourceBlock(
                                                                         resource = block,
                                                                         statsMap = statsMap,
-                                                                        onResourceUpdate = { newTag ->
-                                                                            val newText = contentValue.text.replace(block.originalTag, newTag)
-                                                                            contentValue = contentValue.copy(text = newText)
+                                                                        onUpdate = { updatedResource ->
+                                                                            val newBlocks = blocks.toMutableList()
+                                                                            val blockIndex = newBlocks.indexOf(block)
+                                                                            if (blockIndex != -1) {
+                                                                                newBlocks[blockIndex] = updatedResource
+                                                                                val newContent = DynamicContentParser.render(newBlocks)
+                                                                                contentValue = contentValue.copy(text = newContent)
+                                                                            }
                                                                         },
                                                                         hazeState = hazeState,
-                                                                        settingsViewModel = settingsViewModel
+                                                                        forceBlurEnabled = forceBlurEnabled,
+                                                                        settingsViewModel = settingsViewModel,
+                                                                        onDeleteRequest = {
+                                                                            val newBlocks = blocks.toMutableList()
+                                                                            val blockIndex = newBlocks.indexOf(block)
+                                                                            if (blockIndex != -1) {
+                                                                                newBlocks.removeAt(blockIndex)
+                                                                                val newContent = DynamicContentParser.render(newBlocks)
+                                                                                contentValue = contentValue.copy(text = newContent)
+                                                                            }
+                                                                        }
                                                                     )
                                                                 }
                                                             }

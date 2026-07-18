@@ -24,19 +24,65 @@ fun parseFormulaParts(
     statMap.forEach { (shortName, attr) ->
         val mod = attributeModifiers[attr] ?: 0
         processed = processed.replace("[$shortName]", " $mod ")
+        
+        // Add support for scores/values
+        val statKey = when(attr) {
+            Attribute.STRENGTH -> "strength"
+            Attribute.DEXTERITY -> "dexterity"
+            Attribute.CONSTITUTION -> "constitution"
+            Attribute.INTELLIGENCE -> "intelligence"
+            Attribute.WISDOM -> "wisdom"
+            Attribute.CHARISMA -> "charisma"
+            else -> null
+        }
+        if (statKey != null) {
+            val score = stats[statKey] ?: "10"
+            processed = processed.replace("[$shortName ЗНАЧ]", score)
+                .replace("[$shortName SCR]", score)
+        }
     }
     
     processed = processed.replace("[БМ]", " $proficiencyBonus ")
         .replace("[PB]", " $proficiencyBonus ")
+        .replace("[PROF]", " $proficiencyBonus ")
+    
+    val level = stats["level"] ?: "1"
+    processed = processed.replace("[LVL]", " $level ")
+        .replace("[УР]", " $level ")
+        .replace("[LEVEL]", " $level ")
+
+    val xp = stats["xp"] ?: "0"
+    processed = processed.replace("[XP]", " $xp ").replace("[ОП]", " $xp ")
+
+    val hp = stats["hp"] ?: "0"
+    processed = processed.replace("[HP]", " $hp ").replace("[ХП]", " $hp ")
+
+    val mhp = stats["max_hp"] ?: "0"
+    processed = processed.replace("[MHP]", " $mhp ").replace("[МХП]", " $mhp ")
+
+    val thp = stats["temp_hp"] ?: "0"
+    processed = processed.replace("[THP]", " $thp ").replace("[ВХП]", " $thp ")
+
+    val ac = stats["ac"] ?: "10"
+    processed = processed.replace("[AC]", " $ac ").replace("[КД]", " $ac ")
+
+    val ex = stats["exhaustion"] ?: "0"
+    processed = processed.replace("[EX]", " $ex ").replace("[ИСТ]", " $ex ")
+
+    val cond = stats["conditions"] ?: "0"
+    processed = processed.replace("[COND]", " $cond ").replace("[СОСТ]", " $cond ")
 
     // Add Magic Bonuses
     val magAtk = stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: "0"
     val magSave = stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: "0"
+    val magMod = stats["[MAG MOD]"] ?: stats["[МАГ МОД]"] ?: "0"
     
     processed = processed.replace("[MAG ATC BON]", " $magAtk ")
         .replace("[МАГ АТК БОН]", " $magAtk ")
         .replace("[MAG SAVE BON]", " $magSave ")
         .replace("[МАГ СПАС БОН]", " $magSave ")
+        .replace("[MAG MOD]", " $magMod ")
+        .replace("[МАГ МОД]", " $magMod ")
     
     var flat = 0
     val dice = mutableMapOf<Int, Int>() // Sides -> Count

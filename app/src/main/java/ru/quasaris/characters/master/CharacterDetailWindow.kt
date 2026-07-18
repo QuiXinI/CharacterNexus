@@ -244,12 +244,19 @@ fun CharacterDetailWindow(
         return
     }
 
-    val statsMap = remember(statsState, level, proficiencyBonus, spellSettings) { 
+    val statsMap = remember(statsState, level, proficiencyBonus, spellSettings, currentHp, maxHp, tempHp, exhaustion, selectedConditions, activeArmorClassId, armorClassEntries, isShieldActive, activeShieldId, shieldEntries) { 
         statsState.toStatsMap(level, proficiencyBonus).toMutableMap().apply {
             put("[MAG ATC BON]", spellSettings.spellAttackBonus.ifBlank { "0" })
             put("[МАГ АТК БОН]", spellSettings.spellAttackBonus.ifBlank { "0" })
             put("[MAG SAVE BON]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
             put("[МАГ СПАС БОН]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
+
+            put("hp", currentHp)
+            put("max_hp", maxHp)
+            put("temp_hp", tempHp)
+            put("xp", experience)
+            put("exhaustion", exhaustion.toString())
+            put("conditions", selectedConditions.size.toString())
 
             // Add spellcasting ability modifier
             if (spellSettings.spellcastingAbility != Attribute.NONE) {
@@ -269,6 +276,13 @@ fun CharacterDetailWindow(
                 put("[MAG MOD]", "0")
                 put("[МАГ МОД]", "0")
             }
+
+            // AC depends on statsMap, but for the [AC] tag we need a circular-safe way
+            // So we calculate AC here and put it in
+            val ac = ru.quasaris.characters.master.MainWindow.CombatCalculations.calculateAC(
+                activeArmorClassId, armorClassEntries, this, isShieldActive, activeShieldId, shieldEntries
+            )
+            put("ac", ac)
         }
     }
 

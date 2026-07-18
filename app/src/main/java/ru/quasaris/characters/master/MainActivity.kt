@@ -9,6 +9,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Functions
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.mutableStateListOf
@@ -226,6 +228,21 @@ class MainActivity : ComponentActivity() {
                                             icon = { Icon(Icons.Default.Settings, null) },
                                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                                         )
+
+                                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 28.dp))
+
+                                        NavigationDrawerItem(
+                                            label = { Text("Справочник формул") },
+                                            selected = currentRoute == "formula_info",
+                                            onClick = {
+                                                scope.launch { drawerState.close() }
+                                                if (currentRoute != "formula_info") {
+                                                    navController.navigate("formula_info")
+                                                }
+                                            },
+                                            icon = { Icon(Icons.Default.Functions, null) },
+                                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                        )
                                     }
                                 }
                             ) {
@@ -281,6 +298,12 @@ class MainActivity : ComponentActivity() {
                                                 onOpenDrawer = { scope.launch { drawerState.open() } },
                                                 onThemeModeChange = { themeMode = it },
                                                 settingsViewModel = settingsViewModel
+                                            )
+                                        }
+
+                                        composable("formula_info") {
+                                            FormulaInfoWindow(
+                                                onNavigateBack = { navController.popBackStack() }
                                             )
                                         }
 
