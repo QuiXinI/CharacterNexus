@@ -58,6 +58,14 @@ enum class CasterType(val displayName: String) {
     THIRD("Особый заклинатель")
 }
 
+enum class SlotAlignment {
+    LEFT, CENTER, RIGHT
+}
+
+enum class SlotFillDirection {
+    LTR, CENTER, RTL
+}
+
 enum class MagicAttackType {
     ATTACK,
     SAVE

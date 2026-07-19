@@ -8,11 +8,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import ru.quasaris.characters.master.SlotAlignment
+import ru.quasaris.characters.master.SlotFillDirection
+import kotlin.math.abs
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -21,7 +25,9 @@ fun SpellSlotTracker(
     usedSlots: Int,
     onUsedSlotsChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    isShortRest: Boolean = false
+    isShortRest: Boolean = false,
+    alignment: SlotAlignment = SlotAlignment.RIGHT,
+    fillDirection: SlotFillDirection = SlotFillDirection.LTR
 ) {
     if (maxSlots <= 0) return
 
@@ -31,13 +37,35 @@ fun SpellSlotTracker(
 
     FlowRow(
         modifier = modifier,
-        horizontalArrangement = if (isShortRest) Arrangement.End else Arrangement.Start,
+        horizontalArrangement = when (alignment) {
+            SlotAlignment.LEFT -> Arrangement.Start
+            SlotAlignment.CENTER -> Arrangement.Center
+            SlotAlignment.RIGHT -> Arrangement.End
+        },
         verticalArrangement = Arrangement.spacedBy(4.dp),
         maxItemsInEachRow = Int.MAX_VALUE
     ) {
-        val range = if (isShortRest) (maxSlots - 1 downTo 0) else (0 until maxSlots)
-        for (index in range) {
-            val isFilled = index < usedSlots
+        val centerIndex = (maxSlots - 1) / 2f
+        val fillOrder = remember(maxSlots, fillDirection) {
+            when (fillDirection) {
+                SlotFillDirection.LTR -> (0 until maxSlots).toList()
+                SlotFillDirection.RTL -> (maxSlots - 1 downTo 0).toList()
+                SlotFillDirection.CENTER -> {
+                    (0 until maxSlots).sortedBy { abs(it - centerIndex) }
+                }
+            }
+        }
+
+        for (i in 0 until maxSlots) {
+            val isFilled = when (fillDirection) {
+                SlotFillDirection.LTR -> i < usedSlots
+                SlotFillDirection.RTL -> i >= maxSlots - usedSlots
+                SlotFillDirection.CENTER -> {
+                    val visualPositionsToFill = fillOrder.take(usedSlots)
+                    i in visualPositionsToFill
+                }
+            }
+            
             val shape = if (isShortRest) CircleShape else RoundedCornerShape(4.dp)
             
             Box(
@@ -51,7 +79,8 @@ fun SpellSlotTracker(
                     )
                     .clickable {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onUsedSlotsChange(if (isFilled) usedSlots - 1 else usedSlots + 1)
+                        val newUsed = if (isFilled) usedSlots - 1 else usedSlots + 1
+                        onUsedSlotsChange(newUsed)
                     }
             )
         }

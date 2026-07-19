@@ -1,6 +1,7 @@
 package ru.quasaris.characters.master
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,6 +31,9 @@ import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characters.master.backend.AppThemeMode
 import ru.quasaris.characters.master.backend.SettingsManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import kotlin.math.roundToInt
 
 private const val SHOW_DEBUG_SETTINGS = true
@@ -47,6 +52,34 @@ fun SettingsWindow(
 
     val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
     val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
+
+    var showResetDialog by remember { mutableStateOf(false) }
+
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("Сброс настроек") },
+            text = { Text("Вы уверены, что хотите сбросить все настройки к заводским значениям? Это действие нельзя отменить.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        settingsViewModel.resetToDefaults()
+                        themeMode = AppThemeMode.M3
+                        onThemeModeChange(AppThemeMode.M3)
+                        showResetDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Сбросить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -164,6 +197,10 @@ fun SettingsWindow(
             
             TopMarginSettingsSection(settingsViewModel = settingsViewModel)
 
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            SlotAlignmentSettingsSection(settingsViewModel = settingsViewModel)
+
             if (SHOW_DEBUG_SETTINGS) {
                 HorizontalDivider(color = colorScheme.outlineVariant)
 
@@ -205,6 +242,24 @@ fun SettingsWindow(
                 fontSize = 14.sp,
                 color = colorScheme.onSurfaceVariant
             )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            Button(
+                onClick = { showResetDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            ) {
+                Text(
+                    text = "Сбросить настройки к заводским",
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -590,3 +645,138 @@ fun ScaleSettingsSection(
         )
     }
 }
+
+@Composable
+fun SlotAlignmentSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    var isExpanded by remember { mutableStateOf(false) }
+
+    val longRestAlignment by settingsViewModel.longRestAlignment.collectAsState()
+    val longRestFillDirection by settingsViewModel.longRestFillDirection.collectAsState()
+    val shortRestAlignment by settingsViewModel.shortRestAlignment.collectAsState()
+    val shortRestFillDirection by settingsViewModel.shortRestFillDirection.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Настройки выравнивания ячеек",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary
+            )
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = colorScheme.primary
+            )
+        }
+
+        AnimatedVisibility(visible = isExpanded) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Long Rest Section
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ячейки продолжительного отдыха", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    
+                    Text("Выравнивание", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = longRestAlignment == SlotAlignment.LEFT,
+                            onClick = { settingsViewModel.updateLongRestAlignment(SlotAlignment.LEFT) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                        ) { Text("Слева") }
+                        SegmentedButton(
+                            selected = longRestAlignment == SlotAlignment.CENTER,
+                            onClick = { settingsViewModel.updateLongRestAlignment(SlotAlignment.CENTER) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        ) { Text("Центр") }
+                        SegmentedButton(
+                            selected = longRestAlignment == SlotAlignment.RIGHT,
+                            onClick = { settingsViewModel.updateLongRestAlignment(SlotAlignment.RIGHT) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                        ) { Text("Справа") }
+                    }
+
+                    Text("Заполнение", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = longRestFillDirection == SlotFillDirection.LTR,
+                            onClick = { settingsViewModel.updateLongRestFillDirection(SlotFillDirection.LTR) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                        ) { Text("Слева") }
+                        SegmentedButton(
+                            selected = longRestFillDirection == SlotFillDirection.CENTER,
+                            onClick = { settingsViewModel.updateLongRestFillDirection(SlotFillDirection.CENTER) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        ) { Text("Центр") }
+                        SegmentedButton(
+                            selected = longRestFillDirection == SlotFillDirection.RTL,
+                            onClick = { settingsViewModel.updateLongRestFillDirection(SlotFillDirection.RTL) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                        ) { Text("Справа") }
+                    }
+                }
+
+                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                // Short Rest Section
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ячейки короткого отдыха / Договора", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    
+                    Text("Выравнивание", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = shortRestAlignment == SlotAlignment.LEFT,
+                            onClick = { settingsViewModel.updateShortRestAlignment(SlotAlignment.LEFT) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                        ) { Text("Слева") }
+                        SegmentedButton(
+                            selected = shortRestAlignment == SlotAlignment.CENTER,
+                            onClick = { settingsViewModel.updateShortRestAlignment(SlotAlignment.CENTER) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        ) { Text("Центр") }
+                        SegmentedButton(
+                            selected = shortRestAlignment == SlotAlignment.RIGHT,
+                            onClick = { settingsViewModel.updateShortRestAlignment(SlotAlignment.RIGHT) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                        ) { Text("Справа") }
+                    }
+
+                    Text("Заполнение", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = shortRestFillDirection == SlotFillDirection.LTR,
+                            onClick = { settingsViewModel.updateShortRestFillDirection(SlotFillDirection.LTR) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                        ) { Text("Слева") }
+                        SegmentedButton(
+                            selected = shortRestFillDirection == SlotFillDirection.CENTER,
+                            onClick = { settingsViewModel.updateShortRestFillDirection(SlotFillDirection.CENTER) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        ) { Text("Центр") }
+                        SegmentedButton(
+                            selected = shortRestFillDirection == SlotFillDirection.RTL,
+                            onClick = { settingsViewModel.updateShortRestFillDirection(SlotFillDirection.RTL) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                        ) { Text("Справа") }
+                    }
+                }
+            }
+        }
+    }
+}
+

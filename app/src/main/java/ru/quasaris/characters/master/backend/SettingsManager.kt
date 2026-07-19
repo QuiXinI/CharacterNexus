@@ -62,4 +62,25 @@ class SettingsManager(context: Context) {
     var customTopMargin: Int
         get() = prefs.getInt("custom_top_margin", 96)
         set(value) = prefs.edit { putInt("custom_top_margin", value) }
+
+    // Spell Slot Alignment Settings
+    var longRestAlignment: String
+        get() = prefs.getString("long_rest_alignment", "RIGHT") ?: "RIGHT"
+        set(value) = prefs.edit { putString("long_rest_alignment", value) }
+
+    var longRestFillDirection: String
+        get() = prefs.getString("long_rest_fill_direction", "LTR") ?: "LTR"
+        set(value) = prefs.edit { putString("long_rest_fill_direction", value) }
+
+    var shortRestAlignment: String
+        get() = prefs.getString("short_rest_alignment", "RIGHT") ?: "RIGHT"
+        set(value) = prefs.edit { putString("short_rest_alignment", value) }
+
+    var shortRestFillDirection: String
+        get() = prefs.getString("short_rest_fill_direction", "LTR") ?: "LTR"
+        set(value) = prefs.edit { putString("short_rest_fill_direction", value) }
+
+    fun resetToDefaults() {
+        prefs.edit { clear() }
+    }
 }

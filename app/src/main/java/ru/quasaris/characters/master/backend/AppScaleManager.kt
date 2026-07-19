@@ -26,4 +26,8 @@ class AppScaleManager(private val context: Context) {
             preferences[SCALE_FACTOR_KEY] = scale
         }
     }
+
+    suspend fun resetToDefaults() {
+        context.dataStore.edit { it.clear() }
+    }
 }
