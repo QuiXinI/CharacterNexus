@@ -82,10 +82,10 @@ fun StatsTab(
     onStatsStateChange: (StatsState) -> Unit,
     onRoll: (RollResult) -> Unit = {},
     hazeState: HazeState? = null,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    isAdvancedMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    var isAdvancedMode by remember { mutableStateOf(false) }
     
     var showBonusDialogForAttribute by remember { mutableStateOf<Attribute?>(null) }
     var showBonusDialogForSkill by remember { mutableStateOf<String?>(null) }
@@ -101,28 +101,6 @@ fun StatsTab(
             .background(colorScheme.surface)
             .verticalScroll(rememberScrollState())
     ) {
-        Spacer(Modifier.height(12.dp))
-
-        // Advanced Mode Toggle
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(top = 12.dp, bottom = 20.dp)
-                .width(220.dp)
-                .height(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(colorScheme.secondaryContainer)
-                .clickable { isAdvancedMode = !isAdvancedMode },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                if (isAdvancedMode) "Обычный режим" else "Расширенный режим",
-                fontSize = 16.sp,
-                color = colorScheme.onSecondaryContainer,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
         // Stats Section
         Column(modifier = Modifier.padding(horizontal = 3.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AttributesSection(

@@ -38,6 +38,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import ru.quasaris.characters.master.HeaderCode.HealthDialog
+import ru.quasaris.characters.master.HeaderCode.rememberAllConditions
+import ru.quasaris.characters.master.HeaderCode.toggleCondition
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,51 +212,105 @@ fun CreateWindow(
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
-            CharacterIdentitySection(
-                name = name, onNameChange = { name = it },
-                level = level, experience = experience, nextLevelExp = nextLevelExp,
-                selectedImageUri = selectedImageUri, characterImageData = characterImageData,
-                showAvatarMenu = showAvatarMenu, onAvatarClick = { showAvatarMenu = true },
-                onDismissAvatarMenu = { showAvatarMenu = false },
-                onLevelClick = {
-                    isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                    isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                },
-                onNavigateBack = onNavigateBack,
-                onOpenDrawer = onOpenDrawer,
-                activeACValue = activeACValue,
-                onACClick = { isShieldActive = !isShieldActive },
-                onACLongClick = {
-                    isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
-                    isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                },
-                isShieldActive = isShieldActive,
-                activeInitValue = activeInitValue,
-                onInitClick = {
-                    isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
-                    isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                },
-                currentHp = currentHp, maxHp = maxHp, tempHp = tempHp,
-                healthColor = healthColor, healthIcon = healthIcon,
-                onHealthClick = {
-                    isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                    isSpeedPanelVisible = false; isLevelPanelVisible = false; isConditionsPanelVisible = false
-                },
-                conditionsCount = exhaustion.toString(),
-                selectedConditions = selectedConditions,
-                onConditionsClick = {
-                    isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                    isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
-                },
-                exhaustion = exhaustion,
-                activeSpeedValue = activeSpeedValue,
-                onSpeedClick = {
-                    isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                    isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                },
-                imagePicker = imagePicker,
-                onDownloadClick = { filename -> fileCreator.launch(filename) }
-            )
+            Column(modifier = Modifier.background(colorScheme.surface)) {
+                CharacterIdentitySection(
+                    name = name, onNameChange = { name = it },
+                    level = level, experience = experience, nextLevelExp = nextLevelExp,
+                    selectedImageUri = selectedImageUri, characterImageData = characterImageData,
+                    showAvatarMenu = showAvatarMenu, onAvatarClick = { showAvatarMenu = true },
+                    onDismissAvatarMenu = { showAvatarMenu = false },
+                    onLevelClick = {
+                        isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    onNavigateBack = onNavigateBack,
+                    onOpenDrawer = onOpenDrawer,
+                    activeACValue = activeACValue,
+                    onACClick = { isShieldActive = !isShieldActive },
+                    onACLongClick = {
+                        isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    isShieldActive = isShieldActive,
+                    activeInitValue = activeInitValue,
+                    onInitClick = {
+                        isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    currentHp = currentHp, maxHp = maxHp, tempHp = tempHp,
+                    healthColor = healthColor, healthIcon = healthIcon,
+                    onHealthClick = {
+                        isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    conditionsCount = exhaustion.toString(),
+                    selectedConditions = selectedConditions,
+                    onConditionsClick = {
+                        isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
+                    },
+                    exhaustion = exhaustion,
+                    activeSpeedValue = activeSpeedValue,
+                    onSpeedClick = {
+                        isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                    },
+                    imagePicker = imagePicker,
+                    onDownloadClick = { filename -> fileCreator.launch(filename) }
+                )
+
+                // Tab Selector Row with Advanced Mode Toggle
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        IconButton(
+                            onClick = { isAdvancedMode = !isAdvancedMode },
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isAdvancedMode) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
+                                contentDescription = "Toggle Advanced Mode",
+                                tint = colorScheme.primary
+                            )
+                        }
+                    }
+
+                    Surface(
+                        color = colorScheme.primary.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "ПЕРСОНАЖ",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = colorScheme.primary,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = null,
+                                tint = colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Box(modifier = Modifier.weight(1f))
+                }
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding).background(colorScheme.background).clickable(remember { MutableInteractionSource() }, null) { 
@@ -279,7 +340,9 @@ fun CreateWindow(
                     onInitDeleteReq = { initDeleteConfirmId = it }, onAddInitiative = { initiativeEntries = initiativeEntries + InitiativeEntry() },
                     isConditionsPanelVisible = isConditionsPanelVisible, allConditions = allConditions,
                     selectedConditions = selectedConditions,
-                    onToggleCondition = { n -> selectedConditions = toggleCondition(selectedConditions, n) },
+                    onToggleCondition = { n -> selectedConditions =
+                        toggleCondition(selectedConditions, n)
+                    },
                     exhaustion = exhaustion,
                     onExhaustionChange = { exhaustion = it },
                     isShieldActive = isShieldActive,
@@ -296,25 +359,6 @@ fun CreateWindow(
                     onSpeedEntries = { speedEntries = it }, onActiveSpeed = { activeSpeedId = it },
                     onSpeedDeleteReq = { speedDeleteConfirmId = it }, onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
                 )
-
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 12.dp, bottom = 20.dp)
-                        .width(220.dp)
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(colorScheme.secondaryContainer)
-                        .clickable { isAdvancedMode = !isAdvancedMode },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        if (isAdvancedMode) "Обычный режим" else "Расширенный режим",
-                        fontSize = 16.sp,
-                        color = colorScheme.onSecondaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
                 
                 Box(modifier = Modifier.fillMaxWidth()) {
                     AttributesSection(
@@ -340,8 +384,6 @@ fun CreateWindow(
                         }
                     )
                 }
-                
-                Spacer(Modifier.height(24.dp))
             }
         }
 

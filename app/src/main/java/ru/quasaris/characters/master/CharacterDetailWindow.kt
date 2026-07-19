@@ -176,6 +176,7 @@ fun CharacterDetailWindow(
         } else character?.spells!!
     ) }
     var spellSettings by remember { mutableStateOf(character?.spellSettings ?: SpellSettings()) }
+    var wallet by remember { mutableStateOf(character?.wallet ?: Wallet()) }
 
     var characterImageData by remember { mutableStateOf(character?.imageData) }
     var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
@@ -210,7 +211,8 @@ fun CharacterDetailWindow(
             skillsAndTraits = skillsAndTraits,
             inventory = inventory,
             spells = spells,
-            spellSettings = spellSettings
+            spellSettings = spellSettings,
+            wallet = wallet
         )
         scope.launch {
             ArchiveManager.exportCharacter(context, currentCharacterState, uri)
@@ -311,6 +313,7 @@ fun CharacterDetailWindow(
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     
     var isEditMode by remember { mutableStateOf(false) }
+    var isAdvancedMode by remember { mutableStateOf(false) }
     
     // Clear focus on dispose to prevent context menu hierarchy crashes
     DisposableEffect(Unit) {
@@ -370,7 +373,8 @@ fun CharacterDetailWindow(
             skillsAndTraits = skillsAndTraits,
             inventory = inventory,
             spells = spells,
-            spellSettings = spellSettings
+            spellSettings = spellSettings,
+            wallet = wallet
         ))
     }
 
@@ -380,7 +384,7 @@ fun CharacterDetailWindow(
         attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
         shieldEntries, activeShieldId, themeSeedColorArgb, notes,
-        skillsAndTraits, inventory, spells, spellSettings
+        skillsAndTraits, inventory, spells, spellSettings, wallet
     ) {
         saveCurrentCharacter()
     }
@@ -470,6 +474,17 @@ fun CharacterDetailWindow(
                                 Icon(
                                     Icons.Default.AutoFixHigh,
                                     contentDescription = "Spell Settings",
+                                    tint = colorScheme.primary
+                                )
+                            }
+                        } else if (currentTab == CharacterTab.STATS) {
+                            IconButton(
+                                onClick = { isAdvancedMode = !isAdvancedMode },
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isAdvancedMode) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
+                                    contentDescription = "Toggle Advanced Mode",
                                     tint = colorScheme.primary
                                 )
                             }
@@ -589,7 +604,8 @@ fun CharacterDetailWindow(
                             onStatsStateChange = { statsState = it },
                             onRoll = onRoll,
                             hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled
+                            forceBlurEnabled = forceBlurEnabled,
+                            isAdvancedMode = isAdvancedMode
                         )
                     }
                     CharacterTab.ATTACKS -> {
@@ -626,6 +642,8 @@ fun CharacterDetailWindow(
                         InventoryTab(
                             inventory = inventory,
                             onInventoryChange = { inventory = it },
+                            wallet = wallet,
+                            onWalletChange = { wallet = it },
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             isEditMode = isEditMode,

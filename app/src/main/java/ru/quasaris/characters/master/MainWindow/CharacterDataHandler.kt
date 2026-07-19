@@ -7,6 +7,7 @@ import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
+import ru.quasaris.characters.master.Wallet
 
 import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.GsonFactory
@@ -56,7 +57,8 @@ object CharacterDataHandler {
         skillsAndTraits: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
         inventory: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
         spells: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
-        spellSettings: ru.quasaris.characters.master.SpellSettings? = null
+        spellSettings: ru.quasaris.characters.master.SpellSettings? = null,
+        wallet: Wallet = Wallet()
     ): Character {
         val baseChar = Character(
             id = id,
@@ -96,7 +98,8 @@ object CharacterDataHandler {
             skilledExpertise = skilledExpertise,
             themeSeedColorArgb = themeSeedColorArgb,
             attacks = attacks,
-            notes = notes
+            notes = notes,
+            wallet = wallet
         )
         return baseChar.copy(
             skillsAndTraits = skillsAndTraits ?: baseChar.skillsAndTraits,

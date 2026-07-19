@@ -1,5 +1,6 @@
 package ru.quasaris.characters.master.HeaderCode
 
+import android.content.Context
 import android.net.Uri
 import android.util.Base64
 import android.graphics.BitmapFactory
@@ -51,6 +52,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import ru.quasaris.characters.master.backend.Condition
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.getPreviousLevelThreshold
+import ru.quasaris.characters.master.backend.parseConditions
 
 @Composable
 fun CharacterHeader(
@@ -358,3 +360,25 @@ fun ExpandingPanelsSection(
     }
 }
 
+@Composable
+fun rememberAllConditions(context: Context): List<Condition> {
+    var allConditions by remember { mutableStateOf(emptyList<Condition>()) }
+    LaunchedEffect(Unit) {
+        try {
+            context.assets.open("Conditions.md").bufferedReader().use {
+                allConditions = parseConditions(it.readText())
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    return allConditions
+}
+
+fun toggleCondition(selectedConditions: List<String>, conditionName: String): List<String> {
+    return if (selectedConditions.contains(conditionName)) {
+        selectedConditions - conditionName
+    } else {
+        selectedConditions + conditionName
+    }
+}

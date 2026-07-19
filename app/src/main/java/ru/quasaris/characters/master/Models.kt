@@ -152,7 +152,17 @@ data class SpecialSlotSettings(
 )
 
 
+data class Wallet(
+    val platinum: Double = 0.0,
+    val gold: Double = 0.0,
+    val electrum: Double = 0.0,
+    val silver: Double = 0.0,
+    val copper: Double = 0.0,
+    val visibleCurrencies: List<String> = listOf("platinum", "gold", "silver", "copper")
+)
+
 data class Character(
+
     val id: Int,
     val name: String,
     val characterClass: String,
@@ -206,8 +216,10 @@ data class Character(
     val spells: List<DynamicNoteState> = listOf(DynamicNoteState(title = "Заговоры")) + (1..9).map {
         DynamicNoteState(title = "$it уровень")
     },
-    val spellSettings: SpellSettings = SpellSettings()
+    val spellSettings: SpellSettings = SpellSettings(),
+    val wallet: Wallet = Wallet()
 )
+
 
 data class ShieldEntry(
     override val id: String = UUID.randomUUID().toString(),
