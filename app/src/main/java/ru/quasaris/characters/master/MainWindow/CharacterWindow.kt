@@ -360,30 +360,30 @@ fun CreateWindow(
                     onSpeedDeleteReq = { speedDeleteConfirmId = it }, onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
                 )
                 
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    AttributesSection(
-                        strength = strength, onStrengthChange = { strength = it }, strProf = strProf, onStrProfChange = { strProf = it },
-                        intelligence = intelligence, onIntelligenceChange = { intelligence = it }, intProf = intProf, onIntProfChange = { intProf = it },
-                        dexterity = dexterity, onDexterityChange = { dexterity = it }, dexProf = dexProf, onDexProfChange = { dexProf = it },
-                        wisdom = wisdom, onWisdomChange = { wisdom = it }, wisProf = wisProf, onWisProfChange = { wisProf = it },
-                        constitution = constitution, onConstitutionChange = { constitution = it }, conProf = conProf, onConProfChange = { conProf = it },
-                        charisma = charisma, onCharismaChange = { charisma = it }, chaProf = chaProf, onChaProfChange = { chaProf = it },
-                        evalPB = evalPB,
-                        isAdvancedMode = isAdvancedMode,
-                        skilledProficiencies = skilledProficiencies,
-                        skilledExpertise = skilledExpertise,
-                        onSkillClick = { skill ->
-                            if (skilledExpertise.contains(skill)) {
-                                skilledExpertise = skilledExpertise - skill
-                            } else if (skilledProficiencies.contains(skill)) {
-                                skilledExpertise = skilledExpertise + skill
-                                skilledProficiencies = skilledProficiencies - skill
-                            } else {
-                                skilledProficiencies = skilledProficiencies + skill
-                            }
+                AttributesSection(
+                    strength = strength, onStrengthChange = { strength = it }, strProf = strProf, onStrProfChange = { strProf = it },
+                    intelligence = intelligence, onIntelligenceChange = { intelligence = it }, intProf = intProf, onIntProfChange = { intProf = it },
+                    dexterity = dexterity, onDexterityChange = { dexterity = it }, dexProf = dexProf, onDexProfChange = { dexProf = it },
+                    wisdom = wisdom, onWisdomChange = { wisdom = it }, wisProf = wisProf, onWisProfChange = { wisProf = it },
+                    constitution = constitution, onConstitutionChange = { constitution = it }, conProf = conProf, onConProfChange = { conProf = it },
+                    charisma = charisma, onCharismaChange = { charisma = it }, chaProf = chaProf, onChaProfChange = { chaProf = it },
+                    evalPB = evalPB,
+                    isAdvancedMode = isAdvancedMode,
+                    skilledProficiencies = skilledProficiencies,
+                    skilledExpertise = skilledExpertise,
+                    statsMap = statsMap,
+                    exhaustion = exhaustion,
+                    onSkillClick = { skill ->
+                        if (skilledExpertise.contains(skill)) {
+                            skilledExpertise = skilledExpertise - skill
+                        } else if (skilledProficiencies.contains(skill)) {
+                            skilledExpertise = skilledExpertise + skill
+                            skilledProficiencies = skilledProficiencies - skill
+                        } else {
+                            skilledProficiencies = skilledProficiencies + skill
                         }
-                    )
-                }
+                    }
+                )
             }
         }
 

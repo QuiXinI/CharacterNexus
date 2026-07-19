@@ -136,17 +136,17 @@ data class SpellSettings(
     val thirdCasterLevel: Int = 0,
     val isPactEnabled: Boolean = false,
     val specialSlots: List<SpecialSlotSettings> = emptyList(),
-    val overrideSlots: Map<Int, Int> = emptyMap(),
-    val pactSlotLevel: Int = 1,
+    val overrideSlots: Map<Float, Int> = emptyMap(),
+    val pactSlotLevel: Float = 1f,
     val pactSlotsCount: Int = 0,
-    val usedSlots: Map<Int, Int> = emptyMap(), // Key 1-9 are levels (Long Rest)
-    val usedSlotsShortRest: Map<Int, Int> = emptyMap() // Key 0 is Pact (if not merged), 1-9 are levels
+    val usedSlots: Map<Float, Int> = emptyMap(), // Key 1-9 are levels (Long Rest)
+    val usedSlotsShortRest: Map<Float, Int> = emptyMap() // Key 0 is Pact (if not merged), 1-9 are levels
 )
 
 data class SpecialSlotSettings(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
-    val level: Int = 1,
+    val level: Float = 1f,
     val count: Int = 0,
     val restoreOnShortRest: Boolean = false
 )

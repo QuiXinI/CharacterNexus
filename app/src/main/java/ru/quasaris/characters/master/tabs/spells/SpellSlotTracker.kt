@@ -29,16 +29,20 @@ fun SpellSlotTracker(
     val colorScheme = MaterialTheme.colorScheme
     val color = if (isShortRest) colorScheme.secondary else colorScheme.primary
 
-    Row(
+    FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = if (isShortRest) Arrangement.End else Arrangement.Start,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        maxItemsInEachRow = Int.MAX_VALUE
     ) {
-        repeat(maxSlots) { index ->
+        val range = if (isShortRest) (maxSlots - 1 downTo 0) else (0 until maxSlots)
+        for (index in range) {
             val isFilled = index < usedSlots
             val shape = if (isShortRest) CircleShape else RoundedCornerShape(4.dp)
             
             Box(
                 modifier = Modifier
+                    .padding(horizontal = 2.dp)
                     .size(24.dp)
                     .clip(shape)
                     .then(

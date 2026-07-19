@@ -525,16 +525,58 @@ fun CharacterDetailWindow(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.CenterEnd
                     ) {
-                        if (hasContentToEdit) {
-                            IconButton(
-                                onClick = { isEditMode = !isEditMode },
-                                modifier = Modifier.padding(end = 8.dp)
-                            ) {
-                                Icon(
-                                    if (isEditMode) Icons.Default.EditOff else Icons.Default.Edit,
-                                    contentDescription = "Toggle Edit Mode",
-                                    tint = if (isEditMode) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val collapsibleTabs = listOf(
+                                CharacterTab.SKILLS_FEATS,
+                                CharacterTab.INVENTORY,
+                                CharacterTab.SPELLS,
+                                CharacterTab.NOTES
+                            )
+                            if (currentTab in collapsibleTabs) {
+                                val currentList = when (currentTab) {
+                                    CharacterTab.SKILLS_FEATS -> skillsAndTraits
+                                    CharacterTab.INVENTORY -> inventory
+                                    CharacterTab.SPELLS -> spells
+                                    CharacterTab.NOTES -> notes
+                                    else -> emptyList()
+                                }
+                                val anyCollapsed = currentList.any { !it.isExpanded }
+                                
+                                IconButton(
+                                    onClick = {
+                                        val newState = if (anyCollapsed) {
+                                            currentList.map { it.copy(isExpanded = true) }
+                                        } else {
+                                            currentList.map { it.copy(isExpanded = false) }
+                                        }
+                                        when (currentTab) {
+                                            CharacterTab.SKILLS_FEATS -> skillsAndTraits = newState
+                                            CharacterTab.INVENTORY -> inventory = newState
+                                            CharacterTab.SPELLS -> spells = newState
+                                            CharacterTab.NOTES -> notes = newState
+                                            else -> {}
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (anyCollapsed) Icons.Default.UnfoldMore else Icons.Default.UnfoldLess,
+                                        contentDescription = "Toggle All Expansion",
+                                        tint = colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            if (hasContentToEdit) {
+                                IconButton(
+                                    onClick = { isEditMode = !isEditMode },
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Icon(
+                                        if (isEditMode) Icons.Default.EditOff else Icons.Default.Edit,
+                                        contentDescription = "Toggle Edit Mode",
+                                        tint = if (isEditMode) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
                             }
                         }
                     }

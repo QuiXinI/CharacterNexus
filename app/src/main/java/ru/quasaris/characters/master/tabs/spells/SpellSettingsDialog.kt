@@ -46,6 +46,11 @@ import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.backend.getProficiencyBonus
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
+import kotlin.math.floor
+
+fun formatFloat(value: Float): String {
+    return if (value == floor(value)) value.toInt().toString() else value.toString()
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -117,7 +122,7 @@ fun SpellSettingsDialog(
     
     val specialSlots = remember { mutableStateListOf<SpecialSlotSettings>().apply { addAll(settings.specialSlots) } }
     var overrideSlots by remember { mutableStateOf(settings.overrideSlots) }
-    var pactSlotLevel by remember { mutableIntStateOf(settings.pactSlotLevel) }
+    var pactSlotLevel by remember { mutableStateOf(settings.pactSlotLevel) }
     var pactSlotsCount by remember { mutableIntStateOf(settings.pactSlotsCount) }
     var isPactEnabled by remember { mutableStateOf(settings.isPactEnabled) }
     
@@ -356,8 +361,9 @@ fun SpellSettingsDialog(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 for (col in 1..3) {
                                     val level = row * 3 + col
+                                    val levelFloat = level.toFloat()
+                                    val manualValue = overrideSlots[levelFloat]
                                     val autoValue = autoSlots[level - 1]
-                                    val manualValue = overrideSlots[level]
 
                                     val displayValue = when {
                                         manualValue != null -> if (manualValue == 0) "" else manualValue.toString()
@@ -368,11 +374,11 @@ fun SpellSettingsDialog(
                                         value = displayValue,
                                         onValueChange = { newValue ->
                                             if (newValue.isBlank()) {
-                                                overrideSlots = overrideSlots.toMutableMap().apply { put(level, 0) }
+                                                overrideSlots = overrideSlots.toMutableMap().apply { put(levelFloat, 0) }
                                             } else {
                                                 val count = newValue.toIntOrNull()
                                                 if (count != null) {
-                                                    overrideSlots = overrideSlots.toMutableMap().apply { put(level, count) }
+                                                    overrideSlots = overrideSlots.toMutableMap().apply { put(levelFloat, count) }
                                                 }
                                             }
                                         },
@@ -380,10 +386,10 @@ fun SpellSettingsDialog(
                                         modifier = Modifier.weight(1f),
                                         shape = RoundedCornerShape(8.dp),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        trailingIcon = if (manualValue != null) {
+                                        trailingIcon = if (overrideSlots.containsKey(levelFloat)) {
                                             {
                                                 IconButton(onClick = {
-                                                    overrideSlots = overrideSlots.toMutableMap().apply { remove(level) }
+                                                    overrideSlots = overrideSlots.toMutableMap().apply { remove(levelFloat) }
                                                 }) {
                                                     Icon(Icons.Default.Refresh, contentDescription = "Сброс", modifier = Modifier.size(16.dp))
                                                 }
@@ -454,7 +460,7 @@ fun SpellSettingsDialog(
                     }
                     
                     Button(
-                        onClick = { specialSlots.add(SpecialSlotSettings(level = 0, count = 0)) },
+                        onClick = { specialSlots.add(SpecialSlotSettings(level = 0f, count = 0)) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null)
@@ -483,21 +489,18 @@ fun SpellSettingsDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
+                                var pactLevelText by remember { mutableStateOf(formatFloat(pactSlotLevel)) }
                                 OutlinedTextField(
-                                    value = if (pactSlotLevel == 0) "" else pactSlotLevel.toString(),
+                                    value = pactLevelText,
                                     onValueChange = { newVal ->
-                                        if (newVal.isBlank()) {
-                                            pactSlotLevel = 0
-                                        } else {
-                                            val v = newVal.toIntOrNull()
-                                            if (v != null) pactSlotLevel = v.coerceIn(0, 9)
-                                        }
+                                        pactLevelText = newVal
+                                        newVal.toFloatOrNull()?.let { pactSlotLevel = it }
                                     },
                                     label = { Text("Уровень") },
                                     placeholder = {},
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(8.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                                 )
                                 OutlinedTextField(
                                     value = if (pactSlotsCount == 0) "" else pactSlotsCount.toString(),
@@ -541,7 +544,9 @@ fun SpellSettingsDialog(
                                 overrideSlots = overrideSlots,
                                 pactSlotLevel = pactSlotLevel,
                                 pactSlotsCount = pactSlotsCount,
-                                isPactEnabled = isPactEnabled
+                                isPactEnabled = isPactEnabled,
+                                usedSlots = settings.usedSlots.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
+                                usedSlotsShortRest = settings.usedSlotsShortRest.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } }
                             )
                         )
                         onDismiss()
@@ -680,24 +685,24 @@ fun SpecialSlotItem(
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            var levelText by remember(slot.id) { mutableStateOf(formatFloat(slot.level)) }
                             OutlinedTextField(
-                                value = if (slot.level == 0) "" else slot.level.toString(),
+                                value = levelText,
                                 onValueChange = { newVal ->
-                                    if (newVal.isBlank()) {
-                                        onSlotChange(slot.copy(level = 0))
-                                    } else {
-                                        val l = newVal.toIntOrNull()
-                                        if (l != null) onSlotChange(slot.copy(level = l.coerceIn(0, 9)))
-                                    }
+                                    levelText = newVal
+                                    newVal.toFloatOrNull()?.let { onSlotChange(slot.copy(level = it)) }
                                 },
                                 label = { Text("Уровень") },
                                 placeholder = {},
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(8.dp),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                trailingIcon = if (slot.level != 1) {
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                trailingIcon = if (slot.level != 1f) {
                                     {
-                                        IconButton(onClick = { onSlotChange(slot.copy(level = 1)) }) {
+                                        IconButton(onClick = { 
+                                            onSlotChange(slot.copy(level = 1f))
+                                            levelText = "1"
+                                        }) {
                                             Icon(Icons.Default.Refresh, contentDescription = "Сброс", modifier = Modifier.size(16.dp))
                                         }
                                     }

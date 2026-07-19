@@ -114,6 +114,7 @@ fun DynamicFieldsTab(
     isTitleReadOnly: Boolean = false,
     isAddButtonVisible: Boolean = true,
     isReorderButtonVisible: Boolean = true,
+    footer: @Composable () -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
@@ -234,6 +235,10 @@ fun DynamicFieldsTab(
                     settingsViewModel = settingsViewModel,
                     statsMap = statsMap
                 )
+            }
+
+            item {
+                footer()
             }
 
             if (isAddButtonVisible) {

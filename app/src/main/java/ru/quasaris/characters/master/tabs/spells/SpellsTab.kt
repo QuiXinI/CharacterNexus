@@ -3,11 +3,16 @@ package ru.quasaris.characters.master.tabs.spells
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.Attribute
@@ -26,7 +31,10 @@ import ru.quasaris.characters.master.tabs.attacks.DicePart
 import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import dev.chrisbanes.haze.HazeState
+import java.util.Locale
+import kotlin.math.floor
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SpellsTab(
     spells: List<DynamicNoteState>,
@@ -42,12 +50,28 @@ fun SpellsTab(
     statsMap: Map<String, String> = emptyMap(),
     exhaustion: Int = 0
 ) {
+    var showAddLevelDialog by remember { mutableStateOf(false) }
+
     val autoSlots = remember(spellSettings.casterType, spellSettings.isMulticlass, spellSettings.fullCasterLevel, spellSettings.halfCasterLevel, spellSettings.thirdCasterLevel, characterLevel) {
         if (spellSettings.isMulticlass) {
             SpellSlotCalculator.getMulticlassSlots(spellSettings.fullCasterLevel, spellSettings.halfCasterLevel, spellSettings.thirdCasterLevel)
         } else {
             SpellSlotCalculator.getSlotsForLevel(spellSettings.casterType, characterLevel)
         }
+    }
+
+    fun parseLevelFromTitle(title: String): Float {
+        val t = title.lowercase(Locale.getDefault())
+        if (t.contains("заговор")) return 0f
+        val match = Regex("([\\d.]+)").find(t)
+        return match?.value?.toFloatOrNull() ?: 0f
+    }
+
+    fun formatLevelTitle(level: Float): String {
+        if (level == 0f) return "Заговоры"
+        val isInt = level == floor(level)
+        val levelStr = if (isInt) level.toInt().toString() else level.toString()
+        return "$levelStr уровень"
     }
 
     val pb = getProficiencyBonus(characterLevel.toString())
@@ -91,26 +115,33 @@ fun SpellsTab(
     val spellSaveDc = magicSaveCalculation.first
     val spellSaveDice = magicSaveCalculation.second
 
-    val processedSpells = remember(spells, spellSettings.specialSlots) {
-        val specialLevels = spellSettings.specialSlots.map { it.level }.filter { it > 9 }.distinct()
-        val missingLevels = specialLevels.filter { level ->
-            val title = "$level уровень"
-            spells.none { it.title.equals(title, ignoreCase = true) }
-        }
+    val processedSpells = remember(spells, spellSettings.specialSlots, spellSettings.pactSlotLevel, spellSettings.isPactEnabled, spellSettings.casterType, spellSettings.isMulticlass) {
+        val specialLevels = spellSettings.specialSlots.map { it.level }.toMutableSet()
+        if (spellSettings.isPactEnabled) specialLevels.add(spellSettings.pactSlotLevel)
         
-        if (missingLevels.isEmpty()) {
-            spells
-        } else {
-            spells.toMutableList().apply {
-                missingLevels.forEach { level ->
-                    add(DynamicNoteState(title = "$level уровень"))
-                }
-            }
+        // Ensure 1-9 are there if caster
+        if (spellSettings.casterType != ru.quasaris.characters.master.CasterType.NONE || spellSettings.isMulticlass) {
+            for (i in 1..9) specialLevels.add(i.toFloat())
         }
+        specialLevels.add(0f) // Cantrips
+
+        val currentList = spells.toMutableList()
+        val existingLevels = currentList.map { parseLevelFromTitle(it.title) }
+        
+        val missingLevels = specialLevels.filter { it !in existingLevels }.sorted()
+        
+        missingLevels.forEach { level ->
+            currentList.add(DynamicNoteState(
+                title = formatLevelTitle(level),
+                isExpanded = level <= 1f // Expand Cantrips and Level 1 by default
+            ))
+        }
+
+        currentList.sortedBy { parseLevelFromTitle(it.title) }
     }
 
-    LaunchedEffect(processedSpells.size) {
-        if (processedSpells.size != spells.size) {
+    LaunchedEffect(processedSpells) {
+        if (processedSpells != spells) {
             onSpellsChange(processedSpells)
         }
     }
@@ -197,72 +228,166 @@ fun SpellsTab(
             }
         }
 
-        DynamicFieldsTab(
-            fields = if (spellSettings.isMagicEnabled) processedSpells else emptyList(),
-            onFieldsChange = onSpellsChange,
-            hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled,
-            isEditMode = isEditMode,
-            emptyListText = if (spellSettings.isMagicEnabled) "Список заклинаний пуст" else "Магия нужна слабым",
-            titlePlaceholder = "Заголовок",
-            contentPlaceholder = "Список заклинаний...",
-            settingsViewModel = settingsViewModel,
-            statsMap = statsMap,
-            isCollapsible = false,
-            isTitleReadOnly = true,
-            isAddButtonVisible = false,
-            isReorderButtonVisible = false,
-            extraContent = { spell ->
-                val title = spell.title.lowercase()
-                val levelMatch = Regex("(\\d+)").find(title)
-                val level = levelMatch?.value?.toIntOrNull() ?: 0
-                
-                if (level > 0) {
-                    val baseSlots = if (level in 1..9) (spellSettings.overrideSlots[level] ?: autoSlots[level - 1]) else (spellSettings.overrideSlots[level] ?: 0)
-                    val specialLong = spellSettings.specialSlots.filter { it.level == level && !it.restoreOnShortRest }.sumOf { it.count }
-                    val maxLong = baseSlots + specialLong
-
-                    val pactSlots = if (spellSettings.isPactEnabled && spellSettings.pactSlotLevel == level) spellSettings.pactSlotsCount else 0
-                    val specialShort = spellSettings.specialSlots.filter { it.level == level && it.restoreOnShortRest }.sumOf { it.count }
-                    val maxShort = pactSlots + specialShort
-
-                    if (maxLong > 0 || maxShort > 0) {
-                        Row(
-                            modifier = Modifier.padding(end = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+        Box(modifier = Modifier.weight(1f)) {
+            DynamicFieldsTab(
+                fields = if (spellSettings.isMagicEnabled) processedSpells else emptyList(),
+                onFieldsChange = onSpellsChange,
+                hazeState = hazeState,
+                forceBlurEnabled = forceBlurEnabled,
+                isEditMode = isEditMode,
+                emptyListText = if (spellSettings.isMagicEnabled) "Список заклинаний пуст" else "Магия нужна слабым",
+                titlePlaceholder = "Заголовок",
+                contentPlaceholder = "Список заклинаний...",
+                settingsViewModel = settingsViewModel,
+                statsMap = statsMap,
+                isCollapsible = true,
+                isTitleReadOnly = true,
+                isAddButtonVisible = false,
+                isReorderButtonVisible = false,
+                footer = {
+                    if (spellSettings.isMagicEnabled) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            if (maxLong > 0) {
-                                SpellSlotTracker(
-                                    maxSlots = maxLong,
-                                    usedSlots = spellSettings.usedSlots[level] ?: 0,
-                                    isShortRest = false,
-                                    onUsedSlotsChange = { newUsed ->
-                                        onSpellSettingsChange(
-                                            spellSettings.copy(
-                                                usedSlots = spellSettings.usedSlots.toMutableMap().apply { put(level, newUsed) }
-                                            )
-                                        )
-                                    }
-                                )
-                            }
-                            
-                            if (maxShort > 0) {
-                                SpellSlotTracker(
-                                    maxSlots = maxShort,
-                                    usedSlots = spellSettings.usedSlotsShortRest[level] ?: 0,
-                                    isShortRest = true,
-                                    onUsedSlotsChange = { newUsed ->
-                                        onSpellSettingsChange(
-                                            spellSettings.copy(
-                                                usedSlotsShortRest = spellSettings.usedSlotsShortRest.toMutableMap().apply { put(level, newUsed) }
-                                            )
-                                        )
-                                    }
-                                )
+                            Button(
+                                onClick = { showAddLevelDialog = true },
+                                modifier = Modifier.height(48.dp),
+                                shape = RoundedCornerShape(24.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ДОБАВИТЬ УРОВЕНЬ")
                             }
                         }
                     }
+                },
+                extraContent = { spell ->
+                    val level = parseLevelFromTitle(spell.title)
+                    
+                    if (level > 0) {
+                        val baseSlots = if (level >= 1f && level <= 9f && level == floor(level)) (spellSettings.overrideSlots[level] ?: autoSlots[level.toInt() - 1]) else (spellSettings.overrideSlots[level] ?: 0)
+                        val specialLong = spellSettings.specialSlots.filter { it.level == level && !it.restoreOnShortRest }.sumOf { it.count }
+                        val maxLong = baseSlots + specialLong
+
+                        val pactSlots = if (spellSettings.isPactEnabled && spellSettings.pactSlotLevel == level) spellSettings.pactSlotsCount else 0
+                        val specialShort = spellSettings.specialSlots.filter { it.level == level && it.restoreOnShortRest }.sumOf { it.count }
+                        val maxShort = pactSlots + specialShort
+
+                        if (maxLong > 0 || maxShort > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Layout(
+                                    content = {
+                                        if (maxLong > 0) {
+                                            SpellSlotTracker(
+                                                maxSlots = maxLong,
+                                                usedSlots = spellSettings.usedSlots[level] ?: 0,
+                                                isShortRest = false,
+                                                onUsedSlotsChange = { newUsed ->
+                                                    onSpellSettingsChange(
+                                                        spellSettings.copy(
+                                                            usedSlots = spellSettings.usedSlots.toMutableMap().apply { put(level, newUsed) }
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                        if (maxShort > 0) {
+                                            SpellSlotTracker(
+                                                maxSlots = maxShort,
+                                                usedSlots = spellSettings.usedSlotsShortRest[level] ?: 0,
+                                                isShortRest = true,
+                                                onUsedSlotsChange = { newUsed ->
+                                                    onSpellSettingsChange(
+                                                        spellSettings.copy(
+                                                            usedSlotsShortRest = spellSettings.usedSlotsShortRest.toMutableMap().apply { put(level, newUsed) }
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    }
+                                ) { measurables, constraints ->
+                                    val longMeasurable = if (maxLong > 0) measurables[0] else null
+                                    val shortMeasurable = if (maxShort > 0) {
+                                        if (maxLong > 0) measurables[1] else measurables[0]
+                                    } else null
+
+                                    val longPlaceable = longMeasurable?.measure(constraints.copy(minWidth = 0))
+                                    val shortPlaceable = shortMeasurable?.measure(constraints.copy(minWidth = 0))
+
+                                    val spacing = 8.dp.roundToPx()
+                                    val longWidth = longPlaceable?.width ?: 0
+                                    val shortWidth = shortPlaceable?.width ?: 0
+                                    val longHeight = longPlaceable?.height ?: 0
+                                    val shortHeight = shortPlaceable?.height ?: 0
+
+                                    val canFitInOneLine = (longWidth > 0 && shortWidth > 0 && longWidth + shortWidth + spacing <= constraints.maxWidth) || 
+                                                         (longWidth == 0 || shortWidth == 0)
+
+                                    val totalHeight = if (canFitInOneLine) {
+                                        maxOf(longHeight, shortHeight)
+                                    } else {
+                                        longHeight + shortHeight + spacing
+                                    }
+
+                                    layout(constraints.maxWidth, totalHeight) {
+                                        longPlaceable?.place(0, 0)
+                                        if (canFitInOneLine) {
+                                            shortPlaceable?.place(constraints.maxWidth - shortWidth, 0)
+                                        } else {
+                                            shortPlaceable?.place(constraints.maxWidth - shortWidth, longHeight + spacing)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    if (showAddLevelDialog) {
+        var levelText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddLevelDialog = false },
+            title = { Text("Добавить уровень заклинаний") },
+            text = {
+                OutlinedTextField(
+                    value = levelText,
+                    onValueChange = { levelText = it },
+                    label = { Text("Уровень (число)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val level = levelText.toFloatOrNull()
+                        if (level != null) {
+                            val title = formatLevelTitle(level)
+                            if (spells.none { it.title.equals(title, ignoreCase = true) }) {
+                                onSpellsChange((spells + DynamicNoteState(title = title, isExpanded = false)).sortedBy { parseLevelFromTitle(it.title) })
+                            }
+                        }
+                        showAddLevelDialog = false
+                    }
+                ) {
+                    Text("Добавить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddLevelDialog = false }) {
+                    Text("Отмена")
                 }
             }
         )

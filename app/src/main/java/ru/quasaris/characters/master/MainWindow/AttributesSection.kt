@@ -89,12 +89,60 @@ fun AttributesSection(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = !isAdvancedMode,
-                enter = slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeIn(),
-                exit = slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(animDuration)) + fadeOut()
-            ) {
+        AnimatedContent(
+            targetState = isAdvancedMode,
+            transitionSpec = {
+                if (targetState) {
+                    // Компактный уезжает вниз, расширенный выезжает сверху
+                    (slideInVertically { -it } + fadeIn()).togetherWith(slideOutVertically { it } + fadeOut())
+                } else {
+                    // Расширенный уезжает наверх, компактный выезжает снизу
+                    (slideInVertically { it } + fadeIn()).togetherWith(slideOutVertically { -it } + fadeOut())
+                }
+            },
+            label = "mode_switch"
+        ) { advanced ->
+            if (advanced) {
+                val stats = listOf(
+                    StatInfo(Attribute.STRENGTH, "Сила", strength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
+                    StatInfo(Attribute.DEXTERITY, "Ловкость", dexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
+                    StatInfo(Attribute.CONSTITUTION, "Телосложение", constitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
+                    StatInfo(Attribute.INTELLIGENCE, "Интеллект", intelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
+                    StatInfo(Attribute.WISDOM, "Мудрость", wisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
+                    StatInfo(Attribute.CHARISMA, "Харизма", charisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    stats.forEach { stat ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { onStatClick(stat.attribute) },
+                                saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
+                                checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
+                                onRollSave = {
+                                    val base = calculateModifier(stat.value); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                    onRoll(DiceRoller.roll("Спасбросок: ${stat.label}", base + (if (stat.isProf) pbVal else 0), statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.SAVING_THROW))
+                                },
+                                onRollCheck = {
+                                    val base = calculateModifier(stat.value)
+                                    onRoll(DiceRoller.roll("Проверка: ${stat.label}", base, statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
+                                },
+                                exhaustion = exhaustion
+                            )
+                            stat.skills.forEach { skill ->
+                                SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick, onLongClick = onSkillLongClick,
+                                    bonus = calculateTotalBonus(skillBonuses.filter { it.skillName == skill }.map { it.formula }, attributeModifiers, pb),
+                                    onRoll = {
+                                        val base = calculateModifier(stat.value); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
+                                        val totalMod = base + (if (skilledExpertise.contains(skill)) pbVal * 2 else if (skilledProficiencies.contains(skill)) pbVal else 0)
+                                        onRoll(DiceRoller.roll(skill, totalMod, skillBonuses.filter { it.skillName == skill }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.SKILL))
+                                    },
+                                    exhaustion = exhaustion
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatCard("Сила", strength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange, onClick = { onStatClick(Attribute.STRENGTH) },
@@ -179,53 +227,6 @@ fun AttributesSection(
                             },
                             exhaustion = exhaustion
                         )
-                    }
-
-                }
-            }
-
-            androidx.compose.animation.AnimatedVisibility(
-                visible = isAdvancedMode,
-                enter = slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(animDuration)) + fadeIn(),
-                exit = slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(animDuration)) + fadeOut()
-            ) {
-                val stats = listOf(
-                    StatInfo(Attribute.STRENGTH, "Сила", strength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
-                    StatInfo(Attribute.DEXTERITY, "Ловкость", dexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
-                    StatInfo(Attribute.CONSTITUTION, "Телосложение", constitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
-                    StatInfo(Attribute.INTELLIGENCE, "Интеллект", intelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
-                    StatInfo(Attribute.WISDOM, "Мудрость", wisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
-                    StatInfo(Attribute.CHARISMA, "Харизма", charisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    stats.forEach { stat ->
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { onStatClick(stat.attribute) },
-                                saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, attributeModifiers, pb),
-                                checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, attributeModifiers, pb),
-                                onRollSave = {
-                                    val base = calculateModifier(stat.value); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
-                                    onRoll(DiceRoller.roll("Спасбросок: ${stat.label}", base + (if (stat.isProf) pbVal else 0), statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.SAVING_THROW))
-                                },
-                                onRollCheck = {
-                                    val base = calculateModifier(stat.value)
-                                    onRoll(DiceRoller.roll("Проверка: ${stat.label}", base, statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
-                                },
-                                exhaustion = exhaustion
-                            )
-                            stat.skills.forEach { skill ->
-                                SkillSubPlate(skill, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, stat.value, onSkillClick, onLongClick = onSkillLongClick,
-                                    bonus = calculateTotalBonus(skillBonuses.filter { it.skillName == skill }.map { it.formula }, attributeModifiers, pb),
-                                    onRoll = {
-                                        val base = calculateModifier(stat.value); val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
-                                        val totalMod = base + (if (skilledExpertise.contains(skill)) pbVal * 2 else if (skilledProficiencies.contains(skill)) pbVal else 0)
-                                        onRoll(DiceRoller.roll(skill, totalMod, skillBonuses.filter { it.skillName == skill }.map { it.formula }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.SKILL))
-                                    },
-                                    exhaustion = exhaustion
-                                )
-                            }
-                        }
                     }
                 }
             }
