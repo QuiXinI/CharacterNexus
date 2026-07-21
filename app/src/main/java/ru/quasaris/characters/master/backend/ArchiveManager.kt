@@ -3,6 +3,7 @@ package ru.quasaris.characters.master.backend
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
+import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.quasaris.characters.master.Character
@@ -75,12 +76,19 @@ object ArchiveManager {
                 return@withContext null
             }
         } else {
-            // Handle legacy JSON
+            // Handle JSON formats
             val jsonString = String(bytes)
-            character = try {
-                gson.fromJson(jsonString, Character::class.java)
-            } catch (e: Exception) {
-                null
+            val jsonElement = try { JsonParser.parseString(jsonString) } catch (e: Exception) { null }
+
+            if (jsonElement != null && LongStoryShortImporter.isLongStoryShort(jsonElement)) {
+                character = LongStoryShortImporter.parse(jsonElement)
+            } else {
+                // Legacy JSON (mp_old)
+                character = try {
+                    gson.fromJson(jsonString, Character::class.java)
+                } catch (e: Exception) {
+                    null
+                }
             }
 
             character?.let { char ->
