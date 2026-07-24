@@ -289,7 +289,8 @@ class MainActivity : ComponentActivity() {
                                                         settingsManager.lastCharacterId = -1
                                                     }
                                                 },
-                                                onOpenDrawer = { scope.launch { drawerState.open() } }
+                                                onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                settingsViewModel = settingsViewModel
                                             )
                                         }
 

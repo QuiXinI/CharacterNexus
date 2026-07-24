@@ -51,6 +51,9 @@ object LongStoryShortImporter {
             val wisdom = stats.getAsJsonObject("wis")?.get("score").safeString("10")
             val charisma = stats.getAsJsonObject("cha")?.get("score").safeString("10")
 
+            val avatarObj = data.getAsJsonObject("avatar")
+            val avatarUrl = avatarObj?.get("jpeg")?.asString ?: avatarObj?.get("webp")?.asString
+
             val saves = data.getAsJsonObject("saves") ?: JsonObject()
             val strProf = saves.getAsJsonObject("str")?.get("isProf")?.asBoolean ?: false
             val dexProf = saves.getAsJsonObject("dex")?.get("isProf")?.asBoolean ?: false
@@ -121,7 +124,7 @@ object LongStoryShortImporter {
                 val weapon = item.asJsonObject
                 val weaponId = weapon.get("id").safeString()
                 
-                val abilityStr = weapon.get("ability").safeString().lowercase()
+                val abilityStr = weapon.get("ability").safeString("str").lowercase()
                 val attribute = when (abilityStr) {
                     "str" -> Attribute.STRENGTH
                     "dex" -> Attribute.DEXTERITY
@@ -252,7 +255,8 @@ object LongStoryShortImporter {
                 skillsAndTraits = skillsAndTraits,
                 inventory = inventory,
                 spells = mpSpells,
-                notes = notes
+                notes = notes,
+                avatarUrl = avatarUrl
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -299,11 +303,11 @@ object LongStoryShortImporter {
             if (lssRes != null) {
                 val name = lssRes.get("name").safeString("Ресурс")
                 val cur = lssRes.get("current").safeString("0")
-                val max = lssRes.get("resolvedMax").safeString(lssRes.get("maxExpr").safeString("0"))
+                val max = lssRes.get("maxExpr").safeString(lssRes.get("resolvedMax").safeString("0"))
                 val notes = lssRes.get("notes").safeString()
                 val isLongRest = lssRes.get("isLongRest")?.asBoolean ?: false
                 
-                val lrParam = if (isLongRest) " | lr=1" else ""
+                val lrParam = if (isLongRest) " | lr=all" else ""
                 val notesParam = if (notes.isNotEmpty()) " | notes=$notes" else ""
                 
                 sb.append("{Ресурс: $name | cur=$cur | max=$max$lrParam$notesParam}")

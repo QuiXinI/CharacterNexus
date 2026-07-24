@@ -63,6 +63,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getInt("custom_top_margin", 96)
         set(value) = prefs.edit { putInt("custom_top_margin", value) }
 
+    var autoDownloadLssAvatar: Boolean
+        get() = prefs.getBoolean("auto_download_lss_avatar", false)
+        set(value) = prefs.edit { putBoolean("auto_download_lss_avatar", value) }
+
     // Spell Slot Alignment Settings
     var longRestAlignment: String
         get() = prefs.getString("long_rest_alignment", "RIGHT") ?: "RIGHT"

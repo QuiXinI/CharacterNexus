@@ -667,7 +667,7 @@ fun CharacterDetailWindow(
                         )
                     }
                     CharacterTab.BIO -> {
-                        BioTab()
+                        BioTab(character)
                     }
                     CharacterTab.SKILLS_FEATS -> {
                         SkillsFeatsTab(

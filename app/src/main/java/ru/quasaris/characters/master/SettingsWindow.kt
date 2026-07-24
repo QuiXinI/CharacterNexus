@@ -188,6 +188,12 @@ fun SettingsWindow(
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            LssImportSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
             Text(
                 text = "Форматирование текста",
                 style = MaterialTheme.typography.titleMedium,
@@ -394,6 +400,42 @@ fun FullscreenEditingSettingsSection(
             Switch(
                 checked = fullscreenEditingOnly,
                 onCheckedChange = { settingsViewModel.updateFullscreenEditingOnly(it) }
+            )
+        }
+    }
+}
+
+@Composable
+fun LssImportSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val autoDownloadLssAvatar by settingsViewModel.autoDownloadLssAvatar.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Авто-загрузка аватарок LSS",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Автоматически скачивать аватарки при импорте из LongStoryShort",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = autoDownloadLssAvatar,
+                onCheckedChange = { settingsViewModel.updateAutoDownloadLssAvatar(it) }
             )
         }
     }
@@ -779,4 +821,3 @@ fun SlotAlignmentSettingsSection(
         }
     }
 }
-

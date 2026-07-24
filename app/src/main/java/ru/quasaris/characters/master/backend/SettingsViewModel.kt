@@ -42,6 +42,9 @@ class SettingsViewModel(
     private val _customTopMargin = MutableStateFlow(settingsManager?.customTopMargin ?: 96)
     val customTopMargin = _customTopMargin.asStateFlow()
 
+    private val _autoDownloadLssAvatar = MutableStateFlow(settingsManager?.autoDownloadLssAvatar ?: false)
+    val autoDownloadLssAvatar = _autoDownloadLssAvatar.asStateFlow()
+
     private val _longRestAlignment = MutableStateFlow(SlotAlignment.valueOf(settingsManager?.longRestAlignment ?: "RIGHT"))
     val longRestAlignment = _longRestAlignment.asStateFlow()
 
@@ -92,6 +95,11 @@ class SettingsViewModel(
     fun updateCustomTopMargin(margin: Int) {
         _customTopMargin.value = margin
         settingsManager?.customTopMargin = margin
+    }
+
+    fun updateAutoDownloadLssAvatar(enabled: Boolean) {
+        _autoDownloadLssAvatar.value = enabled
+        settingsManager?.autoDownloadLssAvatar = enabled
     }
 
     fun updateLongRestAlignment(alignment: SlotAlignment) {

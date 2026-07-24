@@ -44,6 +44,13 @@ import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.ImageManager
+import ru.quasaris.characters.master.backend.SettingsViewModel
+import ru.quasaris.characters.master.PaletteHelper
+import android.graphics.BitmapFactory
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 
 @Composable
 fun MenuWindow(
@@ -53,13 +60,18 @@ fun MenuWindow(
     onImportCharacter: (Character) -> Unit,
     onDeleteCharacters: (List<Int>) -> Unit,
     onOpenDrawer: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
 
     val selectedIds = remember { mutableStateListOf<Int>() }
+
+    val autoDownload by settingsViewModel?.autoDownloadLssAvatar?.collectAsState() ?: remember { mutableStateOf(false) }
+    val debugEnabled by settingsViewModel?.debugInfoEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
+    var lssAvatarToDownload by remember { mutableStateOf<Character?>(null) }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -68,9 +80,41 @@ fun MenuWindow(
         scope.launch {
             val importedCharacter = ArchiveManager.importCharacter(context, uri)
             if (importedCharacter != null) {
-                onImportCharacter(importedCharacter.copy(id = (0..100000).random()))
+                val charWithNewId = importedCharacter.copy(id = (0..100000).random())
+                if (charWithNewId.avatarUrl != null && charWithNewId.imageData == null) {
+                    if (autoDownload) {
+                        downloadLssAvatar(context, charWithNewId, scope, onImportCharacter, debugEnabled)
+                    } else {
+                        lssAvatarToDownload = charWithNewId
+                    }
+                } else {
+                    onImportCharacter(charWithNewId)
+                }
             }
         }
+    }
+
+    if (lssAvatarToDownload != null) {
+        AlertDialog(
+            onDismissRequest = { 
+                onImportCharacter(lssAvatarToDownload!!)
+                lssAvatarToDownload = null 
+            },
+            title = { Text("Загрузить аватарку?") },
+            text = { Text("Персонаж из Long Story Short имеет аватарку. Хотите скачать её?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    downloadLssAvatar(context, lssAvatarToDownload!!, scope, onImportCharacter, debugEnabled)
+                    lssAvatarToDownload = null
+                }) { Text("Да") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    onImportCharacter(lssAvatarToDownload!!)
+                    lssAvatarToDownload = null
+                }) { Text("Нет") }
+            }
+        )
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -217,6 +261,38 @@ fun MenuWindow(
                     )
                 }
             }
+        }
+    }
+}
+
+private fun downloadLssAvatar(
+    context: android.content.Context,
+    character: Character,
+    scope: kotlinx.coroutines.CoroutineScope,
+    onImportCharacter: (Character) -> Unit,
+    isDebugEnabled: Boolean = false
+) {
+    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        val result = character.avatarUrl?.let { ImageManager.downloadAndSaveImageRobust(context, it) }
+        val newId = result?.getOrNull()
+        if (newId != null) {
+            val portraitFile = ImageManager.getPortraitFile(context, newId)
+            var seedColor: Int? = null
+            if (portraitFile.exists()) {
+                val bitmap = BitmapFactory.decodeFile(portraitFile.absolutePath)
+                if (bitmap != null) {
+                    seedColor = PaletteHelper.extractSeedColor(bitmap)
+                }
+            }
+            onImportCharacter(character.copy(imageData = newId, themeSeedColorArgb = seedColor))
+        } else {
+            if (isDebugEnabled && character.avatarUrl != null) {
+                val error = result?.exceptionOrNull()?.message ?: "Unknown error"
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(context, "LSS Avatar Download Failed: $error", android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+            onImportCharacter(character)
         }
     }
 }

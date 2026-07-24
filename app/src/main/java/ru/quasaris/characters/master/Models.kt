@@ -176,6 +176,7 @@ data class Character(
     val characterClass: String,
     val order: String,
     val imageData: String? = null,
+    val avatarUrl: String? = null,
     val level: String = "1",
     val experience: String = "0",
     val strength: String = "10",
