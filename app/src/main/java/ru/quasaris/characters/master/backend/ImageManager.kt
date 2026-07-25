@@ -11,22 +11,76 @@ import java.io.FileOutputStream
 import java.util.UUID
 
 object ImageManager {
+    private const val ORIGINAL_DIR = "originals"
     private const val PORTRAIT_DIR = "portraits"
     private const val THUMB_DIR = "thumbnails"
+
+    /**
+     * Just saves the original image from Uri and returns a new ID.
+     * Does not process or create thumbnails yet.
+     */
+    suspend fun saveOriginal(context: Context, uri: Uri): String? = withContext(Dispatchers.IO) {
+        val id = UUID.randomUUID().toString()
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
+        val originalBitmap = BitmapFactory.decodeStream(inputStream) ?: return@withContext null
+
+        val originalDir = File(context.filesDir, ORIGINAL_DIR).apply { if (!exists()) mkdirs() }
+        val originalFile = File(originalDir, "$id.webp")
+        FileOutputStream(originalFile).use { out ->
+            originalBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+        }
+        id
+    }
+
+    suspend fun saveBitmapAsOriginal(context: Context, bitmap: Bitmap): String = withContext(Dispatchers.IO) {
+        val id = UUID.randomUUID().toString()
+        val originalDir = File(context.filesDir, ORIGINAL_DIR).apply { if (!exists()) mkdirs() }
+        val originalFile = File(originalDir, "$id.webp")
+        FileOutputStream(originalFile).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+        }
+        id
+    }
+
+    /**
+     * Saves the cropped bitmap as portrait and generates a thumbnail.
+     */
+    suspend fun saveCropped(context: Context, id: String, croppedBitmap: Bitmap) = withContext(Dispatchers.IO) {
+        // 1. Full-Resolution Portrait (Cropped)
+        val portraitDir = File(context.filesDir, PORTRAIT_DIR).apply { if (!exists()) mkdirs() }
+        val portraitFile = File(portraitDir, "$id.webp")
+        FileOutputStream(portraitFile).use { out ->
+            croppedBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+        }
+
+        // 2. UI Thumbnail (200x200px)
+        val thumbDir = File(context.cacheDir, THUMB_DIR).apply { if (!exists()) mkdirs() }
+        val thumbFile = File(thumbDir, "$id.webp")
+        val thumbBitmap = Bitmap.createScaledBitmap(croppedBitmap, 200, 200, true)
+        FileOutputStream(thumbFile).use { out ->
+            thumbBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+        }
+    }
 
     suspend fun processAndSaveImage(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
         val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext ""
         val originalBitmap = BitmapFactory.decodeStream(inputStream) ?: return@withContext ""
 
-        // 1. Full-Resolution WebP
+        // Save Original
+        val originalDir = File(context.filesDir, ORIGINAL_DIR).apply { if (!exists()) mkdirs() }
+        FileOutputStream(File(originalDir, "$id.webp")).use { out ->
+            originalBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+        }
+
+        // Save Portrait
         val portraitDir = File(context.filesDir, PORTRAIT_DIR).apply { if (!exists()) mkdirs() }
         val portraitFile = File(portraitDir, "$id.webp")
         FileOutputStream(portraitFile).use { out ->
             originalBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
         }
 
-        // 2. UI Thumbnail (200x200px)
+        // Save Thumbnail
         val thumbDir = File(context.cacheDir, THUMB_DIR).apply { if (!exists()) mkdirs() }
         val thumbFile = File(thumbDir, "$id.webp")
         val thumbBitmap = Bitmap.createScaledBitmap(originalBitmap, 200, 200, true)
@@ -67,14 +121,20 @@ object ImageManager {
 
             val id = UUID.randomUUID().toString()
             
-            // 1. Full-Resolution WebP
+            // Save Original
+            val originalDir = File(context.filesDir, ORIGINAL_DIR).apply { if (!exists()) mkdirs() }
+            FileOutputStream(File(originalDir, "$id.webp")).use { out ->
+                originalBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
+            }
+
+            // Save Portrait
             val portraitDir = File(context.filesDir, PORTRAIT_DIR).apply { if (!exists()) mkdirs() }
             val portraitFile = File(portraitDir, "$id.webp")
             FileOutputStream(portraitFile).use { out ->
                 originalBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
             }
 
-            // 2. UI Thumbnail (200x200px)
+            // Save Thumbnail
             val thumbDir = File(context.cacheDir, THUMB_DIR).apply { if (!exists()) mkdirs() }
             val thumbFile = File(thumbDir, "$id.webp")
             val thumbBitmap = Bitmap.createScaledBitmap(originalBitmap, 200, 200, true)
@@ -87,6 +147,10 @@ object ImageManager {
             e.printStackTrace()
             Result.failure(e)
         }
+    }
+
+    fun getOriginalFile(context: Context, id: String): File {
+        return File(File(context.filesDir, ORIGINAL_DIR), "$id.webp")
     }
 
     fun getPortraitFile(context: Context, id: String): File {

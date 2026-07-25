@@ -226,7 +226,11 @@ data class Character(
         DynamicNoteState(title = "$it уровень")
     },
     val spellSettings: SpellSettings = SpellSettings(),
-    val wallet: Wallet = Wallet()
+    val wallet: Wallet = Wallet(),
+    val cropX: Float? = null,
+    val cropY: Float? = null,
+    val cropW: Float? = null,
+    val cropH: Float? = null
 )
 
 

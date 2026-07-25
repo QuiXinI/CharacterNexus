@@ -290,7 +290,8 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 },
                                                 onOpenDrawer = { scope.launch { drawerState.open() } },
-                                                settingsViewModel = settingsViewModel
+                                                settingsViewModel = settingsViewModel,
+                                                hazeState = hazeState
                                             )
                                         }
 
@@ -322,7 +323,9 @@ class MainActivity : ComponentActivity() {
                                                     navController.navigate("edit/${newChar.id}") {
                                                         popUpTo("menu")
                                                     }
-                                                }
+                                                },
+                                                hazeState = hazeState,
+                                                forceBlurEnabled = forceBlurEnabled
                                             )
                                         }
 

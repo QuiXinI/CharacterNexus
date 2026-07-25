@@ -33,8 +33,6 @@ import kotlinx.coroutines.launch
 import ru.quasaris.characters.master.tabs.*
 import ru.quasaris.characters.master.MainWindow.*
 import ru.quasaris.characters.master.HeaderCode.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import ru.quasaris.characters.master.tabs.attacks.AttacksTab
 import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.ImageManager
@@ -51,9 +49,9 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
 
 import dev.chrisbanes.haze.LocalHazeStyle
-import ru.quasaris.characters.master.backend.evaluateFormula
 import ru.quasaris.characters.master.tabs.spells.SpellSettingsDialog
 import ru.quasaris.characters.master.tabs.spells.SpellsTab
+import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
 
 /**
  * Стиль размытия для нижней панели выбора вкладок.
@@ -181,6 +179,7 @@ fun CharacterDetailWindow(
     var characterImageData by remember { mutableStateOf(character?.imageData) }
     var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
     var showAvatarMenu by remember { mutableStateOf(false) }
+    var bitmapToCrop by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -221,20 +220,14 @@ fun CharacterDetailWindow(
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? -> 
+    ) { uri: Uri? ->
         uri?.let {
-            CoroutineScope(Dispatchers.IO).launch {
-                val newId = ImageManager.processAndSaveImage(context, it)
-                val portraitFile = ImageManager.getPortraitFile(context, newId)
-                var seedColor: Int? = null
-                if (portraitFile.exists()) {
-                    val bitmap = BitmapFactory.decodeFile(portraitFile.absolutePath)
-                    if (bitmap != null) {
-                        seedColor = PaletteHelper.extractSeedColor(bitmap)
-                    }
-                }
-                characterImageData = newId
-                themeSeedColorArgb = seedColor
+            scope.launch {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(it)
+                    val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    bitmapToCrop = bitmap
+                } catch (e: Exception) { e.printStackTrace() }
             }
         }
     }
@@ -246,7 +239,7 @@ fun CharacterDetailWindow(
         return
     }
 
-    val statsMap = remember(statsState, level, proficiencyBonus, spellSettings, currentHp, maxHp, tempHp, exhaustion, selectedConditions, activeArmorClassId, armorClassEntries, isShieldActive, activeShieldId, shieldEntries) { 
+    val statsMap = remember(statsState, level, proficiencyBonus, spellSettings, currentHp, maxHp, tempHp, exhaustion, selectedConditions, activeArmorClassId, armorClassEntries, isShieldActive, activeShieldId, shieldEntries) {
         statsState.toStatsMap(level, proficiencyBonus).toMutableMap().apply {
             put("[MAG ATC BON]", spellSettings.spellAttackBonus.ifBlank { "0" })
             put("[МАГ АТК БОН]", spellSettings.spellAttackBonus.ifBlank { "0" })
@@ -311,17 +304,17 @@ fun CharacterDetailWindow(
     val currentTab = tabs[pagerState.currentPage % tabs.size]
     val sheetState = rememberModalBottomSheetState()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    
+
     var isEditMode by remember { mutableStateOf(false) }
     var isAdvancedMode by remember { mutableStateOf(false) }
-    
+
     // Clear focus on dispose to prevent context menu hierarchy crashes
     DisposableEffect(Unit) {
         onDispose {
             focusManager.clearFocus()
         }
     }
-    
+
     // Reset edit mode and clear focus when changing tabs
     LaunchedEffect(pagerState.currentPage) {
         isEditMode = false
@@ -330,18 +323,18 @@ fun CharacterDetailWindow(
 
     val saveCurrentCharacter = {
         onSaveChanges(character.copy(
-            name = name, 
-            characterClass = characterClass, 
-            order = order, 
-            level = level, 
+            name = name,
+            characterClass = characterClass,
+            order = order,
+            level = level,
             experience = experience,
-            imageData = characterImageData, 
-            strength = statsState.strength, 
-            dexterity = statsState.dexterity, 
-            constitution = statsState.constitution, 
-            intelligence = statsState.intelligence, 
-            wisdom = statsState.wisdom, 
-            charisma = statsState.charisma, 
+            imageData = characterImageData,
+            strength = statsState.strength,
+            dexterity = statsState.dexterity,
+            constitution = statsState.constitution,
+            intelligence = statsState.intelligence,
+            wisdom = statsState.wisdom,
+            charisma = statsState.charisma,
             strengthProficient = statsState.strProf,
             dexterityProficient = statsState.dexProf,
             constitutionProficient = statsState.conProf,
@@ -353,7 +346,7 @@ fun CharacterDetailWindow(
             tempHp = tempHp,
             proficiencyBonus = proficiencyBonus,
             selectedConditions = selectedConditions,
-            exhaustion = exhaustion, 
+            exhaustion = exhaustion,
             attacks = attacks,
             armorClassEntries = armorClassEntries,
             activeArmorClassId = activeArmorClassId,
@@ -520,7 +513,7 @@ fun CharacterDetailWindow(
                             )
                         }
                     }
-                    
+
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.CenterEnd
@@ -541,7 +534,7 @@ fun CharacterDetailWindow(
                                     else -> emptyList()
                                 }
                                 val anyCollapsed = currentList.any { !it.isExpanded }
-                                
+
                                 IconButton(
                                     onClick = {
                                         val newState = if (anyCollapsed) {
@@ -588,7 +581,7 @@ fun CharacterDetailWindow(
             .fillMaxSize()
             .padding(paddingValues)
             .background(colorScheme.background)) {
-            
+
             Column {
                 ExpandingPanelsSection(
                     isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it },
@@ -636,7 +629,7 @@ fun CharacterDetailWindow(
                     beyondViewportPageCount = 1
                 ) { page ->
                 val tab = tabs[page % tabs.size]
-                
+
                 when (tab) {
                     CharacterTab.STATS -> {
                         StatsTab(
@@ -797,12 +790,12 @@ fun CharacterDetailWindow(
                         )
                         tabs.forEachIndexed { index, tab ->
                             ListItem(
-                                headlineContent = { 
+                                headlineContent = {
                                     Text(
                                         tab.title,
                                         fontWeight = if (tab == currentTab) FontWeight.Bold else FontWeight.Normal,
                                         color = if (tab == currentTab) colorScheme.primary else colorScheme.onSurface
-                                    ) 
+                                    )
                                 },
                                 leadingContent = {
                                     val icon = when(tab) {
@@ -825,7 +818,7 @@ fun CharacterDetailWindow(
                                     val currentP = pagerState.currentPage
                                     val currentIdx = currentP % tabs.size
                                     val diff = index - currentIdx
-                                    
+
                                     scope.launch {
                                         launch { pagerState.animateScrollToPage(currentP + diff) }
                                         sheetState.hide()
@@ -838,5 +831,32 @@ fun CharacterDetailWindow(
                 }
             }
         }
+    }
+
+    if (bitmapToCrop != null) {
+        AvatarCropperWindow(
+            imageToCrop = bitmapToCrop!!,
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled,
+            onCropSuccess = { cropped ->
+                scope.launch {
+                    val id = ImageManager.saveBitmapAsOriginal(context, bitmapToCrop!!)
+                    ImageManager.saveCropped(context, id, cropped)
+
+                    val portraitFile = ImageManager.getPortraitFile(context, id)
+                    var seedColor: Int? = null
+                    if (portraitFile.exists()) {
+                        val bitmap = BitmapFactory.decodeFile(portraitFile.absolutePath)
+                        if (bitmap != null) {
+                            seedColor = PaletteHelper.extractSeedColor(bitmap)
+                        }
+                    }
+                    characterImageData = id
+                    themeSeedColorArgb = seedColor
+                    bitmapToCrop = null
+                }
+            },
+            onCancel = { bitmapToCrop = null }
+        )
     }
 }

@@ -27,6 +27,15 @@ object ArchiveManager {
                     zos.closeEntry()
 
                     character.imageData?.let { portraitId ->
+                        // Add Original if exists
+                        val originalFile = ImageManager.getOriginalFile(context, portraitId)
+                        if (originalFile.exists()) {
+                            zos.putNextEntry(ZipEntry("original.webp"))
+                            originalFile.inputStream().use { it.copyTo(zos) }
+                            zos.closeEntry()
+                        }
+
+                        // Add Portrait (cropped)
                         val portraitFile = ImageManager.getPortraitFile(context, portraitId)
                         if (portraitFile.exists()) {
                             zos.putNextEntry(ZipEntry("portrait.webp"))
@@ -51,6 +60,7 @@ object ArchiveManager {
 
         var character: Character? = null
         var portraitBytes: ByteArray? = null
+        var originalBytes: ByteArray? = null
 
         // Detect if it's a ZIP file (PK header)
         if (bytes.size > 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte()) {
@@ -65,6 +75,9 @@ object ArchiveManager {
                             }
                             "portrait.webp" -> {
                                 portraitBytes = zis.readBytes()
+                            }
+                            "original.webp" -> {
+                                originalBytes = zis.readBytes()
                             }
                         }
                         zis.closeEntry()
@@ -106,19 +119,36 @@ object ArchiveManager {
         }
 
         character?.let { char ->
-            val finalChar = if (portraitBytes != null) {
+            val finalChar = if (portraitBytes != null || originalBytes != null) {
                 val newId = char.imageData ?: UUID.randomUUID().toString()
-                val portraitFile = ImageManager.getPortraitFile(context, newId)
-                portraitFile.parentFile?.mkdirs()
-                try {
-                    portraitFile.outputStream().use { it.write(portraitBytes) }
-                    // Regenerate thumbnail immediately
-                    ImageManager.generateThumbnailFromPortrait(context, newId)
-                    char.copy(imageData = newId)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    char
+                
+                // Save Original
+                if (originalBytes != null) {
+                    val originalFile = ImageManager.getOriginalFile(context, newId)
+                    originalFile.parentFile?.mkdirs()
+                    try { originalFile.outputStream().use { it.write(originalBytes!!) } } catch (e: Exception) { e.printStackTrace() }
+                } else if (portraitBytes != null) {
+                    // If no original, save portrait as original for fallback
+                    val originalFile = ImageManager.getOriginalFile(context, newId)
+                    originalFile.parentFile?.mkdirs()
+                    try { originalFile.outputStream().use { it.write(portraitBytes!!) } } catch (e: Exception) { e.printStackTrace() }
                 }
+
+                // Save Portrait
+                if (portraitBytes != null) {
+                    val portraitFile = ImageManager.getPortraitFile(context, newId)
+                    portraitFile.parentFile?.mkdirs()
+                    try { portraitFile.outputStream().use { it.write(portraitBytes!!) } } catch (e: Exception) { e.printStackTrace() }
+                } else if (originalBytes != null) {
+                    // If only original, save it as portrait too
+                    val portraitFile = ImageManager.getPortraitFile(context, newId)
+                    portraitFile.parentFile?.mkdirs()
+                    try { portraitFile.outputStream().use { it.write(originalBytes!!) } } catch (e: Exception) { e.printStackTrace() }
+                }
+
+                // Regenerate thumbnail
+                ImageManager.generateThumbnailFromPortrait(context, newId)
+                char.copy(imageData = newId)
             } else char
 
             return@withContext finalChar

@@ -38,12 +38,17 @@ import kotlinx.coroutines.launch
 import ru.quasaris.characters.master.ui.MorphingPolygonShape
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import ru.quasaris.characters.master.backend.ImageManager
+import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
+
+import dev.chrisbanes.haze.HazeState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CharacterCreationWindow(
     onNavigateBack: () -> Unit,
-    onCharacterCreate: (Character) -> Unit
+    onCharacterCreate: (Character) -> Unit,
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -53,6 +58,7 @@ fun CharacterCreationWindow(
     var level by remember { mutableStateOf("1") }
     var order by remember { mutableStateOf("")}
     var imageData by remember { mutableStateOf<String?>(null) }
+    var bitmapToCrop by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     val baseStats = remember { mutableStateListOf(8, 8, 8, 8, 8, 8) }
     val statNames = listOf("СИЛ", "ЛОВ", "ТЕЛ", "ИНТ", "МДР", "ХАР")
@@ -72,8 +78,9 @@ fun CharacterCreationWindow(
         uri?.let {
             scope.launch {
                 try {
-                    val newId = ImageManager.processAndSaveImage(context, it)
-                    imageData = newId
+                    val inputStream = context.contentResolver.openInputStream(it)
+                    val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                    bitmapToCrop = bitmap
                 } catch (e: Exception) { e.printStackTrace() }
             }
         }
@@ -122,113 +129,132 @@ fun CharacterCreationWindow(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Создание персонажа", fontSize = 20.sp) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colorScheme.surface,
-                    titleContentColor = colorScheme.onSurface
-                )
-            )
-        },
-        bottomBar = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 8.dp,
-                color = colorScheme.surface
-            ) {
-                Button(
-                    onClick = {
-                        val levelInt = level.toIntOrNull() ?: 1
-                        val newChar = Character(
-                            id = (0..Int.MAX_VALUE).random(),
-                            name = name,
-                            characterClass = charClass,
-                            order = order,
-                            imageData = imageData,
-                            level = level,
-                            experience = getXpForLevel(levelInt),
-                            strength = (baseStats[0] + indicatorStates[0]).toString(),
-                            dexterity = (baseStats[1] + indicatorStates[1]).toString(),
-                            constitution = (baseStats[2] + indicatorStates[2]).toString(),
-                            intelligence = (baseStats[3] + indicatorStates[3]).toString(),
-                            wisdom = (baseStats[4] + indicatorStates[4]).toString(),
-                            charisma = (baseStats[5] + indicatorStates[5]).toString(),
-                            themeSeedColorArgb = themeSeedColorArgb
-                        )
-                        onCharacterCreate(newChar)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Создание персонажа", fontSize = 20.sp) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        }
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorScheme.primary,
-                        contentColor = colorScheme.onPrimary
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = colorScheme.surface,
+                        titleContentColor = colorScheme.onSurface
                     )
+                )
+            },
+            bottomBar = {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shadowElevation = 8.dp,
+                    color = colorScheme.surface
                 ) {
-                    Text("Создать", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = {
+                            val levelInt = level.toIntOrNull() ?: 1
+                            val newChar = Character(
+                                id = (0..Int.MAX_VALUE).random(),
+                                name = name,
+                                characterClass = charClass,
+                                order = order,
+                                imageData = imageData,
+                                level = level,
+                                experience = getXpForLevel(levelInt),
+                                strength = (baseStats[0] + indicatorStates[0]).toString(),
+                                dexterity = (baseStats[1] + indicatorStates[1]).toString(),
+                                constitution = (baseStats[2] + indicatorStates[2]).toString(),
+                                intelligence = (baseStats[3] + indicatorStates[3]).toString(),
+                                wisdom = (baseStats[4] + indicatorStates[4]).toString(),
+                                charisma = (baseStats[5] + indicatorStates[5]).toString(),
+                                themeSeedColorArgb = themeSeedColorArgb
+                            )
+                            onCharacterCreate(newChar)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.primary,
+                            contentColor = colorScheme.onPrimary
+                        )
+                    ) {
+                        Text("Создать", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            CharacterInfoSection(
-                name = name, onNameChange = { name = it },
-                charClass = charClass, onClassChange = { charClass = it },
-                level = level, onLevelChange = { level = it },
-                order = order, onOrderChange = { order = it },
-                imageData = imageData,
-                onAvatarClick = { imagePicker.launch("image/*") }
-            )
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CharacterInfoSection(
+                    name = name, onNameChange = { name = it },
+                    charClass = charClass, onClassChange = { charClass = it },
+                    level = level, onLevelChange = { level = it },
+                    order = order, onOrderChange = { order = it },
+                    imageData = imageData,
+                    onAvatarClick = { imagePicker.launch("image/*") }
+                )
 
-            Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(32.dp))
 
-            StatsTable(
-                statNames = statNames,
-                baseStats = baseStats,
-                indicatorStates = indicatorStates,
-                spentPoints = spentPoints,
-                totalPoints = totalPoints,
-                totalIndicatorTaps = totalIndicatorTaps,
-                onStatChange = { index, newValue ->
-                    if (newValue in 8..15) {
-                        val tempStats = baseStats.toMutableList()
-                        tempStats[index] = newValue
-                        val newSpent = tempStats.sumOf { v ->
-                            when (v) {
-                                8 -> 0; 9 -> 1; 10 -> 2; 11 -> 3; 12 -> 4; 13 -> 5; 14 -> 7; 15 -> 9; else -> 0
+                StatsTable(
+                    statNames = statNames,
+                    baseStats = baseStats,
+                    indicatorStates = indicatorStates,
+                    spentPoints = spentPoints,
+                    totalPoints = totalPoints,
+                    totalIndicatorTaps = totalIndicatorTaps,
+                    onStatChange = { index, newValue ->
+                        if (newValue in 8..15) {
+                            val tempStats = baseStats.toMutableList()
+                            tempStats[index] = newValue
+                            val newSpent = tempStats.sumOf { v ->
+                                when (v) {
+                                    8 -> 0; 9 -> 1; 10 -> 2; 11 -> 3; 12 -> 4; 13 -> 5; 14 -> 7; 15 -> 9; else -> 0
+                                }
+                            }
+                            if (newSpent <= totalPoints) {
+                                baseStats[index] = newValue
                             }
                         }
-                        if (newSpent <= totalPoints) {
-                            baseStats[index] = newValue
+                    },
+                    onIndicatorTap = { index ->
+                        if (indicatorStates[index] < 2 && totalIndicatorTaps < 3) {
+                            indicatorStates[index] += 1
+                        } else if (indicatorStates[index] > 0) {
+                            indicatorStates[index] = 0
                         }
                     }
-                },
-                onIndicatorTap = { index ->
-                    if (indicatorStates[index] < 2 && totalIndicatorTaps < 3) {
-                        indicatorStates[index] += 1
-                    } else if (indicatorStates[index] > 0) {
-                        indicatorStates[index] = 0
+                )
+                
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+
+        if (bitmapToCrop != null) {
+            AvatarCropperWindow(
+                imageToCrop = bitmapToCrop!!,
+                hazeState = hazeState,
+                forceBlurEnabled = forceBlurEnabled,
+                onCropSuccess = { cropped ->
+                    scope.launch {
+                        val id = ImageManager.saveBitmapAsOriginal(context, bitmapToCrop!!)
+                        ImageManager.saveCropped(context, id, cropped)
+                        imageData = id
+                        bitmapToCrop = null
                     }
-                }
+                },
+                onCancel = { bitmapToCrop = null }
             )
-            
-            Spacer(Modifier.height(32.dp))
         }
     }
 }
