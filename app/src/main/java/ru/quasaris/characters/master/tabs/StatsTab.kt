@@ -39,6 +39,7 @@ import ru.quasaris.characters.master.MainWindow.AttributesSection
 import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.backend.RollResult
 import dev.chrisbanes.haze.HazeState
+import androidx.compose.ui.graphics.Color
 
 data class StatsState(
     val strength: String = "10",
@@ -142,7 +143,9 @@ fun StatsTab(
                 onSkillLongClick = { showBonusDialogForSkill = it },
                 onRoll = onRoll,
                 statsMap = statsMap,
-                exhaustion = character.exhaustion
+                exhaustion = character.exhaustion,
+                hazeState = hazeState,
+                isOled = colorScheme.background == Color.Black
             )
         }
 

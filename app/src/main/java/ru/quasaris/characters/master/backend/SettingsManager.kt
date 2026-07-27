@@ -47,7 +47,7 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit { putInt("custom_roll_history_size", value) }
 
     var rollInterfaceAlpha: Float
-        get() = prefs.getFloat("roll_interface_alpha", 0.4f)
+        get() = prefs.getFloat("roll_interface_alpha", 1.0f)
         set(value) = prefs.edit { putFloat("roll_interface_alpha", value) }
 
     var masterBlurEnabled: Boolean

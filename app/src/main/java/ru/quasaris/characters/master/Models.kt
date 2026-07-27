@@ -17,7 +17,8 @@ data class ArmorClassEntry(
 data class InitiativeEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
-    override val formula: String = ""
+    override val formula: String = "",
+    val hasAdvantage: Boolean = false
 ) : FormulaEntry
 
 data class SpeedEntry(

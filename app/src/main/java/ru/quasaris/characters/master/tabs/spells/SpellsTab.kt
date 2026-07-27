@@ -1,6 +1,8 @@
 package ru.quasaris.characters.master.tabs.spells
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -10,33 +12,40 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.DynamicNoteState
 import ru.quasaris.characters.master.SpellSettings
 import ru.quasaris.characters.master.SlotAlignment
 import ru.quasaris.characters.master.SlotFillDirection
+import ru.quasaris.characters.master.backend.AdvantageType
+import ru.quasaris.characters.master.backend.DiceRoller
+import ru.quasaris.characters.master.backend.RollResult
+import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import ru.quasaris.characters.master.backend.SpellSlotCalculator
-import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.backend.getProficiencyBonus
-import ru.quasaris.characters.master.backend.RollResult
-import ru.quasaris.characters.master.backend.DiceRoller
-import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.tabs.DynamicFieldsTab
+import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
 import ru.quasaris.characters.master.tabs.attacks.DicePart
 import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
-import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
+import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
 import dev.chrisbanes.haze.HazeState
 import java.util.Locale
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SpellsTab(
     spells: List<DynamicNoteState>,
@@ -54,6 +63,9 @@ fun SpellsTab(
     exhaustion: Int = 0
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
+    
+    var showSpellAtkPopup by remember { mutableStateOf(false) }
+    var spellAtkBtnSize by remember { mutableStateOf(IntSize.Zero) }
 
     val autoSlots = remember(spellSettings.casterType, spellSettings.isMulticlass, spellSettings.fullCasterLevel, spellSettings.halfCasterLevel, spellSettings.thirdCasterLevel, characterLevel) {
         if (spellSettings.isMulticlass) {
@@ -127,11 +139,10 @@ fun SpellsTab(
         val specialLevels = spellSettings.specialSlots.map { it.level }.toMutableSet()
         if (spellSettings.isPactEnabled) specialLevels.add(spellSettings.pactSlotLevel)
         
-        // Ensure 1-9 are there if caster
         if (spellSettings.casterType != ru.quasaris.characters.master.CasterType.NONE || spellSettings.isMulticlass) {
             for (i in 1..9) specialLevels.add(i.toFloat())
         }
-        specialLevels.add(0f) // Cantrips
+        specialLevels.add(0f)
 
         val currentList = spells.toMutableList()
         val existingLevels = currentList.map { parseLevelFromTitle(it.title) }
@@ -141,7 +152,7 @@ fun SpellsTab(
         missingLevels.forEach { level ->
             currentList.add(DynamicNoteState(
                 title = formatLevelTitle(level),
-                isExpanded = level <= 1f // Expand Cantrips and Level 1 by default
+                isExpanded = level <= 1f
             ))
         }
 
@@ -163,7 +174,6 @@ fun SpellsTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left: Spell Save DC
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(12.dp)
@@ -196,41 +206,82 @@ fun SpellsTab(
                     }
                 }
 
-                // Right: Spell Attack Bonus Roll Button
                 Surface(
                     modifier = Modifier
-                        .clickable { 
-                            onRoll(DiceRoller.roll(
-                                title = "Атака заклинанием", 
-                                baseModifier = spellAttackBonus + (exhaustion * 2), 
-                                bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
-                                stats = statsMap, 
-                                exhaustion = exhaustion, 
-                                sourceType = RollSourceType.ATTACK
-                            )) 
-                        },
+                        .onGloballyPositioned { coords ->
+                            spellAtkBtnSize = coords.size
+                        }
+                        .combinedClickable(
+                            onClick = { 
+                                onRoll(DiceRoller.roll(
+                                    title = "Атака заклинанием", 
+                                    baseModifier = spellAttackBonus + (exhaustion * 2), 
+                                    bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
+                                    stats = statsMap, 
+                                    exhaustion = exhaustion, 
+                                    sourceType = RollSourceType.ATTACK,
+                                    advantageType = AdvantageType.NONE
+                                )) 
+                            },
+                            onLongClick = { showSpellAtkPopup = true }
+                        ),
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "Атака заклинанием",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 10.sp
-                        )
-                        AttackBonusIndicator(
-                            bonus = spellAttackBonus,
-                            dice = spellAttackDice,
-                            size = 42.dp,
-                            fontSize = 16.sp,
-                            showLabel = false,
-                            showDice = true,
-                            diceOnLeft = true
-                        )
+                    Box(contentAlignment = Alignment.Center) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Атака заклинанием",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 10.sp
+                            )
+                            AttackBonusIndicator(
+                                bonus = spellAttackBonus,
+                                dice = spellAttackDice,
+                                size = 42.dp,
+                                fontSize = 16.sp,
+                                showLabel = false,
+                                showDice = true,
+                                diceOnLeft = true
+                            )
+                        }
+                        
+                        if (showSpellAtkPopup) {
+                            val density = LocalDensity.current
+                            val sizeDp = with(density) { spellAtkBtnSize.toSize().let { androidx.compose.ui.unit.DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
+                            DiceRollAdvantagePopup(
+                                onAdvantage = {
+                                    onRoll(DiceRoller.roll(
+                                        title = "Атака заклинанием", 
+                                        baseModifier = spellAttackBonus + (exhaustion * 2), 
+                                        bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
+                                        stats = statsMap, 
+                                        exhaustion = exhaustion, 
+                                        sourceType = RollSourceType.ATTACK,
+                                        advantageType = AdvantageType.ADVANTAGE
+                                    ))
+                                },
+                                onDisadvantage = {
+                                    onRoll(DiceRoller.roll(
+                                        title = "Атака заклинанием", 
+                                        baseModifier = spellAttackBonus + (exhaustion * 2), 
+                                        bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
+                                        stats = statsMap, 
+                                        exhaustion = exhaustion, 
+                                        sourceType = RollSourceType.ATTACK,
+                                        advantageType = AdvantageType.DISADVANTAGE
+                                    ))
+                                },
+                                onDismiss = { showSpellAtkPopup = false },
+                                hazeState = hazeState,
+                                isOled = MaterialTheme.colorScheme.background == Color.Black,
+                                modifier = Modifier.size(sizeDp)
+                            )
+                        }
                     }
                 }
             }

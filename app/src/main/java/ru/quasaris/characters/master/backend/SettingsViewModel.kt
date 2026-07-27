@@ -36,7 +36,7 @@ class SettingsViewModel(
     private val _masterBlurEnabled = MutableStateFlow(settingsManager?.masterBlurEnabled ?: true)
     val masterBlurEnabled = _masterBlurEnabled.asStateFlow()
 
-    private val _rollInterfaceAlpha = MutableStateFlow(settingsManager?.rollInterfaceAlpha ?: 0.4f)
+    private val _rollInterfaceAlpha = MutableStateFlow(settingsManager?.rollInterfaceAlpha ?: 1.0f)
     val rollInterfaceAlpha = _rollInterfaceAlpha.asStateFlow()
 
     private val _rollPassThrough = MutableStateFlow(settingsManager?.rollPassThrough ?: true)
@@ -237,7 +237,7 @@ class SettingsViewModel(
         _blurFullscreen.value = settingsManager?.blurFullscreen ?: false
         _blurPopups.value = settingsManager?.blurPopups ?: true
         _masterBlurEnabled.value = settingsManager?.masterBlurEnabled ?: true
-        _rollInterfaceAlpha.value = settingsManager?.rollInterfaceAlpha ?: 0.4f
+        _rollInterfaceAlpha.value = settingsManager?.rollInterfaceAlpha ?: 1.0f
         _rollPassThrough.value = settingsManager?.rollPassThrough ?: true
         _rollPosition.value = DiceRollPosition.valueOf(settingsManager?.rollPosition ?: "BOTTOM_LEFT")
         _rollCloseButtonPosition.value = DiceRollPosition.valueOf(settingsManager?.rollCloseButtonPosition ?: "TOP_RIGHT")

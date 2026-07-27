@@ -440,37 +440,37 @@ fun BlurSettingsSection(
                     checked = blurPopups,
                     onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurPopups(it) } }
                 )
-
-                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val isAlphaDisabled = masterBlurEnabled && blurRolls
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Прозрачность интерфейса броска",
-                            fontSize = 16.sp,
-                            color = if (isAlphaDisabled) colorScheme.onSurface.copy(alpha = 0.38f) else colorScheme.onSurface
-                        )
-                        Text(
-                            text = if (isAlphaDisabled) "100%" else "${((1f - rollAlpha) * 100).roundToInt()}%",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isAlphaDisabled) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.primary
-                        )
-                    }
-                    Slider(
-                        value = if (isAlphaDisabled) 1f else 1f - rollAlpha,
-                        onValueChange = { settingsViewModel.updateRollInterfaceAlpha(1f - it) },
-                        enabled = !isAlphaDisabled,
-                        valueRange = 0f..1f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
             }
+        }
+
+        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val isAlphaDisabled = masterBlurEnabled && blurRolls
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Прозрачность интерфейса броска",
+                    fontSize = 16.sp,
+                    color = if (isAlphaDisabled) colorScheme.onSurface.copy(alpha = 0.38f) else colorScheme.onSurface
+                )
+                Text(
+                    text = "${((1f - rollAlpha) * 100).roundToInt()}%",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isAlphaDisabled) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.primary
+                )
+            }
+            Slider(
+                value = 1f - rollAlpha,
+                onValueChange = { settingsViewModel.updateRollInterfaceAlpha(1f - it) },
+                enabled = !isAlphaDisabled,
+                valueRange = 0f..1f,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 

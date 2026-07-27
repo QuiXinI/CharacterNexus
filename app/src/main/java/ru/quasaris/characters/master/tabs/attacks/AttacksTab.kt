@@ -3,7 +3,9 @@ package ru.quasaris.characters.master.tabs.attacks
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,20 +25,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.MagicAttackType
+import ru.quasaris.characters.master.backend.AdvantageType
 import ru.quasaris.characters.master.backend.DiceRoller
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
+import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -49,6 +56,7 @@ import dev.chrisbanes.haze.LocalHazeStyle
 import androidx.compose.runtime.CompositionLocalProvider
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
+import kotlin.math.roundToInt
 
 /**
  * Стиль размытия для инфо-панелей атак.
@@ -81,7 +89,7 @@ fun AttacksTab(
     val items = remember(attacks) { mutableStateListOf<AttackEntry>().apply { addAll(attacks) } }
     var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
     var draggingOffset by remember { mutableStateOf(0f) }
-
+    
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -229,6 +237,7 @@ fun AttacksTab(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AttackItem(
     attack: AttackEntry,
@@ -310,6 +319,12 @@ fun AttackItem(
 
     var showInfo by remember { mutableStateOf(false) }
     var iconPosition by remember { mutableStateOf(Offset.Zero) }
+    
+    var showAttackPopup by remember { mutableStateOf(false) }
+    var attackBtnSize by remember { mutableStateOf(IntSize.Zero) }
+    
+    var showDamagePopup by remember { mutableStateOf(false) }
+    var damageBtnSize by remember { mutableStateOf(IntSize.Zero) }
 
     Card(
         modifier = modifier
@@ -475,28 +490,81 @@ fun AttackItem(
                         Surface(
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable {
-                                    val damageFlat = attack.damageBonus
-                                    val bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula
-                                    onRoll(DiceRoller.roll(
-                                        title = "Урон: ${attack.name}",
-                                        baseModifier = damageFlat,
-                                        bonusFormulas = bonusFormulas,
-                                        isDamage = true,
-                                        stats = stats,
-                                        sourceType = RollSourceType.ATTACK
-                                    ))
-                                },
+                                .onGloballyPositioned { coords ->
+                                    damageBtnSize = coords.size
+                                }
+                                .combinedClickable(
+                                    onClick = {
+                                        val damageFlat = attack.damageBonus
+                                        val bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula
+                                        onRoll(DiceRoller.roll(
+                                            title = "Урон: ${attack.name}",
+                                            baseModifier = damageFlat,
+                                            bonusFormulas = bonusFormulas,
+                                            isDamage = true,
+                                            stats = stats,
+                                            sourceType = RollSourceType.ATTACK,
+                                            advantageType = AdvantageType.NONE
+                                        ))
+                                    },
+                                    onLongClick = { showDamagePopup = true }
+                                ),
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text(
-                                text = "$fullDamageText ${attack.damageType}".trim(),
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "$fullDamageText ${attack.damageType}".trim(),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                
+                                if (showDamagePopup) {
+                                    val density = LocalDensity.current
+                                    val sizeDp = with(density) { damageBtnSize.toSize().let { androidx.compose.ui.unit.DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
+                                    DiceRollAdvantagePopup(
+                                        onAdvantage = {
+                                            onRoll(DiceRoller.roll(
+                                                title = "Урон: ${attack.name}",
+                                                baseModifier = attack.damageBonus,
+                                                bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula,
+                                                isDamage = true,
+                                                stats = stats,
+                                                sourceType = RollSourceType.ATTACK,
+                                                advantageType = AdvantageType.ADVANTAGE
+                                            ))
+                                        },
+                                        onDisadvantage = {
+                                            onRoll(DiceRoller.roll(
+                                                title = "Урон: ${attack.name}",
+                                                baseModifier = attack.damageBonus,
+                                                bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula,
+                                                isDamage = true,
+                                                stats = stats,
+                                                sourceType = RollSourceType.ATTACK,
+                                                advantageType = AdvantageType.DISADVANTAGE
+                                            ))
+                                        },
+                                        onCritical = {
+                                            onRoll(DiceRoller.roll(
+                                                title = "Критический Урон: ${attack.name}",
+                                                baseModifier = attack.damageBonus,
+                                                bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula,
+                                                isDamage = true,
+                                                stats = stats,
+                                                sourceType = RollSourceType.ATTACK,
+                                                advantageType = AdvantageType.CRITICAL
+                                            ))
+                                        },
+                                        onDismiss = { showDamagePopup = false },
+                                        hazeState = hazeState,
+                                        isOled = MaterialTheme.colorScheme.background == Color.Black,
+                                        modifier = Modifier.size(sizeDp)
+                                    )
+                                }
+                            }
                         }
 
                         // Modifier Section
@@ -535,34 +603,80 @@ fun AttackItem(
                         } else if (attack.isMagic || attack.attribute != Attribute.NONE) {
                             Surface(
                                 modifier = Modifier
-                                    .clickable {
-                                        val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
-                                        onRoll(DiceRoller.roll(
-                                            title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
-                                            baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
-                                            bonusFormulas = bonuses,
-                                            isDamage = false,
-                                            stats = stats,
-                                            exhaustion = exhaustion,
-                                            sourceType = RollSourceType.ATTACK
-                                        ))
-                                    },
+                                    .onGloballyPositioned { coords ->
+                                        attackBtnSize = coords.size
+                                    }
+                                    .combinedClickable(
+                                        onClick = {
+                                            val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
+                                            onRoll(DiceRoller.roll(
+                                                title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
+                                                baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
+                                                bonusFormulas = bonuses,
+                                                isDamage = false,
+                                                stats = stats,
+                                                exhaustion = exhaustion,
+                                                sourceType = RollSourceType.ATTACK,
+                                                advantageType = AdvantageType.NONE
+                                            ))
+                                        },
+                                        onLongClick = { showAttackPopup = true }
+                                    ),
                                 color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    AttackBonusIndicator(
-                                        bonus = totalAttackBonus,
-                                        dice = attackDice,
-                                        size = 48.dp,
-                                        fontSize = 18.sp,
-                                        showLabel = false,
-                                        showDice = true
-                                    )
+                                Box(contentAlignment = Alignment.Center) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        AttackBonusIndicator(
+                                            bonus = totalAttackBonus,
+                                            dice = attackDice,
+                                            size = 48.dp,
+                                            fontSize = 18.sp,
+                                            showLabel = false,
+                                            showDice = true
+                                        )
+                                    }
+                                    
+                                    if (showAttackPopup) {
+                                        val density = LocalDensity.current
+                                        val sizeDp = with(density) { attackBtnSize.toSize().let { androidx.compose.ui.unit.DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
+                                        DiceRollAdvantagePopup(
+                                            onAdvantage = {
+                                                val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
+                                                onRoll(DiceRoller.roll(
+                                                    title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
+                                                    baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
+                                                    bonusFormulas = bonuses,
+                                                    isDamage = false,
+                                                    stats = stats,
+                                                    exhaustion = exhaustion,
+                                                    sourceType = RollSourceType.ATTACK,
+                                                    advantageType = AdvantageType.ADVANTAGE
+                                                ))
+                                            },
+                                            onDisadvantage = {
+                                                val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
+                                                onRoll(DiceRoller.roll(
+                                                    title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
+                                                    baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
+                                                    bonusFormulas = bonuses,
+                                                    isDamage = false,
+                                                    stats = stats,
+                                                    exhaustion = exhaustion,
+                                                    sourceType = RollSourceType.ATTACK,
+                                                    advantageType = AdvantageType.DISADVANTAGE
+                                                ))
+                                            },
+                                            onDismiss = { showAttackPopup = false },
+                                            hazeState = hazeState,
+                                            isOled = MaterialTheme.colorScheme.background == Color.Black,
+                                            modifier = Modifier.size(sizeDp)
+                                        )
+                                    }
                                 }
                             }
                         }

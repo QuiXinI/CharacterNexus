@@ -46,6 +46,7 @@ import androidx.compose.runtime.collectAsState
 import ru.quasaris.characters.master.backend.AppLifecycleObserver
 import ru.quasaris.characters.master.backend.AppScaleManager
 import ru.quasaris.characters.master.backend.AppScaleProvider
+import ru.quasaris.characters.master.backend.DiceRoller
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.SettingsManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
@@ -378,6 +379,7 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 },
                                                 onRoll = { res -> 
+                                                    DiceRoller.performHapticFeedback(this@MainActivity, res)
                                                     rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
                                                 },
                                                 hazeState = hazeState,

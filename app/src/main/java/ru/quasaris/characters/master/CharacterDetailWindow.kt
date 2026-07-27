@@ -34,6 +34,7 @@ import ru.quasaris.characters.master.tabs.*
 import ru.quasaris.characters.master.MainWindow.*
 import ru.quasaris.characters.master.HeaderCode.*
 import ru.quasaris.characters.master.tabs.attacks.AttacksTab
+import ru.quasaris.characters.master.backend.AdvantageType
 import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.getNextLevelThreshold
@@ -437,7 +438,9 @@ fun CharacterDetailWindow(
                     activeInitValue = initValue,
                     onInitClick = {
                         val baseInit = (initValue.replace("+", "").toIntOrNull() ?: 0) + (exhaustion * 2)
-                        onRoll(DiceRoller.roll("Инициатива", baseInit, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY))
+                        val activeEntry = initiativeEntries.find { it.id == activeInitiativeId }
+                        val advantage = if (activeEntry?.hasAdvantage == true) AdvantageType.ADVANTAGE else AdvantageType.NONE
+                        onRoll(DiceRoller.roll("Инициатива", baseInit, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage))
                     },
                     onInitLongClick = {
                         isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false

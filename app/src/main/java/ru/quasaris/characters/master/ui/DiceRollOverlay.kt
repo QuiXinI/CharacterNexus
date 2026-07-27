@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -22,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -41,12 +44,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.window.Popup
 import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.LocalHazeStyle
 import dev.chrisbanes.haze.hazeEffect
+import ru.quasaris.characters.master.backend.AdvantageType
 import ru.quasaris.characters.master.backend.AppThemeMode
 import ru.quasaris.characters.master.backend.DiceRollPosition
 import ru.quasaris.characters.master.backend.RollResult
@@ -69,7 +74,7 @@ fun DiceRollOverlay(
     themeMode: AppThemeMode = AppThemeMode.M3,
     forceBlurEnabled: Boolean = false,
     hazeState: HazeState? = null,
-    alpha: Float = 0.4f,
+    alpha: Float = 1.0f,
     isPassThrough: Boolean = true,
     position: DiceRollPosition = DiceRollPosition.BOTTOM_LEFT,
     closeButtonPosition: DiceRollPosition = DiceRollPosition.TOP_RIGHT,
@@ -324,32 +329,65 @@ fun RollItem(result: RollResult, isCompact: Boolean, isOled: Boolean) {
                 )
             } else null
 
-            Text(
-                text = if (result.isCriticalFailure && !result.isDamage) "1" else result.total.toString(),
-                color = if (brush == null) resultColor else Color.Unspecified,
-                style = TextStyle(
-                    brush = brush,
-                    fontSize = fontSize,
-                    fontWeight = FontWeight.Black
+            Row(verticalAlignment = Alignment.Bottom) {
+                if (result.unusedTotal != null) {
+                    Text(
+                        text = result.unusedTotal.toString(),
+                        color = colorScheme.onSurface.copy(alpha = 0.4f),
+                        style = TextStyle(
+                            fontSize = (fontSize.value * 0.5f).sp,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        modifier = Modifier.padding(end = 8.dp, bottom = (fontSize.value * 0.15f).dp)
+                    )
+                }
+                Text(
+                    text = if (result.isCriticalFailure && !result.isDamage) "1" else result.total.toString(),
+                    color = if (brush == null) resultColor else Color.Unspecified,
+                    style = TextStyle(
+                        brush = brush,
+                        fontSize = fontSize,
+                        fontWeight = FontWeight.Black
+                    )
                 )
-            )
+            }
         }
 
         Spacer(modifier = Modifier.height(if (isCompact) 2.dp else 4.dp))
-        Text(
-            text = buildStyledBreakdown(result, colorScheme, isOled),
-            fontSize = if (isCompact) 14.sp else 18.sp,
-            lineHeight = if (isCompact) 16.sp else 22.sp,
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (result.advantageType != AdvantageType.NONE && !isCompact) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = buildStyledBreakdown(result, colorScheme, isOled, useSecond = false),
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp
+                )
+                Text(
+                    text = buildStyledBreakdown(result, colorScheme, isOled, useSecond = true),
+                    fontSize = 14.sp,
+                    lineHeight = 18.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.5f)
+                )
+            }
+        } else {
+            Text(
+                text = buildStyledBreakdown(result, colorScheme, isOled),
+                fontSize = if (isCompact) 14.sp else 18.sp,
+                lineHeight = if (isCompact) 16.sp else 22.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
-fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme, isOled: Boolean): AnnotatedString {
+fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme, isOled: Boolean, useSecond: Boolean = false): AnnotatedString {
     return buildAnnotatedString {
         var first = true
 
-        result.mainD20?.let { value ->
+        val diceList = if (useSecond) result.alternativeDice ?: emptyList() else result.bonusDice
+        val flatList = if (useSecond) result.alternativeFlatBonuses ?: emptyList() else result.flatBonuses
+        val d20Value = if (useSecond) result.alternativeD20 else result.mainD20
+
+        d20Value?.let { value ->
             val d20Color = getD20Color(value, colorScheme.primary, isOled)
             withStyle(SpanStyle(color = d20Color, fontWeight = FontWeight.Black)) {
                 append(value.toString())
@@ -357,28 +395,29 @@ fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme, isOled: B
             first = false
         }
 
-        result.bonusDice.forEach { dice ->
+        diceList.forEach { dice ->
             val diceVal = dice.value
             val sign = if (diceVal >= 0) " + " else " - "
-            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.7f), fontWeight = FontWeight.Light)) {
+            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
                 if (!first) append(sign)
                 else if (diceVal < 0) append("-")
             }
 
-            withStyle(SpanStyle(color = getDiceColor(kotlin.math.abs(diceVal), dice.sides), fontWeight = FontWeight.Bold)) {
+            withStyle(SpanStyle(color = getDiceColor(kotlin.math.abs(diceVal), dice.sides).copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Bold)) {
                 append(kotlin.math.abs(diceVal).toString())
             }
             first = false
         }
 
-        result.flatBonuses.forEach { bonusVal ->
+        flatList.forEach { bonusVal ->
+            if (bonusVal == 0) return@forEach
             val sign = if (bonusVal >= 0) " + " else " - "
-            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.7f), fontWeight = FontWeight.Light)) {
+            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
                 if (!first) append(sign)
                 else if (bonusVal < 0) append("-")
             }
 
-            withStyle(SpanStyle(color = colorScheme.onSurface, fontWeight = FontWeight.Normal)) {
+            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Normal)) {
                 append(kotlin.math.abs(bonusVal).toString())
             }
             first = false
@@ -427,5 +466,103 @@ fun getD20Color(value: Int, themeColor: Color, isOled: Boolean): Color {
         }
     } else {
         lerp(Color.Red, themeColor, ratio)
+    }
+}
+
+@Composable
+fun DiceRollAdvantagePopup(
+    onAdvantage: () -> Unit,
+    onDisadvantage: () -> Unit,
+    onDismiss: () -> Unit,
+    onCritical: (() -> Unit)? = null,
+    hazeState: HazeState? = null,
+    isOled: Boolean = false,
+    widthMultiplier: Float = 1f,
+    modifier: Modifier = Modifier
+) {
+    Popup(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.PopupProperties(focusable = true)
+    ) {
+        val colorScheme = MaterialTheme.colorScheme
+        val critBrush = Brush.linearGradient(
+            colors = listOf(Color(0xFF00E1FF), Color(0xFF00ffd9))
+        )
+
+        Surface(
+            modifier = modifier
+                .fillMaxWidth(widthMultiplier)
+                .shadow(8.dp, RoundedCornerShape(12.dp))
+                .run {
+                    if (hazeState != null && !isOled) {
+                        this.clip(RoundedCornerShape(12.dp))
+                            .hazeEffect(state = hazeState) {
+                                inputScale = HazeInputScale.Fixed(0.6f)
+                            }
+                    } else this
+                },
+            shape = RoundedCornerShape(12.dp),
+            color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
+            tonalElevation = 8.dp,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
+        ) {
+            Row(
+                modifier = Modifier.padding(2.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        onAdvantage()
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Преимущество",
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                
+                if (onCritical != null) {
+                    VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    IconButton(
+                        onClick = {
+                            onCritical()
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    ) {
+                        Text(
+                            "!",
+                            style = TextStyle(
+                                brush = critBrush,
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        )
+                    }
+                }
+
+                VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+                
+                IconButton(
+                    onClick = {
+                        onDisadvantage()
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Помеха",
+                        tint = Color(0xFFF44336),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        }
     }
 }

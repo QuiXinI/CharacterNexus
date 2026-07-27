@@ -24,6 +24,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.scale
 import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.FormulaEntry
 import ru.quasaris.characters.master.InitiativeEntry
@@ -95,6 +96,16 @@ fun FormulaEntryItem(
                     }
                     onUpdate(u) 
                 }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, color = colorScheme.onSurface), modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp))
+            }
+            if (entry is InitiativeEntry) {
+                Box(modifier = Modifier.width(1.2.dp).fillMaxHeight().background(sep))
+                Box(modifier = Modifier.width(44.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    Switch(
+                        checked = entry.hasAdvantage,
+                        onCheckedChange = { onUpdate(entry.copy(hasAdvantage = it)) },
+                        modifier = Modifier.scale(0.7f)
+                    )
+                }
             }
             Box(modifier = Modifier.width(1.2.dp).fillMaxHeight().background(sep))
             Box(modifier = Modifier.width(44.dp).fillMaxHeight().clickable { onToggle() }, contentAlignment = Alignment.Center) { Icon(if (isActive) Icons.Default.Close else Icons.Default.Check, null, modifier = Modifier.size(20.dp)) }
