@@ -34,6 +34,12 @@ import ru.quasaris.characters.master.backend.SettingsViewModel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.FolderOpen
+import ru.quasaris.characters.master.backend.ExportFormat
+import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
+import android.net.Uri
+import ru.quasaris.characters.master.backend.ImageExporter
+import ru.quasaris.characters.master.backend.DiceRollPosition
 import kotlin.math.roundToInt
 
 private const val SHOW_DEBUG_SETTINGS = true
@@ -157,6 +163,10 @@ fun SettingsWindow(
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            ExportSettingsSection(settingsViewModel = settingsViewModel)
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
             RollHistorySettingsSection(
                 settingsViewModel = settingsViewModel
             )
@@ -171,6 +181,12 @@ fun SettingsWindow(
             HorizontalDivider(color = colorScheme.outlineVariant)
 
             BlurSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            DiceRollSettingsSection(
                 settingsViewModel = settingsViewModel
             )
 
@@ -270,20 +286,224 @@ fun SettingsWindow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExportSettingsSection(settingsViewModel: SettingsViewModel) {
+    val colorScheme = MaterialTheme.colorScheme
+    val exportFormat by settingsViewModel.exportFormat.collectAsState()
+    val exportDirectoryUri by settingsViewModel.exportDirectoryUri.collectAsState()
+    
+    val directoryPicker = rememberDirectoryPickerLauncher(
+        title = "Выберите папку для экспорта"
+    ) { directory ->
+        directory?.let {
+            settingsViewModel.updateExportDirectoryUri(it.uri.toString())
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Экспорт аватарок",
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Формат изображения", fontSize = 16.sp, color = colorScheme.onSurface)
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = exportFormat == ExportFormat.WEBP,
+                    onClick = { settingsViewModel.updateExportFormat(ExportFormat.WEBP) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                ) { Text("WebP") }
+                SegmentedButton(
+                    selected = exportFormat == ExportFormat.PNG,
+                    onClick = { settingsViewModel.updateExportFormat(ExportFormat.PNG) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                ) { Text("PNG") }
+                SegmentedButton(
+                    selected = exportFormat == ExportFormat.JPG,
+                    onClick = { settingsViewModel.updateExportFormat(ExportFormat.JPG) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                ) { Text("JPG") }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Папка для экспорта", fontSize = 16.sp, color = colorScheme.onSurface)
+                Text(
+                    text = if (exportDirectoryUri != null) {
+                        "Пользовательская папка"
+                    } else {
+                        "Downloads/Characters Master"
+                    },
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = { directoryPicker.launch() }) {
+                Icon(Icons.Default.FolderOpen, contentDescription = "Выбрать папку", tint = colorScheme.primary)
+            }
+        }
+        
+        if (exportDirectoryUri != null) {
+            TextButton(
+                onClick = { settingsViewModel.updateExportDirectoryUri(null) },
+                colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.error),
+                modifier = Modifier.align(Alignment.Start)
+            ) {
+                Text("Сбросить к папке по умолчанию")
+            }
+        }
+    }
+}
+
 @Composable
 fun BlurSettingsSection(
     settingsViewModel: SettingsViewModel
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val forceBlurEnabled by settingsViewModel.forceBlurEnabled.collectAsState()
+    val masterBlurEnabled by settingsViewModel.masterBlurEnabled.collectAsState()
+    val blurRolls by settingsViewModel.blurRolls.collectAsState()
+    val blurFullscreen by settingsViewModel.blurFullscreen.collectAsState()
+    val blurPopups by settingsViewModel.blurPopups.collectAsState()
+    val rollAlpha by settingsViewModel.rollInterfaceAlpha.collectAsState()
     val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
     val performanceClass = settingsViewModel.performanceClass
+    
     var showWarningDialog by remember { mutableStateOf(false) }
+    var pendingSetting by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
+
+    val onToggle: (Boolean, (Boolean) -> Unit) -> Unit = { checked, updateFn ->
+        if (checked && performanceClass < 33) {
+            pendingSetting = updateFn
+            showWarningDialog = true
+        } else {
+            updateFn(checked)
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Эффекты размытия",
+                style = MaterialTheme.typography.titleMedium,
+                color = colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Switch(
+                checked = masterBlurEnabled,
+                onCheckedChange = { settingsViewModel.updateMasterBlurEnabled(it) }
+            )
+        }
+
+        if (SHOW_DEBUG_SETTINGS && debugInfoEnabled) {
+            Text(
+                text = "Класс мощности устройства: $performanceClass",
+                fontSize = 12.sp,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+
+        AnimatedVisibility(visible = masterBlurEnabled) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                BlurSwitchRow(
+                    label = "Интерфейс броска",
+                    checked = blurRolls,
+                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurRolls(it) } }
+                )
+
+                BlurSwitchRow(
+                    label = "Полноэкранные окна",
+                    checked = blurFullscreen,
+                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurFullscreen(it) } }
+                )
+
+                BlurSwitchRow(
+                    label = "Всплывающие окна",
+                    checked = blurPopups,
+                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurPopups(it) } }
+                )
+
+                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Прозрачность интерфейса броска",
+                            fontSize = 16.sp,
+                            color = colorScheme.onSurface
+                        )
+                        Text(
+                            text = "${((1f - rollAlpha) * 100).roundToInt()}%",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.primary
+                        )
+                    }
+                    Slider(
+                        value = 1f - rollAlpha,
+                        onValueChange = { settingsViewModel.updateRollInterfaceAlpha(1f - it) },
+                        valueRange = 0f..1f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+
+    if (showWarningDialog) {
+        WarningBlurDialog(
+            onConfirm = {
+                pendingSetting?.invoke(true)
+                showWarningDialog = false
+            },
+            onDismiss = {
+                showWarningDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun DiceRollSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val rollPassThrough by settingsViewModel.rollPassThrough.collectAsState()
+    val rollPosition by settingsViewModel.rollPosition.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Интерфейс броска",
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -291,44 +511,86 @@ fun BlurSettingsSection(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Эффекты размытия.",
+                    text = "Сквозное нажатие",
                     fontSize = 16.sp,
                     color = colorScheme.onSurface
                 )
-                val isDebugMode = SHOW_DEBUG_SETTINGS && debugInfoEnabled
-                val description = if (isDebugMode) {
-                    "Использовать эффекты размытия \nКласс мощности: $performanceClass"
-                } else {
-                    "Использовать эффекты размытия"
-                }
                 Text(
-                    text = description,
+                    text = "Позволяет нажимать на элементы под интерфейсом броска",
                     fontSize = 12.sp,
                     color = colorScheme.onSurfaceVariant
                 )
             }
             Switch(
-                checked = forceBlurEnabled,
-                onCheckedChange = { checked ->
-                    if (checked && performanceClass < 33) {
-                        showWarningDialog = true
-                    } else {
-                        settingsViewModel.updateForceBlurEnabled(checked)
-                    }
-                }
+                checked = rollPassThrough,
+                onCheckedChange = { settingsViewModel.updateRollPassThrough(it) }
             )
         }
-    }
 
-    if (showWarningDialog) {
-        WarningBlurDialog(
-            onConfirm = {
-                settingsViewModel.updateForceBlurEnabled(true)
-                showWarningDialog = false
-            },
-            onDismiss = {
-                showWarningDialog = false
+        Text(
+            text = "Положение интерфейса",
+            fontSize = 16.sp,
+            color = colorScheme.onSurface
+        )
+
+        val cornerRadius = 16.dp
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy((-9).dp)
+        ) {
+            // TOP ROW
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = rollPosition == DiceRollPosition.TOP_LEFT,
+                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.TOP_LEFT) },
+                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
+                ) { Text("Слева-вверху", fontSize = 12.sp) }
+
+                SegmentedButton(
+                    selected = rollPosition == DiceRollPosition.TOP_RIGHT,
+                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.TOP_RIGHT) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp)
+                ) { Text("Справа-вверху", fontSize = 12.sp) }
             }
+
+            // BOTTOM ROW
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = rollPosition == DiceRollPosition.BOTTOM_LEFT,
+                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.BOTTOM_LEFT) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius)
+                ) { Text("Слева-внизу", fontSize = 12.sp) }
+
+                SegmentedButton(
+                    selected = rollPosition == DiceRollPosition.BOTTOM_RIGHT,
+                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.BOTTOM_RIGHT) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
+                ) { Text("Справа-внизу", fontSize = 12.sp) }
+            }
+        }
+    }
+}
+
+@Composable
+fun BlurSwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 16.sp,
+            color = colorScheme.onSurface
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
     }
 }

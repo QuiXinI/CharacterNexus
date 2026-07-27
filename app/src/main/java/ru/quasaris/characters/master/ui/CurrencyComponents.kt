@@ -91,7 +91,8 @@ fun CurrencyEditDialog(
     initialCurrency: Currency,
     onWalletChange: (Wallet) -> Unit,
     onDismiss: () -> Unit,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     var selectedCurrency by remember { mutableStateOf(initialCurrency) }
     var amountString by remember { mutableStateOf("") }
@@ -114,19 +115,19 @@ fun CurrencyEditDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.background,
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
             modifier = Modifier
                 .fillMaxSize()
                 .run {
-                    if (hazeState != null && !isOled) {
+                    if (forceBlurEnabled && hazeState != null && !isOled) {
                         hazeEffect(state = hazeState) {
                             style = HazeStyle(
                                 blurRadius = 24.dp,
-                                tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
+                                tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f)))
                             )
                         }
                     } else this

@@ -58,7 +58,9 @@ object CharacterDataHandler {
         inventory: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
         spells: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
         spellSettings: ru.quasaris.characters.master.SpellSettings? = null,
-        wallet: Wallet = Wallet()
+        wallet: Wallet = Wallet(),
+        bioShortFields: List<ru.quasaris.characters.master.BioShortField>? = null,
+        bioLongSections: List<ru.quasaris.characters.master.DynamicNoteState>? = null
     ): Character {
         val baseChar = Character(
             id = id,
@@ -99,13 +101,34 @@ object CharacterDataHandler {
             themeSeedColorArgb = themeSeedColorArgb,
             attacks = attacks,
             notes = notes,
-            wallet = wallet
+            wallet = wallet,
+            bioShortFields = bioShortFields ?: listOf(
+                ru.quasaris.characters.master.BioShortField(title = "Предыстория", widthRatio = 0.5f),
+                ru.quasaris.characters.master.BioShortField(title = "Мировоззрение", widthRatio = 0.5f),
+                ru.quasaris.characters.master.BioShortField(title = "Рост", widthRatio = 0.33f),
+                ru.quasaris.characters.master.BioShortField(title = "Вес", widthRatio = 0.33f),
+                ru.quasaris.characters.master.BioShortField(title = "Возраст", widthRatio = 0.33f),
+                ru.quasaris.characters.master.BioShortField(title = "Кожа", widthRatio = 0.33f),
+                ru.quasaris.characters.master.BioShortField(title = "Глаза", widthRatio = 0.33f),
+                ru.quasaris.characters.master.BioShortField(title = "Волосы", widthRatio = 0.33f)
+            ),
+            bioLongSections = bioLongSections ?: listOf(
+                ru.quasaris.characters.master.DynamicNoteState(title = "Предыстория персонажа"),
+                ru.quasaris.characters.master.DynamicNoteState(title = "Союзники и организации"),
+                ru.quasaris.characters.master.DynamicNoteState(title = "Враги и организации"),
+                ru.quasaris.characters.master.DynamicNoteState(title = "Черты характера"),
+                ru.quasaris.characters.master.DynamicNoteState(title = "Идеалы"),
+                ru.quasaris.characters.master.DynamicNoteState(title = "Привязанности"),
+                ru.quasaris.characters.master.DynamicNoteState(title = "Слабости")
+            )
         )
         return baseChar.copy(
             skillsAndTraits = skillsAndTraits ?: baseChar.skillsAndTraits,
             inventory = inventory ?: baseChar.inventory,
             spells = spells ?: baseChar.spells,
-            spellSettings = spellSettings ?: baseChar.spellSettings
+            spellSettings = spellSettings ?: baseChar.spellSettings,
+            bioShortFields = bioShortFields ?: baseChar.bioShortFields,
+            bioLongSections = bioLongSections ?: baseChar.bioLongSections
         )
     }
 

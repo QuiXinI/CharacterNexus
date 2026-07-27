@@ -48,7 +48,8 @@ fun CharacterCreationWindow(
     onNavigateBack: () -> Unit,
     onCharacterCreate: (Character) -> Unit,
     hazeState: HazeState? = null,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -244,7 +245,7 @@ fun CharacterCreationWindow(
             AvatarCropperWindow(
                 imageToCrop = bitmapToCrop!!,
                 hazeState = hazeState,
-                forceBlurEnabled = forceBlurEnabled,
+                forceBlurEnabled = blurPopups,
                 onCropSuccess = { cropped ->
                     scope.launch {
                         val id = ImageManager.saveBitmapAsOriginal(context, bitmapToCrop!!)

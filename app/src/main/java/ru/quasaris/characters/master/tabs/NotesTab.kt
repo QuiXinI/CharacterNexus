@@ -11,6 +11,7 @@ fun NotesTab(
     onNotesChange: (List<DynamicNoteState>) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap()
@@ -20,6 +21,7 @@ fun NotesTab(
         onFieldsChange = onNotesChange,
         hazeState = hazeState,
         forceBlurEnabled = forceBlurEnabled,
+        blurPopups = blurPopups,
         isEditMode = isEditMode,
         addButtonText = "ДОБАВИТЬ ЗАМЕТКУ",
         emptyListText = "Список заметок пуст",

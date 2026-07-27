@@ -105,6 +105,7 @@ fun DynamicFieldsTab(
     onFieldsChange: (List<DynamicNoteState>) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     addButtonText: String = "ДОБАВИТЬ ПОЛЕ",
     emptyListText: String = "Список пуст",
@@ -116,6 +117,8 @@ fun DynamicFieldsTab(
     isTitleReadOnly: Boolean = false,
     isAddButtonVisible: Boolean = true,
     isReorderButtonVisible: Boolean = true,
+    isScrollEnabled: Boolean = true,
+    header: @Composable () -> Unit = {},
     footer: @Composable () -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
@@ -149,7 +152,7 @@ fun DynamicFieldsTab(
             .fillMaxSize()
             .imePadding()
     ) {
-        if (items.isEmpty()) {
+        if (items.isEmpty() && isScrollEnabled) { // Show empty text only if it's the main scrolling content
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(emptyListText, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
@@ -160,9 +163,14 @@ fun DynamicFieldsTab(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 8.dp),
+            userScrollEnabled = isScrollEnabled,
             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                header()
+            }
+
             itemsIndexed(items, key = { _, field -> field.id }) { index, field ->
                 val isDragging = draggedItemIndex == index
                 
@@ -230,6 +238,7 @@ fun DynamicFieldsTab(
                     isLockedGlobal = fullscreenEditingOnly,
                     hazeState = hazeState,
                     forceBlurEnabled = forceBlurEnabled,
+                    blurPopups = blurPopups,
                     settingsViewModel = settingsViewModel,
                     statsMap = statsMap
                 )
@@ -324,6 +333,7 @@ fun DynamicFieldItem(
     isLockedGlobal: Boolean = false,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
@@ -666,6 +676,7 @@ fun DynamicFieldItem(
                                                                     },
                                                                     hazeState = hazeState,
                                                                     forceBlurEnabled = forceBlurEnabled,
+                                                                    blurPopups = blurPopups,
                                                                     settingsViewModel = settingsViewModel,
                                                                     onDeleteRequest = {
                                                                         val newBlocks = blocks.toMutableList()
@@ -761,6 +772,7 @@ fun DynamicFieldFullscreenDialog(
     onDismiss: () -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap()
 ) {
@@ -889,7 +901,7 @@ fun DynamicFieldFullscreenDialog(
                 .run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
                     hazeEffect(state = hazeState) {
-                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
+                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
                         inputScale = HazeInputScale.Fixed(0.7f)
                     }
                 } else this
@@ -977,7 +989,7 @@ fun DynamicFieldFullscreenDialog(
                                                         }
                                                     },
                                                     hazeState = hazeState,
-                                                    forceBlurEnabled = forceBlurEnabled,
+                                                    forceBlurEnabled = blurPopups,
                                                     settingsViewModel = settingsViewModel,
                                                     onDeleteRequest = {
                                                         val newBlocks = blocks.toMutableList()
@@ -1133,7 +1145,7 @@ fun DynamicFieldFullscreenDialog(
                                                                             }
                                                                         },
                                                                         hazeState = hazeState,
-                                                                        forceBlurEnabled = forceBlurEnabled,
+                                                                        forceBlurEnabled = blurPopups,
                                                                         settingsViewModel = settingsViewModel,
                                                                         onDeleteRequest = {
                                                                             val newBlocks = blocks.toMutableList()

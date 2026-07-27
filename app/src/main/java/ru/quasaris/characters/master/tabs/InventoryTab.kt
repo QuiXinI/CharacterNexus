@@ -22,6 +22,7 @@ fun InventoryTab(
     onWalletChange: (Wallet) -> Unit = {},
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap()
@@ -39,6 +40,7 @@ fun InventoryTab(
             onFieldsChange = onInventoryChange,
             hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
+            blurPopups = blurPopups,
             isEditMode = isEditMode,
             addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
             emptyListText = "Инвентарь пуст",
@@ -55,7 +57,8 @@ fun InventoryTab(
             initialCurrency = currency,
             onWalletChange = onWalletChange,
             onDismiss = { editingCurrency = null },
-            hazeState = hazeState
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
         )
     }
 }

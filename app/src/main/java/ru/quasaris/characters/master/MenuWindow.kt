@@ -64,9 +64,10 @@ fun MenuWindow(
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
     settingsViewModel: SettingsViewModel? = null,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false
 ) {
-    val forceBlurEnabled by settingsViewModel?.forceBlurEnabled?.collectAsState(false) ?: remember { mutableStateOf(false) }
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -280,7 +281,7 @@ fun MenuWindow(
             AvatarCropperWindow(
                 imageToCrop = bitmapToCrop!!,
                 hazeState = hazeState,
-                forceBlurEnabled = forceBlurEnabled,
+                forceBlurEnabled = blurPopups,
                 onCropSuccess = { cropped ->
                     scope.launch {
                         val id = ImageManager.saveBitmapAsOriginal(context, bitmapToCrop!!)

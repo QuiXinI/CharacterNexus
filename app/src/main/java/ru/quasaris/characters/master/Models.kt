@@ -169,6 +169,21 @@ data class Wallet(
     val visibleCurrencies: List<String> = listOf("platinum", "gold", "silver", "copper")
 )
 
+data class BioShortField(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String = "",
+    val value: String = "",
+    val widthRatio: Float = 0.5f, // 0.5 for 1/2, 0.33f for 1/3
+    val isCustom: Boolean = false
+)
+
+data class BioSection(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String = "",
+    val content: String = "",
+    val isExpanded: Boolean = true
+)
+
 data class Character(
 
     val id: Int,
@@ -225,6 +240,25 @@ data class Character(
     val spells: List<DynamicNoteState> = listOf(DynamicNoteState(title = "Заговоры")) + (1..9).map {
         DynamicNoteState(title = "$it уровень")
     },
+    val bioShortFields: List<BioShortField> = listOf(
+        BioShortField(title = "Предыстория", widthRatio = 0.5f),
+        BioShortField(title = "Мировоззрение", widthRatio = 0.5f),
+        BioShortField(title = "Рост", widthRatio = 0.33f),
+        BioShortField(title = "Вес", widthRatio = 0.33f),
+        BioShortField(title = "Возраст", widthRatio = 0.33f),
+        BioShortField(title = "Кожа", widthRatio = 0.33f),
+        BioShortField(title = "Глаза", widthRatio = 0.33f),
+        BioShortField(title = "Волосы", widthRatio = 0.33f)
+    ),
+    val bioLongSections: List<DynamicNoteState> = listOf(
+        DynamicNoteState(title = "Предыстория персонажа"),
+        DynamicNoteState(title = "Союзники и организации"),
+        DynamicNoteState(title = "Враги и организации"),
+        DynamicNoteState(title = "Черты характера"),
+        DynamicNoteState(title = "Идеалы"),
+        DynamicNoteState(title = "Привязанности"),
+        DynamicNoteState(title = "Слабости")
+    ),
     val spellSettings: SpellSettings = SpellSettings(),
     val wallet: Wallet = Wallet(),
     val cropX: Float? = null,

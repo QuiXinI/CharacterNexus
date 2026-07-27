@@ -113,7 +113,20 @@ class MainActivity : ComponentActivity() {
 
             var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
             var lastCharacterId by remember { mutableIntStateOf(settingsManager.lastCharacterId) }
-            val forceBlurEnabled by settingsViewModel.forceBlurEnabled.collectAsState()
+            
+            val masterBlurEnabled by settingsViewModel.masterBlurEnabled.collectAsState()
+            val blurRolls by settingsViewModel.blurRolls.collectAsState()
+            val blurFullscreen by settingsViewModel.blurFullscreen.collectAsState()
+            val blurPopups by settingsViewModel.blurPopups.collectAsState()
+            val rollAlpha by settingsViewModel.rollInterfaceAlpha.collectAsState()
+            
+            val effectiveBlurRolls = masterBlurEnabled && blurRolls
+            val effectiveBlurFullscreen = masterBlurEnabled && blurFullscreen
+            val effectiveBlurPopups = masterBlurEnabled && blurPopups
+
+            val rollPassThrough by settingsViewModel.rollPassThrough.collectAsState()
+            val rollPosition by settingsViewModel.rollPosition.collectAsState()
+
             val hazeState = remember { HazeState() }
 
             val characters: SnapshotStateList<Character> = remember {
@@ -291,7 +304,9 @@ class MainActivity : ComponentActivity() {
                                                 },
                                                 onOpenDrawer = { scope.launch { drawerState.open() } },
                                                 settingsViewModel = settingsViewModel,
-                                                hazeState = hazeState
+                                                hazeState = hazeState,
+                                                forceBlurEnabled = effectiveBlurFullscreen,
+                                                blurPopups = effectiveBlurPopups
                                             )
                                         }
 
@@ -325,7 +340,8 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 },
                                                 hazeState = hazeState,
-                                                forceBlurEnabled = forceBlurEnabled
+                                                forceBlurEnabled = effectiveBlurFullscreen,
+                                                blurPopups = effectiveBlurPopups
                                             )
                                         }
 
@@ -365,7 +381,8 @@ class MainActivity : ComponentActivity() {
                                                     rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
                                                 },
                                                 hazeState = hazeState,
-                                                forceBlurEnabled = forceBlurEnabled,
+                                                forceBlurEnabled = effectiveBlurFullscreen,
+                                                blurPopups = effectiveBlurPopups,
                                                 settingsViewModel = settingsViewModel
                                             )
                                         }
@@ -378,8 +395,11 @@ class MainActivity : ComponentActivity() {
                                     history = rollHistory,
                                     onClose = { rollHistory = emptyList() },
                                     themeMode = themeMode,
-                                    forceBlurEnabled = forceBlurEnabled,
+                                    forceBlurEnabled = effectiveBlurRolls,
                                     hazeState = hazeState,
+                                    alpha = rollAlpha,
+                                    isPassThrough = rollPassThrough,
+                                    position = rollPosition,
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
                                         .navigationBarsPadding()

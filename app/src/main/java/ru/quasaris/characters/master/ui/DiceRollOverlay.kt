@@ -3,6 +3,14 @@ package ru.quasaris.characters.master.ui
 import android.os.Build
 import android.view.Gravity
 import android.view.WindowManager
+import android.graphics.Region
+import java.lang.reflect.Proxy
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -11,7 +19,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -42,6 +53,7 @@ import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.LocalHazeStyle
 import ru.quasaris.characters.master.backend.AppThemeMode
 import ru.quasaris.characters.master.backend.RollResult
+import ru.quasaris.characters.master.backend.DiceRollPosition
 
 /**
  * Глобальный стиль для оверлея бросков кубов.
@@ -59,6 +71,9 @@ fun DiceRollOverlay(
     themeMode: AppThemeMode = AppThemeMode.M3,
     forceBlurEnabled: Boolean = false,
     hazeState: HazeState? = null,
+    alpha: Float = 0.4f,
+    isPassThrough: Boolean = true,
+    position: DiceRollPosition = DiceRollPosition.BOTTOM_LEFT,
     modifier: Modifier = Modifier
 ) {
     if (history.isEmpty()) return
@@ -67,6 +82,8 @@ fun DiceRollOverlay(
     val latest = remember(history, history.size) { history.firstOrNull() }
     val previous = remember(history, history.size) { history.drop(1).reversed() }
     val colorScheme = MaterialTheme.colorScheme
+
+    var closeButtonRect by remember { mutableStateOf<Rect?>(null) }
 
     Dialog(
         onDismissRequest = onClose,
@@ -84,11 +101,19 @@ fun DiceRollOverlay(
                 // Настройка параметров окна для позиционирования в углу и прозрачности
                 w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
                 w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+
+                // Флаг NOT_TOUCHABLE убираем, чтобы мы могли перехватывать нажатия на кнопку закрытия.
+                w.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                 w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                 w.setDimAmount(0f)
 
                 val params = w.attributes
-                params.gravity = Gravity.BOTTOM or Gravity.START
+                params.gravity = when (position) {
+                    DiceRollPosition.TOP_LEFT -> Gravity.TOP or Gravity.START
+                    DiceRollPosition.TOP_RIGHT -> Gravity.TOP or Gravity.END
+                    DiceRollPosition.BOTTOM_LEFT -> Gravity.BOTTOM or Gravity.START
+                    DiceRollPosition.BOTTOM_RIGHT -> Gravity.BOTTOM or Gravity.END
+                }
                 params.width = WindowManager.LayoutParams.WRAP_CONTENT
                 params.height = WindowManager.LayoutParams.WRAP_CONTENT
                 w.attributes = params
@@ -100,21 +125,94 @@ fun DiceRollOverlay(
             }
         }
 
+        // Сохраняем актуальные значения, чтобы не пересоздавать listener при каждом изменении
+        val currentIsPassThrough by rememberUpdatedState(isPassThrough)
+        val currentCloseButtonRect by rememberUpdatedState(closeButtonRect)
+
+        // Управление областью касания (Touchable Region) через рефлексию
+        DisposableEffect(window) {
+            if (window == null) return@DisposableEffect onDispose {}
+
+            val view = window.decorView
+            val viewTreeObserver = view.viewTreeObserver
+            var listener: Any? = null
+            var removeListener: (() -> Unit)? = null
+
+            try {
+                val listenerClass = Class.forName("android.view.ViewTreeObserver\$OnComputeInternalInsetsListener")
+                val internalInsetsInfoClass = Class.forName("android.view.ViewTreeObserver\$InternalInsetsInfo")
+
+                // Надежный обход скрытых API (Greylist)
+                val setTouchableInsetsMethod = internalInsetsInfoClass.declaredMethods.find { it.name == "setTouchableInsets" }?.apply { isAccessible = true }
+                val touchableRegionField = internalInsetsInfoClass.declaredFields.find { it.name == "touchableRegion" }?.apply { isAccessible = true }
+
+                if (setTouchableInsetsMethod != null && touchableRegionField != null) {
+                    listener = Proxy.newProxyInstance(
+                        listenerClass.classLoader,
+                        arrayOf(listenerClass)
+                    ) { _, method, args ->
+                        if (method.name == "onComputeInternalInsets") {
+                            val info = args?.get(0)
+                            if (info != null && currentIsPassThrough) {
+                                // 3 == TOUCHABLE_INSETS_REGION
+                                setTouchableInsetsMethod.invoke(info, 3)
+                                val region = touchableRegionField.get(info) as Region
+                                region.setEmpty() // Делаем всё окно пропускающим клики
+
+                                // Вырезаем из пустоты "островок" нашей кнопки, делая её кликабельной
+                                currentCloseButtonRect?.let { rect ->
+                                    region.set(
+                                        rect.left.toInt(),
+                                        rect.top.toInt(),
+                                        rect.right.toInt(),
+                                        rect.bottom.toInt()
+                                    )
+                                }
+                            }
+                        }
+                        null
+                    }
+
+                    val addMethod = viewTreeObserver.javaClass.methods.find { it.name == "addOnComputeInternalInsetsListener" }?.apply { isAccessible = true }
+                    addMethod?.invoke(viewTreeObserver, listener)
+
+                    removeListener = {
+                        try {
+                            // Получаем актуальный ViewTreeObserver перед удалением
+                            val vto = if (view.viewTreeObserver.isAlive) view.viewTreeObserver else view.viewTreeObserver
+                            val removeMethod = vto.javaClass.methods.find { it.name == "removeOnComputeInternalInsetsListener" }?.apply { isAccessible = true }
+                            removeMethod?.invoke(vto, listener)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            onDispose {
+                removeListener?.invoke()
+            }
+        }
+
+        // Принудительно заставляем Android пересчитать Insets при смене позиции кнопки или состояния проницаемости
+        LaunchedEffect(isPassThrough, closeButtonRect) {
+            window?.decorView?.requestLayout()
+        }
+
         // Оборачиваем в CompositionLocalProvider для передачи стиля в hazeEffect
         CompositionLocalProvider(LocalHazeStyle provides DiceRollHazeStyle) {
             Surface(
-                modifier = Modifier
+                modifier = modifier
                     .padding(16.dp)
                     .widthIn(min = 280.dp, max = 340.dp)
                     .run {
                         if (forceBlurEnabled && hazeState != null && !isOled) {
-                            // ПРАВИЛЬНЫЙ порядок: сначала clip для формы, потом hazeEffect для размытия.
-                            // Используем remember(history.size) как динамический ключ для принудительного обновления (Freeze Fix).
                             this.clip(RoundedCornerShape(24.dp))
                                 .then(
                                     remember(history.size) {
                                         Modifier.hazeEffect(state = hazeState) {
-                                            // Разгоняем FPS: даунскейлинг текстуры фона на 40%
                                             inputScale = HazeInputScale.Fixed(0.6f)
                                         }
                                     }
@@ -122,7 +220,7 @@ fun DiceRollOverlay(
                         } else this
                     },
                 shape = RoundedCornerShape(24.dp),
-                color = if (isOled) Color.Black else if (forceBlurEnabled) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
+                color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = alpha),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
                 tonalElevation = if (isOled) 0.dp else 8.dp
             ) {
@@ -156,6 +254,14 @@ fun DiceRollOverlay(
                                 .align(Alignment.CenterEnd)
                                 .size(32.dp)
                                 .border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .onGloballyPositioned { coords ->
+                                    val pos = coords.positionInWindow()
+                                    val newRect = Rect(pos.x, pos.y, pos.x + coords.size.width, pos.y + coords.size.height)
+                                    // Обязательная проверка, чтобы не уйти в бесконечный цикл рекомпозиции
+                                    if (closeButtonRect != newRect) {
+                                        closeButtonRect = newRect
+                                    }
+                                }
                         ) {
                             Icon(
                                 Icons.Default.Close,

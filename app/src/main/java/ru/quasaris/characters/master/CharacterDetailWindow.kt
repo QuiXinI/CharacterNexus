@@ -72,6 +72,7 @@ fun CharacterDetailWindow(
     onRoll: (RollResult) -> Unit = {},
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null
 ) {
     var name by remember { mutableStateOf(character?.name ?: "") }
@@ -148,7 +149,33 @@ fun CharacterDetailWindow(
 
     var showSpellSettings by remember { mutableStateOf(false) }
 
-    var notes by remember { mutableStateOf(character?.notes ?: listOf(DynamicNoteState())) }
+    var bioShortFields by remember { mutableStateOf(
+        if (character?.bioShortFields.isNullOrEmpty()) {
+            listOf(
+                BioShortField(title = "Предыстория", widthRatio = 0.5f),
+                BioShortField(title = "Мировоззрение", widthRatio = 0.5f),
+                BioShortField(title = "Рост", widthRatio = 0.33f),
+                BioShortField(title = "Вес", widthRatio = 0.33f),
+                BioShortField(title = "Возраст", widthRatio = 0.33f),
+                BioShortField(title = "Кожа", widthRatio = 0.33f),
+                BioShortField(title = "Глаза", widthRatio = 0.33f),
+                BioShortField(title = "Волосы", widthRatio = 0.33f)
+            )
+        } else character?.bioShortFields!!
+    ) }
+    var bioLongSections by remember { mutableStateOf(
+        if (character?.bioLongSections.isNullOrEmpty()) {
+            listOf(
+                DynamicNoteState(title = "Предыстория персонажа"),
+                DynamicNoteState(title = "Союзники и организации"),
+                DynamicNoteState(title = "Враги и организации"),
+                DynamicNoteState(title = "Черты характера"),
+                DynamicNoteState(title = "Идеалы"),
+                DynamicNoteState(title = "Привязанности"),
+                DynamicNoteState(title = "Слабости")
+            )
+        } else character?.bioLongSections!!
+    ) }
     var skillsAndTraits by remember { mutableStateOf(
         if (character?.skillsAndTraits.isNullOrEmpty()) {
             listOf(
@@ -175,6 +202,7 @@ fun CharacterDetailWindow(
     ) }
     var spellSettings by remember { mutableStateOf(character?.spellSettings ?: SpellSettings()) }
     var wallet by remember { mutableStateOf(character?.wallet ?: Wallet()) }
+    var notes by remember { mutableStateOf(character?.notes ?: listOf(DynamicNoteState())) }
 
     var characterImageData by remember { mutableStateOf(character?.imageData) }
     var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
@@ -367,7 +395,9 @@ fun CharacterDetailWindow(
             inventory = inventory,
             spells = spells,
             spellSettings = spellSettings,
-            wallet = wallet
+            wallet = wallet,
+            bioShortFields = bioShortFields,
+            bioLongSections = bioLongSections
         ))
     }
 
@@ -377,7 +407,8 @@ fun CharacterDetailWindow(
         attacks, armorClassEntries, activeArmorClassId, initiativeEntries,
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
         shieldEntries, activeShieldId, themeSeedColorArgb, notes,
-        skillsAndTraits, inventory, spells, spellSettings, wallet
+        skillsAndTraits, inventory, spells, spellSettings, wallet,
+        bioShortFields, bioLongSections
     ) {
         saveCurrentCharacter()
     }
@@ -452,6 +483,7 @@ fun CharacterDetailWindow(
                         CharacterTab.SKILLS_FEATS -> skillsAndTraits.isNotEmpty()
                         CharacterTab.INVENTORY -> inventory.isNotEmpty()
                         CharacterTab.SPELLS -> spells.isNotEmpty()
+                        CharacterTab.BIO -> true
                         else -> false
                     }
 
@@ -640,6 +672,7 @@ fun CharacterDetailWindow(
                             onRoll = onRoll,
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
                             isAdvancedMode = isAdvancedMode
                         )
                     }
@@ -654,13 +687,34 @@ fun CharacterDetailWindow(
                             exhaustion = exhaustion,
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
                             isEditMode = isEditMode,
                             settingsViewModel = settingsViewModel,
                             spellSettings = spellSettings
                         )
                     }
                     CharacterTab.BIO -> {
-                        BioTab(character)
+                        BioTab(
+                            character = character.copy(
+                                bioShortFields = bioShortFields,
+                                bioLongSections = bioLongSections,
+                                imageData = characterImageData
+                            ),
+                            onCharacterChange = { updated ->
+                                bioShortFields = updated.bioShortFields
+                                bioLongSections = updated.bioLongSections
+                                characterImageData = updated.imageData
+                            },
+                            onAvatarEditRequest = {
+                                imagePickerLauncher.launch("image/*")
+                            },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isEditMode = isEditMode,
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
+                        )
                     }
                     CharacterTab.SKILLS_FEATS -> {
                         SkillsFeatsTab(
@@ -668,6 +722,7 @@ fun CharacterDetailWindow(
                             onSkillsAndTraitsChange = { skillsAndTraits = it },
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
                             isEditMode = isEditMode,
                             settingsViewModel = settingsViewModel,
                             statsMap = statsMap
@@ -681,6 +736,7 @@ fun CharacterDetailWindow(
                             onWalletChange = { wallet = it },
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
                             isEditMode = isEditMode,
                             settingsViewModel = settingsViewModel,
                             statsMap = statsMap
@@ -695,6 +751,7 @@ fun CharacterDetailWindow(
                             onSpellSettingsChange = { spellSettings = it },
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
                             isEditMode = isEditMode,
                             settingsViewModel = settingsViewModel,
                             onRoll = onRoll,
@@ -708,6 +765,7 @@ fun CharacterDetailWindow(
                             onNotesChange = { notes = it },
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
                             isEditMode = isEditMode,
                             settingsViewModel = settingsViewModel,
                             statsMap = statsMap
@@ -761,16 +819,19 @@ fun CharacterDetailWindow(
             ModalBottomSheet(
                 onDismissRequest = { showTabSheet = false },
                 sheetState = sheetState,
-                containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else BottomSheetDefaults.ContainerColor,
+                containerColor = if (isOled) Color.Black 
+                                 else if (blurPopups) colorScheme.surface.copy(alpha = 0.1f) 
+                                 else colorScheme.surface,
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .run {
-                            if (forceBlurEnabled && hazeState != null && !isOled) {
+                            if (blurPopups && hazeState != null && !isOled) {
                                 // ПРАВИЛЬНЫЙ порядок: clip -> hazeEffect
                                 this.clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                                     .hazeEffect(state = hazeState) {
+                                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
                                         inputScale = HazeInputScale.Fixed(0.6f)
                                     }
                             } else this
@@ -837,7 +898,7 @@ fun CharacterDetailWindow(
         AvatarCropperWindow(
             imageToCrop = bitmapToCrop!!,
             hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled,
+            forceBlurEnabled = blurPopups,
             onCropSuccess = { cropped ->
                 scope.launch {
                     val id = ImageManager.saveBitmapAsOriginal(context, bitmapToCrop!!)

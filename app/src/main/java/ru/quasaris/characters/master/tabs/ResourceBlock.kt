@@ -63,6 +63,7 @@ fun ResourceBlock(
     hazeState: HazeState? = null,
     onDeleteRequest: () -> Unit,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     settingsViewModel: ru.quasaris.characters.master.backend.SettingsViewModel? = null
 ) {
     val context = LocalContext.current
@@ -260,7 +261,8 @@ fun ResourceBlock(
             notes = resource.notes,
             anchorPosition = infoIconPosition,
             onDismiss = { showInfo = false },
-            hazeState = hazeState
+            hazeState = hazeState,
+            forceBlurEnabled = blurPopups
         )
     }
 }
@@ -397,7 +399,7 @@ fun ResourceConfigDialog(
                 modifier = Modifier.run {
                     if (forceBlurEnabled && hazeState != null && !isOled) {
                         hazeEffect(state = hazeState) {
-                            style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
+                            style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
                             inputScale = HazeInputScale.Fixed(0.7f)
                         }
                     } else this
@@ -574,7 +576,8 @@ fun ResourceInfoPopover(
     notes: String,
     anchorPosition: Offset,
     onDismiss: () -> Unit,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    forceBlurEnabled: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
@@ -628,16 +631,17 @@ fun ResourceInfoPopover(
                 .padding(8.dp)
                 .widthIn(max = 260.dp)
                 .run {
-                    if (hazeState != null && !isOled) {
+                    if (forceBlurEnabled && hazeState != null && !isOled) {
                         this.clip(RoundedCornerShape(16.dp))
                             .hazeEffect(state = hazeState) {
+                                style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
                                 inputScale = HazeInputScale.Fixed(0.6f)
                             }
                     } else this
                 }
                 .clickable { onDismiss() },
             shape = RoundedCornerShape(16.dp),
-            color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = if (hazeState != null) 0.4f else 0.95f),
+            color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = if (forceBlurEnabled) 0.1f else 1.0f),
             tonalElevation = 8.dp,
             border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = if (isOled) 0.3f else 0.15f))
         ) {

@@ -11,6 +11,7 @@ fun SkillsFeatsTab(
     onSkillsAndTraitsChange: (List<DynamicNoteState>) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap()
@@ -20,6 +21,7 @@ fun SkillsFeatsTab(
         onFieldsChange = onSkillsAndTraitsChange,
         hazeState = hazeState,
         forceBlurEnabled = forceBlurEnabled,
+        blurPopups = blurPopups,
         isEditMode = isEditMode,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Список умений и черт пуст",

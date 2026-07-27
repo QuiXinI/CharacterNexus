@@ -69,6 +69,7 @@ fun AttacksTab(
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings()
@@ -163,6 +164,7 @@ fun AttacksTab(
                         exhaustion = exhaustion,
                         hazeState = hazeState,
                         forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
                         dragModifier = dragModifier,
                         modifier = Modifier.animateItem(),
                         spellSettings = spellSettings
@@ -241,6 +243,7 @@ fun AttackItem(
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     dragModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
     spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings()
@@ -426,7 +429,7 @@ fun AttackItem(
                                                 .padding(8.dp) // Smaller padding for "popover" look
                                                 .widthIn(max = 260.dp)
                                                 .run {
-                                                    if (forceBlurEnabled && hazeState != null && !isOled) {
+                                                    if (blurPopups && hazeState != null && !isOled) {
                                                         this.clip(RoundedCornerShape(16.dp))
                                                             .hazeEffect(state = hazeState) {
                                                                 inputScale = HazeInputScale.Fixed(0.6f)
@@ -435,7 +438,7 @@ fun AttackItem(
                                                 }
                                                 .clickable { showInfo = false },
                                             shape = RoundedCornerShape(16.dp),
-                                            color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = if (forceBlurEnabled) 0.4f else 0.85f),
+                                            color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = if (blurPopups) 0.4f else 0.85f),
                                             tonalElevation = 8.dp,
                                             border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = if (isOled) 0.3f else 0.15f))
                                         ) {

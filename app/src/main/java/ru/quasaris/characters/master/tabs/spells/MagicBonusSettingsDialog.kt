@@ -85,7 +85,7 @@ fun MagicBonusSettingsDialog(
             modifier = Modifier.run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
                     hazeEffect(state = hazeState) {
-                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
+                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
                         inputScale = HazeInputScale.Fixed(0.7f)
                     }
                 } else this

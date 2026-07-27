@@ -24,8 +24,26 @@ class SettingsViewModel(
     private val _customRollHistorySize = MutableStateFlow(settingsManager?.customRollHistorySize ?: 10)
     val customRollHistorySize = _customRollHistorySize.asStateFlow()
 
-    private val _forceBlurEnabled = MutableStateFlow(settingsManager?.forceBlurEnabled ?: false)
-    val forceBlurEnabled = _forceBlurEnabled.asStateFlow()
+    private val _blurRolls = MutableStateFlow(settingsManager?.blurRolls ?: true)
+    val blurRolls = _blurRolls.asStateFlow()
+
+    private val _blurFullscreen = MutableStateFlow(settingsManager?.blurFullscreen ?: false)
+    val blurFullscreen = _blurFullscreen.asStateFlow()
+
+    private val _blurPopups = MutableStateFlow(settingsManager?.blurPopups ?: true)
+    val blurPopups = _blurPopups.asStateFlow()
+
+    private val _masterBlurEnabled = MutableStateFlow(settingsManager?.masterBlurEnabled ?: true)
+    val masterBlurEnabled = _masterBlurEnabled.asStateFlow()
+
+    private val _rollInterfaceAlpha = MutableStateFlow(settingsManager?.rollInterfaceAlpha ?: 0.4f)
+    val rollInterfaceAlpha = _rollInterfaceAlpha.asStateFlow()
+
+    private val _rollPassThrough = MutableStateFlow(settingsManager?.rollPassThrough ?: true)
+    val rollPassThrough = _rollPassThrough.asStateFlow()
+
+    private val _rollPosition = MutableStateFlow(DiceRollPosition.valueOf(settingsManager?.rollPosition ?: "BOTTOM_LEFT"))
+    val rollPosition = _rollPosition.asStateFlow()
 
     private val _debugInfoEnabled = MutableStateFlow(settingsManager?.debugInfoEnabled ?: false)
     val debugInfoEnabled = _debugInfoEnabled.asStateFlow()
@@ -44,6 +62,12 @@ class SettingsViewModel(
 
     private val _autoDownloadLssAvatar = MutableStateFlow(settingsManager?.autoDownloadLssAvatar ?: false)
     val autoDownloadLssAvatar = _autoDownloadLssAvatar.asStateFlow()
+
+    private val _exportFormat = MutableStateFlow(settingsManager?.exportFormat ?: ExportFormat.WEBP)
+    val exportFormat = _exportFormat.asStateFlow()
+
+    private val _exportDirectoryUri = MutableStateFlow(settingsManager?.exportDirectoryUri)
+    val exportDirectoryUri = _exportDirectoryUri.asStateFlow()
 
     private val _longRestAlignment = MutableStateFlow(SlotAlignment.valueOf(settingsManager?.longRestAlignment ?: "RIGHT"))
     val longRestAlignment = _longRestAlignment.asStateFlow()
@@ -67,8 +91,46 @@ class SettingsViewModel(
         settingsManager?.customRollHistorySize = size
     }
 
+    fun updateBlurRolls(enabled: Boolean) {
+        _blurRolls.value = enabled
+        settingsManager?.blurRolls = enabled
+    }
+
+    fun updateBlurFullscreen(enabled: Boolean) {
+        _blurFullscreen.value = enabled
+        settingsManager?.blurFullscreen = enabled
+    }
+
+    fun updateBlurPopups(enabled: Boolean) {
+        _blurPopups.value = enabled
+        settingsManager?.blurPopups = enabled
+    }
+
+    fun updateMasterBlurEnabled(enabled: Boolean) {
+        _masterBlurEnabled.value = enabled
+        settingsManager?.masterBlurEnabled = enabled
+    }
+
+    fun updateRollInterfaceAlpha(alpha: Float) {
+        _rollInterfaceAlpha.value = alpha
+        settingsManager?.rollInterfaceAlpha = alpha
+    }
+
+    fun updateRollPassThrough(enabled: Boolean) {
+        _rollPassThrough.value = enabled
+        settingsManager?.rollPassThrough = enabled
+    }
+
+    fun updateRollPosition(position: DiceRollPosition) {
+        _rollPosition.value = position
+        settingsManager?.rollPosition = position.name
+    }
+
+    @Deprecated("Use specific blur settings")
     fun updateForceBlurEnabled(enabled: Boolean) {
-        _forceBlurEnabled.value = enabled
+        updateBlurRolls(enabled)
+        updateBlurFullscreen(enabled)
+        updateBlurPopups(enabled)
         settingsManager?.forceBlurEnabled = enabled
     }
 
@@ -100,6 +162,16 @@ class SettingsViewModel(
     fun updateAutoDownloadLssAvatar(enabled: Boolean) {
         _autoDownloadLssAvatar.value = enabled
         settingsManager?.autoDownloadLssAvatar = enabled
+    }
+
+    fun updateExportFormat(format: ExportFormat) {
+        _exportFormat.value = format
+        settingsManager?.exportFormat = format
+    }
+
+    fun updateExportDirectoryUri(uri: String?) {
+        _exportDirectoryUri.value = uri
+        settingsManager?.exportDirectoryUri = uri
     }
 
     fun updateLongRestAlignment(alignment: SlotAlignment) {
@@ -153,12 +225,21 @@ class SettingsViewModel(
         // Update all flows to reflect the reset state
         _rollHistorySize.value = settingsManager?.rollHistorySize ?: 5
         _customRollHistorySize.value = settingsManager?.customRollHistorySize ?: 10
-        _forceBlurEnabled.value = settingsManager?.forceBlurEnabled ?: false
+        _blurRolls.value = settingsManager?.blurRolls ?: true
+        _blurFullscreen.value = settingsManager?.blurFullscreen ?: false
+        _blurPopups.value = settingsManager?.blurPopups ?: true
+        _masterBlurEnabled.value = settingsManager?.masterBlurEnabled ?: true
+        _rollInterfaceAlpha.value = settingsManager?.rollInterfaceAlpha ?: 0.4f
+        _rollPassThrough.value = settingsManager?.rollPassThrough ?: true
+        _rollPosition.value = DiceRollPosition.valueOf(settingsManager?.rollPosition ?: "BOTTOM_LEFT")
         _debugInfoEnabled.value = settingsManager?.debugInfoEnabled ?: false
         _deletionWarningEnabled.value = settingsManager?.deletionWarningEnabled ?: true
         _fullscreenEditingOnly.value = settingsManager?.fullscreenEditingOnly ?: false
         _topMarginStep.value = settingsManager?.topMarginStep ?: 2
         _customTopMargin.value = settingsManager?.customTopMargin ?: 96
+        _autoDownloadLssAvatar.value = settingsManager?.autoDownloadLssAvatar ?: false
+        _exportFormat.value = settingsManager?.exportFormat ?: ExportFormat.WEBP
+        _exportDirectoryUri.value = settingsManager?.exportDirectoryUri
         _longRestAlignment.value = SlotAlignment.valueOf(settingsManager?.longRestAlignment ?: "RIGHT")
         _longRestFillDirection.value = SlotFillDirection.valueOf(settingsManager?.longRestFillDirection ?: "LTR")
         _shortRestAlignment.value = SlotAlignment.valueOf(settingsManager?.shortRestAlignment ?: "RIGHT")

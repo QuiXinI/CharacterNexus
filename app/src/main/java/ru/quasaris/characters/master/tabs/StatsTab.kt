@@ -83,6 +83,7 @@ fun StatsTab(
     onRoll: (RollResult) -> Unit = {},
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurPopups: Boolean = false,
     isAdvancedMode: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
