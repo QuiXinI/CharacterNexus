@@ -3,33 +3,31 @@ package ru.quasaris.characters.master.ui
 import android.os.Build
 import android.view.Gravity
 import android.view.WindowManager
-import android.graphics.Region
-import java.lang.reflect.Proxy
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import ru.quasaris.characters.master.backend.RollSourceType
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -37,23 +35,23 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.remember
-import androidx.compose.ui.draw.clip
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.LocalHazeStyle
+import dev.chrisbanes.haze.hazeEffect
 import ru.quasaris.characters.master.backend.AppThemeMode
-import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.DiceRollPosition
+import ru.quasaris.characters.master.backend.RollResult
+import ru.quasaris.characters.master.backend.RollSourceType
+import kotlin.math.roundToInt
 
 /**
  * Глобальный стиль для оверлея бросков кубов.
@@ -74,6 +72,7 @@ fun DiceRollOverlay(
     alpha: Float = 0.4f,
     isPassThrough: Boolean = true,
     position: DiceRollPosition = DiceRollPosition.BOTTOM_LEFT,
+    closeButtonPosition: DiceRollPosition = DiceRollPosition.TOP_RIGHT,
     modifier: Modifier = Modifier
 ) {
     if (history.isEmpty()) return
@@ -83,7 +82,9 @@ fun DiceRollOverlay(
     val previous = remember(history, history.size) { history.drop(1).reversed() }
     val colorScheme = MaterialTheme.colorScheme
 
-    var closeButtonRect by remember { mutableStateOf<Rect?>(null) }
+    // Стейт для хранения абсолютных экранных координат ВЕРХНЕГО ПРАВОГО УГЛА панели.
+    // Именно к ним мы привяжем второе, полностью независимое окно.
+    var anchorPos by remember { mutableStateOf<IntOffset?>(null) }
 
     Dialog(
         onDismissRequest = onClose,
@@ -98,14 +99,18 @@ fun DiceRollOverlay(
 
         SideEffect {
             window?.let { w ->
-                // Настройка параметров окна для позиционирования в углу и прозрачности
+                // Базовые настройки окна (чтобы оно не блокировало весь экран)
                 w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
                 w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-
-                // Флаг NOT_TOUCHABLE убираем, чтобы мы могли перехватывать нажатия на кнопку закрытия.
-                w.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                 w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                 w.setDimAmount(0f)
+
+                // Управление прозрачностью ДЛЯ КЛИКОВ всей панели
+                if (isPassThrough) {
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                } else {
+                    w.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                }
 
                 val params = w.attributes
                 params.gravity = when (position) {
@@ -125,88 +130,40 @@ fun DiceRollOverlay(
             }
         }
 
-        // Сохраняем актуальные значения, чтобы не пересоздавать listener при каждом изменении
-        val currentIsPassThrough by rememberUpdatedState(isPassThrough)
-        val currentCloseButtonRect by rememberUpdatedState(closeButtonRect)
-
-        // Управление областью касания (Touchable Region) через рефлексию
-        DisposableEffect(window) {
-            if (window == null) return@DisposableEffect onDispose {}
-
-            val view = window.decorView
-            val viewTreeObserver = view.viewTreeObserver
-            var listener: Any? = null
-            var removeListener: (() -> Unit)? = null
-
-            try {
-                val listenerClass = Class.forName("android.view.ViewTreeObserver\$OnComputeInternalInsetsListener")
-                val internalInsetsInfoClass = Class.forName("android.view.ViewTreeObserver\$InternalInsetsInfo")
-
-                // Надежный обход скрытых API (Greylist)
-                val setTouchableInsetsMethod = internalInsetsInfoClass.declaredMethods.find { it.name == "setTouchableInsets" }?.apply { isAccessible = true }
-                val touchableRegionField = internalInsetsInfoClass.declaredFields.find { it.name == "touchableRegion" }?.apply { isAccessible = true }
-
-                if (setTouchableInsetsMethod != null && touchableRegionField != null) {
-                    listener = Proxy.newProxyInstance(
-                        listenerClass.classLoader,
-                        arrayOf(listenerClass)
-                    ) { _, method, args ->
-                        if (method.name == "onComputeInternalInsets") {
-                            val info = args?.get(0)
-                            if (info != null && currentIsPassThrough) {
-                                // 3 == TOUCHABLE_INSETS_REGION
-                                setTouchableInsetsMethod.invoke(info, 3)
-                                val region = touchableRegionField.get(info) as Region
-                                region.setEmpty() // Делаем всё окно пропускающим клики
-
-                                // Вырезаем из пустоты "островок" нашей кнопки, делая её кликабельной
-                                currentCloseButtonRect?.let { rect ->
-                                    region.set(
-                                        rect.left.toInt(),
-                                        rect.top.toInt(),
-                                        rect.right.toInt(),
-                                        rect.bottom.toInt()
-                                    )
-                                }
-                            }
-                        }
-                        null
-                    }
-
-                    val addMethod = viewTreeObserver.javaClass.methods.find { it.name == "addOnComputeInternalInsetsListener" }?.apply { isAccessible = true }
-                    addMethod?.invoke(viewTreeObserver, listener)
-
-                    removeListener = {
-                        try {
-                            // Получаем актуальный ViewTreeObserver перед удалением
-                            val vto = if (view.viewTreeObserver.isAlive) view.viewTreeObserver else view.viewTreeObserver
-                            val removeMethod = vto.javaClass.methods.find { it.name == "removeOnComputeInternalInsetsListener" }?.apply { isAccessible = true }
-                            removeMethod?.invoke(vto, listener)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            onDispose {
-                removeListener?.invoke()
-            }
-        }
-
-        // Принудительно заставляем Android пересчитать Insets при смене позиции кнопки или состояния проницаемости
-        LaunchedEffect(isPassThrough, closeButtonRect) {
-            window?.decorView?.requestLayout()
-        }
-
-        // Оборачиваем в CompositionLocalProvider для передачи стиля в hazeEffect
         CompositionLocalProvider(LocalHazeStyle provides DiceRollHazeStyle) {
             Surface(
                 modifier = modifier
                     .padding(16.dp)
                     .widthIn(min = 280.dp, max = 340.dp)
+                    .onGloballyPositioned { coords ->
+                        // Вычисляем АБСОЛЮТНУЮ позицию выбранного угла панели на физическом экране
+                        val location = IntArray(2)
+                        view.getLocationOnScreen(location)
+                        val posInRoot = coords.positionInRoot()
+
+                        val newPos = when (closeButtonPosition) {
+                            DiceRollPosition.TOP_LEFT -> IntOffset(
+                                x = location[0] + posInRoot.x.roundToInt(),
+                                y = location[1] + posInRoot.y.roundToInt()
+                            )
+                            DiceRollPosition.TOP_RIGHT -> IntOffset(
+                                x = location[0] + posInRoot.x.roundToInt() + coords.size.width,
+                                y = location[1] + posInRoot.y.roundToInt()
+                            )
+                            DiceRollPosition.BOTTOM_LEFT -> IntOffset(
+                                x = location[0] + posInRoot.x.roundToInt(),
+                                y = location[1] + posInRoot.y.roundToInt() + coords.size.height
+                            )
+                            DiceRollPosition.BOTTOM_RIGHT -> IntOffset(
+                                x = location[0] + posInRoot.x.roundToInt() + coords.size.width,
+                                y = location[1] + posInRoot.y.roundToInt() + coords.size.height
+                            )
+                        }
+
+                        if (anchorPos != newPos) {
+                            anchorPos = newPos
+                        }
+                    }
                     .run {
                         if (forceBlurEnabled && hazeState != null && !isOled) {
                             this.clip(RoundedCornerShape(24.dp))
@@ -228,7 +185,7 @@ fun DiceRollOverlay(
                     modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // История предыдущих бросков
+                    // История
                     if (previous.isNotEmpty()) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -245,32 +202,82 @@ fun DiceRollOverlay(
                     latest?.let {
                         RollItem(it, isCompact = false, isOled = isOled)
                     }
+                }
+            }
+        }
+    }
 
-                    // Кнопка закрытия
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        IconButton(
-                            onClick = onClose,
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .size(32.dp)
-                                .border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
-                                .onGloballyPositioned { coords ->
-                                    val pos = coords.positionInWindow()
-                                    val newRect = Rect(pos.x, pos.y, pos.x + coords.size.width, pos.y + coords.size.height)
-                                    // Обязательная проверка, чтобы не уйти в бесконечный цикл рекомпозиции
-                                    if (closeButtonRect != newRect) {
-                                        closeButtonRect = newRect
+    // Создаем второе независимое окно ТОЛЬКО после того, как узнали точные координаты угла.
+    anchorPos?.let { pos ->
+        Dialog(
+            onDismissRequest = onClose,
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = false, // BackPress перехватывается первым окном
+                dismissOnClickOutside = false
+            )
+        ) {
+            val btnView = LocalView.current
+            val btnWindow = (btnView.parent as? DialogWindowProvider)?.window
+            val colorScheme = MaterialTheme.colorScheme
+
+            SideEffect {
+                btnWindow?.let { w ->
+                    // Это окно ВСЕГДА активно и ловит клики (нет FLAG_NOT_TOUCHABLE)
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                    // FLAG_NOT_TOUCH_MODAL означает, что окно ловит клики только В СВОИХ ГРАНИЦАХ
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+                    w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                    w.setDimAmount(0f)
+                    w.setBackgroundDrawableResource(android.R.color.transparent)
+
+                    val params = w.attributes
+                    params.gravity = Gravity.TOP or Gravity.START
+                    // Центрируем кнопку (32dp) по углу панели.
+                    // 16dp - это смещение, чтобы центр кнопки совпал с углом
+                    val offsetPx = (16 * btnView.resources.displayMetrics.density).roundToInt()
+                    params.x = pos.x - offsetPx
+                    params.y = pos.y - offsetPx
+
+                    params.width = WindowManager.LayoutParams.WRAP_CONTENT
+                    params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                    w.attributes = params
+                }
+            }
+
+            // Визуальная и интерактивная часть кнопки в отдельном окне
+            Surface(
+                modifier = Modifier
+                    .size(32.dp)
+                    .run {
+                        if (forceBlurEnabled && hazeState != null && !isOled) {
+                            this.clip(RoundedCornerShape(12.dp))
+                                .then(
+                                    remember(history.size) {
+                                        Modifier.hazeEffect(state = hazeState) {
+                                            inputScale = HazeInputScale.Fixed(0.6f)
+                                        }
                                     }
-                                }
-                        ) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Закрыть",
-                                modifier = Modifier.size(20.dp),
-                                tint = colorScheme.onSurfaceVariant
-                            )
-                        }
+                                )
+                        } else this
                     }
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(
+                        onClickLabel = "Закрыть окно бросков",
+                        onClick = onClose
+                    ),
+                shape = RoundedCornerShape(12.dp),
+                color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = alpha),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
+                tonalElevation = if (isOled) 0.dp else 4.dp
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Закрыть",
+                        modifier = Modifier.size(20.dp),
+                        tint = colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }

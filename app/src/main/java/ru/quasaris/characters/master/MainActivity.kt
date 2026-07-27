@@ -390,6 +390,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            val rollAlpha by settingsViewModel.rollInterfaceAlpha.collectAsState()
+                            val rollPassThrough by settingsViewModel.rollPassThrough.collectAsState()
+                            val rollPosition by settingsViewModel.rollPosition.collectAsState()
+                            val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
+
                             if (rollHistory.isNotEmpty()) {
                                 DiceRollOverlay(
                                     history = rollHistory,
@@ -397,9 +402,10 @@ class MainActivity : ComponentActivity() {
                                     themeMode = themeMode,
                                     forceBlurEnabled = effectiveBlurRolls,
                                     hazeState = hazeState,
-                                    alpha = rollAlpha,
+                                    alpha = if (effectiveBlurRolls) 0f else rollAlpha,
                                     isPassThrough = rollPassThrough,
                                     position = rollPosition,
+                                    closeButtonPosition = rollCloseButtonPos,
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
                                         .navigationBarsPadding()

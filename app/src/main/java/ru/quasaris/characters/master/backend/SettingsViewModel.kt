@@ -45,6 +45,9 @@ class SettingsViewModel(
     private val _rollPosition = MutableStateFlow(DiceRollPosition.valueOf(settingsManager?.rollPosition ?: "BOTTOM_LEFT"))
     val rollPosition = _rollPosition.asStateFlow()
 
+    private val _rollCloseButtonPosition = MutableStateFlow(DiceRollPosition.valueOf(settingsManager?.rollCloseButtonPosition ?: "TOP_RIGHT"))
+    val rollCloseButtonPosition = _rollCloseButtonPosition.asStateFlow()
+
     private val _debugInfoEnabled = MutableStateFlow(settingsManager?.debugInfoEnabled ?: false)
     val debugInfoEnabled = _debugInfoEnabled.asStateFlow()
 
@@ -124,6 +127,11 @@ class SettingsViewModel(
     fun updateRollPosition(position: DiceRollPosition) {
         _rollPosition.value = position
         settingsManager?.rollPosition = position.name
+    }
+
+    fun updateRollCloseButtonPosition(position: DiceRollPosition) {
+        _rollCloseButtonPosition.value = position
+        settingsManager?.rollCloseButtonPosition = position.name
     }
 
     @Deprecated("Use specific blur settings")
@@ -232,6 +240,7 @@ class SettingsViewModel(
         _rollInterfaceAlpha.value = settingsManager?.rollInterfaceAlpha ?: 0.4f
         _rollPassThrough.value = settingsManager?.rollPassThrough ?: true
         _rollPosition.value = DiceRollPosition.valueOf(settingsManager?.rollPosition ?: "BOTTOM_LEFT")
+        _rollCloseButtonPosition.value = DiceRollPosition.valueOf(settingsManager?.rollCloseButtonPosition ?: "TOP_RIGHT")
         _debugInfoEnabled.value = settingsManager?.debugInfoEnabled ?: false
         _deletionWarningEnabled.value = settingsManager?.deletionWarningEnabled ?: true
         _fullscreenEditingOnly.value = settingsManager?.fullscreenEditingOnly ?: false

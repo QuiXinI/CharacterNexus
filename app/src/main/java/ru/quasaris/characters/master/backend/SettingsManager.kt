@@ -74,6 +74,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("roll_position", DiceRollPosition.BOTTOM_LEFT.name) ?: DiceRollPosition.BOTTOM_LEFT.name
         set(value) = prefs.edit { putString("roll_position", value) }
 
+    var rollCloseButtonPosition: String
+        get() = prefs.getString("roll_close_button_position", DiceRollPosition.TOP_RIGHT.name) ?: DiceRollPosition.TOP_RIGHT.name
+        set(value) = prefs.edit { putString("roll_close_button_position", value) }
+
     private val forceBlurEnabledDefault: Boolean
         get() {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

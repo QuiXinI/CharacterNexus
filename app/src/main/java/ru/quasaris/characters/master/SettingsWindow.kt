@@ -444,6 +444,7 @@ fun BlurSettingsSection(
                 HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val isAlphaDisabled = masterBlurEnabled && blurRolls
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -452,18 +453,19 @@ fun BlurSettingsSection(
                         Text(
                             text = "Прозрачность интерфейса броска",
                             fontSize = 16.sp,
-                            color = colorScheme.onSurface
+                            color = if (isAlphaDisabled) colorScheme.onSurface.copy(alpha = 0.38f) else colorScheme.onSurface
                         )
                         Text(
-                            text = "${((1f - rollAlpha) * 100).roundToInt()}%",
+                            text = if (isAlphaDisabled) "100%" else "${((1f - rollAlpha) * 100).roundToInt()}%",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = colorScheme.primary
+                            color = if (isAlphaDisabled) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.primary
                         )
                     }
                     Slider(
-                        value = 1f - rollAlpha,
+                        value = if (isAlphaDisabled) 1f else 1f - rollAlpha,
                         onValueChange = { settingsViewModel.updateRollInterfaceAlpha(1f - it) },
+                        enabled = !isAlphaDisabled,
                         valueRange = 0f..1f,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -564,6 +566,48 @@ fun DiceRollSettingsSection(
                 SegmentedButton(
                     selected = rollPosition == DiceRollPosition.BOTTOM_RIGHT,
                     onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.BOTTOM_RIGHT) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
+                ) { Text("Справа-внизу", fontSize = 12.sp) }
+            }
+        }
+
+        Text(
+            text = "Положение кнопки закрытия",
+            fontSize = 16.sp,
+            color = colorScheme.onSurface
+        )
+
+        val closeButtonPosition by settingsViewModel.rollCloseButtonPosition.collectAsState()
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy((-9).dp)
+        ) {
+            // TOP ROW
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = closeButtonPosition == DiceRollPosition.TOP_LEFT,
+                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.TOP_LEFT) },
+                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
+                ) { Text("Слева-вверху", fontSize = 12.sp) }
+
+                SegmentedButton(
+                    selected = closeButtonPosition == DiceRollPosition.TOP_RIGHT,
+                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.TOP_RIGHT) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp)
+                ) { Text("Справа-вверху", fontSize = 12.sp) }
+            }
+
+            // BOTTOM ROW
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = closeButtonPosition == DiceRollPosition.BOTTOM_LEFT,
+                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.BOTTOM_LEFT) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius)
+                ) { Text("Слева-внизу", fontSize = 12.sp) }
+
+                SegmentedButton(
+                    selected = closeButtonPosition == DiceRollPosition.BOTTOM_RIGHT,
+                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.BOTTOM_RIGHT) },
                     shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
                 ) { Text("Справа-внизу", fontSize = 12.sp) }
             }
