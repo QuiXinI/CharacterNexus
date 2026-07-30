@@ -107,10 +107,12 @@ fun calculateLevelFromExperience(expStr: String): Int {
 }
 
 /**
- * Оценка математической формулы с учетом характеристик персонажа.
+ * Предварительная обработка формулы: замена всех текстовых токенов на числовые значения.
  */
-fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
+fun preprocessFormula(formula: String, stats: Map<String, String>): String {
     var processed = formula.uppercase()
+    
+    // 1. Характеристики (Attribute Tokens)
     val statKeys = mapOf(
         "СИЛ" to "strength", "STR" to "strength",
         "ЛОВ" to "dexterity", "DEX" to "dexterity",
@@ -119,46 +121,68 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         "МУД" to "wisdom", "WIS" to "wisdom",
         "ХАР" to "charisma", "CHA" to "charisma"
     )
+    
     statKeys.forEach { (key, statKey) ->
-        val score = stats[statKey] ?: "10"
-        val mod = calculateModifier(score).toString()
-        processed = processed.replace("[$key ЗНАЧ]", score).replace("[$key SCR]", score)
-            .replace("[$key]", " $mod ")
-            .replace("[$key ", " $mod ")
+        // Эффективное значение (со всеми бонусами)
+        val effScore = stats[statKey] ?: "10"
+        val effMod = calculateModifier(effScore).toString()
+        
+        // Базовое значение (до бонусов)
+        val baseScore = stats["base_$statKey"] ?: effScore
+        val baseMod = calculateModifier(baseScore).toString()
+        
+        // 1. Сначала заменяем самые длинные и специфичные токены
+        processed = processed.replace("[НАСТ $key ЗНАЧ]", baseScore)
+            .replace("[CUR $key SCR]", baseScore)
+            .replace("[$key ЗНАЧ]", effScore)
+            .replace("[$key SCR]", effScore)
+            
+        // 2. Затем заменяем токены модификаторов (сначала НАСТ)
+        processed = processed.replace("[НАСТ $key]", " $baseMod ")
+            .replace("[CUR $key]", " $baseMod ")
+            .replace("[$key]", " $effMod ")
     }
+    
+    // 2. Уровень и опыт
     val level = stats["level"] ?: "1"
-    processed = processed.replace("[LVL]", " $level ").replace("[УР]", " $level ").replace("[LEVEL]", " $level ")
-
+    processed = processed.replace("[LVL]", " $level ")
+        .replace("[УР]", " $level ")
+        .replace("[LEVEL]", " $level ")
+        
     val xp = stats["xp"] ?: "0"
-    processed = processed.replace("[XP]", " $xp ").replace("[ОП]", " $xp ")
+    processed = processed.replace("[XP]", " $xp ")
+        .replace("[ОП]", " $xp ")
 
+    // 3. Здоровье и ресурсы
     val hp = stats["hp"] ?: "0"
     processed = processed.replace("[HP]", " $hp ").replace("[ХП]", " $hp ")
-
     val mhp = stats["max_hp"] ?: "0"
     processed = processed.replace("[MHP]", " $mhp ").replace("[МХП]", " $mhp ")
-
     val thp = stats["temp_hp"] ?: "0"
     processed = processed.replace("[THP]", " $thp ").replace("[ВХП]", " $thp ")
 
+    // 4. Боевые показатели
     val ac = stats["ac"] ?: "10"
     processed = processed.replace("[AC]", " $ac ").replace("[КД]", " $ac ")
-
     val ex = stats["exhaustion"] ?: "0"
     processed = processed.replace("[EX]", " $ex ").replace("[ИСТ]", " $ex ")
-
     val cond = stats["conditions"] ?: "0"
     processed = processed.replace("[COND]", " $cond ").replace("[СОСТ]", " $cond ")
 
+    // 5. Бонус мастерства
     val realPb = getProficiencyBonus(level).toString()
-    val pb = stats["proficiencyBonus"] ?: realPb
+    val pbValue = stats["proficiencyBonus"] ?: realPb
+    
+    // Если в proficiencyBonus записана формула (например "[НАСТ БМ]"), вычисляем её рекурсивно или берем realPb
+    val safePb = if (pbValue.contains("[БМ]") || pbValue.contains("[PB]")) realPb else pbValue
+    
+    processed = processed.replace("[БМ]", " $safePb ")
+        .replace("[PB]", " $safePb ")
+        .replace("[PROF]", " $safePb ")
+        .replace("[НАСТ БМ]", " $realPb ")
+        .replace("[REAL PB]", " $realPb ")
 
-    val safePb = if (pb.contains("[БМ]") || pb.contains("[PB]") || pb.contains("[PB]")) realPb else pb
-
-    processed = processed.replace("[БМ]", " $safePb ").replace("[PB]", " $safePb ").replace("[PROF]", " $safePb ")
-        .replace("[НАСТ БМ]", " $realPb ").replace("[REAL PB]", " $realPb ").replace("[REAL PROF]", " $realPb ")
-
-    // Add Magic Bonuses
+    // 6. Магические бонусы
     val magAtk = stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: "0"
     val magSave = stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: "0"
     val magMod = stats["[MAG MOD]"] ?: stats["[МАГ МОД]"] ?: "0"
@@ -169,6 +193,15 @@ fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
         .replace("[МАГ СПАС БОН]", " $magSave ")
         .replace("[MAG MOD]", " $magMod ")
         .replace("[МАГ МОД]", " $magMod ")
+        
+    return processed
+}
+
+/**
+ * Оценка математической формулы с учетом характеристик персонажа.
+ */
+fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
+    var processed = preprocessFormula(formula, stats)
     
     fun processFunctions(input: String): String {
         var current = input

@@ -37,8 +37,11 @@ import androidx.compose.ui.window.DialogWindowProvider
 import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.MagicAttackType
+import ru.quasaris.characters.master.BonusOperation
 import ru.quasaris.characters.master.backend.AdvantageType
+import ru.quasaris.characters.master.backend.AdvantageLogic
 import ru.quasaris.characters.master.backend.DiceRoller
+import ru.quasaris.characters.master.backend.SimpleBonus
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.backend.SettingsViewModel
@@ -80,7 +83,8 @@ fun AttacksTab(
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
-    spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings()
+    spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings(),
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
 ) {
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
     var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
@@ -175,7 +179,8 @@ fun AttacksTab(
                         blurPopups = blurPopups,
                         dragModifier = dragModifier,
                         modifier = Modifier.animateItem(),
-                        spellSettings = spellSettings
+                        spellSettings = spellSettings,
+                        advantageLogic = advantageLogic
                     )
                 }
             }
@@ -255,7 +260,8 @@ fun AttackItem(
     blurPopups: Boolean = false,
     dragModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
-    spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings()
+    spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings(),
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
 ) {
     val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
@@ -265,25 +271,19 @@ fun AttackItem(
             val bonuses = if (attack.magicType == MagicAttackType.ATTACK) spellSettings.spellAttackBonuses else spellSettings.spellSaveDcBonuses
             
             val abilityModifier = if (spellSettings.spellcastingAbility != Attribute.NONE) {
-                val statKey = when (spellSettings.spellcastingAbility) {
-                    Attribute.STRENGTH -> "strength"
-                    Attribute.DEXTERITY -> "dexterity"
-                    Attribute.CONSTITUTION -> "constitution"
-                    Attribute.INTELLIGENCE -> "intelligence"
-                    Attribute.WISDOM -> "wisdom"
-                    Attribute.CHARISMA -> "charisma"
-                    else -> ""
-                }
-                ru.quasaris.characters.master.backend.calculateModifier(stats[statKey] ?: "10")
+                attributeModifiers[spellSettings.spellcastingAbility] ?: 0
             } else 0
             
-            var totalFlat = (if (attack.magicType == MagicAttackType.SAVE) 8 else 0) + proficiencyBonus + abilityModifier - (if (attack.magicType == MagicAttackType.ATTACK) exhaustion * 2 else 0)
-            val allDice = mutableMapOf<Int, Int>()
+            val baseFlat = (if (attack.magicType == MagicAttackType.SAVE) 8 else 0) + proficiencyBonus + abilityModifier
+            var totalFlat = calculateTotalBonus(bonuses, stats, initialValue = baseFlat)
             
-            bonuses.forEach { bonus ->
-                val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
-                totalFlat += fFlat
-                fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+            val allDice = mutableMapOf<Int, Int>()
+            bonuses.filter { it.isActive }.forEach { bonus ->
+                val (_, fDice) = parseFormulaParts(bonus.formula, stats)
+                fDice.forEach {
+                    val sign = if (bonus.operation == BonusOperation.SUBTRACT) -1 else 1
+                    allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
+                }
             }
             return@remember Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
         }
@@ -293,27 +293,31 @@ fun AttackItem(
         }
         val attrMod = attributeModifiers[attack.attribute] ?: 0
         val prof = if (attack.isProficient) proficiencyBonus else 0
-        var totalFlat = attrMod + prof + attack.attackBonus - (exhaustion * 2)
-        val allDice = mutableMapOf<Int, Int>()
+        val baseFlat = attrMod + prof + attack.attackBonus
+        var totalFlat = calculateTotalBonus(attack.attackBonuses, stats, initialValue = baseFlat)
         
-        attack.attackBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
-            totalFlat += fFlat
-            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        val allDice = mutableMapOf<Int, Int>()
+        attack.attackBonuses.filter { it.isActive }.forEach { bonus ->
+            val (_, fDice) = parseFormulaParts(bonus.formula, stats)
+            fDice.forEach {
+                val sign = if (bonus.operation == BonusOperation.SUBTRACT) -1 else 1
+                allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
+            }
         }
         Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
 
-    
     val totalAttackBonus = attackCalculation.first
     val attackDice = attackCalculation.second
+    
+    // Для отображения вычитаем истощение, если это не спасбросок (хотя в 5е 2024 истощение влияет и на DC)
+    // Но пока придерживаемся логики: броски d20 штрафуются в DiceRoller.
+    val displayAttackBonus = if (attack.isMagic && attack.magicType == MagicAttackType.SAVE) totalAttackBonus else totalAttackBonus - (exhaustion * 2)
 
     val fullDamageText = formatFullDamage(
         baseFormula = attack.damageFormula,
         baseDamageBonus = attack.damageBonus,
-        bonusFormulas = attack.damageBonuses.map { it.formula },
-        attributeModifiers = attributeModifiers,
-        proficiencyBonus = proficiencyBonus,
+        bonuses = attack.damageBonuses,
         stats = stats
     )
 
@@ -495,16 +499,15 @@ fun AttackItem(
                                 }
                                 .combinedClickable(
                                     onClick = {
-                                        val damageFlat = attack.damageBonus
-                                        val bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula
                                         onRoll(DiceRoller.roll(
                                             title = "Урон: ${attack.name}",
-                                            baseModifier = damageFlat,
-                                            bonusFormulas = bonusFormulas,
+                                            baseModifier = attack.damageBonus,
+                                            bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
                                             isDamage = true,
                                             stats = stats,
                                             sourceType = RollSourceType.ATTACK,
-                                            advantageType = AdvantageType.NONE
+                                            advantageType = AdvantageType.NONE,
+                                            advantageLogic = advantageLogic
                                         ))
                                     },
                                     onLongClick = { showDamagePopup = true }
@@ -529,33 +532,36 @@ fun AttackItem(
                                             onRoll(DiceRoller.roll(
                                                 title = "Урон: ${attack.name}",
                                                 baseModifier = attack.damageBonus,
-                                                bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula,
+                                                bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
                                                 isDamage = true,
                                                 stats = stats,
                                                 sourceType = RollSourceType.ATTACK,
-                                                advantageType = AdvantageType.ADVANTAGE
+                                                advantageType = AdvantageType.ADVANTAGE,
+                                                advantageLogic = advantageLogic
                                             ))
                                         },
                                         onDisadvantage = {
                                             onRoll(DiceRoller.roll(
                                                 title = "Урон: ${attack.name}",
                                                 baseModifier = attack.damageBonus,
-                                                bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula,
+                                                bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
                                                 isDamage = true,
                                                 stats = stats,
                                                 sourceType = RollSourceType.ATTACK,
-                                                advantageType = AdvantageType.DISADVANTAGE
+                                                advantageType = AdvantageType.DISADVANTAGE,
+                                                advantageLogic = advantageLogic
                                             ))
                                         },
                                         onCritical = {
                                             onRoll(DiceRoller.roll(
                                                 title = "Критический Урон: ${attack.name}",
                                                 baseModifier = attack.damageBonus,
-                                                bonusFormulas = attack.damageBonuses.map { it.formula } + attack.damageFormula,
+                                                bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
                                                 isDamage = true,
                                                 stats = stats,
                                                 sourceType = RollSourceType.ATTACK,
-                                                advantageType = AdvantageType.CRITICAL
+                                                advantageType = AdvantageType.CRITICAL,
+                                                advantageLogic = advantageLogic
                                             ))
                                         },
                                         onDismiss = { showDamagePopup = false },
@@ -608,16 +614,17 @@ fun AttackItem(
                                     }
                                     .combinedClickable(
                                         onClick = {
-                                            val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
+                                            val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses else attack.attackBonuses
                                             onRoll(DiceRoller.roll(
                                                 title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
-                                                baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
-                                                bonusFormulas = bonuses,
+                                                baseModifier = totalAttackBonus,
+                                                bonuses = bonuses,
                                                 isDamage = false,
                                                 stats = stats,
                                                 exhaustion = exhaustion,
                                                 sourceType = RollSourceType.ATTACK,
-                                                advantageType = AdvantageType.NONE
+                                                advantageType = AdvantageType.NONE,
+                                                advantageLogic = advantageLogic
                                             ))
                                         },
                                         onLongClick = { showAttackPopup = true }
@@ -632,7 +639,7 @@ fun AttackItem(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         AttackBonusIndicator(
-                                            bonus = totalAttackBonus,
+                                            bonus = displayAttackBonus,
                                             dice = attackDice,
                                             size = 48.dp,
                                             fontSize = 18.sp,
@@ -646,29 +653,31 @@ fun AttackItem(
                                         val sizeDp = with(density) { attackBtnSize.toSize().let { androidx.compose.ui.unit.DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
                                         DiceRollAdvantagePopup(
                                             onAdvantage = {
-                                                val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
+                                                val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses else attack.attackBonuses
                                                 onRoll(DiceRoller.roll(
                                                     title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
-                                                    baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
-                                                    bonusFormulas = bonuses,
+                                                    baseModifier = totalAttackBonus,
+                                                    bonuses = bonuses,
                                                     isDamage = false,
                                                     stats = stats,
                                                     exhaustion = exhaustion,
                                                     sourceType = RollSourceType.ATTACK,
-                                                    advantageType = AdvantageType.ADVANTAGE
+                                                    advantageType = AdvantageType.ADVANTAGE,
+                                                    advantageLogic = advantageLogic
                                                 ))
                                             },
                                             onDisadvantage = {
-                                                val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses.map { it.formula } else attack.attackBonuses.map { it.formula }
+                                                val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses else attack.attackBonuses
                                                 onRoll(DiceRoller.roll(
                                                     title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
-                                                    baseModifier = totalAttackBonus + (if (attack.magicType == MagicAttackType.SAVE) 0 else exhaustion * 2),
-                                                    bonusFormulas = bonuses,
+                                                    baseModifier = totalAttackBonus,
+                                                    bonuses = bonuses,
                                                     isDamage = false,
                                                     stats = stats,
                                                     exhaustion = exhaustion,
                                                     sourceType = RollSourceType.ATTACK,
-                                                    advantageType = AdvantageType.DISADVANTAGE
+                                                    advantageType = AdvantageType.DISADVANTAGE,
+                                                    advantageLogic = advantageLogic
                                                 ))
                                             },
                                             onDismiss = { showAttackPopup = false },

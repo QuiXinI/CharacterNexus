@@ -93,7 +93,7 @@ fun SpellSettingsDialog(
         var totalFlat = pb + currentAbilityModifier
         val allDice = mutableMapOf<Int, Int>()
         spellAttackBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, statsMap)
             totalFlat += fFlat
             fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
         }
@@ -104,7 +104,7 @@ fun SpellSettingsDialog(
         var totalFlat = 8 + pb + currentAbilityModifier
         val allDice = mutableMapOf<Int, Int>()
         spellSaveDcBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, statsMap)
             totalFlat += fFlat
             fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
         }

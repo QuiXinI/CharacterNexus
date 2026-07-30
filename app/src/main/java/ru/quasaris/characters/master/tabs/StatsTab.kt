@@ -36,6 +36,7 @@ import ru.quasaris.characters.master.Character
 import ru.quasaris.characters.master.StatBonus
 import ru.quasaris.characters.master.SkillBonus
 import ru.quasaris.characters.master.MainWindow.AttributesSection
+import ru.quasaris.characters.master.backend.AdvantageLogic
 import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.backend.RollResult
 import dev.chrisbanes.haze.HazeState
@@ -85,16 +86,15 @@ fun StatsTab(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
-    isAdvancedMode: Boolean = false
+    isAdvancedMode: Boolean = false,
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
+    attributeModifiers: Map<Attribute, Int> = emptyMap(),
+    statsMap: Map<String, String> = emptyMap()
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
     var showBonusDialogForAttribute by remember { mutableStateOf<Attribute?>(null) }
     var showBonusDialogForSkill by remember { mutableStateOf<String?>(null) }
-    
-    val statsMap = remember(statsState, level) { 
-        statsState.toStatsMap(level, getProficiencyBonus(level).toString()) 
-    }
 
     Column(
         modifier = Modifier
@@ -143,9 +143,11 @@ fun StatsTab(
                 onSkillLongClick = { showBonusDialogForSkill = it },
                 onRoll = onRoll,
                 statsMap = statsMap,
+                attributeModifiers = attributeModifiers,
                 exhaustion = character.exhaustion,
                 hazeState = hazeState,
-                isOled = colorScheme.background == Color.Black
+                isOled = colorScheme.background == Color.Black,
+                advantageLogic = advantageLogic
             )
         }
 
@@ -169,6 +171,15 @@ fun StatsTab(
             attribute = attr,
             proficiencyBonus = getProficiencyBonus(level),
             attributeModifiers = statsState.toAttributeModifiers(),
+            initialBaseScore = when(attr) {
+                Attribute.STRENGTH -> statsState.strength
+                Attribute.DEXTERITY -> statsState.dexterity
+                Attribute.CONSTITUTION -> statsState.constitution
+                Attribute.INTELLIGENCE -> statsState.intelligence
+                Attribute.WISDOM -> statsState.wisdom
+                Attribute.CHARISMA -> statsState.charisma
+                else -> "10"
+            },
             initialStatBonuses = statsState.statBonuses,
             initialIsStatProficient = when(attr) {
                 Attribute.STRENGTH -> statsState.strProf
@@ -184,7 +195,7 @@ fun StatsTab(
             initialSkillExpertise = statsState.skilledExpertise,
             skillsToDisplay = skills,
             onDismiss = { showBonusDialogForAttribute = null },
-            onSave = { statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise ->
+            onSave = { baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise ->
                 var newState = statsState.copy(
                     statBonuses = statBonuses,
                     skillBonuses = skillBonuses,
@@ -192,12 +203,12 @@ fun StatsTab(
                     skilledExpertise = skillExpertise
                 )
                 newState = when(attr) {
-                    Attribute.STRENGTH -> newState.copy(strProf = isStatProficient)
-                    Attribute.DEXTERITY -> newState.copy(dexProf = isStatProficient)
-                    Attribute.CONSTITUTION -> newState.copy(conProf = isStatProficient)
-                    Attribute.INTELLIGENCE -> newState.copy(intProf = isStatProficient)
-                    Attribute.WISDOM -> newState.copy(wisProf = isStatProficient)
-                    Attribute.CHARISMA -> newState.copy(chaProf = isStatProficient)
+                    Attribute.STRENGTH -> newState.copy(strProf = isStatProficient, strength = baseScore)
+                    Attribute.DEXTERITY -> newState.copy(dexProf = isStatProficient, dexterity = baseScore)
+                    Attribute.CONSTITUTION -> newState.copy(conProf = isStatProficient, constitution = baseScore)
+                    Attribute.INTELLIGENCE -> newState.copy(intProf = isStatProficient, intelligence = baseScore)
+                    Attribute.WISDOM -> newState.copy(wisProf = isStatProficient, wisdom = baseScore)
+                    Attribute.CHARISMA -> newState.copy(chaProf = isStatProficient, charisma = baseScore)
                     else -> newState
                 }
                 onStatsStateChange(newState)
@@ -223,6 +234,7 @@ fun StatsTab(
             attribute = attr,
             proficiencyBonus = getProficiencyBonus(level),
             attributeModifiers = statsState.toAttributeModifiers(),
+            initialBaseScore = "10",
             initialStatBonuses = emptyList(), // Not needed for single skill
             initialIsStatProficient = false, // Not needed
             initialSkillBonuses = statsState.skillBonuses,
@@ -231,7 +243,7 @@ fun StatsTab(
             skillsToDisplay = listOf(skillName),
             showStatBonuses = false,
             onDismiss = { showBonusDialogForSkill = null },
-            onSave = { _, _, skillBonuses, skillProficiencies, skillExpertise ->
+            onSave = { _, _, _, skillBonuses, skillProficiencies, skillExpertise ->
                 onStatsStateChange(statsState.copy(
                     skillBonuses = skillBonuses,
                     skilledProficiencies = skillProficiencies,

@@ -76,14 +76,6 @@ fun ResourceBlock(
 
     val level = statsMap["level"] ?: "1"
     val pb = getProficiencyBonus(level)
-    val attributeModifiers = mapOf(
-        Attribute.STRENGTH to calculateModifier(statsMap["strength"] ?: "10"),
-        Attribute.DEXTERITY to calculateModifier(statsMap["dexterity"] ?: "10"),
-        Attribute.CONSTITUTION to calculateModifier(statsMap["constitution"] ?: "10"),
-        Attribute.INTELLIGENCE to calculateModifier(statsMap["intelligence"] ?: "10"),
-        Attribute.WISDOM to calculateModifier(statsMap["wisdom"] ?: "10"),
-        Attribute.CHARISMA to calculateModifier(statsMap["charisma"] ?: "10")
-    )
 
     val canIncrement = curValue < maxValue || resource.max == "0"
     val canDecrement = curValue > 0
@@ -126,7 +118,6 @@ fun ResourceBlock(
                             isShort = true,
                             value = resource.shortRest,
                             statsMap = statsMap,
-                            attributeModifiers = attributeModifiers,
                             proficiencyBonus = pb
                         )
                     }
@@ -135,7 +126,6 @@ fun ResourceBlock(
                             isShort = false,
                             value = resource.longRest,
                             statsMap = statsMap,
-                            attributeModifiers = attributeModifiers,
                             proficiencyBonus = pb
                         )
                     }
@@ -296,7 +286,6 @@ fun RestIndicator(
     isShort: Boolean,
     value: String,
     statsMap: Map<String, String>,
-    attributeModifiers: Map<Attribute, Int>,
     proficiencyBonus: Int
 ) {
     val icon = if (isShort) Icons.Outlined.WbSunny else Icons.Outlined.NightsStay
@@ -310,7 +299,7 @@ fun RestIndicator(
             tint = color
         )
         if (value.lowercase() != "all" && value.lowercase() != "все") {
-            val (flat, dice) = parseFormulaParts(value, attributeModifiers, proficiencyBonus, stats = statsMap)
+            val (flat, dice) = parseFormulaParts(value, stats = statsMap)
             if (dice.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),

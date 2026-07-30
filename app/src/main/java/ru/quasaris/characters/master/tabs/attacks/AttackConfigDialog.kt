@@ -32,6 +32,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
+import ru.quasaris.characters.master.AdvantagePreference
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.AttackBonus
 import ru.quasaris.characters.master.AttackEntry
@@ -91,7 +92,7 @@ fun AttackConfigDialog(
             val allDice = mutableMapOf<Int, Int>()
             
             bonuses.forEach { bonus ->
-                val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
+                val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
                 totalFlat += fFlat
                 fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
             }
@@ -109,7 +110,7 @@ fun AttackConfigDialog(
         val allDice = mutableMapOf<Int, Int>()
         
         state.attackBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
             totalFlat += fFlat
             fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
         }
@@ -259,7 +260,7 @@ fun AttackConfigDialog(
                         }
 
                         AddBonusButton(enabled = state.attribute != Attribute.NONE) {
-                            state = state.copy(attackBonuses = state.attackBonuses + AttackBonus())
+                            state = state.copy(attackBonuses = state.attackBonuses + AttackBonus(advantagePreference = AdvantagePreference.IGNORE_BOTH))
                         }
                     }
 

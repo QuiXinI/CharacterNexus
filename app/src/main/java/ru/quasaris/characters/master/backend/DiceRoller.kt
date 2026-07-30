@@ -6,7 +6,13 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import ru.quasaris.characters.master.Attribute
+import ru.quasaris.characters.master.IBonus
+import ru.quasaris.characters.master.BonusOperation
+import ru.quasaris.characters.master.AdvantagePreference
 import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.backend.calculateModifier
+import ru.quasaris.characters.master.backend.getProficiencyBonus
+import java.util.UUID
 import kotlin.random.Random
 
 data class DieRoll(
@@ -20,6 +26,13 @@ enum class AdvantageType {
     ADVANTAGE,
     DISADVANTAGE,
     CRITICAL
+}
+
+enum class AdvantageLogic {
+    TOTAL,       // Общее значение (по умолчанию)
+    INDIVIDUAL,  // Покубово
+    SOURCE,      // По источнику
+    POOL         // Общий пулл
 }
 
 enum class RollSourceType {
@@ -48,27 +61,28 @@ data class RollResult(
     val unusedTotal: Int? = null
 )
 
+data class SimpleBonus(
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = "",
+    override val isActive: Boolean = true,
+    override val operation: BonusOperation = BonusOperation.ADD,
+    override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE
+) : IBonus
+
 object DiceRoller {
 
     fun roll(
         title: String,
         baseModifier: Int,
-        bonusFormulas: List<String> = emptyList(),
+        bonuses: List<IBonus> = emptyList(),
         isDamage: Boolean = false,
         stats: Map<String, String> = emptyMap(),
         exhaustion: Int = 0,
         sourceType: RollSourceType = RollSourceType.OTHER,
-        advantageType: AdvantageType = AdvantageType.NONE
+        advantageType: AdvantageType = AdvantageType.NONE,
+        advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
     ): RollResult {
-        val bonusDiceValues = mutableListOf<DieRoll>()
-        val altBonusDiceValues = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) mutableListOf<DieRoll>() else null
-        
-        val flatBonusValues = mutableListOf<Int>()
-        val altFlatBonusValues = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) mutableListOf<Int>() else null
-        
-        var total = 0
-        var total2 = 0
-        
         val attrModifiers = mutableMapOf<Attribute, Int>()
         Attribute.entries.forEach { attr ->
             if (attr != Attribute.NONE) {
@@ -78,118 +92,499 @@ object DiceRoller {
         }
         val pb = (stats["proficiencyBonus"] ?: stats["level"]?.let { getProficiencyBonus(it).toString() } ?: "2").replace("+", "").toIntOrNull() ?: 2
 
-        if (!isDamage) {
-            val d20_1 = Random.nextInt(1, 21)
-            val d20_2 = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) Random.nextInt(1, 21) else d20_1
-            
-            val (mainD20, altD20) = when (advantageType) {
-                AdvantageType.ADVANTAGE -> if (d20_1 >= d20_2) d20_1 to d20_2 else d20_2 to d20_1
-                AdvantageType.DISADVANTAGE -> if (d20_1 <= d20_2) d20_1 to d20_2 else d20_2 to d20_1
-                else -> d20_1 to null
+        val activeBonuses = bonuses.filter { it.isActive }
+
+        return when (advantageLogic) {
+            AdvantageLogic.TOTAL -> rollTotal(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
+            AdvantageLogic.INDIVIDUAL -> rollIndividual(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
+            AdvantageLogic.SOURCE -> rollSource(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
+            AdvantageLogic.POOL -> rollPool(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
+        }
+    }
+
+    private fun resolveAdvantage(global: AdvantageType, preference: AdvantagePreference): AdvantageType {
+        return when (preference) {
+            AdvantagePreference.IGNORE_ADVANTAGE -> if (global == AdvantageType.ADVANTAGE) AdvantageType.NONE else global
+            AdvantagePreference.ALWAYS_ADVANTAGE -> AdvantageType.ADVANTAGE
+            AdvantagePreference.IGNORE_DISADVANTAGE -> if (global == AdvantageType.DISADVANTAGE) AdvantageType.NONE else global
+            AdvantagePreference.ALWAYS_DISADVANTAGE -> AdvantageType.DISADVANTAGE
+            AdvantagePreference.IGNORE_BOTH -> AdvantageType.NONE
+            else -> global
+        }
+    }
+
+    private fun applyOp(current: Int, value: Int, op: BonusOperation): Int {
+        return when (op) {
+            BonusOperation.ADD -> current + value
+            BonusOperation.SUBTRACT -> current - value
+            BonusOperation.OVERRIDE -> value
+        }
+    }
+
+    private fun rollTotal(
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
+        attrModifiers: Map<Attribute, Int>, pb: Int, stats: Map<String, String>
+    ): RollResult {
+        val rollSet = { currentAdv: AdvantageType ->
+            val dice = mutableListOf<DieRoll>()
+            val flats = mutableListOf<Int>()
+            var sum = 0
+            var d20Result: Int? = null
+
+            if (!isDamage) {
+                val d20 = if (currentAdv == AdvantageType.ADVANTAGE) {
+                    val r1 = Random.nextInt(1, 21); val r2 = Random.nextInt(1, 21)
+                    if (r1 >= r2) r1 else r2
+                } else if (currentAdv == AdvantageType.DISADVANTAGE) {
+                    val r1 = Random.nextInt(1, 21); val r2 = Random.nextInt(1, 21)
+                    if (r1 <= r2) r1 else r2
+                } else {
+                    Random.nextInt(1, 21)
+                }
+                d20Result = d20
+                sum = d20
+                if (baseModifier != 0) { sum += baseModifier; flats.add(baseModifier) }
+                if (exhaustion > 0) { val penalty = -2 * exhaustion; sum += penalty; flats.add(penalty) }
+            } else {
+                sum = baseModifier
+                flats.add(baseModifier)
             }
 
-            total = mainD20
-            total2 = altD20 ?: mainD20
-            
-            // Add base modifier
-            if (baseModifier != 0) {
-                total += baseModifier
-                total2 += baseModifier
-                flatBonusValues.add(baseModifier)
-                altFlatBonusValues?.add(baseModifier)
-            }
-            
-            // Add exhaustion penalty
-            if (exhaustion > 0) {
-                val penalty = -2 * exhaustion
-                total += penalty
-                total2 += penalty
-                flatBonusValues.add(penalty)
-                altFlatBonusValues?.add(penalty)
-            }
-            
-            bonusFormulas.forEach { formula ->
-                val (fFlat, fDice) = parseFormulaParts(formula, attrModifiers, pb)
-                fDice.forEach { dice ->
-                    repeat(kotlin.math.abs(dice.count)) {
-                        val sign = if (dice.count > 0) 1 else -1
-                        val r1 = Random.nextInt(1, dice.sides + 1)
-                        val r2 = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) Random.nextInt(1, dice.sides + 1) else r1
-                        
-                        val (chosen, discarded) = when (advantageType) {
-                            AdvantageType.ADVANTAGE -> if (r1 >= r2) r1 to r2 else r2 to r1
-                            AdvantageType.DISADVANTAGE -> if (r1 <= r2) r1 to r2 else r2 to r1
-                            else -> r1 to null
-                        }
+            bonuses.forEach { bonus ->
+                val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
+                val bonusAdv = resolveAdvantage(AdvantageType.NONE, bonus.advantagePreference)
+                var bonusSum = 0
+                val currentDice = mutableListOf<DieRoll>()
 
-                        total += chosen * sign
-                        bonusDiceValues.add(DieRoll(chosen * sign, dice.sides))
-                        
-                        if (discarded != null) {
-                            total2 += discarded * sign
-                            altBonusDiceValues?.add(DieRoll(discarded * sign, dice.sides))
-                        }
-                    }
-                }
-                if (fFlat != 0) {
-                    total += fFlat
-                    total2 += fFlat
-                    flatBonusValues.add(fFlat)
-                    altFlatBonusValues?.add(fFlat)
-                }
-            }
-            
-            return RollResult(
-                title = title,
-                total = total,
-                breakdown = "", // DiceRollOverlay uses structured lists now
-                isCriticalSuccess = mainD20 == 20,
-                isCriticalFailure = mainD20 == 1,
-                isDamage = false,
-                mainD20 = mainD20,
-                alternativeD20 = altD20,
-                bonusDice = bonusDiceValues,
-                flatBonuses = flatBonusValues,
-                alternativeDice = altBonusDiceValues,
-                alternativeFlatBonuses = altFlatBonusValues,
-                sourceType = sourceType,
-                advantageType = advantageType,
-                unusedTotal = if (altD20 != null) total2 else null
-            )
-        } else {
-            total = baseModifier
-            flatBonusValues.add(baseModifier)
-            
-            bonusFormulas.forEach { formula ->
-                val (fFlat, fDice) = parseFormulaParts(formula, attrModifiers, pb)
-                fDice.forEach { dice ->
-                    // Double the dice count for critical damage
-                    val rollCount = if (advantageType == AdvantageType.CRITICAL) kotlin.math.abs(dice.count) * 2 else kotlin.math.abs(dice.count)
-                    
+                fDice.forEach { diceSpec ->
+                    val rollCount = if (isDamage && currentAdv == AdvantageType.CRITICAL) kotlin.math.abs(diceSpec.count) * 2 else kotlin.math.abs(diceSpec.count)
                     repeat(rollCount) {
-                        val sign = if (dice.count > 0) 1 else -1
-                        val r = Random.nextInt(1, dice.sides + 1)
-                        total += r * sign
-                        bonusDiceValues.add(DieRoll(r * sign, dice.sides))
+                        val sign = if (diceSpec.count > 0) 1 else -1
+                        val (r, discarded) = if (bonusAdv == AdvantageType.ADVANTAGE) {
+                            val r1 = Random.nextInt(1, diceSpec.sides + 1); val r2 = Random.nextInt(1, diceSpec.sides + 1)
+                            if (r1 >= r2) r1 to r2 else r2 to r1
+                        } else if (bonusAdv == AdvantageType.DISADVANTAGE) {
+                            val r1 = Random.nextInt(1, diceSpec.sides + 1); val r2 = Random.nextInt(1, diceSpec.sides + 1)
+                            if (r1 <= r2) r1 to r2 else r2 to r1
+                        } else {
+                            Random.nextInt(1, diceSpec.sides + 1) to null
+                        }
+                        
+                        val valWithSign = r * sign
+                        bonusSum += valWithSign
+                        currentDice.add(DieRoll(
+                            value = if (bonus.operation == BonusOperation.SUBTRACT) -valWithSign else valWithSign, 
+                            sides = diceSpec.sides,
+                            discardedValue = discarded?.let { if (bonus.operation == BonusOperation.SUBTRACT) -it * sign else it * sign }
+                        ))
                     }
                 }
-                if (fFlat != 0) {
-                    total += fFlat
-                    flatBonusValues.add(fFlat)
+
+                when (bonus.operation) {
+                    BonusOperation.ADD -> {
+                        sum += (bonusSum + fFlat)
+                        dice.addAll(currentDice)
+                        if (fFlat != 0) flats.add(fFlat)
+                    }
+                    BonusOperation.SUBTRACT -> {
+                        sum -= (bonusSum + fFlat)
+                        dice.addAll(currentDice)
+                        if (fFlat != 0) flats.add(-fFlat)
+                    }
+                    BonusOperation.OVERRIDE -> {
+                        sum = bonusSum + fFlat
+                        dice.clear()
+                        flats.clear()
+                        d20Result = null
+                        dice.addAll(currentDice)
+                        if (fFlat != 0) flats.add(fFlat)
+                    }
                 }
             }
-            
+            Triple(sum, dice, flats to d20Result)
+        }
+
+        val res1 = rollSet(advantageType)
+        
+        // We only show "total comparison" if the d20 itself had advantage/disadvantage
+        // or if we really want to see two variants. But usually it's for d20.
+        val hasAdvantage = advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE
+        
+        if (!hasAdvantage) {
             return RollResult(
-                title = title,
-                total = total,
-                breakdown = "",
-                isDamage = true,
-                bonusDice = bonusDiceValues,
-                flatBonuses = flatBonusValues,
-                sourceType = sourceType,
-                advantageType = advantageType
+                title = title, total = res1.first, breakdown = "",
+                isCriticalSuccess = !isDamage && res1.third.second == 20,
+                isCriticalFailure = !isDamage && res1.third.second == 1,
+                isDamage = isDamage, mainD20 = res1.third.second,
+                bonusDice = res1.second, flatBonuses = res1.third.first,
+                sourceType = sourceType, advantageType = advantageType
             )
         }
+
+        val res2 = rollSet(advantageType)
+        val useFirst = when (advantageType) {
+            AdvantageType.ADVANTAGE -> res1.first >= res2.first
+            AdvantageType.DISADVANTAGE -> res1.first <= res2.first
+            else -> true
+        }
+
+        val (main, alt) = if (useFirst) res1 to res2 else res2 to res1
+        return RollResult(
+            title = title, total = main.first, breakdown = "",
+            isCriticalSuccess = !isDamage && main.third.second == 20,
+            isCriticalFailure = !isDamage && main.third.second == 1,
+            isDamage = isDamage, mainD20 = main.third.second, alternativeD20 = alt.third.second,
+            bonusDice = main.second, flatBonuses = main.third.first,
+            alternativeDice = alt.second, alternativeFlatBonuses = alt.third.first,
+            sourceType = sourceType, advantageType = advantageType, unusedTotal = alt.first
+        )
+    }
+
+    private fun rollIndividual(
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
+        attrModifiers: Map<Attribute, Int>, pb: Int, stats: Map<String, String>
+    ): RollResult {
+        val bonusDiceValues = mutableListOf<DieRoll>()
+        val altBonusDiceValues = mutableListOf<DieRoll>()
+        val flatBonusValues = mutableListOf<Int>()
+        val altFlatBonusValues = mutableListOf<Int>()
+        
+        var total = 0
+        var total2 = 0
+        var mainD20: Int? = null
+        var altD20: Int? = null
+
+        if (!isDamage) {
+            val d20_1 = Random.nextInt(1, 21)
+            val d20_2 = Random.nextInt(1, 21)
+            val (chosen, discarded) = when (advantageType) {
+                AdvantageType.ADVANTAGE -> if (d20_1 >= d20_2) d20_1 to d20_2 else d20_2 to d20_1
+                AdvantageType.DISADVANTAGE -> if (d20_1 <= d20_2) d20_1 to d20_2 else d20_2 to d20_1
+                else -> d20_1 to d20_1
+            }
+            total = chosen; total2 = discarded
+            mainD20 = chosen; altD20 = if (advantageType != AdvantageType.NONE) discarded else null
+            if (baseModifier != 0) { total += baseModifier; total2 += baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier) }
+            if (exhaustion > 0) { val penalty = -2 * exhaustion; total += penalty; total2 += penalty; flatBonusValues.add(penalty); altFlatBonusValues.add(penalty) }
+        } else {
+            total = baseModifier; total2 = baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier)
+        }
+        
+        bonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
+            val adv = resolveAdvantage(AdvantageType.NONE, bonus.advantagePreference)
+            var bonusSum1 = 0
+            var bonusSum2 = 0
+            
+            val currentDice1 = mutableListOf<DieRoll>()
+            val currentDice2 = mutableListOf<DieRoll>()
+            
+            fDice.forEach { diceSpec ->
+                val rollCount = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(diceSpec.count) * 2 else kotlin.math.abs(diceSpec.count)
+                repeat(rollCount) {
+                    val sign = if (diceSpec.count > 0) 1 else -1
+                    val r1 = Random.nextInt(1, diceSpec.sides + 1)
+                    val r2 = Random.nextInt(1, diceSpec.sides + 1)
+                    val (chosen, discarded) = when (adv) {
+                        AdvantageType.ADVANTAGE -> if (r1 >= r2) r1 to r2 else r2 to r1
+                        AdvantageType.DISADVANTAGE -> if (r1 <= r2) r1 to r2 else r2 to r1
+                        else -> r1 to r1
+                    }
+                    val val1 = chosen * sign
+                    val val2 = discarded * sign
+                    bonusSum1 += val1
+                    bonusSum2 += val2
+                    
+                    val dispVal1 = if (bonus.operation == BonusOperation.SUBTRACT) -val1 else val1
+                    val dispVal2 = if (bonus.operation == BonusOperation.SUBTRACT) -val2 else val2
+                    
+                    currentDice1.add(DieRoll(dispVal1, diceSpec.sides, discardedValue = if (adv != AdvantageType.NONE) dispVal2 else null))
+                    if (adv != AdvantageType.NONE || advantageType != AdvantageType.NONE) {
+                         currentDice2.add(DieRoll(dispVal2, diceSpec.sides))
+                    }
+                }
+            }
+            
+            when (bonus.operation) {
+                BonusOperation.ADD -> {
+                    total += (bonusSum1 + fFlat)
+                    total2 += (bonusSum2 + fFlat)
+                    bonusDiceValues.addAll(currentDice1)
+                    altBonusDiceValues.addAll(currentDice2)
+                    if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                }
+                BonusOperation.SUBTRACT -> {
+                    total -= (bonusSum1 + fFlat)
+                    total2 -= (bonusSum2 + fFlat)
+                    bonusDiceValues.addAll(currentDice1)
+                    altBonusDiceValues.addAll(currentDice2)
+                    if (fFlat != 0) { flatBonusValues.add(-fFlat); altFlatBonusValues.add(-fFlat) }
+                }
+                BonusOperation.OVERRIDE -> {
+                    total = bonusSum1 + fFlat
+                    total2 = bonusSum2 + fFlat
+                    bonusDiceValues.clear()
+                    altBonusDiceValues.clear()
+                    flatBonusValues.clear()
+                    altFlatBonusValues.clear()
+                    mainD20 = null
+                    altD20 = null
+                    bonusDiceValues.addAll(currentDice1)
+                    altBonusDiceValues.addAll(currentDice2)
+                    if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                }
+            }
+        }
+        
+        val hasAlt = advantageType != AdvantageType.NONE || bonuses.any { it.advantagePreference != AdvantagePreference.NONE }
+
+        return RollResult(
+            title = title, total = total, breakdown = "",
+            isCriticalSuccess = !isDamage && mainD20 == 20, isCriticalFailure = !isDamage && mainD20 == 1,
+            isDamage = isDamage, mainD20 = mainD20, alternativeD20 = altD20,
+            bonusDice = bonusDiceValues, flatBonuses = flatBonusValues,
+            alternativeDice = if (hasAlt) altBonusDiceValues else null, 
+            alternativeFlatBonuses = if (hasAlt) altFlatBonusValues else null,
+            sourceType = sourceType, advantageType = advantageType, unusedTotal = if (hasAlt) total2 else null
+        )
+    }
+
+    private fun rollSource(
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
+        attrModifiers: Map<Attribute, Int>, pb: Int, stats: Map<String, String>
+    ): RollResult {
+        val bonusDiceValues = mutableListOf<DieRoll>()
+        val altBonusDiceValues = mutableListOf<DieRoll>()
+        val flatBonusValues = mutableListOf<Int>()
+        val altFlatBonusValues = mutableListOf<Int>()
+        
+        var total = 0
+        var total2 = 0
+        var mainD20: Int? = null
+        var altD20: Int? = null
+
+        if (!isDamage) {
+            val d20_1 = Random.nextInt(1, 21)
+            val d20_2 = Random.nextInt(1, 21)
+            val s1 = d20_1 + baseModifier + (if (exhaustion > 0) -2 * exhaustion else 0)
+            val s2 = d20_2 + baseModifier + (if (exhaustion > 0) -2 * exhaustion else 0)
+            
+            val (m, a) = when (advantageType) {
+                AdvantageType.ADVANTAGE -> if (s1 >= s2) (d20_1 to s1) to (d20_2 to s2) else (d20_2 to s2) to (d20_1 to s1)
+                AdvantageType.DISADVANTAGE -> if (s1 <= s2) (d20_1 to s1) to (d20_2 to s2) else (d20_2 to s2) to (d20_1 to s1)
+                else -> (d20_1 to s1) to (d20_1 to s1)
+            }
+            total = m.second; total2 = a.second; mainD20 = m.first; altD20 = if (advantageType != AdvantageType.NONE) a.first else null
+            if (baseModifier != 0) { flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier) }
+            if (exhaustion > 0) { val p = -2 * exhaustion; flatBonusValues.add(p); altFlatBonusValues.add(p) }
+        } else {
+            total = baseModifier; total2 = baseModifier
+            flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier)
+        }
+
+        bonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
+            val adv = resolveAdvantage(AdvantageType.NONE, bonus.advantagePreference)
+            
+            val rollBonusSet = { currentAdv: AdvantageType ->
+                val dice = mutableListOf<DieRoll>()
+                var sum = fFlat
+                fDice.forEach { ds ->
+                    val rollCount = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(ds.count) * 2 else kotlin.math.abs(ds.count)
+                    repeat(rollCount) {
+                        val sign = if (ds.count > 0) 1 else -1
+                        val (r, discarded) = if (currentAdv == AdvantageType.ADVANTAGE) {
+                            val r1 = Random.nextInt(1, ds.sides + 1); val r2 = Random.nextInt(1, ds.sides + 1)
+                            if (r1 >= r2) r1 to r2 else r2 to r1
+                        } else if (currentAdv == AdvantageType.DISADVANTAGE) {
+                            val r1 = Random.nextInt(1, ds.sides + 1); val r2 = Random.nextInt(1, ds.sides + 1)
+                            if (r1 <= r2) r1 to r2 else r2 to r1
+                        } else {
+                            Random.nextInt(1, ds.sides + 1) to null
+                        }
+                        val valWithSign = r * sign
+                        sum += valWithSign
+                        dice.add(DieRoll(
+                            value = if (bonus.operation == BonusOperation.SUBTRACT) -valWithSign else valWithSign, 
+                            sides = ds.sides,
+                            discardedValue = discarded?.let { if (bonus.operation == BonusOperation.SUBTRACT) -it * sign else it * sign }
+                        ))
+                    }
+                }
+                sum to dice
+            }
+
+            val r1 = rollBonusSet(adv)
+            val hasBonusAlt = adv != AdvantageType.NONE
+            
+            if (hasBonusAlt || advantageType != AdvantageType.NONE) {
+                val r2 = if (hasBonusAlt) rollBonusSet(adv) else r1
+                
+                when (bonus.operation) {
+                    BonusOperation.ADD -> {
+                        total += r1.first; total2 += r2.first
+                        bonusDiceValues.addAll(r1.second); altBonusDiceValues.addAll(r2.second)
+                        if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                    }
+                    BonusOperation.SUBTRACT -> {
+                        total -= r1.first; total2 -= r2.first
+                        bonusDiceValues.addAll(r1.second); altBonusDiceValues.addAll(r2.second)
+                        if (fFlat != 0) { flatBonusValues.add(-fFlat); altFlatBonusValues.add(-fFlat) }
+                    }
+                    BonusOperation.OVERRIDE -> {
+                        total = r1.first; total2 = r2.first
+                        bonusDiceValues.clear(); altBonusDiceValues.clear()
+                        flatBonusValues.clear(); altFlatBonusValues.clear()
+                        mainD20 = null; altD20 = null
+                        bonusDiceValues.addAll(r1.second); altBonusDiceValues.addAll(r2.second)
+                        if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                    }
+                }
+            } else {
+                when (bonus.operation) {
+                    BonusOperation.ADD -> {
+                        total += r1.first; total2 += r1.first
+                        bonusDiceValues.addAll(r1.second); altBonusDiceValues.addAll(r1.second)
+                        if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                    }
+                    BonusOperation.SUBTRACT -> {
+                        total -= r1.first; total2 -= r1.first
+                        bonusDiceValues.addAll(r1.second); altBonusDiceValues.addAll(r1.second)
+                        if (fFlat != 0) { flatBonusValues.add(-fFlat); altFlatBonusValues.add(-fFlat) }
+                    }
+                    BonusOperation.OVERRIDE -> {
+                        total = r1.first; total2 = r1.first
+                        bonusDiceValues.clear(); altBonusDiceValues.clear()
+                        flatBonusValues.clear(); altFlatBonusValues.clear()
+                        mainD20 = null; altD20 = null
+                        bonusDiceValues.addAll(r1.second); altBonusDiceValues.addAll(r1.second)
+                        if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                    }
+                }
+            }
+        }
+
+        val hasAlt = advantageType != AdvantageType.NONE || bonuses.any { it.advantagePreference != AdvantagePreference.NONE }
+
+        return RollResult(
+            title = title, total = total, breakdown = "",
+            isCriticalSuccess = !isDamage && mainD20 == 20, isCriticalFailure = !isDamage && mainD20 == 1,
+            isDamage = isDamage, mainD20 = mainD20, alternativeD20 = altD20,
+            bonusDice = bonusDiceValues, flatBonuses = flatBonusValues,
+            alternativeDice = if (hasAlt) altBonusDiceValues else null,
+            alternativeFlatBonuses = if (hasAlt) altFlatBonusValues else null,
+            sourceType = sourceType, advantageType = advantageType, unusedTotal = if (hasAlt) total2 else null
+        )
+    }
+
+    private fun rollPool(
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
+        attrModifiers: Map<Attribute, Int>, pb: Int, stats: Map<String, String>
+    ): RollResult {
+        val bonusDiceValues = mutableListOf<DieRoll>()
+        val altBonusDiceValues = mutableListOf<DieRoll>()
+        val flatBonusValues = mutableListOf<Int>()
+        val altFlatBonusValues = mutableListOf<Int>()
+        
+        var total = 0
+        var total2 = 0
+        var mainD20: Int? = null
+        var altD20: Int? = null
+
+        if (!isDamage) {
+            val d20_1 = Random.nextInt(1, 21)
+            val d20_2 = Random.nextInt(1, 21)
+            val (chosen, discarded) = when (advantageType) {
+                AdvantageType.ADVANTAGE -> if (d20_1 >= d20_2) d20_1 to d20_2 else d20_2 to d20_1
+                AdvantageType.DISADVANTAGE -> if (d20_1 <= d20_2) d20_1 to d20_2 else d20_2 to d20_1
+                else -> d20_1 to d20_1
+            }
+            total = chosen; total2 = discarded; mainD20 = chosen; altD20 = if (advantageType != AdvantageType.NONE) discarded else null
+            if (baseModifier != 0) { total += baseModifier; total2 += baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier) }
+            if (exhaustion > 0) { val p = -2 * exhaustion; total += p; total2 += p; flatBonusValues.add(p); altFlatBonusValues.add(p) }
+        } else {
+            total = baseModifier; total2 = baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier)
+        }
+
+        bonuses.forEach { bonus ->
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
+            val adv = resolveAdvantage(advantageType, bonus.advantagePreference)
+            var bonusSum1 = 0
+            var bonusSum2 = 0
+            
+            val currentDice1 = mutableListOf<DieRoll>()
+            val currentDice2 = mutableListOf<DieRoll>()
+            
+            fDice.forEach { ds ->
+                val count = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(ds.count) * 2 else kotlin.math.abs(ds.count)
+                val sign = if (ds.count > 0) 1 else -1
+                
+                if (adv != AdvantageType.NONE) {
+                    val rolls = List(count * 2) { Random.nextInt(1, ds.sides + 1) * sign }.sortedBy { it * sign }
+                    val (chosen, discarded) = if (adv == AdvantageType.ADVANTAGE) {
+                        rolls.takeLast(count) to rolls.take(count)
+                    } else {
+                        rolls.take(count) to rolls.takeLast(count)
+                    }
+                    
+                    for (i in chosen.indices) {
+                        val v = chosen[i]
+                        val d = discarded[i]
+                        bonusSum1 += v
+                        bonusSum2 += d
+                        val dispV = if (bonus.operation == BonusOperation.SUBTRACT) -v else v
+                        val dispD = if (bonus.operation == BonusOperation.SUBTRACT) -d else d
+                        currentDice1.add(DieRoll(dispV, ds.sides, discardedValue = dispD))
+                        currentDice2.add(DieRoll(dispD, ds.sides))
+                    }
+                } else {
+                    repeat(count) {
+                        val r = Random.nextInt(1, ds.sides + 1) * sign
+                        bonusSum1 += r; bonusSum2 += r
+                        val dispR = if (bonus.operation == BonusOperation.SUBTRACT) -r else r
+                        currentDice1.add(DieRoll(dispR, ds.sides))
+                        currentDice2.add(DieRoll(dispR, ds.sides))
+                    }
+                }
+            }
+            
+            when (bonus.operation) {
+                BonusOperation.ADD -> {
+                    total += (bonusSum1 + fFlat); total2 += (bonusSum2 + fFlat)
+                    bonusDiceValues.addAll(currentDice1); altBonusDiceValues.addAll(currentDice2)
+                    if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                }
+                BonusOperation.SUBTRACT -> {
+                    total -= (bonusSum1 + fFlat); total2 -= (bonusSum2 + fFlat)
+                    bonusDiceValues.addAll(currentDice1); altBonusDiceValues.addAll(currentDice2)
+                    if (fFlat != 0) { flatBonusValues.add(-fFlat); altFlatBonusValues.add(-fFlat) }
+                }
+                BonusOperation.OVERRIDE -> {
+                    total = bonusSum1 + fFlat; total2 = bonusSum2 + fFlat
+                    bonusDiceValues.clear(); altBonusDiceValues.clear()
+                    flatBonusValues.clear(); altFlatBonusValues.clear()
+                    mainD20 = null; altD20 = null
+                    bonusDiceValues.addAll(currentDice1); altBonusDiceValues.addAll(currentDice2)
+                    if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                }
+            }
+        }
+
+        val hasAlt = advantageType != AdvantageType.NONE || bonuses.any { it.advantagePreference != AdvantagePreference.NONE }
+
+        return RollResult(
+            title = title, total = total, breakdown = "",
+            isCriticalSuccess = !isDamage && mainD20 == 20, isCriticalFailure = !isDamage && mainD20 == 1,
+            isDamage = isDamage, mainD20 = mainD20, alternativeD20 = altD20,
+            bonusDice = bonusDiceValues, flatBonuses = flatBonusValues,
+            alternativeDice = if (hasAlt) altBonusDiceValues else null, 
+            alternativeFlatBonuses = if (hasAlt) altFlatBonusValues else null,
+            sourceType = sourceType, advantageType = advantageType, unusedTotal = if (hasAlt) total2 else null
+        )
     }
 
     fun performHapticFeedback(context: Context, result: RollResult) {
@@ -200,64 +595,41 @@ object DiceRoller {
             @Suppress("DEPRECATION")
             context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         } ?: return
-
         if (!vibrator.hasVibrator()) return
-
-        val shortWait = 60
-        val longWait = 200
-
-        // Используем современные "пинки" (Haptic Primitives) на Android 11+ (API 30)
+        val shortWait = 60; val longWait = 200
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK)) {
-            val composition = VibrationEffect.startComposition()
-            
+            val comp = VibrationEffect.startComposition()
             when {
                 result.isCriticalSuccess && !result.isDamage -> {
-                    // . _ . .
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
                 }
                 result.isCriticalFailure && !result.isDamage -> {
-                    // . . _ _ . . _
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, shortWait)
+                    comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, longWait)
                 }
-                else -> {
-                    composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 0)
-                }
+                else -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 0)
             }
-            vibrator.vibrate(composition.compose())
-            return
+            vibrator.vibrate(comp.compose()); return
         }
-
-        // Fallback для старых устройств или если примитивы не поддерживаются
-        val legacyKick = 20L // Максимально короткий импульс для имитации клика
-        val legacyShort = 40L
-        val legacyLong = 150L
-
+        val legacyKick = 20L; val legacyShort = 40L; val legacyLong = 150L
         val pattern = when {
-            result.isCriticalSuccess && !result.isDamage -> {
-                longArrayOf(legacyShort, legacyKick, legacyLong, legacyKick, legacyShort, legacyKick, legacyShort, legacyKick)
-            }
-            result.isCriticalFailure && !result.isDamage -> {
-                longArrayOf(legacyShort, legacyKick, legacyShort, legacyKick, legacyLong, legacyKick, legacyLong, legacyKick, legacyShort, legacyKick, legacyShort, legacyKick, legacyLong, legacyKick)
-            }
-            else -> {
-                longArrayOf(0, legacyKick)
-            }
+            result.isCriticalSuccess && !result.isDamage -> longArrayOf(legacyShort, legacyKick, legacyLong, legacyKick, legacyShort, legacyKick, legacyShort, legacyKick)
+            result.isCriticalFailure && !result.isDamage -> longArrayOf(legacyShort, legacyKick, legacyShort, legacyKick, legacyLong, legacyKick, legacyLong, legacyKick, legacyShort, legacyKick, legacyShort, legacyKick, legacyLong, legacyKick)
+            else -> longArrayOf(0, legacyKick)
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+        else @Suppress("DEPRECATION") vibrator.vibrate(pattern, -1)
+    }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(pattern, -1)
-        }
+    fun getProficiencyBonus(level: String): Int {
+        return ru.quasaris.characters.master.backend.getProficiencyBonus(level)
     }
 }

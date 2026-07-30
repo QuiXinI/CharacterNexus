@@ -27,7 +27,9 @@ import ru.quasaris.characters.master.DynamicNoteState
 import ru.quasaris.characters.master.SpellSettings
 import ru.quasaris.characters.master.SlotAlignment
 import ru.quasaris.characters.master.SlotFillDirection
+import ru.quasaris.characters.master.BonusOperation
 import ru.quasaris.characters.master.backend.AdvantageType
+import ru.quasaris.characters.master.backend.AdvantageLogic
 import ru.quasaris.characters.master.backend.DiceRoller
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
@@ -39,6 +41,7 @@ import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
 import ru.quasaris.characters.master.tabs.attacks.DicePart
 import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus
 import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
 import dev.chrisbanes.haze.HazeState
 import java.util.Locale
@@ -60,7 +63,8 @@ fun SpellsTab(
     settingsViewModel: SettingsViewModel? = null,
     onRoll: (RollResult) -> Unit = {},
     statsMap: Map<String, String> = emptyMap(),
-    exhaustion: Int = 0
+    exhaustion: Int = 0,
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
     
@@ -106,10 +110,14 @@ fun SpellsTab(
     val magicAtkCalculation = remember(spellSettings.spellAttackBonuses, pb, abilityModifier, statsMap, exhaustion) {
         var totalFlat = pb + abilityModifier - (exhaustion * 2)
         val allDice = mutableMapOf<Int, Int>()
-        spellSettings.spellAttackBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
-            totalFlat += fFlat
-            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        
+        totalFlat = calculateTotalBonus(spellSettings.spellAttackBonuses, statsMap, initialValue = totalFlat)
+        spellSettings.spellAttackBonuses.filter { it.isActive }.forEach { bonus ->
+            val (_, fDice) = parseFormulaParts(bonus.formula, statsMap)
+            fDice.forEach {
+                val sign = if (bonus.operation == BonusOperation.SUBTRACT) -1 else 1
+                allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
+            }
         }
         Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
@@ -117,10 +125,14 @@ fun SpellsTab(
     val magicSaveCalculation = remember(spellSettings.spellSaveDcBonuses, pb, abilityModifier, statsMap) {
         var totalFlat = 8 + pb + abilityModifier
         val allDice = mutableMapOf<Int, Int>()
-        spellSettings.spellSaveDcBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats = statsMap, proficiencyBonus = pb)
-            totalFlat += fFlat
-            fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
+        
+        totalFlat = calculateTotalBonus(spellSettings.spellSaveDcBonuses, statsMap, initialValue = totalFlat)
+        spellSettings.spellSaveDcBonuses.filter { it.isActive }.forEach { bonus ->
+            val (_, fDice) = parseFormulaParts(bonus.formula, statsMap)
+            fDice.forEach {
+                val sign = if (bonus.operation == BonusOperation.SUBTRACT) -1 else 1
+                allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
+            }
         }
         Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
@@ -216,11 +228,12 @@ fun SpellsTab(
                                 onRoll(DiceRoller.roll(
                                     title = "Атака заклинанием", 
                                     baseModifier = spellAttackBonus + (exhaustion * 2), 
-                                    bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
+                                    bonuses = spellSettings.spellAttackBonuses,
                                     stats = statsMap, 
                                     exhaustion = exhaustion, 
                                     sourceType = RollSourceType.ATTACK,
-                                    advantageType = AdvantageType.NONE
+                                    advantageType = AdvantageType.NONE,
+                                    advantageLogic = advantageLogic
                                 )) 
                             },
                             onLongClick = { showSpellAtkPopup = true }
@@ -258,22 +271,24 @@ fun SpellsTab(
                                     onRoll(DiceRoller.roll(
                                         title = "Атака заклинанием", 
                                         baseModifier = spellAttackBonus + (exhaustion * 2), 
-                                        bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
+                                        bonuses = spellSettings.spellAttackBonuses,
                                         stats = statsMap, 
                                         exhaustion = exhaustion, 
                                         sourceType = RollSourceType.ATTACK,
-                                        advantageType = AdvantageType.ADVANTAGE
+                                        advantageType = AdvantageType.ADVANTAGE,
+                                        advantageLogic = advantageLogic
                                     ))
                                 },
                                 onDisadvantage = {
                                     onRoll(DiceRoller.roll(
                                         title = "Атака заклинанием", 
                                         baseModifier = spellAttackBonus + (exhaustion * 2), 
-                                        bonusFormulas = spellSettings.spellAttackBonuses.map { it.formula },
+                                        bonuses = spellSettings.spellAttackBonuses,
                                         stats = statsMap, 
                                         exhaustion = exhaustion, 
                                         sourceType = RollSourceType.ATTACK,
-                                        advantageType = AdvantageType.DISADVANTAGE
+                                        advantageType = AdvantageType.DISADVANTAGE,
+                                        advantageLogic = advantageLogic
                                     ))
                                 },
                                 onDismiss = { showSpellAtkPopup = false },

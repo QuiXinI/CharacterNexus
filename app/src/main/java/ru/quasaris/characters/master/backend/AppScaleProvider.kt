@@ -2,9 +2,12 @@ package ru.quasaris.characters.master.backend
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+
+val LocalAppScale = staticCompositionLocalOf { 1.0f }
 
 @Composable
 fun AppScaleProvider(
@@ -27,7 +30,8 @@ fun AppScaleProvider(
 
     CompositionLocalProvider(
         LocalConfiguration provides newConfiguration,
-        LocalDensity provides newDensity
+        LocalDensity provides newDensity,
+        LocalAppScale provides scaleFactor
     ) {
         content()
     }

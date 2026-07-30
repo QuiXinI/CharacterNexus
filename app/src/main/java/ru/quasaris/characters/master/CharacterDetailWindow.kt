@@ -37,11 +37,13 @@ import ru.quasaris.characters.master.tabs.attacks.AttacksTab
 import ru.quasaris.characters.master.backend.AdvantageType
 import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.ImageManager
-import ru.quasaris.characters.master.backend.getNextLevelThreshold
+import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.backend.getProficiencyBonus
+import ru.quasaris.characters.master.backend.getNextLevelThreshold
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.backend.DiceRoller
+import ru.quasaris.characters.master.backend.AdvantageLogic
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -90,6 +92,8 @@ fun CharacterDetailWindow(
 
     var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList()) }
     var exhaustion by remember { mutableStateOf(character?.exhaustion ?: 0) }
+
+    val advantageLogic by settingsViewModel?.advantageLogic?.collectAsState() ?: remember { mutableStateOf(AdvantageLogic.TOTAL) }
 
     var attacks by remember { mutableStateOf(character?.attacks ?: emptyList()) }
 
@@ -269,7 +273,30 @@ fun CharacterDetailWindow(
     }
 
     val statsMap = remember(statsState, level, proficiencyBonus, spellSettings, currentHp, maxHp, tempHp, exhaustion, selectedConditions, activeArmorClassId, armorClassEntries, isShieldActive, activeShieldId, shieldEntries) {
-        statsState.toStatsMap(level, proficiencyBonus).toMutableMap().apply {
+        val pbVal = (proficiencyBonus.replace("+", "").toIntOrNull() ?: getProficiencyBonus(level))
+        
+        // Сначала базовые мапы
+        val baseStats = statsState.toStatsMap(level, pbVal.toString())
+        
+        val mutableStats = baseStats.toMutableMap()
+        
+        // Добавляем эффективные значения (с учетом бонусов к значению)
+        // Для самих расчетов бонусов к статам используем "базовый" statsMap, чтобы избежать циклической зависимости
+        Attribute.entries.forEach { attr ->
+            if (attr == Attribute.NONE) return@forEach
+            val key = attr.name.lowercase()
+            val baseScore = baseStats[key] ?: "10"
+            val effScore = ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus(
+                bonuses = statsState.statBonuses.filter { it.attribute == attr && it.type == StatBonusType.CHARACTERISTIC_VALUE },
+                stats = baseStats, // Используем базовые статы для самих бонусов
+                initialValue = baseScore.toIntOrNull() ?: 10
+            ).toString()
+            
+            mutableStats[key] = effScore
+            mutableStats["base_$key"] = baseScore
+        }
+
+        mutableStats.apply {
             put("[MAG ATC BON]", spellSettings.spellAttackBonus.ifBlank { "0" })
             put("[МАГ АТК БОН]", spellSettings.spellAttackBonus.ifBlank { "0" })
             put("[MAG SAVE BON]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
@@ -284,15 +311,7 @@ fun CharacterDetailWindow(
 
             // Add spellcasting ability modifier
             if (spellSettings.spellcastingAbility != Attribute.NONE) {
-                val score = when(spellSettings.spellcastingAbility) {
-                    Attribute.STRENGTH -> statsState.strength
-                    Attribute.DEXTERITY -> statsState.dexterity
-                    Attribute.CONSTITUTION -> statsState.constitution
-                    Attribute.INTELLIGENCE -> statsState.intelligence
-                    Attribute.WISDOM -> statsState.wisdom
-                    Attribute.CHARISMA -> statsState.charisma
-                    else -> "10"
-                }
+                val score = get(spellSettings.spellcastingAbility.name.lowercase()) ?: "10"
                 val mod = ru.quasaris.characters.master.backend.calculateModifier(score)
                 put("[MAG MOD]", mod.toString())
                 put("[МАГ МОД]", mod.toString())
@@ -301,8 +320,7 @@ fun CharacterDetailWindow(
                 put("[МАГ МОД]", "0")
             }
 
-            // AC depends on statsMap, but for the [AC] tag we need a circular-safe way
-            // So we calculate AC here and put it in
+            // AC depends on statsMap
             val ac = ru.quasaris.characters.master.MainWindow.CombatCalculations.calculateAC(
                 activeArmorClassId, armorClassEntries, this, isShieldActive, activeShieldId, shieldEntries
             )
@@ -310,7 +328,11 @@ fun CharacterDetailWindow(
         }
     }
 
-    val attributeModifiers = remember(statsState) { statsState.toAttributeModifiers() }
+    val attributeModifiers = remember(statsMap) {
+        Attribute.entries.filter { it != Attribute.NONE }.associateWith { attr ->
+            calculateModifier(statsMap[attr.name.lowercase()] ?: "10")
+        }
+    }
     val pb = getProficiencyBonus(level)
 
     val acValue = CombatCalculations.calculateAC(activeArmorClassId, armorClassEntries, statsMap, isShieldActive, activeShieldId, shieldEntries)
@@ -440,7 +462,7 @@ fun CharacterDetailWindow(
                         val baseInit = (initValue.replace("+", "").toIntOrNull() ?: 0) + (exhaustion * 2)
                         val activeEntry = initiativeEntries.find { it.id == activeInitiativeId }
                         val advantage = if (activeEntry?.hasAdvantage == true) AdvantageType.ADVANTAGE else AdvantageType.NONE
-                        onRoll(DiceRoller.roll("Инициатива", baseInit, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage))
+                        onRoll(DiceRoller.roll("Инициатива", baseInit, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = advantageLogic))
                     },
                     onInitLongClick = {
                         isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
@@ -676,7 +698,10 @@ fun CharacterDetailWindow(
                             hazeState = hazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
-                            isAdvancedMode = isAdvancedMode
+                            isAdvancedMode = isAdvancedMode,
+                            advantageLogic = advantageLogic,
+                            attributeModifiers = attributeModifiers,
+                            statsMap = statsMap
                         )
                     }
                     CharacterTab.ATTACKS -> {
@@ -693,7 +718,8 @@ fun CharacterDetailWindow(
                             blurPopups = blurPopups,
                             isEditMode = isEditMode,
                             settingsViewModel = settingsViewModel,
-                            spellSettings = spellSettings
+                            spellSettings = spellSettings,
+                            advantageLogic = advantageLogic
                         )
                     }
                     CharacterTab.BIO -> {
@@ -759,7 +785,8 @@ fun CharacterDetailWindow(
                             settingsViewModel = settingsViewModel,
                             onRoll = onRoll,
                             statsMap = statsMap,
-                            exhaustion = exhaustion
+                            exhaustion = exhaustion,
+                            advantageLogic = advantageLogic
                         )
                     }
                     CharacterTab.NOTES -> {

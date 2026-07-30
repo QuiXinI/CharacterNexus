@@ -40,6 +40,7 @@ import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import android.net.Uri
 import ru.quasaris.characters.master.backend.ImageExporter
 import ru.quasaris.characters.master.backend.DiceRollPosition
+import ru.quasaris.characters.master.backend.AdvantageLogic
 import kotlin.math.roundToInt
 
 private const val SHOW_DEBUG_SETTINGS = true
@@ -612,6 +613,58 @@ fun DiceRollSettingsSection(
                 ) { Text("Справа-внизу", fontSize = 12.sp) }
             }
         }
+
+        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+        val advantageLogic by settingsViewModel.advantageLogic.collectAsState()
+        Text(
+            text = "Логика преимущества",
+            fontSize = 16.sp,
+            color = colorScheme.onSurface
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy((-9).dp)
+        ) {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = advantageLogic == AdvantageLogic.TOTAL,
+                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.TOTAL) },
+                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
+                ) { Text("Общее", fontSize = 12.sp) }
+
+                SegmentedButton(
+                    selected = advantageLogic == AdvantageLogic.INDIVIDUAL,
+                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.INDIVIDUAL) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp)
+                ) { Text("Покубово", fontSize = 12.sp) }
+            }
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = advantageLogic == AdvantageLogic.SOURCE,
+                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.SOURCE) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius)
+                ) { Text("Источник", fontSize = 12.sp) }
+
+                SegmentedButton(
+                    selected = advantageLogic == AdvantageLogic.POOL,
+                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.POOL) },
+                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
+                ) { Text("Пулл", fontSize = 12.sp) }
+            }
+        }
+        val description = when(advantageLogic) {
+            AdvantageLogic.TOTAL -> "Сравнение двух полных сумм всех кубов и бонусов"
+            AdvantageLogic.INDIVIDUAL -> "Выбор лучшего значения для каждого отдельного кубика"
+            AdvantageLogic.SOURCE -> "Независимый выбор лучшей суммы для каждой части формулы"
+            AdvantageLogic.POOL -> "Выбор N лучших кубиков из 2N брошенных для каждой группы"
+        }
+        Text(
+            text = description,
+            fontSize = 12.sp,
+            color = colorScheme.onSurfaceVariant
+        )
     }
 }
 

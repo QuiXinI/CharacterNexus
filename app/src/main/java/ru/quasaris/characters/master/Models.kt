@@ -72,38 +72,74 @@ enum class MagicAttackType {
     SAVE
 }
 
+enum class BonusOperation {
+    ADD, SUBTRACT, OVERRIDE
+}
+
+enum class AdvantagePreference {
+    NONE,
+    IGNORE_ADVANTAGE,
+    ALWAYS_ADVANTAGE,
+    IGNORE_DISADVANTAGE,
+    ALWAYS_DISADVANTAGE,
+    IGNORE_BOTH
+}
+
+interface IBonus {
+    val id: String
+    val name: String
+    val formula: String
+    val isActive: Boolean
+    val operation: BonusOperation
+    val advantagePreference: AdvantagePreference
+}
+
 data class AttackBonus(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String = "",
-    val formula: String = ""
-)
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = "",
+    override val isActive: Boolean = true,
+    override val operation: BonusOperation = BonusOperation.ADD,
+    override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE
+) : IBonus
 
 data class DamageBonus(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String = "",
-    val formula: String = "",
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = "",
+    override val isActive: Boolean = true,
+    override val operation: BonusOperation = BonusOperation.ADD,
+    override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE,
     val damageType: String = ""
-)
+) : IBonus
 
 enum class StatBonusType {
     SAVING_THROW,
-    ABILITY_CHECK
+    ABILITY_CHECK,
+    CHARACTERISTIC_VALUE
 }
 
 data class StatBonus(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String = "",
-    val formula: String = "",
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = "",
+    override val isActive: Boolean = true,
+    override val operation: BonusOperation = BonusOperation.ADD,
+    override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE,
     val attribute: Attribute = Attribute.STRENGTH,
-    val type: StatBonusType = StatBonusType.SAVING_THROW
-)
+    val type: StatBonusType = StatBonusType.SAVING_THROW,
+    val applyToSkills: Boolean = false
+) : IBonus
 
 data class SkillBonus(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String = "",
-    val formula: String = "",
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = "",
+    override val isActive: Boolean = true,
+    override val operation: BonusOperation = BonusOperation.ADD,
+    override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE,
     val skillName: String = ""
-)
+) : IBonus
 
 data class DynamicNoteState(
     val id: String = UUID.randomUUID().toString(),

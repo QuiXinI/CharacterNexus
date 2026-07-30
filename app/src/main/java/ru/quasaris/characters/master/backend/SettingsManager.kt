@@ -114,6 +114,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("auto_download_lss_avatar", false)
         set(value) = prefs.edit { putBoolean("auto_download_lss_avatar", value) }
 
+    var advantageLogic: AdvantageLogic
+        get() = AdvantageLogic.valueOf(prefs.getString("advantage_logic", AdvantageLogic.TOTAL.name) ?: AdvantageLogic.TOTAL.name)
+        set(value) = prefs.edit { putString("advantage_logic", value.name) }
+
     // Spell Slot Alignment Settings
     var longRestAlignment: String
         get() = prefs.getString("long_rest_alignment", "RIGHT") ?: "RIGHT"

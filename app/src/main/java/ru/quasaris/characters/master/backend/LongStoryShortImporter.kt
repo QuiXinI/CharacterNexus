@@ -26,6 +26,15 @@ object LongStoryShortImporter {
         }
     }
 
+    private fun mapMode(mode: String?): BonusOperation {
+        return when (mode?.lowercase()) {
+            "add" -> BonusOperation.ADD
+            "subtract" -> BonusOperation.SUBTRACT
+            "set" -> BonusOperation.OVERRIDE
+            else -> BonusOperation.ADD
+        }
+    }
+
     fun parse(jsonElement: JsonElement): Character? {
         return try {
             val root = jsonElement.asJsonObject
@@ -143,6 +152,8 @@ object LongStoryShortImporter {
                 val bonus = b.asJsonObject
                 val target = bonus.get("target").safeString()
                 val expr = bonus.get("expr").safeString()
+                val disabled = bonus.get("disabled")?.asBoolean ?: false
+                val mode = bonus.get("mode")?.asString
                 
                 val label = bonus.get("label").safeString().takeIf { it.isNotBlank() } ?: when {
                     target == "ac" -> "Бонус КД"
@@ -159,7 +170,11 @@ object LongStoryShortImporter {
                             "int" -> "ИНТ"; "wis" -> "МУД"; "cha" -> "ХАР"
                             else -> ""
                         }
-                        val typeName = if (parts.getOrNull(2) == "save") "Спасбросок" else "Проверка"
+                        val typeName = when(parts.getOrNull(2)) {
+                            "save" -> "Спасбросок"
+                            "score" -> "Значение"
+                            else -> "Проверка"
+                        }
                         "$typeName ($statName)".trim()
                     }
                     else -> "Бонус"
@@ -167,33 +182,39 @@ object LongStoryShortImporter {
 
                 when {
                     target == "ac" -> {
-                        if (label.contains("щит", ignoreCase = true) || label.contains("shield", ignoreCase = true)) {
-                            shieldBonusExprs.add(expr)
-                            shieldLabel = label
-                        } else {
-                            acBonusExprs.add(expr)
+                        if (isActiveBonus(bonus)) {
+                            if (label.contains("щит", ignoreCase = true) || label.contains("shield", ignoreCase = true)) {
+                                shieldBonusExprs.add(expr)
+                                shieldLabel = label
+                            } else {
+                                acBonusExprs.add(expr)
+                            }
                         }
                     }
-                    target == "initiative" -> initBonusExprs.add(expr)
-                    target.startsWith("speed") -> speedBonusExprs.add(expr)
+                    target == "initiative" -> {
+                        if (isActiveBonus(bonus)) initBonusExprs.add(expr)
+                    }
+                    target.startsWith("speed") -> {
+                        if (isActiveBonus(bonus)) speedBonusExprs.add(expr)
+                    }
                     target == "skill-all" -> {
                         skillMap.values.forEach { mpSkillName ->
-                            skillBonuses.add(SkillBonus(name = label, formula = expr, skillName = mpSkillName))
+                            skillBonuses.add(SkillBonus(name = label, formula = expr, skillName = mpSkillName, operation = mapMode(mode), isActive = !disabled))
                         }
                     }
                     target.startsWith("skill.") -> {
                         val skillKey = target.removePrefix("skill.")
                         val mpSkillName = skillMap[skillKey] ?: skillKey
-                        skillBonuses.add(SkillBonus(name = label, formula = expr, skillName = mpSkillName))
+                        skillBonuses.add(SkillBonus(name = label, formula = expr, skillName = mpSkillName, operation = mapMode(mode), isActive = !disabled))
                     }
                     target == "stat-all.save" -> {
                         Attribute.values().filter { it != Attribute.NONE }.forEach { attr ->
-                            statBonuses.add(StatBonus(name = label, formula = expr, attribute = attr, type = StatBonusType.SAVING_THROW))
+                            statBonuses.add(StatBonus(name = label, formula = expr, attribute = attr, type = StatBonusType.SAVING_THROW, operation = mapMode(mode), isActive = !disabled))
                         }
                     }
                     target == "stat-all.check" -> {
                         Attribute.values().filter { it != Attribute.NONE }.forEach { attr ->
-                            statBonuses.add(StatBonus(name = label, formula = expr, attribute = attr, type = StatBonusType.ABILITY_CHECK))
+                            statBonuses.add(StatBonus(name = label, formula = expr, attribute = attr, type = StatBonusType.ABILITY_CHECK, operation = mapMode(mode), isActive = !disabled))
                         }
                     }
                     target.startsWith("stat.") -> {
@@ -210,8 +231,12 @@ object LongStoryShortImporter {
                                 "cha" -> Attribute.CHARISMA
                                 else -> Attribute.NONE
                             }
-                            val bonusType = if (typeKey == "save") StatBonusType.SAVING_THROW else StatBonusType.ABILITY_CHECK
-                            statBonuses.add(StatBonus(name = label, formula = expr, attribute = attribute, type = bonusType))
+                            val bonusType = when(typeKey) {
+                                "save" -> StatBonusType.SAVING_THROW
+                                "score" -> StatBonusType.CHARACTERISTIC_VALUE
+                                else -> StatBonusType.ABILITY_CHECK
+                            }
+                            statBonuses.add(StatBonus(name = label, formula = expr, attribute = attribute, type = bonusType, operation = mapMode(mode), isActive = !disabled))
                         }
                     }
                 }
@@ -268,6 +293,8 @@ object LongStoryShortImporter {
                     val bonus = b.asJsonObject
                     val target = bonus.get("target").safeString()
                     val expr = bonus.get("expr").safeString()
+                    val disabled = bonus.get("disabled")?.asBoolean ?: false
+                    val mode = bonus.get("mode")?.asString
                     
                     val label = bonus.get("label").safeString().takeIf { it.isNotBlank() } ?: when {
                         target.contains(".attack") -> "Бонус к попаданию"
@@ -276,10 +303,10 @@ object LongStoryShortImporter {
                     }
                     
                     if (target == "weapon.$weaponId.attack" || target == "weapon-all.attack") {
-                        attackBonuses.add(AttackBonus(name = label, formula = expr))
+                        attackBonuses.add(AttackBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
                     }
                     if (target == "weapon.$weaponId.damage" || target == "weapon-all.damage") {
-                        damageBonuses.add(DamageBonus(name = label, formula = expr))
+                        damageBonuses.add(DamageBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
                     }
                 }
 
@@ -427,6 +454,10 @@ object LongStoryShortImporter {
             e.printStackTrace()
             null
         }
+    }
+
+    private fun isActiveBonus(bonus: JsonObject): Boolean {
+        return bonus.get("disabled")?.asBoolean != true
     }
 
     private fun JsonElement.getFieldValue(): JsonElement? {

@@ -24,6 +24,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
+import ru.quasaris.characters.master.AdvantagePreference
 import ru.quasaris.characters.master.AttackBonus
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusField
@@ -53,7 +54,7 @@ fun MagicBonusSettingsDialog(
         val allDice = mutableMapOf<Int, Int>()
         
         currentBonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, attributeModifiers, proficiencyBonus, stats)
+            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
             totalFlat += fFlat
             fDice.forEach { allDice[it.sides] = (allDice[it.sides] ?: 0) + it.count }
         }
@@ -132,7 +133,7 @@ fun MagicBonusSettingsDialog(
                     }
 
                     AddBonusButton {
-                        currentBonuses = currentBonuses + AttackBonus()
+                        currentBonuses = currentBonuses + AttackBonus(advantagePreference = AdvantagePreference.IGNORE_BOTH)
                     }
 
                     Spacer(modifier = Modifier.height(80.dp))

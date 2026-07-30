@@ -52,8 +52,10 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.LocalHazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import ru.quasaris.characters.master.backend.AdvantageType
+import ru.quasaris.characters.master.backend.AppScaleProvider
 import ru.quasaris.characters.master.backend.AppThemeMode
 import ru.quasaris.characters.master.backend.DiceRollPosition
+import ru.quasaris.characters.master.backend.LocalAppScale
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
 import kotlin.math.roundToInt
@@ -99,113 +101,115 @@ fun DiceRollOverlay(
             dismissOnClickOutside = true
         )
     ) {
-        val view = LocalView.current
-        val window = (view.parent as? DialogWindowProvider)?.window
+        AppScaleProvider(LocalAppScale.current) {
+            val view = LocalView.current
+            val window = (view.parent as? DialogWindowProvider)?.window
 
-        SideEffect {
-            window?.let { w ->
-                // Базовые настройки окна (чтобы оно не блокировало весь экран)
-                w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
-                w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-                w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                w.setDimAmount(0f)
+            SideEffect {
+                window?.let { w ->
+                    // Базовые настройки окна (чтобы оно не блокировало весь экран)
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                    w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                    w.setDimAmount(0f)
 
-                // Управление прозрачностью ДЛЯ КЛИКОВ всей панели
-                if (isPassThrough) {
-                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-                } else {
-                    w.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                    // Управление прозрачностью ДЛЯ КЛИКОВ всей панели
+                    if (isPassThrough) {
+                        w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                    } else {
+                        w.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                    }
+
+                    val params = w.attributes
+                    params.gravity = when (position) {
+                        DiceRollPosition.TOP_LEFT -> Gravity.TOP or Gravity.START
+                        DiceRollPosition.TOP_RIGHT -> Gravity.TOP or Gravity.END
+                        DiceRollPosition.BOTTOM_LEFT -> Gravity.BOTTOM or Gravity.START
+                        DiceRollPosition.BOTTOM_RIGHT -> Gravity.BOTTOM or Gravity.END
+                    }
+                    params.width = WindowManager.LayoutParams.WRAP_CONTENT
+                    params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                    w.attributes = params
+
+                    if (!isOled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        w.setBackgroundBlurRadius(120)
+                    }
+                    w.setBackgroundDrawableResource(android.R.color.transparent)
                 }
-
-                val params = w.attributes
-                params.gravity = when (position) {
-                    DiceRollPosition.TOP_LEFT -> Gravity.TOP or Gravity.START
-                    DiceRollPosition.TOP_RIGHT -> Gravity.TOP or Gravity.END
-                    DiceRollPosition.BOTTOM_LEFT -> Gravity.BOTTOM or Gravity.START
-                    DiceRollPosition.BOTTOM_RIGHT -> Gravity.BOTTOM or Gravity.END
-                }
-                params.width = WindowManager.LayoutParams.WRAP_CONTENT
-                params.height = WindowManager.LayoutParams.WRAP_CONTENT
-                w.attributes = params
-
-                if (!isOled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    w.setBackgroundBlurRadius(120)
-                }
-                w.setBackgroundDrawableResource(android.R.color.transparent)
             }
-        }
 
-        CompositionLocalProvider(LocalHazeStyle provides DiceRollHazeStyle) {
-            Surface(
-                modifier = modifier
-                    .padding(16.dp)
-                    .widthIn(min = 280.dp, max = 340.dp)
-                    .onGloballyPositioned { coords ->
-                        // Вычисляем АБСОЛЮТНУЮ позицию выбранного угла панели на физическом экране
-                        val location = IntArray(2)
-                        view.getLocationOnScreen(location)
-                        val posInRoot = coords.positionInRoot()
+            CompositionLocalProvider(LocalHazeStyle provides DiceRollHazeStyle) {
+                Surface(
+                    modifier = modifier
+                        .padding(16.dp)
+                        .widthIn(min = 280.dp, max = 340.dp)
+                        .onGloballyPositioned { coords ->
+                            // Вычисляем АБСОЛЮТНУЮ позицию выбранного угла панели на физическом экране
+                            val location = IntArray(2)
+                            view.getLocationOnScreen(location)
+                            val posInRoot = coords.positionInRoot()
 
-                        val newPos = when (closeButtonPosition) {
-                            DiceRollPosition.TOP_LEFT -> IntOffset(
-                                x = location[0] + posInRoot.x.roundToInt(),
-                                y = location[1] + posInRoot.y.roundToInt()
-                            )
-                            DiceRollPosition.TOP_RIGHT -> IntOffset(
-                                x = location[0] + posInRoot.x.roundToInt() + coords.size.width,
-                                y = location[1] + posInRoot.y.roundToInt()
-                            )
-                            DiceRollPosition.BOTTOM_LEFT -> IntOffset(
-                                x = location[0] + posInRoot.x.roundToInt(),
-                                y = location[1] + posInRoot.y.roundToInt() + coords.size.height
-                            )
-                            DiceRollPosition.BOTTOM_RIGHT -> IntOffset(
-                                x = location[0] + posInRoot.x.roundToInt() + coords.size.width,
-                                y = location[1] + posInRoot.y.roundToInt() + coords.size.height
-                            )
-                        }
-
-                        if (anchorPos != newPos) {
-                            anchorPos = newPos
-                        }
-                    }
-                    .run {
-                        if (forceBlurEnabled && hazeState != null && !isOled) {
-                            this.clip(RoundedCornerShape(24.dp))
-                                .then(
-                                    remember(history.size) {
-                                        Modifier.hazeEffect(state = hazeState) {
-                                            inputScale = HazeInputScale.Fixed(0.6f)
-                                        }
-                                    }
+                            val newPos = when (closeButtonPosition) {
+                                DiceRollPosition.TOP_LEFT -> IntOffset(
+                                    x = location[0] + posInRoot.x.roundToInt(),
+                                    y = location[1] + posInRoot.y.roundToInt()
                                 )
-                        } else this
-                    },
-                shape = RoundedCornerShape(24.dp),
-                color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = alpha),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
-                tonalElevation = if (isOled) 0.dp else 8.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // История
-                    if (previous.isNotEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            previous.forEach { roll ->
-                                RollItem(roll, isCompact = true, isOled = isOled)
+                                DiceRollPosition.TOP_RIGHT -> IntOffset(
+                                    x = location[0] + posInRoot.x.roundToInt() + coords.size.width,
+                                    y = location[1] + posInRoot.y.roundToInt()
+                                )
+                                DiceRollPosition.BOTTOM_LEFT -> IntOffset(
+                                    x = location[0] + posInRoot.x.roundToInt(),
+                                    y = location[1] + posInRoot.y.roundToInt() + coords.size.height
+                                )
+                                DiceRollPosition.BOTTOM_RIGHT -> IntOffset(
+                                    x = location[0] + posInRoot.x.roundToInt() + coords.size.width,
+                                    y = location[1] + posInRoot.y.roundToInt() + coords.size.height
+                                )
                             }
-                            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.3f))
-                        }
-                    }
 
-                    // Последний результат
-                    latest?.let {
-                        RollItem(it, isCompact = false, isOled = isOled)
+                            if (anchorPos != newPos) {
+                                anchorPos = newPos
+                            }
+                        }
+                        .run {
+                            if (forceBlurEnabled && hazeState != null && !isOled) {
+                                this.clip(RoundedCornerShape(24.dp))
+                                    .then(
+                                        remember(history.size) {
+                                            Modifier.hazeEffect(state = hazeState) {
+                                                inputScale = HazeInputScale.Fixed(0.6f)
+                                            }
+                                        }
+                                    )
+                            } else this
+                        },
+                    shape = RoundedCornerShape(24.dp),
+                    color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = alpha),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
+                    tonalElevation = if (isOled) 0.dp else 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // История
+                        if (previous.isNotEmpty()) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                previous.forEach { roll ->
+                                    RollItem(roll, isCompact = true, isOled = isOled)
+                                }
+                                HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            }
+                        }
+
+                        // Последний результат
+                        latest?.let {
+                            RollItem(it, isCompact = false, isOled = isOled)
+                        }
                     }
                 }
             }
@@ -222,67 +226,69 @@ fun DiceRollOverlay(
                 dismissOnClickOutside = false
             )
         ) {
-            val btnView = LocalView.current
-            val btnWindow = (btnView.parent as? DialogWindowProvider)?.window
-            val colorScheme = MaterialTheme.colorScheme
+            AppScaleProvider(LocalAppScale.current) {
+                val btnView = LocalView.current
+                val btnWindow = (btnView.parent as? DialogWindowProvider)?.window
+                val colorScheme = MaterialTheme.colorScheme
 
-            SideEffect {
-                btnWindow?.let { w ->
-                    // Это окно ВСЕГДА активно и ловит клики (нет FLAG_NOT_TOUCHABLE)
-                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-                    // FLAG_NOT_TOUCH_MODAL означает, что окно ловит клики только В СВОИХ ГРАНИЦАХ
-                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
-                    w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                    w.setDimAmount(0f)
-                    w.setBackgroundDrawableResource(android.R.color.transparent)
+                SideEffect {
+                    btnWindow?.let { w ->
+                        // Это окно ВСЕГДА активно и ловит клики (нет FLAG_NOT_TOUCHABLE)
+                        w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                        // FLAG_NOT_TOUCH_MODAL означает, что окно ловит клики только В СВОИХ ГРАНИЦАХ
+                        w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+                        w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                        w.setDimAmount(0f)
+                        w.setBackgroundDrawableResource(android.R.color.transparent)
 
-                    val params = w.attributes
-                    params.gravity = Gravity.TOP or Gravity.START
-                    // Центрируем кнопку (32dp) по углу панели.
-                    // 16dp - это смещение, чтобы центр кнопки совпал с углом
-                    val offsetPx = (16 * btnView.resources.displayMetrics.density).roundToInt()
-                    params.x = pos.x - offsetPx
-                    params.y = pos.y - offsetPx
+                        val params = w.attributes
+                        params.gravity = Gravity.TOP or Gravity.START
+                        // Центрируем кнопку (32dp) по углу панели.
+                        // 16dp - это смещение, чтобы центр кнопки совпал с углом
+                        val offsetPx = (16 * btnView.resources.displayMetrics.density).roundToInt()
+                        params.x = pos.x - offsetPx
+                        params.y = pos.y - offsetPx
 
-                    params.width = WindowManager.LayoutParams.WRAP_CONTENT
-                    params.height = WindowManager.LayoutParams.WRAP_CONTENT
-                    w.attributes = params
-                }
-            }
-
-            // Визуальная и интерактивная часть кнопки в отдельном окне
-            Surface(
-                modifier = Modifier
-                    .size(32.dp)
-                    .run {
-                        if (forceBlurEnabled && hazeState != null && !isOled) {
-                            this.clip(RoundedCornerShape(12.dp))
-                                .then(
-                                    remember(history.size) {
-                                        Modifier.hazeEffect(state = hazeState) {
-                                            inputScale = HazeInputScale.Fixed(0.6f)
-                                        }
-                                    }
-                                )
-                        } else this
+                        params.width = WindowManager.LayoutParams.WRAP_CONTENT
+                        params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                        w.attributes = params
                     }
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(
-                        onClickLabel = "Закрыть окно бросков",
-                        onClick = onClose
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = alpha),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
-                tonalElevation = if (isOled) 0.dp else 4.dp
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Закрыть",
-                        modifier = Modifier.size(20.dp),
-                        tint = colorScheme.onSurfaceVariant
-                    )
+                }
+
+                // Визуальная и интерактивная часть кнопки в отдельном окне
+                Surface(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .run {
+                            if (forceBlurEnabled && hazeState != null && !isOled) {
+                                this.clip(RoundedCornerShape(12.dp))
+                                    .then(
+                                        remember(history.size) {
+                                            Modifier.hazeEffect(state = hazeState) {
+                                                inputScale = HazeInputScale.Fixed(0.6f)
+                                            }
+                                        }
+                                    )
+                            } else this
+                        }
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(
+                            onClickLabel = "Закрыть окно бросков",
+                            onClick = onClose
+                        ),
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = alpha),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
+                    tonalElevation = if (isOled) 0.dp else 4.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Закрыть",
+                            modifier = Modifier.size(20.dp),
+                            tint = colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -354,7 +360,8 @@ fun RollItem(result: RollResult, isCompact: Boolean, isOled: Boolean) {
         }
 
         Spacer(modifier = Modifier.height(if (isCompact) 2.dp else 4.dp))
-        if (result.advantageType != AdvantageType.NONE && !isCompact) {
+        val hasAlt = (result.advantageType != AdvantageType.NONE || result.alternativeDice != null || result.alternativeFlatBonuses != null)
+        if (hasAlt && !isCompact) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = buildStyledBreakdown(result, colorScheme, isOled, useSecond = false),
@@ -405,6 +412,14 @@ fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme, isOled: B
 
             withStyle(SpanStyle(color = getDiceColor(kotlin.math.abs(diceVal), dice.sides).copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Bold)) {
                 append(kotlin.math.abs(diceVal).toString())
+            }
+
+            dice.discardedValue?.let { disc ->
+                withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.4f), fontWeight = FontWeight.Normal, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) {
+                    append(" (")
+                    append(kotlin.math.abs(disc).toString())
+                    append(")")
+                }
             }
             first = false
         }
@@ -484,83 +499,85 @@ fun DiceRollAdvantagePopup(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.PopupProperties(focusable = true)
     ) {
-        val colorScheme = MaterialTheme.colorScheme
-        val critBrush = Brush.linearGradient(
-            colors = listOf(Color(0xFF00E1FF), Color(0xFF00ffd9))
-        )
+        AppScaleProvider(LocalAppScale.current) {
+            val colorScheme = MaterialTheme.colorScheme
+            val critBrush = Brush.linearGradient(
+                colors = listOf(Color(0xFF00E1FF), Color(0xFF00ffd9))
+            )
 
-        Surface(
-            modifier = modifier
-                .fillMaxWidth(widthMultiplier)
-                .shadow(8.dp, RoundedCornerShape(12.dp))
-                .run {
-                    if (hazeState != null && !isOled) {
-                        this.clip(RoundedCornerShape(12.dp))
-                            .hazeEffect(state = hazeState) {
-                                inputScale = HazeInputScale.Fixed(0.6f)
-                            }
-                    } else this
-                },
-            shape = RoundedCornerShape(12.dp),
-            color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
-            tonalElevation = 8.dp,
-            border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
-        ) {
-            Row(
-                modifier = Modifier.padding(2.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = {
-                        onAdvantage()
-                        onDismiss()
+            Surface(
+                modifier = modifier
+                    .fillMaxWidth(widthMultiplier)
+                    .shadow(8.dp, RoundedCornerShape(12.dp))
+                    .run {
+                        if (hazeState != null && !isOled) {
+                            this.clip(RoundedCornerShape(12.dp))
+                                .hazeEffect(state = hazeState) {
+                                    inputScale = HazeInputScale.Fixed(0.6f)
+                                }
+                        } else this
                     },
-                    modifier = Modifier.weight(1f).fillMaxHeight()
+                shape = RoundedCornerShape(12.dp),
+                color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
+                tonalElevation = 8.dp,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(2.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.Default.KeyboardArrowUp,
-                        contentDescription = "Преимущество",
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                
-                if (onCritical != null) {
-                    VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     IconButton(
                         onClick = {
-                            onCritical()
+                            onAdvantage()
                             onDismiss()
                         },
                         modifier = Modifier.weight(1f).fillMaxHeight()
                     ) {
-                        Text(
-                            "!",
-                            style = TextStyle(
-                                brush = critBrush,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Black
-                            )
+                        Icon(
+                            Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Преимущество",
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(28.dp)
                         )
                     }
-                }
+                    
+                    if (onCritical != null) {
+                        VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        IconButton(
+                            onClick = {
+                                onCritical()
+                                onDismiss()
+                            },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            Text(
+                                "!",
+                                style = TextStyle(
+                                    brush = critBrush,
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            )
+                        }
+                    }
 
-                VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
-                
-                IconButton(
-                    onClick = {
-                        onDisadvantage()
-                        onDismiss()
-                    },
-                    modifier = Modifier.weight(1f).fillMaxHeight()
-                ) {
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Помеха",
-                        tint = Color(0xFFF44336),
-                        modifier = Modifier.size(28.dp)
-                    )
+                    VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    
+                    IconButton(
+                        onClick = {
+                            onDisadvantage()
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Помеха",
+                            tint = Color(0xFFF44336),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
         }

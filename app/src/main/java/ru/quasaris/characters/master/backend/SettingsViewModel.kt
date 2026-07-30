@@ -66,6 +66,9 @@ class SettingsViewModel(
     private val _autoDownloadLssAvatar = MutableStateFlow(settingsManager?.autoDownloadLssAvatar ?: false)
     val autoDownloadLssAvatar = _autoDownloadLssAvatar.asStateFlow()
 
+    private val _advantageLogic = MutableStateFlow(settingsManager?.advantageLogic ?: AdvantageLogic.TOTAL)
+    val advantageLogic = _advantageLogic.asStateFlow()
+
     private val _exportFormat = MutableStateFlow(settingsManager?.exportFormat ?: ExportFormat.WEBP)
     val exportFormat = _exportFormat.asStateFlow()
 
@@ -172,6 +175,11 @@ class SettingsViewModel(
         settingsManager?.autoDownloadLssAvatar = enabled
     }
 
+    fun updateAdvantageLogic(logic: AdvantageLogic) {
+        _advantageLogic.value = logic
+        settingsManager?.advantageLogic = logic
+    }
+
     fun updateExportFormat(format: ExportFormat) {
         _exportFormat.value = format
         settingsManager?.exportFormat = format
@@ -247,6 +255,7 @@ class SettingsViewModel(
         _topMarginStep.value = settingsManager?.topMarginStep ?: 2
         _customTopMargin.value = settingsManager?.customTopMargin ?: 96
         _autoDownloadLssAvatar.value = settingsManager?.autoDownloadLssAvatar ?: false
+        _advantageLogic.value = settingsManager?.advantageLogic ?: AdvantageLogic.TOTAL
         _exportFormat.value = settingsManager?.exportFormat ?: ExportFormat.WEBP
         _exportDirectoryUri.value = settingsManager?.exportDirectoryUri
         _longRestAlignment.value = SlotAlignment.valueOf(settingsManager?.longRestAlignment ?: "RIGHT")
