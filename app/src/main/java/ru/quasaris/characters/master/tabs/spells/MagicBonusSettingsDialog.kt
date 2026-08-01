@@ -133,7 +133,7 @@ fun MagicBonusSettingsDialog(
                     }
 
                     AddBonusButton {
-                        currentBonuses = currentBonuses + AttackBonus(advantagePreference = AdvantagePreference.IGNORE_BOTH)
+                        currentBonuses = currentBonuses + AttackBonus(advantagePreference = AdvantagePreference.NONE)
                     }
 
                     Spacer(modifier = Modifier.height(80.dp))

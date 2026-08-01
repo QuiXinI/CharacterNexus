@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.AttackBonus
@@ -40,9 +40,10 @@ fun AttackBonusIndicator(
     fontSize: androidx.compose.ui.unit.TextUnit = 20.sp,
     showLabel: Boolean = true,
     showDice: Boolean = true,
-    diceOnLeft: Boolean = false
+    diceOnLeft: Boolean = false,
+    showPlus: Boolean = true
 ) {
-    val bonusText = if (bonus >= 0) "+$bonus" else bonus.toString()
+    val bonusText = if (bonus >= 0) (if (showPlus) "+$bonus" else bonus.toString()) else bonus.toString()
     
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (showLabel) {
@@ -283,22 +284,23 @@ fun AddBonusButton(
 
 @Composable
 fun AdvantagePreferenceLabel(preference: AdvantagePreference) {
+    val colorScheme = MaterialTheme.colorScheme
     when (preference) {
-        AdvantagePreference.NONE -> Text("Нет", fontSize = 10.sp)
+        AdvantagePreference.NONE -> Text("Авто", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
         AdvantagePreference.IGNORE_ADVANTAGE -> Box(contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.ArrowUpward, null, modifier = Modifier.size(16.dp).alpha(0.4f))
-            Icon(Icons.Default.Close, null, modifier = Modifier.size(14.dp), tint = Color.Red)
+            Icon(Icons.Default.KeyboardArrowUp, null, modifier = Modifier.size(20.dp).alpha(0.4f))
+            Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp), tint = Color.Red)
         }
-        AdvantagePreference.ALWAYS_ADVANTAGE -> Icon(Icons.Default.ArrowUpward, null, modifier = Modifier.size(18.dp))
+        AdvantagePreference.ALWAYS_ADVANTAGE -> Icon(Icons.Default.KeyboardArrowUp, null, modifier = Modifier.size(24.dp))
         AdvantagePreference.IGNORE_DISADVANTAGE -> Box(contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.ArrowDownward, null, modifier = Modifier.size(16.dp).alpha(0.4f))
-            Icon(Icons.Default.Close, null, modifier = Modifier.size(14.dp), tint = Color.Red)
+            Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(20.dp).alpha(0.4f))
+            Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp), tint = Color.Red)
         }
-        AdvantagePreference.ALWAYS_DISADVANTAGE -> Icon(Icons.Default.ArrowDownward, null, modifier = Modifier.size(18.dp))
+        AdvantagePreference.ALWAYS_DISADVANTAGE -> Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(24.dp))
         AdvantagePreference.IGNORE_BOTH -> Box(contentAlignment = Alignment.Center) {
             Row(horizontalArrangement = Arrangement.spacedBy((-4).dp)) {
-                Icon(Icons.Default.ArrowUpward, null, modifier = Modifier.size(14.dp).alpha(0.4f))
-                Icon(Icons.Default.ArrowDownward, null, modifier = Modifier.size(14.dp).alpha(0.4f))
+                Icon(Icons.Default.KeyboardArrowUp, null, modifier = Modifier.size(14.dp).alpha(0.4f))
+                Icon(Icons.Default.KeyboardArrowDown, null, modifier = Modifier.size(14.dp).alpha(0.4f))
             }
             Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp), tint = Color.Red)
         }
@@ -309,6 +311,7 @@ fun AdvantagePreferenceLabel(preference: AdvantagePreference) {
 @Composable
 fun AttackBonusField(
     bonus: AttackBonus,
+    showAdvantageLogic: Boolean = true,
     onUpdate: (AttackBonus) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -366,39 +369,41 @@ fun AttackBonusField(
              )
         }
         
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Логика преимущества/помехи", fontSize = 12.sp, color = colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = bonus.advantagePreference == AdvantagePreference.NONE,
-                    onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.NONE)) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 6)
-                ) { AdvantagePreferenceLabel(AdvantagePreference.NONE) }
-                SegmentedButton(
-                    selected = bonus.advantagePreference == AdvantagePreference.IGNORE_ADVANTAGE,
-                    onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.IGNORE_ADVANTAGE)) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 6)
-                ) { AdvantagePreferenceLabel(AdvantagePreference.IGNORE_ADVANTAGE) }
-                SegmentedButton(
-                    selected = bonus.advantagePreference == AdvantagePreference.ALWAYS_ADVANTAGE,
-                    onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.ALWAYS_ADVANTAGE)) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 6)
-                ) { AdvantagePreferenceLabel(AdvantagePreference.ALWAYS_ADVANTAGE) }
-                SegmentedButton(
-                    selected = bonus.advantagePreference == AdvantagePreference.IGNORE_DISADVANTAGE,
-                    onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.IGNORE_DISADVANTAGE)) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 3, count = 6)
-                ) { AdvantagePreferenceLabel(AdvantagePreference.IGNORE_DISADVANTAGE) }
-                SegmentedButton(
-                    selected = bonus.advantagePreference == AdvantagePreference.ALWAYS_DISADVANTAGE,
-                    onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.ALWAYS_DISADVANTAGE)) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 4, count = 6)
-                ) { AdvantagePreferenceLabel(AdvantagePreference.ALWAYS_DISADVANTAGE) }
-                SegmentedButton(
-                    selected = bonus.advantagePreference == AdvantagePreference.IGNORE_BOTH,
-                    onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.IGNORE_BOTH)) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 5, count = 6)
-                ) { AdvantagePreferenceLabel(AdvantagePreference.IGNORE_BOTH) }
+        if (showAdvantageLogic) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Логика преимущества/помехи", fontSize = 12.sp, color = colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = bonus.advantagePreference == AdvantagePreference.NONE,
+                        onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.NONE)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 6)
+                    ) { AdvantagePreferenceLabel(AdvantagePreference.NONE) }
+                    SegmentedButton(
+                        selected = bonus.advantagePreference == AdvantagePreference.IGNORE_ADVANTAGE,
+                        onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.IGNORE_ADVANTAGE)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 6)
+                    ) { AdvantagePreferenceLabel(AdvantagePreference.IGNORE_ADVANTAGE) }
+                    SegmentedButton(
+                        selected = bonus.advantagePreference == AdvantagePreference.ALWAYS_ADVANTAGE,
+                        onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.ALWAYS_ADVANTAGE)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 6)
+                    ) { AdvantagePreferenceLabel(AdvantagePreference.ALWAYS_ADVANTAGE) }
+                    SegmentedButton(
+                        selected = bonus.advantagePreference == AdvantagePreference.IGNORE_DISADVANTAGE,
+                        onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.IGNORE_DISADVANTAGE)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 3, count = 6)
+                    ) { AdvantagePreferenceLabel(AdvantagePreference.IGNORE_DISADVANTAGE) }
+                    SegmentedButton(
+                        selected = bonus.advantagePreference == AdvantagePreference.ALWAYS_DISADVANTAGE,
+                        onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.ALWAYS_DISADVANTAGE)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 4, count = 6)
+                    ) { AdvantagePreferenceLabel(AdvantagePreference.ALWAYS_DISADVANTAGE) }
+                    SegmentedButton(
+                        selected = bonus.advantagePreference == AdvantagePreference.IGNORE_BOTH,
+                        onClick = { onUpdate(bonus.copy(advantagePreference = AdvantagePreference.IGNORE_BOTH)) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 5, count = 6)
+                    ) { AdvantagePreferenceLabel(AdvantagePreference.IGNORE_BOTH) }
+                }
             }
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = colorScheme.outlineVariant)

@@ -55,6 +55,7 @@ import dev.chrisbanes.haze.LocalHazeStyle
 import ru.quasaris.characters.master.tabs.spells.SpellSettingsDialog
 import ru.quasaris.characters.master.tabs.spells.SpellsTab
 import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
+import androidx.compose.ui.draw.scale
 
 /**
  * Стиль размытия для нижней панели выбора вкладок.
@@ -78,6 +79,11 @@ fun CharacterDetailWindow(
     blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null
 ) {
+    val useNewAC by settingsViewModel?.useNewACInterface?.collectAsState() ?: remember { mutableStateOf(true) }
+    val useNewInit by settingsViewModel?.useNewInitInterface?.collectAsState() ?: remember { mutableStateOf(true) }
+    val useNewCond by settingsViewModel?.useNewCondInterface?.collectAsState() ?: remember { mutableStateOf(true) }
+    val useNewSpeed by settingsViewModel?.useNewSpeedInterface?.collectAsState() ?: remember { mutableStateOf(true) }
+
     var name by remember { mutableStateOf(character?.name ?: "") }
     var characterClass by remember { mutableStateOf(character?.characterClass ?: "") }
     var order by remember { mutableStateOf(character?.order ?: "") }
@@ -91,7 +97,7 @@ fun CharacterDetailWindow(
     }
 
     var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList()) }
-    var exhaustion by remember { mutableStateOf(character?.exhaustion ?: 0) }
+    var exhaustion by remember { mutableIntStateOf(character?.exhaustion ?: 0) }
 
     val advantageLogic by settingsViewModel?.advantageLogic?.collectAsState() ?: remember { mutableStateOf(AdvantageLogic.TOTAL) }
 
@@ -130,6 +136,11 @@ fun CharacterDetailWindow(
     var isSpeedPanelVisible by remember { mutableStateOf(false) }
     var isConditionsPanelVisible by remember { mutableStateOf(false) }
     var isHealthPanelVisible by remember { mutableStateOf(false) }
+
+    var showEnhancedAC by remember { mutableStateOf(false) }
+    var showEnhancedInit by remember { mutableStateOf(false) }
+    var showEnhancedSpeed by remember { mutableStateOf(false) }
+    var showEnhancedCond by remember { mutableStateOf(false) }
 
     var hpDialogType by remember { mutableStateOf("") }
     var hpDialogValue by remember { mutableStateOf("") }
@@ -341,7 +352,7 @@ fun CharacterDetailWindow(
 
     val healthState = remember(currentHp, maxHp) {
         val c = currentHp.toIntOrNull() ?: 0; val m = maxHp.toIntOrNull() ?: 0
-        when { c <= 0 -> "dead"; m > 0 && c <= m / 2 -> "bloodied"; else -> "healthy" }
+        when { c <= 0 -> "dead"; m > 0 && (c <= m / 2) -> "bloodied"; else -> "healthy" }
     }
     val healthColor = when(healthState) { "dead" -> Color(0xFF454545); "bloodied" -> Color(0xFFE57373); else -> Color(0xFF00C46F) }
     val healthIcon = when(healthState) { "dead" -> R.drawable.ic_health_death; "bloodied" -> R.drawable.ic_health_bloodied; else -> R.drawable.ic_health }
@@ -453,7 +464,13 @@ fun CharacterDetailWindow(
                     activeACValue = acValue,
                     onACClick = { isShieldActive = !isShieldActive },
                     onACLongClick = {
-                        isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
+                        if (useNewAC) {
+                            showEnhancedAC = true
+                            isArmorClassPanelVisible = false
+                        } else {
+                            isArmorClassPanelVisible = !isArmorClassPanelVisible
+                        }
+                        isInitiativePanelVisible = false
                         isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
                     isShieldActive = isShieldActive,
@@ -465,7 +482,13 @@ fun CharacterDetailWindow(
                         onRoll(DiceRoller.roll("Инициатива", baseInit, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = advantageLogic))
                     },
                     onInitLongClick = {
-                        isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
+                        if (useNewInit) {
+                            showEnhancedInit = true
+                            isInitiativePanelVisible = false
+                        } else {
+                            isInitiativePanelVisible = !isInitiativePanelVisible
+                        }
+                        isArmorClassPanelVisible = false
                         isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
                     currentHp = currentHp, maxHp = maxHp, tempHp = tempHp,
@@ -477,12 +500,24 @@ fun CharacterDetailWindow(
                     conditionsCount = exhaustion.toString(),
                     selectedConditions = selectedConditions,
                     onConditionsClick = {
-                        isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        if (useNewCond) {
+                            showEnhancedCond = true
+                            isConditionsPanelVisible = false
+                        } else {
+                            isConditionsPanelVisible = !isConditionsPanelVisible
+                        }
+                        isArmorClassPanelVisible = false; isInitiativePanelVisible = false
                         isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
                     },
                     activeSpeedValue = speedValue,
                     onSpeedClick = {
-                        isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        if (useNewSpeed) {
+                            showEnhancedSpeed = true
+                            isSpeedPanelVisible = false
+                        } else {
+                            isSpeedPanelVisible = !isSpeedPanelVisible
+                        }
+                        isArmorClassPanelVisible = false; isInitiativePanelVisible = false
                         isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
                     showAvatarMenu = showAvatarMenu,
@@ -838,6 +873,86 @@ fun CharacterDetailWindow(
             hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
             statsMap = statsMap
+        )
+    }
+
+    // Enhanced Overlays
+    val effectiveBlurFullscreen = forceBlurEnabled
+
+    if (showEnhancedAC) {
+        val activeArmor = armorClassEntries.find { it.id == activeArmorClassId }
+        val activeShieldObj = shieldEntries.find { it.id == activeShieldId }
+        
+        EnhancedStatDialog(
+            title = "Класс Доспеха",
+            statType = "AC",
+            activeEntry = activeArmor,
+            allEntries = armorClassEntries,
+            onAllEntriesChange = { armorClassEntries = it.filterIsInstance<ArmorClassEntry>() },
+            onActiveIdChange = { activeArmorClassId = it },
+            statsMap = statsMap,
+            hazeState = hazeState,
+            forceBlurEnabled = effectiveBlurFullscreen,
+            onDismiss = { showEnhancedAC = false },
+            isShieldActive = isShieldActive,
+            onShieldActiveChange = { isShieldActive = it },
+            activeShield = activeShieldObj,
+            allShields = shieldEntries,
+            onShieldChange = { updated ->
+                val newList = shieldEntries.toMutableList()
+                val idx = newList.indexOfFirst { it.id == updated.id }
+                if (idx != -1) {
+                    newList[idx] = updated
+                    shieldEntries = newList
+                }
+            },
+            onAllShieldsChange = { shieldEntries = it },
+            onActiveShieldIdChange = { activeShieldId = it }
+        )
+    }
+
+    if (showEnhancedInit) {
+        val activeInit = initiativeEntries.find { it.id == activeInitiativeId }
+        EnhancedStatDialog(
+            title = "Инициатива",
+            statType = "INIT",
+            activeEntry = activeInit,
+            allEntries = initiativeEntries,
+            onAllEntriesChange = { initiativeEntries = it.filterIsInstance<InitiativeEntry>() },
+            onActiveIdChange = { activeInitiativeId = it },
+            statsMap = statsMap,
+            hazeState = hazeState,
+            forceBlurEnabled = effectiveBlurFullscreen,
+            onDismiss = { showEnhancedInit = false }
+        )
+    }
+
+    if (showEnhancedSpeed) {
+        val activeSpeed = speedEntries.find { it.id == activeSpeedId }
+        EnhancedStatDialog(
+            title = "Скорость",
+            statType = "SPEED",
+            activeEntry = activeSpeed,
+            allEntries = speedEntries,
+            onAllEntriesChange = { speedEntries = it.filterIsInstance<SpeedEntry>() },
+            onActiveIdChange = { activeSpeedId = it },
+            statsMap = statsMap,
+            hazeState = hazeState,
+            forceBlurEnabled = effectiveBlurFullscreen,
+            onDismiss = { showEnhancedSpeed = false }
+        )
+    }
+
+    if (showEnhancedCond) {
+        EnhancedConditionsDialog(
+            allConditions = allConditions,
+            selectedConditions = selectedConditions,
+            onToggleCondition = { cond -> selectedConditions = if (selectedConditions.contains(cond)) selectedConditions - cond else selectedConditions + cond },
+            exhaustion = exhaustion,
+            onExhaustionChange = { exhaustion = it },
+            hazeState = hazeState,
+            forceBlurEnabled = effectiveBlurFullscreen,
+            onDismiss = { showEnhancedCond = false }
         )
     }
 }

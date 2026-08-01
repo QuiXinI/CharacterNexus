@@ -5,6 +5,7 @@ import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
 import ru.quasaris.characters.master.backend.evaluateFormula
+import ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus
 
 object CombatCalculations {
     fun calculateAC(
@@ -16,26 +17,44 @@ object CombatCalculations {
         shieldEntries: List<ShieldEntry> = emptyList()
     ): String {
         val active = armorClassEntries.find { it.id == activeArmorClassId }
-        var v = if (active != null) evaluateFormula(active.formula, statsMap) else 10
+        var base = if (active != null) evaluateFormula(active.formula, statsMap) else 10
+        
+        // Add bonuses for active armor
+        if (active != null) {
+            base = calculateTotalBonus(active.bonuses, statsMap, base)
+        }
+
         if (isShieldActive) {
             val shield = shieldEntries.find { it.id == activeShieldId }
             if (shield != null) {
-                v += evaluateFormula(shield.formula, statsMap)
+                var sVal = evaluateFormula(shield.formula, statsMap)
+                sVal = calculateTotalBonus(shield.bonuses, statsMap, sVal)
+                base += sVal
             }
         }
-        return v.toString()
+        return base.toString()
     }
 
     fun calculateInitiative(activeInitiativeId: String?, initiativeEntries: List<InitiativeEntry>, statsMap: Map<String, String>, exhaustion: Int = 0): String {
         val active = initiativeEntries.find { it.id == activeInitiativeId }
         var v = if (active != null) evaluateFormula(active.formula, statsMap) else 0
+        
+        if (active != null) {
+            v = calculateTotalBonus(active.bonuses, statsMap, v)
+        }
+        
         v -= exhaustion * 2
         return if (v >= 0) "+$v" else v.toString()
     }
 
     fun calculateSpeed(activeSpeedId: String?, speedEntries: List<SpeedEntry>, statsMap: Map<String, String>, exhaustion: Int = 0): String {
         val active = speedEntries.find { it.id == activeSpeedId }
-        val v = (if (active != null) evaluateFormula(active.formula, statsMap) else 30)
+        var v = (if (active != null) evaluateFormula(active.formula, statsMap) else 30)
+        
+        if (active != null) {
+            v = calculateTotalBonus(active.bonuses, statsMap, v)
+        }
+        
         return maxOf(0, v - exhaustion * 5).toString()
     }
 }

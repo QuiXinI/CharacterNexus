@@ -199,6 +199,12 @@ fun SettingsWindow(
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            NewHeaderInterfaceSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
             FullscreenEditingSettingsSection(
                 settingsViewModel = settingsViewModel
             )
@@ -1043,6 +1049,58 @@ fun ScaleSettingsSection(
             valueRange = 0.7f..1.5f,
             steps = 7, // (1.5 - 0.7) / 0.1 - 1 = 8 - 1 = 7 steps
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+fun NewHeaderInterfaceSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val useNewAC by settingsViewModel.useNewACInterface.collectAsState()
+    val useNewInit by settingsViewModel.useNewInitInterface.collectAsState()
+    val useNewCond by settingsViewModel.useNewCondInterface.collectAsState()
+    val useNewSpeed by settingsViewModel.useNewSpeedInterface.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Новый интерфейс заголовков",
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+
+        InterfaceSwitchRow("Класс Доспеха (КД)", useNewAC) { settingsViewModel.updateUseNewACInterface(it) }
+        InterfaceSwitchRow("Инициатива", useNewInit) { settingsViewModel.updateUseNewInitInterface(it) }
+        InterfaceSwitchRow("Состояния", useNewCond) { settingsViewModel.updateUseNewCondInterface(it) }
+        InterfaceSwitchRow("Скорость", useNewSpeed) { settingsViewModel.updateUseNewSpeedInterface(it) }
+    }
+}
+
+@Composable
+fun InterfaceSwitchRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = 16.sp,
+            color = colorScheme.onSurface
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
         )
     }
 }

@@ -169,7 +169,7 @@ fun BonusConfigDialog(
                         }
                         AddBonusButton {
                             statBonuses =
-                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.CHARACTERISTIC_VALUE, advantagePreference = AdvantagePreference.IGNORE_BOTH)
+                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.CHARACTERISTIC_VALUE, advantagePreference = AdvantagePreference.NONE)
                         }
 
                         // --- SAVING THROW SECTION ---
@@ -200,7 +200,7 @@ fun BonusConfigDialog(
                         }
                         AddBonusButton {
                             statBonuses =
-                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.SAVING_THROW, advantagePreference = AdvantagePreference.IGNORE_BOTH)
+                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.SAVING_THROW, advantagePreference = AdvantagePreference.NONE)
                         }
 
                         // --- ABILITY CHECK SECTION ---
@@ -231,7 +231,7 @@ fun BonusConfigDialog(
                         }
                         AddBonusButton {
                             statBonuses =
-                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.ABILITY_CHECK, advantagePreference = AdvantagePreference.IGNORE_BOTH)
+                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.ABILITY_CHECK, advantagePreference = AdvantagePreference.NONE)
                         }
                     }
 
@@ -262,7 +262,7 @@ fun BonusConfigDialog(
                                     }
                                 },
                                 onAddBonus = {
-                                    skillBonuses = skillBonuses + SkillBonus(skillName = skillName, advantagePreference = AdvantagePreference.IGNORE_BOTH)
+                                    skillBonuses = skillBonuses + SkillBonus(skillName = skillName, advantagePreference = AdvantagePreference.NONE)
                                 },
                                 onUpdateBonus = { bonusId, n, f, act, op, adv ->
                                     skillBonuses = skillBonuses.map {

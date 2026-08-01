@@ -135,6 +135,23 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("short_rest_fill_direction", "LTR") ?: "LTR"
         set(value) = prefs.edit { putString("short_rest_fill_direction", value) }
 
+    // New Header Interfaces
+    var useNewACInterface: Boolean
+        get() = prefs.getBoolean("use_new_ac_interface", true)
+        set(value) = prefs.edit { putBoolean("use_new_ac_interface", value) }
+
+    var useNewInitInterface: Boolean
+        get() = prefs.getBoolean("use_new_init_interface", true)
+        set(value) = prefs.edit { putBoolean("use_new_init_interface", value) }
+
+    var useNewCondInterface: Boolean
+        get() = prefs.getBoolean("use_new_cond_interface", true)
+        set(value) = prefs.edit { putBoolean("use_new_cond_interface", value) }
+
+    var useNewSpeedInterface: Boolean
+        get() = prefs.getBoolean("use_new_speed_interface", true)
+        set(value) = prefs.edit { putBoolean("use_new_speed_interface", value) }
+
     fun resetToDefaults() {
         prefs.edit { clear() }
     }

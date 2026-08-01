@@ -24,12 +24,35 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.scale
 import ru.quasaris.characters.master.ArmorClassEntry
 import ru.quasaris.characters.master.FormulaEntry
 import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.SpeedEntry
 import ru.quasaris.characters.master.ShieldEntry
+
+fun getFullFormula(entry: FormulaEntry): String {
+    var full = entry.formula
+    val isInitiative = entry is InitiativeEntry
+    
+    if (!isInitiative) {
+        full = full.replace(Regex("\\b\\d*d\\d+\\b", RegexOption.IGNORE_CASE), "").trim()
+        full = full.replace(Regex("\\+\\s*$"), "").replace(Regex("^\\s*\\+"), "").trim()
+    }
+    
+    entry.bonuses.filter { it.isActive }.forEach {
+        var f = it.formula.trim()
+        if (!isInitiative) {
+            f = f.replace(Regex("\\b\\d*d\\d+\\b", RegexOption.IGNORE_CASE), "").trim()
+            f = f.replace(Regex("^\\s*\\+\\s*"), "").replace(Regex("\\s*\\+\\s*$"), "")
+        }
+        
+        if (f.isNotEmpty()) {
+            val prefix = if (f.startsWith("+") || f.startsWith("-")) " " else " + "
+            full += "$prefix$f"
+        }
+    }
+    return full
+}
 
 @Composable
 fun FormulaPanel(
@@ -99,11 +122,18 @@ fun FormulaEntryItem(
             }
             if (entry is InitiativeEntry) {
                 Box(modifier = Modifier.width(1.2.dp).fillMaxHeight().background(sep))
-                Box(modifier = Modifier.width(44.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                    Switch(
-                        checked = entry.hasAdvantage,
-                        onCheckedChange = { onUpdate(entry.copy(hasAdvantage = it)) },
-                        modifier = Modifier.scale(0.7f)
+                Box(
+                    modifier = Modifier
+                        .width(44.dp)
+                        .fillMaxHeight()
+                        .clickable { onUpdate(entry.copy(hasAdvantage = !entry.hasAdvantage)) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        null,
+                        tint = if (entry.hasAdvantage) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.3f),
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
@@ -111,13 +141,13 @@ fun FormulaEntryItem(
             Box(modifier = Modifier.width(44.dp).fillMaxHeight().clickable { onToggle() }, contentAlignment = Alignment.Center) { Icon(if (isActive) Icons.Default.Close else Icons.Default.Check, null, modifier = Modifier.size(20.dp)) }
         }
         HorizontalDivider(color = sep, thickness = 1.2.dp); Box(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
-            if (entry.formula.isEmpty()) Text("Формула", color = colorScheme.onSurface.copy(alpha = 0.4f), fontSize = 14.sp)
-            BasicTextField(value = entry.formula, onValueChange = { s -> 
+            if (entry.formula.isEmpty() && entry.bonuses.none { it.isActive }) Text("Формула", color = colorScheme.onSurface.copy(alpha = 0.4f), fontSize = 14.sp)
+            BasicTextField(value = getFullFormula(entry), onValueChange = { s -> 
                 val u: FormulaEntry = when(entry) { 
-                    is ArmorClassEntry -> entry.copy(formula = s)
-                    is InitiativeEntry -> entry.copy(formula = s)
-                    is SpeedEntry -> entry.copy(formula = s)
-                    is ShieldEntry -> entry.copy(formula = s)
+                    is ArmorClassEntry -> entry.copy(formula = s, bonuses = entry.bonuses.map { it.copy(isActive = false) })
+                    is InitiativeEntry -> entry.copy(formula = s, bonuses = entry.bonuses.map { it.copy(isActive = false) })
+                    is SpeedEntry -> entry.copy(formula = s, bonuses = entry.bonuses.map { it.copy(isActive = false) })
+                    is ShieldEntry -> entry.copy(formula = s, bonuses = entry.bonuses.map { it.copy(isActive = false) })
                     else -> entry 
                 }
                 onUpdate(u) 

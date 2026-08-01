@@ -6,25 +6,29 @@ interface FormulaEntry {
     val id: String
     val name: String
     val formula: String
+    val bonuses: List<AttackBonus>
 }
 
 data class ArmorClassEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
-    override val formula: String = ""
+    override val formula: String = "",
+    override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
 data class InitiativeEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
     override val formula: String = "",
-    val hasAdvantage: Boolean = false
+    val hasAdvantage: Boolean = false,
+    override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
 data class SpeedEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
-    override val formula: String = ""
+    override val formula: String = "",
+    override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
 enum class CharacterTab(val title: String) {
@@ -308,5 +312,6 @@ data class Character(
 data class ShieldEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
-    override val formula: String = ""
+    override val formula: String = "",
+    override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry

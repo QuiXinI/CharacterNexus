@@ -260,7 +260,7 @@ fun AttackConfigDialog(
                         }
 
                         AddBonusButton(enabled = state.attribute != Attribute.NONE) {
-                            state = state.copy(attackBonuses = state.attackBonuses + AttackBonus(advantagePreference = AdvantagePreference.IGNORE_BOTH))
+                            state = state.copy(attackBonuses = state.attackBonuses + AttackBonus(advantagePreference = AdvantagePreference.NONE))
                         }
                     }
 

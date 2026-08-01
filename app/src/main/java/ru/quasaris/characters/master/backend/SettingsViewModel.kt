@@ -87,6 +87,18 @@ class SettingsViewModel(
     private val _shortRestFillDirection = MutableStateFlow(SlotFillDirection.valueOf(settingsManager?.shortRestFillDirection ?: "LTR"))
     val shortRestFillDirection = _shortRestFillDirection.asStateFlow()
 
+    private val _useNewACInterface = MutableStateFlow(settingsManager?.useNewACInterface ?: true)
+    val useNewACInterface = _useNewACInterface.asStateFlow()
+
+    private val _useNewInitInterface = MutableStateFlow(settingsManager?.useNewInitInterface ?: true)
+    val useNewInitInterface = _useNewInitInterface.asStateFlow()
+
+    private val _useNewCondInterface = MutableStateFlow(settingsManager?.useNewCondInterface ?: true)
+    val useNewCondInterface = _useNewCondInterface.asStateFlow()
+
+    private val _useNewSpeedInterface = MutableStateFlow(settingsManager?.useNewSpeedInterface ?: true)
+    val useNewSpeedInterface = _useNewSpeedInterface.asStateFlow()
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size
@@ -210,6 +222,26 @@ class SettingsViewModel(
         settingsManager?.shortRestFillDirection = direction.name
     }
 
+    fun updateUseNewACInterface(enabled: Boolean) {
+        _useNewACInterface.value = enabled
+        settingsManager?.useNewACInterface = enabled
+    }
+
+    fun updateUseNewInitInterface(enabled: Boolean) {
+        _useNewInitInterface.value = enabled
+        settingsManager?.useNewInitInterface = enabled
+    }
+
+    fun updateUseNewCondInterface(enabled: Boolean) {
+        _useNewCondInterface.value = enabled
+        settingsManager?.useNewCondInterface = enabled
+    }
+
+    fun updateUseNewSpeedInterface(enabled: Boolean) {
+        _useNewSpeedInterface.value = enabled
+        settingsManager?.useNewSpeedInterface = enabled
+    }
+
     val performanceClass: Int
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Build.VERSION.MEDIA_PERFORMANCE_CLASS
@@ -262,5 +294,9 @@ class SettingsViewModel(
         _longRestFillDirection.value = SlotFillDirection.valueOf(settingsManager?.longRestFillDirection ?: "LTR")
         _shortRestAlignment.value = SlotAlignment.valueOf(settingsManager?.shortRestAlignment ?: "RIGHT")
         _shortRestFillDirection.value = SlotFillDirection.valueOf(settingsManager?.shortRestFillDirection ?: "LTR")
+        _useNewACInterface.value = settingsManager?.useNewACInterface ?: true
+        _useNewInitInterface.value = settingsManager?.useNewInitInterface ?: true
+        _useNewCondInterface.value = settingsManager?.useNewCondInterface ?: true
+        _useNewSpeedInterface.value = settingsManager?.useNewSpeedInterface ?: true
     }
 }
