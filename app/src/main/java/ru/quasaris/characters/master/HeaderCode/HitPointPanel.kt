@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,7 +42,12 @@ fun HealthPanel(
     onDamageClick: () -> Unit,
     onTempClick: () -> Unit,
     healthColor: Color,
-    onFocusLost: () -> Unit
+    onFocusLost: () -> Unit,
+    // Hit Dice Support
+    spentHitDice: Int,
+    maxHitDice: Int,
+    onSpentHitDiceChange: (Int) -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
@@ -55,14 +62,62 @@ fun HealthPanel(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Заголовок
-        Text(
-            text = "Хиты",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Black,
-            color = healthColor,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        // Заголовок с шестеренкой и костями хитов
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            IconButton(
+                onClick = onOpenSettings,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Icon(Icons.Default.Settings, null, tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+            }
+            
+            Text(
+                text = "Хиты",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                color = healthColor,
+                textAlign = TextAlign.Center
+            )
+
+            // Hit Dice Counter
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                IconButton(
+                    onClick = { onSpentHitDiceChange((spentHitDice + 1).coerceAtMost(maxHitDice)) },
+                    modifier = Modifier.size(32.dp),
+                    enabled = spentHitDice < maxHitDice
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Remove, null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
+                }
+                
+                Surface(
+                    color = colorScheme.primary.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(32.dp).widthIn(min = 60.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                        Text(
+                            "${maxHitDice - spentHitDice}/$maxHitDice КХ",
+                            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
+                        )
+                    }
+                }
+
+                IconButton(
+                    onClick = { onSpentHitDiceChange((spentHitDice - 1).coerceAtLeast(0)) },
+                    modifier = Modifier.size(32.dp),
+                    enabled = spentHitDice > 0
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Add, null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
+                }
+            }
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

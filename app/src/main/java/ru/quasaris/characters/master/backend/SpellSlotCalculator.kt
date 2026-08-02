@@ -31,8 +31,8 @@ object SpellSlotCalculator {
     fun getSlotsForLevel(casterType: CasterType, characterLevel: Int): List<Int> {
         val effectiveLevel = when (casterType) {
             CasterType.FULL -> characterLevel
-            CasterType.HALF -> if (characterLevel < 2) 0 else (characterLevel + 1) / 2
-            CasterType.THIRD -> if (characterLevel < 3) 0 else (characterLevel + 2) / 3
+            CasterType.HALF -> (characterLevel + 1) / 2
+            CasterType.THIRD -> (characterLevel + 2) / 3
             CasterType.NONE -> 0
         }
 

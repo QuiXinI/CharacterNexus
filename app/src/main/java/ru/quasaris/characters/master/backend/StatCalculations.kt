@@ -1,7 +1,18 @@
 package ru.quasaris.characters.master.backend
 
-import java.util.Stack
-import kotlin.math.floor
+import kotlin.math.*
+
+/**
+ * Конфигурация для расчетов, связанных с костями.
+ */
+object DiceCalculationConfig {
+    var isDiceCalculationEnabled: Boolean = true
+}
+
+/**
+ * Описание части формулы с кубами (например, 2d6).
+ */
+data class DicePart(val count: Int, val sides: Int)
 
 /**
  * Расчет модификатора характеристики по значению.
@@ -107,167 +118,264 @@ fun calculateLevelFromExperience(expStr: String): Int {
 }
 
 /**
- * Предварительная обработка формулы: замена всех текстовых токенов на числовые значения.
+ * Разбор формулы на плоский бонус и список кубов.
  */
-fun preprocessFormula(formula: String, stats: Map<String, String>): String {
-    var processed = formula.uppercase()
+fun parseFormulaParts(
+    formula: String,
+    stats: Map<String, String> = emptyMap()
+): Pair<Int, List<DicePart>> {
+    val processed = preprocessFormula(formula, stats)
     
-    // 1. Характеристики (Attribute Tokens)
-    val statKeys = mapOf(
-        "СИЛ" to "strength", "STR" to "strength",
-        "ЛОВ" to "dexterity", "DEX" to "dexterity",
-        "ТЕЛ" to "constitution", "CON" to "constitution",
-        "ИНТ" to "intelligence", "INT" to "intelligence",
-        "МУД" to "wisdom", "WIS" to "wisdom",
-        "ХАР" to "charisma", "CHA" to "charisma"
-    )
-    
-    statKeys.forEach { (key, statKey) ->
-        // Эффективное значение (со всеми бонусами)
-        val effScore = stats[statKey] ?: "10"
-        val effMod = calculateModifier(effScore).toString()
-        
-        // Базовое значение (до бонусов)
-        val baseScore = stats["base_$statKey"] ?: effScore
-        val baseMod = calculateModifier(baseScore).toString()
-        
-        // 1. Сначала заменяем самые длинные и специфичные токены
-        processed = processed.replace("[НАСТ $key ЗНАЧ]", baseScore)
-            .replace("[CUR $key SCR]", baseScore)
-            .replace("[$key ЗНАЧ]", effScore)
-            .replace("[$key SCR]", effScore)
-            
-        // 2. Затем заменяем токены модификаторов (сначала НАСТ)
-        processed = processed.replace("[НАСТ $key]", " $baseMod ")
-            .replace("[CUR $key]", " $baseMod ")
-            .replace("[$key]", " $effMod ")
+    val dice = mutableListOf<DicePart>()
+
+    val diceRegex = Regex("([+-]?\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
+    val remainingFormula = diceRegex.replace(processed) { match ->
+        val countStr = match.groupValues[1]
+        val count = when (countStr) {
+            "", "+" -> 1
+            "-" -> -1
+            else -> countStr.toIntOrNull() ?: 1
+        }
+        val sides = match.groupValues[2].toInt()
+        if (sides > 0) {
+            dice.add(DicePart(count, sides))
+        }
+        ""
     }
+
+    val flat = evaluateFormulaDouble(remainingFormula, stats)
     
-    // 2. Уровень и опыт
-    val level = stats["level"] ?: "1"
-    processed = processed.replace("[LVL]", " $level ")
-        .replace("[УР]", " $level ")
-        .replace("[LEVEL]", " $level ")
-        
-    val xp = stats["xp"] ?: "0"
-    processed = processed.replace("[XP]", " $xp ")
-        .replace("[ОП]", " $xp ")
-
-    // 3. Здоровье и ресурсы
-    val hp = stats["hp"] ?: "0"
-    processed = processed.replace("[HP]", " $hp ").replace("[ХП]", " $hp ")
-    val mhp = stats["max_hp"] ?: "0"
-    processed = processed.replace("[MHP]", " $mhp ").replace("[МХП]", " $mhp ")
-    val thp = stats["temp_hp"] ?: "0"
-    processed = processed.replace("[THP]", " $thp ").replace("[ВХП]", " $thp ")
-
-    // 4. Боевые показатели
-    val ac = stats["ac"] ?: "10"
-    processed = processed.replace("[AC]", " $ac ").replace("[КД]", " $ac ")
-    val ex = stats["exhaustion"] ?: "0"
-    processed = processed.replace("[EX]", " $ex ").replace("[ИСТ]", " $ex ")
-    val cond = stats["conditions"] ?: "0"
-    processed = processed.replace("[COND]", " $cond ").replace("[СОСТ]", " $cond ")
-
-    // 5. Бонус мастерства
-    val realPb = getProficiencyBonus(level).toString()
-    val pbValue = stats["proficiencyBonus"] ?: realPb
-    
-    // Если в proficiencyBonus записана формула (например "[НАСТ БМ]"), вычисляем её рекурсивно или берем realPb
-    val safePb = if (pbValue.contains("[БМ]") || pbValue.contains("[PB]")) realPb else pbValue
-    
-    processed = processed.replace("[БМ]", " $safePb ")
-        .replace("[PB]", " $safePb ")
-        .replace("[PROF]", " $safePb ")
-        .replace("[НАСТ БМ]", " $realPb ")
-        .replace("[REAL PB]", " $realPb ")
-
-    // 6. Магические бонусы
-    val magAtk = stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: "0"
-    val magSave = stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: "0"
-    val magMod = stats["[MAG MOD]"] ?: stats["[МАГ МОД]"] ?: "0"
-
-    processed = processed.replace("[MAG ATC BON]", " $magAtk ")
-        .replace("[МАГ АТК БОН]", " $magAtk ")
-        .replace("[MAG SAVE BON]", " $magSave ")
-        .replace("[МАГ СПАС БОН]", " $magSave ")
-        .replace("[MAG MOD]", " $magMod ")
-        .replace("[МАГ МОД]", " $magMod ")
-        
-    return processed
+    return flat.toInt() to dice
 }
 
 /**
- * Оценка математической формулы с учетом характеристик персонажа.
+ * Предварительная обработка формулы: замена всех текстовых токенов [...] на числовые значения.
  */
-fun evaluateFormula(formula: String, stats: Map<String, String>): Int {
-    var processed = preprocessFormula(formula, stats)
+fun preprocessFormula(formula: String, stats: Map<String, String>): String {
+    val tokenRegex = Regex("\\[([^\\]]+)\\]")
     
-    fun processFunctions(input: String): String {
-        var current = input
-        val functions = listOf(
-            listOf("МАКС", "MAX", "НИЗ", "FLOOR") to true,
-            listOf("МИН", "MIN", "ВЕРХ", "CEIL") to false
-        )
-        functions.forEach { (names, isMax) ->
-            names.forEach { func ->
-                val patternStandard = Regex("(?:\\[$func\\s*\\(([^()]+)\\)]|$func\\s*\\(([^()]+)\\))")
-                while (current.contains(func)) {
-                    val match = patternStandard.find(current) ?: break
-                    val content = match.groupValues[1].ifEmpty { match.groupValues[2] }
-                    val values = content.split(Regex("[;,]")).map { evaluateFormula(it.trim(), stats) }
-                    val result = if (isMax) values.maxOrNull() ?: 0 else values.minOrNull() ?: 0
-                    current = current.replace(match.value, result.toString())
-                }
-                val patternTrailing = Regex("(-?\\d+)[^\\d\\[]*\\[$func]\\s*\\((-?\\d+)\\)")
-                while (current.contains("[$func]")) {
-                    val match = patternTrailing.find(current) ?: break
-                    val val1 = match.groupValues[1].toInt()
-                    val val2 = match.groupValues[2].toInt()
-                    val result = if (isMax) maxOf(val1, val2) else minOf(val1, val2)
-                    current = current.replace(match.value, result.toString())
+    val statMapping = mapOf(
+        "СИЛ" to listOf("strength", "STR", "СИЛ"),
+        "STR" to listOf("strength", "STR", "СИЛ"),
+        "ЛОВ" to listOf("dexterity", "DEX", "ЛОВ"),
+        "DEX" to listOf("dexterity", "DEX", "ЛОВ"),
+        "ТЕЛ" to listOf("constitution", "CON", "ТЕЛ"),
+        "CON" to listOf("constitution", "CON", "ТЕЛ"),
+        "ИНТ" to listOf("intelligence", "INT", "ИНТ"),
+        "INT" to listOf("intelligence", "INT", "ИНТ"),
+        "МУД" to listOf("wisdom", "WIS", "МУД"),
+        "WIS" to listOf("wisdom", "WIS", "МУД"),
+        "ХАР" to listOf("charisma", "CHA", "ХАР"),
+        "CHA" to listOf("charisma", "CHA", "ХАР")
+    )
+
+    fun getStatValue(token: String): String {
+        val upperToken = token.uppercase().trim()
+        
+        // 1. Проверка на модификатор НАСТ (текущий базовый)
+        if (upperToken.startsWith("НАСТ ") || upperToken.startsWith("CUR ")) {
+            val attr = upperToken.removePrefix("НАСТ ").removePrefix("CUR ").trim()
+            if (attr == "БМ" || attr == "PB") {
+                val level = stats["level"] ?: "1"
+                return getProficiencyBonus(level).toString()
+            }
+            val keys = statMapping[attr]
+            if (keys != null) {
+                for (k in keys) {
+                    val score = stats["base_$k"] ?: stats[k]
+                    if (score != null) return calculateModifier(score).toString()
                 }
             }
         }
-        return current
+        
+        // 2. Проверка на значение ЗНАЧ/SCR
+        if (upperToken.endsWith(" ЗНАЧ") || upperToken.endsWith(" SCR")) {
+            val isBase = upperToken.startsWith("НАСТ ") || upperToken.startsWith("CUR ")
+            val attr = upperToken.removeSuffix(" ЗНАЧ").removeSuffix(" SCR")
+                .removePrefix("НАСТ ").removePrefix("CUR ").trim()
+            val keys = statMapping[attr]
+            if (keys != null) {
+                for (k in keys) {
+                    val key = if (isBase) "base_$k" else k
+                    val score = stats[key] ?: if (isBase) stats[k] else null
+                    if (score != null) return score
+                }
+            }
+            return stats[upperToken] ?: "10"
+        }
+
+        // 3. Стандартные сокращения модификаторов [STR], [СИЛ] и т.д.
+        statMapping[upperToken]?.let { keys ->
+            for (k in keys) {
+                stats[k]?.let { return calculateModifier(it).toString() }
+            }
+        }
+
+        // 4. Специальные токены
+        return when (upperToken) {
+            "LVL", "УР", "LEVEL" -> stats["level"] ?: "1"
+            "XP", "ОП" -> stats["xp"] ?: "0"
+            "HP", "ХП" -> stats["hp"] ?: "0"
+            "MHP", "МХП" -> stats["max_hp"] ?: "0"
+            "THP", "ВХП" -> stats["temp_hp"] ?: "0"
+            "AC", "КД" -> stats["ac"] ?: "10"
+            "EX", "ИСТ", "EXHAUSTION" -> stats["exhaustion"] ?: "0"
+            "COND", "СОСТ", "CONDITIONS" -> stats["conditions"] ?: "0"
+            "БМ", "PB", "PROF" -> {
+                val level = stats["level"] ?: "1"
+                stats["proficiencyBonus"] ?: getProficiencyBonus(level).toString()
+            }
+            "НАСТ БМ", "REAL PB" -> getProficiencyBonus(stats["level"] ?: "1").toString()
+            "MAG ATC BON", "МАГ АТК БОН" -> stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: stats["mag_atk_bonus"] ?: "0"
+            "MAG SAVE BON", "МАГ СПАС БОН" -> stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: stats["mag_save_bonus"] ?: "0"
+            "MAG MOD", "МАГ МОД" -> stats["[MAG MOD]"] ?: stats["[МАГ МОД]"] ?: stats["mag_mod"] ?: "0"
+            else -> stats[token] ?: stats[upperToken] ?: "0"
+        }
     }
 
-    processed = processFunctions(processed).replace(Regex("[^\\d+\\-*/]"), " ")
+    return tokenRegex.replace(formula) { match ->
+        getStatValue(match.groupValues[1])
+    }
+}
+
+/**
+ * Оценка математической формулы (целочисленная).
+ */
+fun evaluateFormula(formula: String, stats: Map<String, String> = emptyMap()): Int {
+    return evaluateFormulaDouble(formula, stats).roundToInt()
+}
+
+/**
+ * Оценка математической формулы с плавающей точкой.
+ */
+fun evaluateFormulaDouble(formula: String, stats: Map<String, String> = emptyMap()): Double {
+    if (formula.isBlank()) return 0.0
+    val processed = preprocessFormula(formula, stats)
     return try {
-        val clean = processed.replace(" ", "")
-        val tokens = mutableListOf<String>()
-        var i = 0
-        while (i < clean.length) {
-            val c = clean[i]
-            if (c.isDigit()) {
-                val start = i
-                while (i < clean.length && clean[i].isDigit()) i++
-                tokens.add(clean.substring(start, i))
-            } else if ("+*/".contains(c)) { tokens.add(c.toString()); i++ }
-            else if (c == '-') {
-                if (i > 0 && clean[i-1].isDigit()) { tokens.add("-"); i++ }
-                else {
-                    val s = i; i++; while (i < clean.length && clean[i].isDigit()) i++
-                    if (i > s + 1) tokens.add(clean.substring(s, i)) else tokens.add("-")
+        FormulaParser(processed).parse()
+    } catch (e: Exception) {
+        0.0
+    }
+}
+
+/**
+ * Парсер математических выражений методом рекурсивного спуска.
+ */
+private class FormulaParser(private val input: String) {
+    private var pos = -1
+    private var ch = 0
+
+    private fun nextChar() {
+        ch = if (++pos < input.length) input[pos].code else -1
+    }
+
+    private fun eat(charToEat: Int): Boolean {
+        while (ch == ' '.code) nextChar()
+        if (ch == charToEat) {
+            nextChar()
+            return true
+        }
+        return false
+    }
+
+    fun parse(): Double {
+        nextChar()
+        return parseExpression()
+    }
+
+    private fun parseExpression(): Double {
+        var x = parseTerm()
+        while (true) {
+            if (eat('+'.code)) x += parseTerm()
+            else if (eat('-'.code)) x -= parseTerm()
+            else return x
+        }
+    }
+
+    private fun parseTerm(): Double {
+        var x = parseFactor()
+        while (true) {
+            if (eat('*'.code)) x *= parseFactor()
+            else if (eat('/'.code)) {
+                val y = parseFactor()
+                x = if (y != 0.0) x / y else 0.0
+            } else return x
+        }
+    }
+
+    private fun parseFactor(): Double {
+        if (eat('+'.code)) return parseFactor()
+        if (eat('-'.code)) return -parseFactor()
+
+        var x: Double
+        val startPos = this.pos
+        if (eat('('.code)) {
+            x = parseExpression()
+            eat(')'.code)
+        } else if ((ch >= '0'.code && ch <= '9'.code) || ch == '.'.code) {
+            while ((ch >= '0'.code && ch <= '9'.code) || ch == '.'.code) nextChar()
+            x = input.substring(startPos, this.pos).toDouble()
+        } else if (isLetter(ch)) {
+            while (isLetter(ch) || (ch >= '0'.code && ch <= '9'.code)) nextChar()
+            val funcOrDice = input.substring(startPos, this.pos).lowercase()
+            
+            // Проверка на кости без префикса (например, "d6")
+            if (funcOrDice.startsWith("d") || funcOrDice.startsWith("k") || funcOrDice.startsWith("к")) {
+                x = handleDiceSuffix(1.0, funcOrDice)
+            } else {
+                val args = mutableListOf<Double>()
+                if (eat('('.code)) {
+                    do {
+                        args.add(parseExpression())
+                    } while (eat(','.code) || eat(';'.code))
+                    eat(')'.code)
                 }
-            } else i++
-        }
-        val vS = Stack<Int>(); val oS = Stack<String>()
-        fun prc(o1: String, o2: String): Boolean = !((o1 == "*" || o1 == "/") && (o2 == "+" || o2 == "-"))
-        fun app(op: String, b: Int, a: Int): Int = when (op) {
-            "+" -> a + b; "-" -> a - b; "*" -> a * b; "/" -> if (b != 0) a / b else 0; else -> 0
-        }
-        for (token in tokens) {
-            if (token.isEmpty()) continue
-            if (token[0].isDigit() || (token.length > 1 && token[0] == '-' && token[1].isDigit())) vS.push(token.toInt())
-            else if ("+-*/".contains(token)) {
-                while (!oS.empty() && prc(token, oS.peek())) { if (vS.size < 2) break; vS.push(app(oS.pop(), vS.pop(), vS.pop())) }
-                oS.push(token)
+                
+                x = when (funcOrDice) {
+                    "min", "мин" -> args.minOrNull() ?: 0.0
+                    "max", "макс" -> args.maxOrNull() ?: 0.0
+                    "floor", "вниз" -> floor(args.firstOrNull() ?: 0.0)
+                    "ceil", "вверх" -> ceil(args.firstOrNull() ?: 0.0)
+                    "abs" -> abs(args.firstOrNull() ?: 0.0)
+                    "round" -> round(args.firstOrNull() ?: 0.0)
+                    else -> 0.0
+                }
             }
+        } else {
+            x = 0.0
         }
-        while (!oS.empty() && vS.size >= 2) vS.push(app(oS.pop(), vS.pop(), vS.pop()))
-        if (vS.isEmpty()) 0 else vS.pop()
-    } catch (_: Exception) { 0 }
+
+        // Проверка на суффикс кубов (например, "1d6")
+        if (ch == 'd'.code || ch == 'k'.code || ch == 'к'.code) {
+            val startDice = pos
+            nextChar() // eat d/k
+            while (ch >= '0'.code && ch <= '9'.code) nextChar()
+            val diceStr = input.substring(startDice, pos)
+            x = handleDiceSuffix(x, diceStr)
+        }
+
+        if (eat('^'.code)) x = x.pow(parseFactor())
+
+        return x
+    }
+
+    private fun isLetter(c: Int): Boolean {
+        return (c >= 'a'.code && c <= 'z'.code) || (c >= 'A'.code && c <= 'Z'.code) || 
+               (c >= 'а'.code && c <= 'я'.code) || (c >= 'А'.code && c <= 'Я'.code)
+    }
+
+    private fun handleDiceSuffix(count: Double, diceStr: String): Double {
+        // diceStr looks like "d6", "k20", etc.
+        if (!DiceCalculationConfig.isDiceCalculationEnabled) return 0.0
+        
+        // В evaluateFormula мы не делаем реальных бросков, так как это чистая функция оценки.
+        // Обычно такие формулы используются для отображения или расчета статических значений.
+        // Если требуется именно РОЛЛ, это делает DiceRoller.
+        // Однако, для корректного парсинга "1d4 + 10" при отключенных кубах мы возвращаем 0 для кубов.
+        // Если кубы включены, но мы в evaluateFormula, мы можем вернуть среднее или 0.
+        // Пользователь просил: "при отключении просто игнорирует, условное, 1к4, а не превращает его в 14"
+        return 0.0 
+    }
 }
 
 data class Condition(val name: String, val description: String)

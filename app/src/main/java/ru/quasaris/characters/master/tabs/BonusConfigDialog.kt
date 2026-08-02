@@ -34,9 +34,9 @@ import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.*
 import ru.quasaris.characters.master.tabs.attacks.AddBonusButton
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
-import ru.quasaris.characters.master.tabs.attacks.DicePart
+import ru.quasaris.characters.master.backend.DicePart
 import ru.quasaris.characters.master.tabs.attacks.SectionHeader
-import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.backend.parseFormulaParts
 import ru.quasaris.characters.master.tabs.attacks.AdvantagePreferenceLabel
 
 @OptIn(ExperimentalMaterial3Api::class)

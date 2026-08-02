@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,7 @@ fun SpellSlotTracker(
     onUsedSlotsChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
     isShortRest: Boolean = false,
+    isDawnRest: Boolean = false,
     alignment: SlotAlignment = SlotAlignment.RIGHT,
     fillDirection: SlotFillDirection = SlotFillDirection.LTR
 ) {
@@ -33,7 +35,11 @@ fun SpellSlotTracker(
 
     val haptic = LocalHapticFeedback.current
     val colorScheme = MaterialTheme.colorScheme
-    val color = if (isShortRest) colorScheme.secondary else colorScheme.primary
+    val color = when {
+        isDawnRest -> Color(0xFFCE93D8)
+        isShortRest -> colorScheme.secondary
+        else -> colorScheme.primary
+    }
 
     FlowRow(
         modifier = modifier,
@@ -66,7 +72,11 @@ fun SpellSlotTracker(
                 }
             }
             
-            val shape = if (isShortRest) CircleShape else RoundedCornerShape(4.dp)
+            val shape = when {
+                isShortRest -> CircleShape
+                isDawnRest -> RoundedCornerShape(8.dp)
+                else -> RoundedCornerShape(4.dp)
+            }
             
             Box(
                 modifier = Modifier

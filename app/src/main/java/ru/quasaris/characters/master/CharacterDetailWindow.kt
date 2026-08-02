@@ -34,28 +34,20 @@ import ru.quasaris.characters.master.tabs.*
 import ru.quasaris.characters.master.MainWindow.*
 import ru.quasaris.characters.master.HeaderCode.*
 import ru.quasaris.characters.master.tabs.attacks.AttacksTab
-import ru.quasaris.characters.master.backend.AdvantageType
-import ru.quasaris.characters.master.backend.ArchiveManager
-import ru.quasaris.characters.master.backend.ImageManager
-import ru.quasaris.characters.master.backend.calculateModifier
-import ru.quasaris.characters.master.backend.getProficiencyBonus
-import ru.quasaris.characters.master.backend.getNextLevelThreshold
-import ru.quasaris.characters.master.backend.RollResult
-import ru.quasaris.characters.master.backend.RollSourceType
-import ru.quasaris.characters.master.backend.DiceRoller
-import ru.quasaris.characters.master.backend.AdvantageLogic
-import ru.quasaris.characters.master.backend.SettingsViewModel
+import ru.quasaris.characters.master.backend.*
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
-
 import dev.chrisbanes.haze.LocalHazeStyle
 import ru.quasaris.characters.master.tabs.spells.SpellSettingsDialog
 import ru.quasaris.characters.master.tabs.spells.SpellsTab
 import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
+import ru.quasaris.characters.master.ui.RestPopup
+import ru.quasaris.characters.master.ui.RestPanel
 import androidx.compose.ui.draw.scale
+import java.util.UUID
 
 /**
  * Стиль размытия для нижней панели выбора вкладок.
@@ -136,11 +128,13 @@ fun CharacterDetailWindow(
     var isSpeedPanelVisible by remember { mutableStateOf(false) }
     var isConditionsPanelVisible by remember { mutableStateOf(false) }
     var isHealthPanelVisible by remember { mutableStateOf(false) }
+    var isRestPanelVisible by remember { mutableStateOf(false) }
 
     var showEnhancedAC by remember { mutableStateOf(false) }
     var showEnhancedInit by remember { mutableStateOf(false) }
     var showEnhancedSpeed by remember { mutableStateOf(false) }
     var showEnhancedCond by remember { mutableStateOf(false) }
+    var showHealthSettings by remember { mutableStateOf(false) }
 
     var hpDialogType by remember { mutableStateOf("") }
     var hpDialogValue by remember { mutableStateOf("") }
@@ -157,6 +151,8 @@ fun CharacterDetailWindow(
     var speedEntries by remember { mutableStateOf(character?.speedEntries ?: listOf(SpeedEntry(name = "Базовая Скорость", formula = "30"))) }
     var activeSpeedId by remember { mutableStateOf(character?.activeSpeedId ?: speedEntries.firstOrNull()?.id) }
     var speedDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+
+    var hitDiceEntries by remember { mutableStateOf(character?.hitDiceEntries ?: emptyList()) }
 
     var isShieldActive by remember { mutableStateOf(character?.isShieldActive ?: false) }
     var shieldEntries by remember { mutableStateOf(character?.shieldEntries ?: listOf(ShieldEntry(name = "Базовый Щит", formula = "2"))) }
@@ -286,20 +282,16 @@ fun CharacterDetailWindow(
     val statsMap = remember(statsState, level, proficiencyBonus, spellSettings, currentHp, maxHp, tempHp, exhaustion, selectedConditions, activeArmorClassId, armorClassEntries, isShieldActive, activeShieldId, shieldEntries) {
         val pbVal = (proficiencyBonus.replace("+", "").toIntOrNull() ?: getProficiencyBonus(level))
         
-        // Сначала базовые мапы
         val baseStats = statsState.toStatsMap(level, pbVal.toString())
-        
         val mutableStats = baseStats.toMutableMap()
         
-        // Добавляем эффективные значения (с учетом бонусов к значению)
-        // Для самих расчетов бонусов к статам используем "базовый" statsMap, чтобы избежать циклической зависимости
         Attribute.entries.forEach { attr ->
             if (attr == Attribute.NONE) return@forEach
             val key = attr.name.lowercase()
             val baseScore = baseStats[key] ?: "10"
             val effScore = ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus(
                 bonuses = statsState.statBonuses.filter { it.attribute == attr && it.type == StatBonusType.CHARACTERISTIC_VALUE },
-                stats = baseStats, // Используем базовые статы для самих бонусов
+                stats = baseStats,
                 initialValue = baseScore.toIntOrNull() ?: 10
             ).toString()
             
@@ -320,10 +312,9 @@ fun CharacterDetailWindow(
             put("exhaustion", exhaustion.toString())
             put("conditions", selectedConditions.size.toString())
 
-            // Add spellcasting ability modifier
             if (spellSettings.spellcastingAbility != Attribute.NONE) {
                 val score = get(spellSettings.spellcastingAbility.name.lowercase()) ?: "10"
-                val mod = ru.quasaris.characters.master.backend.calculateModifier(score)
+                val mod = calculateModifier(score)
                 put("[MAG MOD]", mod.toString())
                 put("[МАГ МОД]", mod.toString())
             } else {
@@ -331,8 +322,7 @@ fun CharacterDetailWindow(
                 put("[МАГ МОД]", "0")
             }
 
-            // AC depends on statsMap
-            val ac = ru.quasaris.characters.master.MainWindow.CombatCalculations.calculateAC(
+            val ac = CombatCalculations.calculateAC(
                 activeArmorClassId, armorClassEntries, this, isShieldActive, activeShieldId, shieldEntries
             )
             put("ac", ac)
@@ -370,14 +360,12 @@ fun CharacterDetailWindow(
     var isEditMode by remember { mutableStateOf(false) }
     var isAdvancedMode by remember { mutableStateOf(false) }
 
-    // Clear focus on dispose to prevent context menu hierarchy crashes
     DisposableEffect(Unit) {
         onDispose {
             focusManager.clearFocus()
         }
     }
 
-    // Reset edit mode and clear focus when changing tabs
     LaunchedEffect(pagerState.currentPage) {
         isEditMode = false
         focusManager.clearFocus()
@@ -385,53 +373,24 @@ fun CharacterDetailWindow(
 
     val saveCurrentCharacter = {
         onSaveChanges(character.copy(
-            name = name,
-            characterClass = characterClass,
-            order = order,
-            level = level,
-            experience = experience,
-            imageData = characterImageData,
-            strength = statsState.strength,
-            dexterity = statsState.dexterity,
-            constitution = statsState.constitution,
-            intelligence = statsState.intelligence,
-            wisdom = statsState.wisdom,
-            charisma = statsState.charisma,
-            strengthProficient = statsState.strProf,
-            dexterityProficient = statsState.dexProf,
-            constitutionProficient = statsState.conProf,
-            intelligenceProficient = statsState.intProf,
-            wisdomProficient = statsState.wisProf,
-            charismaProficient = statsState.chaProf,
-            maxHp = maxHp,
-            currentHp = currentHp,
-            tempHp = tempHp,
-            proficiencyBonus = proficiencyBonus,
-            selectedConditions = selectedConditions,
-            exhaustion = exhaustion,
-            attacks = attacks,
-            armorClassEntries = armorClassEntries,
-            activeArmorClassId = activeArmorClassId,
-            initiativeEntries = initiativeEntries,
-            activeInitiativeId = activeInitiativeId,
-            speedEntries = speedEntries,
-            activeSpeedId = activeSpeedId,
-            isShieldActive = isShieldActive,
-            shieldEntries = shieldEntries,
-            activeShieldId = activeShieldId,
-            skilledProficiencies = statsState.skilledProficiencies,
-            skilledExpertise = statsState.skilledExpertise,
-            statBonuses = statsState.statBonuses,
-            skillBonuses = statsState.skillBonuses,
-            themeSeedColorArgb = themeSeedColorArgb,
-            notes = notes,
-            skillsAndTraits = skillsAndTraits,
-            inventory = inventory,
-            spells = spells,
-            spellSettings = spellSettings,
-            wallet = wallet,
-            bioShortFields = bioShortFields,
-            bioLongSections = bioLongSections
+            name = name, characterClass = characterClass, order = order, level = level, experience = experience,
+            imageData = characterImageData, strength = statsState.strength, dexterity = statsState.dexterity,
+            constitution = statsState.constitution, intelligence = statsState.intelligence, wisdom = statsState.wisdom,
+            charisma = statsState.charisma, strengthProficient = statsState.strProf, dexterityProficient = statsState.dexProf,
+            constitutionProficient = statsState.conProf, intelligenceProficient = statsState.intProf,
+            wisdomProficient = statsState.wisProf, charismaProficient = statsState.chaProf,
+            maxHp = maxHp, currentHp = currentHp, tempHp = tempHp, proficiencyBonus = proficiencyBonus,
+            selectedConditions = selectedConditions, exhaustion = exhaustion, attacks = attacks,
+            armorClassEntries = armorClassEntries, activeArmorClassId = activeArmorClassId,
+            initiativeEntries = initiativeEntries, activeInitiativeId = activeInitiativeId,
+            speedEntries = speedEntries, activeSpeedId = activeSpeedId, isShieldActive = isShieldActive,
+            shieldEntries = shieldEntries, activeShieldId = activeShieldId,
+            skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
+            statBonuses = statsState.statBonuses, skillBonuses = statsState.skillBonuses,
+            themeSeedColorArgb = themeSeedColorArgb, notes = notes, skillsAndTraits = skillsAndTraits,
+            inventory = inventory, spells = spells, spellSettings = spellSettings, wallet = wallet,
+            bioShortFields = bioShortFields, bioLongSections = bioLongSections, hitDiceEntries = hitDiceEntries,
+            defaultHitDie = character.defaultHitDie
         ))
     }
 
@@ -442,9 +401,98 @@ fun CharacterDetailWindow(
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
         shieldEntries, activeShieldId, themeSeedColorArgb, notes,
         skillsAndTraits, inventory, spells, spellSettings, wallet,
-        bioShortFields, bioLongSections
+        bioShortFields, bioLongSections, hitDiceEntries
     ) {
         saveCurrentCharacter()
+    }
+
+    val handleRestoration = { restType: String ->
+        val updateNote = { note: DynamicNoteState ->
+            val blocks = DynamicContentParser.parse(note.content)
+            val updatedBlocks = blocks.map { block ->
+                if (block is DynamicContentBlock.Resource) {
+                    val recovery = when (restType) {
+                        "short" -> block.shortRest
+                        "long" -> block.longRest
+                        "dawn" -> block.dawnRest
+                        else -> "0"
+                    }
+                    
+                    val actualRecovery = if (restType == "long" && recovery == "0") block.shortRest else recovery
+
+                    if (actualRecovery == "0") return@map block
+                    
+                    val maxVal = evaluateFormula(block.max, statsMap)
+                    val curVal = block.current.toIntOrNull() ?: 0
+                    
+                    val amount = if (actualRecovery.lowercase() == "all" || actualRecovery.lowercase() == "все") {
+                        maxVal
+                    } else {
+                        val (flat, dice) = ru.quasaris.characters.master.backend.parseFormulaParts(actualRecovery, statsMap)
+                        var rolled = flat
+                        dice.forEach { part ->
+                            val sides = part.sides
+                            val count = kotlin.math.abs(part.count)
+                            val sign = if (part.count >= 0) 1 else -1
+                            repeat(count) {
+                                rolled += (1..sides).random() * sign
+                            }
+                        }
+                        rolled
+                    }
+                    
+                    val newCur = if (actualRecovery.lowercase() == "all" || actualRecovery.lowercase() == "все") {
+                        maxVal
+                    } else {
+                        minOf(maxVal, curVal + amount)
+                    }
+                    block.copy(current = newCur.toString())
+                } else block
+            }
+            note.copy(content = DynamicContentParser.render(updatedBlocks))
+        }
+
+        notes = notes.map { updateNote(it) }
+        skillsAndTraits = skillsAndTraits.map { updateNote(it) }
+        inventory = inventory.map { updateNote(it) }
+        spells = spells.map { updateNote(it) }
+
+        when (restType) {
+            "long" -> {
+                spellSettings = spellSettings.copy(
+                    usedSlots = emptyMap(),
+                    usedSlotsShortRest = emptyMap(),
+                    specialSlots = spellSettings.specialSlots.map { it.copy() }
+                )
+            }
+            "short" -> {
+                spellSettings = spellSettings.copy(
+                    usedSlotsShortRest = emptyMap(),
+                    specialSlots = spellSettings.specialSlots.map { 
+                        if (it.restoreOnShortRest) it.copy() else it 
+                    }
+                )
+            }
+            "dawn" -> {
+                spellSettings = spellSettings.copy(
+                    usedSlotsDawn = emptyMap(),
+                    specialSlots = spellSettings.specialSlots.map { 
+                        if (it.restoreOnDawn) it.copy() else it 
+                    }
+                )
+            }
+        }
+        
+        if (restType == "long") {
+            currentHp = maxHp
+            tempHp = "0"
+            hitDiceEntries = hitDiceEntries.map { entry ->
+                val maxHD = evaluateFormula(entry.formula, statsMap)
+                val recover = maxOf(1, maxHD / 2)
+                entry.copy(spent = maxOf(0, entry.spent - recover))
+            }
+            if (exhaustion > 0) exhaustion--
+        }
     }
 
     Scaffold(
@@ -457,8 +505,7 @@ fun CharacterDetailWindow(
                     characterImageData = characterImageData,
                     onAvatarClick = { showAvatarMenu = true },
                     onLevelClick = {
-                        isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                        isLevelPanelVisible = !isLevelPanelVisible
                     },
                     onOpenDrawer = onOpenDrawer,
                     activeACValue = acValue,
@@ -466,12 +513,9 @@ fun CharacterDetailWindow(
                     onACLongClick = {
                         if (useNewAC) {
                             showEnhancedAC = true
-                            isArmorClassPanelVisible = false
                         } else {
                             isArmorClassPanelVisible = !isArmorClassPanelVisible
                         }
-                        isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
                     isShieldActive = isShieldActive,
                     activeInitValue = initValue,
@@ -479,46 +523,36 @@ fun CharacterDetailWindow(
                         val baseInit = (initValue.replace("+", "").toIntOrNull() ?: 0) + (exhaustion * 2)
                         val activeEntry = initiativeEntries.find { it.id == activeInitiativeId }
                         val advantage = if (activeEntry?.hasAdvantage == true) AdvantageType.ADVANTAGE else AdvantageType.NONE
-                        onRoll(DiceRoller.roll("Инициатива", baseInit, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = advantageLogic))
+                        onRoll(DiceRoller.roll("Инициатива", baseInit, bonuses = activeEntry?.bonuses ?: emptyList(), stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = advantageLogic))
                     },
                     onInitLongClick = {
                         if (useNewInit) {
                             showEnhancedInit = true
-                            isInitiativePanelVisible = false
                         } else {
                             isInitiativePanelVisible = !isInitiativePanelVisible
                         }
-                        isArmorClassPanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
                     currentHp = currentHp, maxHp = maxHp, tempHp = tempHp,
                     healthColor = healthColor, healthIcon = healthIcon,
                     onHealthClick = {
-                        isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isConditionsPanelVisible = false
+                        isHealthPanelVisible = !isHealthPanelVisible
                     },
                     conditionsCount = exhaustion.toString(),
                     selectedConditions = selectedConditions,
                     onConditionsClick = {
                         if (useNewCond) {
                             showEnhancedCond = true
-                            isConditionsPanelVisible = false
                         } else {
                             isConditionsPanelVisible = !isConditionsPanelVisible
                         }
-                        isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
                     },
                     activeSpeedValue = speedValue,
                     onSpeedClick = {
                         if (useNewSpeed) {
                             showEnhancedSpeed = true
-                            isSpeedPanelVisible = false
                         } else {
                             isSpeedPanelVisible = !isSpeedPanelVisible
                         }
-                        isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
                     showAvatarMenu = showAvatarMenu,
                     onDismissAvatarMenu = { showAvatarMenu = false },
@@ -526,10 +560,16 @@ fun CharacterDetailWindow(
                     onDownloadClick = { fileCreatorLauncher.launch("MP_${name}.${ArchiveManager.EXPORT_EXTENSION}"); showAvatarMenu = false },
                     selectedImageUri = null,
                     onNavigateBack = onNavigateBack,
-                    exhaustion = exhaustion
+                    exhaustion = exhaustion,
+                    onShortRest = { 
+                        isRestPanelVisible = !isRestPanelVisible
+                    },
+                    onLongRest = { handleRestoration("long") },
+                    onDawn = { handleRestoration("dawn") },
+                    hazeState = hazeState,
+                    blurPopups = blurPopups
                 )
 
-                // Tab Selector
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -675,6 +715,9 @@ fun CharacterDetailWindow(
             .background(colorScheme.background)) {
 
             Column {
+                val totalMaxHitDice = hitDiceEntries.sumOf { evaluateFormula(it.formula.split('d').firstOrNull() ?: "0", statsMap) }.coerceAtLeast(level.toIntOrNull() ?: 1)
+                val totalSpentHitDice = hitDiceEntries.sumOf { it.spent }
+
                 ExpandingPanelsSection(
                     isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it },
                     experience = experience, onExpChange = { experience = it },
@@ -687,6 +730,35 @@ fun CharacterDetailWindow(
                     onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
                     onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true },
                     healthColor = healthColor, clampHp = { },
+                    spentHitDice = totalSpentHitDice,
+                    maxHitDice = totalMaxHitDice,
+                    onSpentHitDiceChange = { newSpent ->
+                        if (hitDiceEntries.isEmpty()) {
+                            hitDiceEntries = listOf(HitDiceEntry(name = "Кости Хитов", formula = "[LVL]d${character?.defaultHitDie ?: 8}", spent = newSpent))
+                        } else {
+                            val diff = newSpent - totalSpentHitDice
+                            if (diff != 0) {
+                                val newList = hitDiceEntries.toMutableList()
+                                val first = newList[0]
+                                val maxFirst = evaluateFormula(first.formula.split('d').firstOrNull() ?: "0", statsMap)
+                                newList[0] = first.copy(spent = (first.spent + diff).coerceIn(0, maxFirst))
+                                hitDiceEntries = newList
+                            }
+                        }
+                    },
+                    onOpenHealthSettings = { showHealthSettings = true },
+                    isRestPanelVisible = isRestPanelVisible,
+                    onRestPanelDismiss = { isRestPanelVisible = false },
+                    hitDiceEntries = hitDiceEntries,
+                    onHitDiceEntriesChange = { hitDiceEntries = it },
+                    onHealAmount = { amount ->
+                        currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + amount).toString()
+                    },
+                    onShortRestConfirmed = {
+                        handleRestoration("short")
+                        isRestPanelVisible = false
+                    },
+                    defaultHitDie = character?.defaultHitDie ?: 8,
                     isArmorClassPanelVisible = isArmorClassPanelVisible, armorClassEntries = armorClassEntries,
                     activeArmorClassId = activeArmorClassId, acDeleteConfirmId = acDeleteConfirmId,
                     onArmorClassEntries = { armorClassEntries = it }, onActiveArmorClass = { activeArmorClassId = it },
@@ -720,149 +792,147 @@ fun CharacterDetailWindow(
                     modifier = Modifier.weight(1f),
                     beyondViewportPageCount = 1
                 ) { page ->
-                val tab = tabs[page % tabs.size]
+                    val tab = tabs[page % tabs.size]
 
-                when (tab) {
-                    CharacterTab.STATS -> {
-                        StatsTab(
-                            character = character,
-                            level = level,
-                            statsState = statsState,
-                            onStatsStateChange = { statsState = it },
-                            onRoll = onRoll,
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            isAdvancedMode = isAdvancedMode,
-                            advantageLogic = advantageLogic,
-                            attributeModifiers = attributeModifiers,
-                            statsMap = statsMap
-                        )
-                    }
-                    CharacterTab.ATTACKS -> {
-                        AttacksTab(
-                            attacks = attacks,
-                            proficiencyBonus = pb,
-                            attributeModifiers = attributeModifiers,
-                            onUpdateAttacks = { attacks = it },
-                            onRoll = onRoll,
-                            stats = statsMap,
-                            exhaustion = exhaustion,
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel,
-                            spellSettings = spellSettings,
-                            advantageLogic = advantageLogic
-                        )
-                    }
-                    CharacterTab.BIO -> {
-                        BioTab(
-                            character = character.copy(
-                                bioShortFields = bioShortFields,
-                                bioLongSections = bioLongSections,
-                                imageData = characterImageData
-                            ),
-                            onCharacterChange = { updated ->
-                                bioShortFields = updated.bioShortFields
-                                bioLongSections = updated.bioLongSections
-                                characterImageData = updated.imageData
-                            },
-                            onAvatarEditRequest = {
-                                imagePickerLauncher.launch("image/*")
-                            },
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
-                        )
-                    }
-                    CharacterTab.SKILLS_FEATS -> {
-                        SkillsFeatsTab(
-                            skillsAndTraits = skillsAndTraits,
-                            onSkillsAndTraitsChange = { skillsAndTraits = it },
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
-                        )
-                    }
-                    CharacterTab.INVENTORY -> {
-                        InventoryTab(
-                            inventory = inventory,
-                            onInventoryChange = { inventory = it },
-                            wallet = wallet,
-                            onWalletChange = { wallet = it },
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
-                        )
-                    }
-                    CharacterTab.SPELLS -> {
-                        SpellsTab(
-                            spells = spells,
-                            onSpellsChange = { spells = it },
-                            characterLevel = level.toIntOrNull() ?: 1,
-                            spellSettings = spellSettings,
-                            onSpellSettingsChange = { spellSettings = it },
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel,
-                            onRoll = onRoll,
-                            statsMap = statsMap,
-                            exhaustion = exhaustion,
-                            advantageLogic = advantageLogic
-                        )
-                    }
-                    CharacterTab.NOTES -> {
-                        NotesTab(
-                            notes = notes,
-                            onNotesChange = { notes = it },
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            isEditMode = isEditMode,
-                            settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
-                        )
-                    }
-                    else -> {
-                        PlaceholderTab(title = tab.title)
+                    when (tab) {
+                        CharacterTab.STATS -> {
+                            StatsTab(
+                                character = character,
+                                level = level,
+                                statsState = statsState,
+                                onStatsStateChange = { statsState = it },
+                                onRoll = onRoll,
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                isAdvancedMode = isAdvancedMode,
+                                advantageLogic = advantageLogic,
+                                attributeModifiers = attributeModifiers,
+                                statsMap = statsMap
+                            )
+                        }
+                        CharacterTab.ATTACKS -> {
+                            AttacksTab(
+                                attacks = attacks,
+                                proficiencyBonus = pb,
+                                attributeModifiers = attributeModifiers,
+                                onUpdateAttacks = { attacks = it },
+                                onRoll = onRoll,
+                                stats = statsMap,
+                                exhaustion = exhaustion,
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                isEditMode = isEditMode,
+                                settingsViewModel = settingsViewModel,
+                                spellSettings = spellSettings,
+                                advantageLogic = advantageLogic
+                            )
+                        }
+                        CharacterTab.BIO -> {
+                            BioTab(
+                                character = character.copy(
+                                    bioShortFields = bioShortFields,
+                                    bioLongSections = bioLongSections,
+                                    imageData = characterImageData
+                                ),
+                                onCharacterChange = { updated ->
+                                    bioShortFields = updated.bioShortFields
+                                    bioLongSections = updated.bioLongSections
+                                    characterImageData = updated.imageData
+                                },
+                                onAvatarEditRequest = {
+                                    imagePickerLauncher.launch("image/*")
+                                },
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                isEditMode = isEditMode,
+                                settingsViewModel = settingsViewModel,
+                                statsMap = statsMap
+                            )
+                        }
+                        CharacterTab.SKILLS_FEATS -> {
+                            SkillsFeatsTab(
+                                skillsAndTraits = skillsAndTraits,
+                                onSkillsAndTraitsChange = { skillsAndTraits = it },
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                isEditMode = isEditMode,
+                                settingsViewModel = settingsViewModel,
+                                statsMap = statsMap
+                            )
+                        }
+                        CharacterTab.INVENTORY -> {
+                            InventoryTab(
+                                inventory = inventory,
+                                onInventoryChange = { inventory = it },
+                                wallet = wallet,
+                                onWalletChange = { wallet = it },
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                isEditMode = isEditMode,
+                                settingsViewModel = settingsViewModel,
+                                statsMap = statsMap
+                            )
+                        }
+                        CharacterTab.SPELLS -> {
+                            SpellsTab(
+                                spells = spells,
+                                onSpellsChange = { spells = it },
+                                characterLevel = level.toIntOrNull() ?: 1,
+                                spellSettings = spellSettings,
+                                onSpellSettingsChange = { spellSettings = it },
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                isEditMode = isEditMode,
+                                settingsViewModel = settingsViewModel,
+                                onRoll = onRoll,
+                                statsMap = statsMap,
+                                exhaustion = exhaustion,
+                                advantageLogic = advantageLogic
+                            )
+                        }
+                        CharacterTab.NOTES -> {
+                            NotesTab(
+                                notes = notes,
+                                onNotesChange = { notes = it },
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                isEditMode = isEditMode,
+                                settingsViewModel = settingsViewModel,
+                                statsMap = statsMap
+                            )
+                        }
                     }
                 }
-            } // Pager end
-        } // Column end
-
-        HealthDialog(
-            showDialog = showHpDialog,
-            hpDialogType = hpDialogType,
-            hpDialogValue = hpDialogValue,
-            onValueChange = { newVal -> hpDialogValue = newVal },
-            onDismiss = { showHpDialog = false },
-            onConfirm = { value: Int ->
-                when(hpDialogType) {
-                    "heal" -> currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + value).toString()
-                    "damage" -> {
-                        var d = value; var t = tempHp.toIntOrNull() ?: 0; val c = currentHp.toIntOrNull() ?: 0
-                        if (t > 0) { val a = minOf(t, d); t -= a; d -= a; tempHp = t.toString() }
-                        if (d > 0) currentHp = maxOf(0, c - d).toString()
-                    }
-                    "temp" -> tempHp = minOf(9999, value).toString()
-                }
-                showHpDialog = false
             }
-        )
-    } // Box end
+
+            HealthDialog(
+                showDialog = showHpDialog,
+                hpDialogType = hpDialogType,
+                hpDialogValue = hpDialogValue,
+                onValueChange = { newVal -> hpDialogValue = newVal },
+                onDismiss = { showHpDialog = false },
+                onConfirm = { value: Int ->
+                    when(hpDialogType) {
+                        "heal" -> currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + value).toString()
+                        "damage" -> {
+                            var d = value; var t = tempHp.toIntOrNull() ?: 0; val c = currentHp.toIntOrNull() ?: 0
+                            if (t > 0) { val a = minOf(t, d); t -= a; d -= a; tempHp = t.toString() }
+                            if (d > 0) currentHp = maxOf(0, c - d).toString()
+                        }
+                        "temp" -> tempHp = minOf(9999, value).toString()
+                    }
+                    showHpDialog = false
+                }
+            )
+        }
+    }
 
     if (showSpellSettings) {
         SpellSettingsDialog(
@@ -876,7 +946,6 @@ fun CharacterDetailWindow(
         )
     }
 
-    // Enhanced Overlays
     val effectiveBlurFullscreen = forceBlurEnabled
 
     if (showEnhancedAC) {
@@ -943,6 +1012,18 @@ fun CharacterDetailWindow(
         )
     }
 
+    if (showHealthSettings) {
+        EnhancedHealthSettingsDialog(
+            currentHitDie = character?.defaultHitDie ?: 8,
+            onHitDieChange = { newDie ->
+                onSaveChanges(character!!.copy(defaultHitDie = newDie))
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = effectiveBlurFullscreen,
+            onDismiss = { showHealthSettings = false }
+        )
+    }
+
     if (showEnhancedCond) {
         EnhancedConditionsDialog(
             allConditions = allConditions,
@@ -955,7 +1036,6 @@ fun CharacterDetailWindow(
             onDismiss = { showEnhancedCond = false }
         )
     }
-}
 
     if (showTabSheet) {
         val isOled = colorScheme.background == Color.Black
@@ -973,7 +1053,6 @@ fun CharacterDetailWindow(
                         .fillMaxWidth()
                         .run {
                             if (blurPopups && hazeState != null && !isOled) {
-                                // ПРАВИЛЬНЫЙ порядок: clip -> hazeEffect
                                 this.clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                                     .hazeEffect(state = hazeState) {
                                         style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))

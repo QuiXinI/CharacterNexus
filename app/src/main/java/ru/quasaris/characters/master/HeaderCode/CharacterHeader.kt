@@ -13,10 +13,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -49,6 +52,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import dev.chrisbanes.haze.HazeState
 import ru.quasaris.characters.master.backend.Condition
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.getPreviousLevelThreshold
@@ -89,12 +93,18 @@ fun CharacterHeader(
     onDownloadClick: () -> Unit,
     selectedImageUri: Uri?,
     onNavigateBack: () -> Unit,
-    exhaustion: Int
+    exhaustion: Int,
+    onShortRest: () -> Unit = {},
+    onLongRest: () -> Unit = {},
+    onDawn: () -> Unit = {},
+    hazeState: HazeState? = null,
+    blurPopups: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val haptic = LocalHapticFeedback.current
 
     var totalDrag by remember { mutableStateOf(0f) }
+    var showRestPopup by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -121,15 +131,34 @@ fun CharacterHeader(
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onOpenDrawer()
             }) { Icon(Icons.Default.Menu, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface) }
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            
+            Box(modifier = Modifier.weight(1f)) {
                 BasicTextField(
                     value = name, onValueChange = onNameChange,
-                    textStyle = TextStyle(fontSize = 22.sp, textAlign = TextAlign.Center, color = colorScheme.onSurface, fontWeight = FontWeight.Normal),
+                    textStyle = TextStyle(fontSize = 22.sp, textAlign = TextAlign.Start, color = colorScheme.onSurface, fontWeight = FontWeight.Bold),
                     cursorBrush = SolidColor(colorScheme.primary),
-                    decorationBox = { innerTextField -> if (name.isEmpty()) Text("Имя персонажа", fontSize = 22.sp, textAlign = TextAlign.Center, color = colorScheme.onSurface.copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth()); innerTextField() },
+                    decorationBox = { innerTextField -> if (name.isEmpty()) Text("Имя персонажа", fontSize = 22.sp, textAlign = TextAlign.Start, color = colorScheme.onSurface.copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth()); innerTextField() },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+
+            Box(contentAlignment = Alignment.Center) {
+                IconButton(onClick = { showRestPopup = true }) {
+                    Icon(Icons.Default.WbSunny, null, modifier = Modifier.size(28.dp), tint = colorScheme.primary)
+                }
+                
+                if (showRestPopup) {
+                    ru.quasaris.characters.master.ui.RestPopup(
+                        onShortRest = { onShortRest() },
+                        onLongRest = { onLongRest() },
+                        onDawn = { onDawn() },
+                        onDismiss = { showRestPopup = false },
+                        hazeState = hazeState,
+                        isOled = colorScheme.background == Color.Black
+                    )
+                }
+            }
+
             Box(contentAlignment = Alignment.Center) {
                 Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(colorScheme.primaryContainer).clickable { 
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -281,6 +310,18 @@ fun ExpandingPanelsSection(
     onTempClick: () -> Unit,
     healthColor: Color,
     clampHp: () -> Unit,
+    spentHitDice: Int,
+    maxHitDice: Int,
+    onSpentHitDiceChange: (Int) -> Unit,
+    onOpenHealthSettings: () -> Unit,
+
+    isRestPanelVisible: Boolean,
+    onRestPanelDismiss: () -> Unit,
+    hitDiceEntries: List<HitDiceEntry>,
+    onHitDiceEntriesChange: (List<HitDiceEntry>) -> Unit,
+    onHealAmount: (Int) -> Unit,
+    onShortRestConfirmed: () -> Unit,
+    defaultHitDie: Int,
 
     isArmorClassPanelVisible: Boolean,
     armorClassEntries: List<ArmorClassEntry>,
@@ -331,7 +372,12 @@ fun ExpandingPanelsSection(
     Column {
         Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent))))
         AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) }
-        AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp) }
+        AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
+            HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp, spentHitDice, maxHitDice, onSpentHitDiceChange, onOpenHealthSettings) 
+        }
+        AnimatedVisibility(isRestPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) {
+            ru.quasaris.characters.master.ui.RestPanel(hitDiceEntries, onHitDiceEntriesChange, onHealAmount, onShortRestConfirmed, onRestPanelDismiss, statsMap, defaultHitDie)
+        }
         AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
             Column(modifier = Modifier.animateContentSize(animationSpec)) {
                 FormulaPanel("Класс Доспеха", armorClassEntries, activeArmorClassId, acDeleteConfirmId, { updated -> onArmorClassEntries(updated.filterIsInstance<ArmorClassEntry>()) }, onActiveArmorClass, onAcDeleteReq, onAddArmorClass) 

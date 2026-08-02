@@ -189,7 +189,8 @@ data class SpellSettings(
     val pactSlotLevel: Float = 1f,
     val pactSlotsCount: Int = 0,
     val usedSlots: Map<Float, Int> = emptyMap(), // Key 1-9 are levels (Long Rest)
-    val usedSlotsShortRest: Map<Float, Int> = emptyMap() // Key 0 is Pact (if not merged), 1-9 are levels
+    val usedSlotsShortRest: Map<Float, Int> = emptyMap(), // Key 0 is Pact (if not merged), 1-9 are levels
+    val usedSlotsDawn: Map<Float, Int> = emptyMap()
 )
 
 data class SpecialSlotSettings(
@@ -197,7 +198,8 @@ data class SpecialSlotSettings(
     val name: String = "",
     val level: Float = 1f,
     val count: Int = 0,
-    val restoreOnShortRest: Boolean = false
+    val restoreOnShortRest: Boolean = false,
+    val restoreOnDawn: Boolean = false
 )
 
 
@@ -223,6 +225,13 @@ data class BioSection(
     val title: String = "",
     val content: String = "",
     val isExpanded: Boolean = true
+)
+
+data class HitDiceEntry(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val formula: String = "",
+    val spent: Int = 0
 )
 
 data class Character(
@@ -300,6 +309,8 @@ data class Character(
         DynamicNoteState(title = "Привязанности"),
         DynamicNoteState(title = "Слабости")
     ),
+    val hitDiceEntries: List<HitDiceEntry> = emptyList(),
+    val defaultHitDie: Int = 8,
     val spellSettings: SpellSettings = SpellSettings(),
     val wallet: Wallet = Wallet(),
     val cropX: Float? = null,

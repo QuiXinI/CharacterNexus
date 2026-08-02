@@ -20,7 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -40,8 +43,8 @@ import ru.quasaris.characters.master.AdvantagePreference
 import ru.quasaris.characters.master.backend.Condition
 import ru.quasaris.characters.master.tabs.attacks.SectionHeader
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
-import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
-import ru.quasaris.characters.master.tabs.attacks.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
+import ru.quasaris.characters.master.backend.DicePart
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusField
 import ru.quasaris.characters.master.tabs.attacks.AddBonusButton
 
@@ -125,7 +128,8 @@ fun EnhancedStatDialog(
                             size = 140.dp,
                             fontSize = 54.sp,
                             showLabel = false,
-                            showPlus = statType != "AC" && statType != "SPEED"
+                            showPlus = statType != "AC" && statType != "SPEED",
+                            diceSize = if (statType == "INIT") 44.dp else 24.dp
                         )
                     }
 
@@ -533,6 +537,101 @@ private fun updateEntry(entry: FormulaEntry, name: String? = null, formula: Stri
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EnhancedHealthSettingsDialog(
+    currentHitDie: Int,
+    onHitDieChange: (Int) -> Unit,
+    hazeState: HazeState?,
+    forceBlurEnabled: Boolean,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        val colorScheme = MaterialTheme.colorScheme
+        val isOled = colorScheme.background == Color.Black
+
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Настройки Хитов", fontWeight = FontWeight.Black) },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                    )
+                )
+            },
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+            modifier = Modifier.run {
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    hazeEffect(state = hazeState) {
+                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
+                        inputScale = HazeInputScale.Fixed(0.7f)
+                    }
+                } else this
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                SectionHeader("Кость Хитов")
+                
+                var expanded by remember { mutableStateOf(false) }
+                val options = listOf(4, 6, 8, 10, 12, 20)
+                
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = "d$currentHitDie",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Тип кости хитов") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        options.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text("d$option") },
+                                onClick = {
+                                    onHitDieChange(option)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    "Эта кость будет использоваться по умолчанию при бросках на коротком отдыхе.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EnhancedConditionsDialog(
@@ -659,12 +758,41 @@ fun EnhancedConditionItem(condition: Condition, isSelected: Boolean, onToggle: (
             
             AnimatedVisibility(visible = expanded) {
                 Text(
-                    condition.description,
+                    formatConditionDescription(condition.description, colorScheme.primary),
                     modifier = Modifier.padding(start = 48.dp, top = 8.dp, end = 8.dp),
-                    fontSize = 14.sp,
-                    color = colorScheme.onSurface.copy(alpha = 0.7f)
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
+        }
+    }
+}
+
+private fun formatConditionDescription(text: String, primaryColor: Color): androidx.compose.ui.text.AnnotatedString {
+    return buildAnnotatedString {
+        val lines = text.lines()
+        lines.forEachIndexed { i, line ->
+            var l = line.trim()
+            if (l.startsWith("- ")) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Black, color = primaryColor)) {
+                    append("• ")
+                }
+                l = l.substring(2)
+            }
+            val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
+            var last = 0
+            boldRegex.findAll(l).forEach { m ->
+                append(l.substring(last, m.range.first))
+                withStyle(SpanStyle(
+                    fontWeight = FontWeight.Bold,
+                    color = primaryColor.copy(alpha = 0.9f)
+                )) { 
+                    append(m.groupValues[1]) 
+                }
+                last = m.range.last + 1
+            }
+            append(l.substring(last))
+            if (i < lines.size - 1) append("\n")
         }
     }
 }

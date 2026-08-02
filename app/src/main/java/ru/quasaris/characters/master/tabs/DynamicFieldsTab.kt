@@ -441,14 +441,14 @@ fun DynamicFieldItem(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .run {
-                        if (isEditMode || !isCollapsible) this else this.clickable { onFieldChange(field.copy(isExpanded = !isExpanded)) }
-                    }
                     .padding(vertical = if (isEditMode) 12.dp else 0.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .run {
+                            if (isEditMode || !isCollapsible) this else this.clickable { onFieldChange(field.copy(isExpanded = !isExpanded)) }
+                        }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

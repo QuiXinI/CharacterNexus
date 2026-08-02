@@ -45,6 +45,8 @@ import ru.quasaris.characters.master.backend.SimpleBonus
 import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.RollSourceType
 import ru.quasaris.characters.master.backend.SettingsViewModel
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
 import androidx.compose.foundation.shape.RoundedCornerShape

@@ -40,6 +40,10 @@ import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.DamageBonus
 import ru.quasaris.characters.master.MagicAttackType
 import ru.quasaris.characters.master.backend.SettingsViewModel
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
+import ru.quasaris.characters.master.backend.evaluateFormula
+import ru.quasaris.characters.master.backend.preprocessFormula
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon

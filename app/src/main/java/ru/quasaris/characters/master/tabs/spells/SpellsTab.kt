@@ -39,8 +39,8 @@ import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.tabs.DynamicFieldsTab
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
-import ru.quasaris.characters.master.tabs.attacks.DicePart
-import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
 import ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus
 import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
 import dev.chrisbanes.haze.HazeState
@@ -146,6 +146,8 @@ fun SpellsTab(
     val longRestFillDirection by settingsViewModel?.longRestFillDirection?.collectAsState() ?: remember { mutableStateOf(SlotFillDirection.LTR) }
     val shortRestAlignment by settingsViewModel?.shortRestAlignment?.collectAsState() ?: remember { mutableStateOf(SlotAlignment.RIGHT) }
     val shortRestFillDirection by settingsViewModel?.shortRestFillDirection?.collectAsState() ?: remember { mutableStateOf(SlotFillDirection.LTR) }
+    val dawnRestAlignment by settingsViewModel?.dawnRestAlignment?.collectAsState() ?: remember { mutableStateOf(SlotAlignment.RIGHT) }
+    val dawnRestFillDirection by settingsViewModel?.dawnRestFillDirection?.collectAsState() ?: remember { mutableStateOf(SlotFillDirection.LTR) }
 
     val processedSpells = remember(spells, spellSettings.specialSlots, spellSettings.pactSlotLevel, spellSettings.isPactEnabled, spellSettings.casterType, spellSettings.isMulticlass) {
         val specialLevels = spellSettings.specialSlots.map { it.level }.toMutableSet()
@@ -344,14 +346,16 @@ fun SpellsTab(
                     
                     if (level > 0) {
                         val baseSlots = if (level >= 1f && level <= 9f && level == floor(level)) (spellSettings.overrideSlots[level] ?: autoSlots[level.toInt() - 1]) else (spellSettings.overrideSlots[level] ?: 0)
-                        val specialLong = spellSettings.specialSlots.filter { it.level == level && !it.restoreOnShortRest }.sumOf { it.count }
+                        val specialLong = spellSettings.specialSlots.filter { it.level == level && !it.restoreOnShortRest && !it.restoreOnDawn }.sumOf { it.count }
                         val maxLong = baseSlots + specialLong
 
                         val pactSlots = if (spellSettings.isPactEnabled && spellSettings.pactSlotLevel == level) spellSettings.pactSlotsCount else 0
                         val specialShort = spellSettings.specialSlots.filter { it.level == level && it.restoreOnShortRest }.sumOf { it.count }
                         val maxShort = pactSlots + specialShort
 
-                        if (maxLong > 0 || maxShort > 0) {
+                        val maxDawn = spellSettings.specialSlots.filter { it.level == level && it.restoreOnDawn }.sumOf { it.count }
+
+                        if (maxLong > 0 || maxShort > 0 || maxDawn > 0) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -391,94 +395,44 @@ fun SpellsTab(
                                                 fillDirection = shortRestFillDirection
                                             )
                                         }
+                                        if (maxDawn > 0) {
+                                            SpellSlotTracker(
+                                                maxSlots = maxDawn,
+                                                usedSlots = spellSettings.usedSlotsDawn[level] ?: 0,
+                                                isShortRest = false,
+                                                isDawnRest = true,
+                                                onUsedSlotsChange = { newUsed ->
+                                                    onSpellSettingsChange(
+                                                        spellSettings.copy(
+                                                            usedSlotsDawn = spellSettings.usedSlotsDawn.toMutableMap().apply { put(level, newUsed) }
+                                                        )
+                                                    )
+                                                },
+                                                alignment = dawnRestAlignment,
+                                                fillDirection = dawnRestFillDirection
+                                            )
+                                        }
                                     },
                                     measurePolicy = { measurables, constraints ->
-                                        val longMeasurable = if (maxLong > 0) measurables[0] else null
-                                        val shortMeasurable = if (maxShort > 0) {
-                                            if (maxLong > 0) measurables[1] else measurables[0]
-                                        } else null
-
-                                        val longPlaceable = longMeasurable?.measure(constraints.copy(minWidth = 0))
-                                        val shortPlaceable = shortMeasurable?.measure(constraints.copy(minWidth = 0))
-
+                                        val placeables = measurables.map { it.measure(constraints.copy(minWidth = 0)) }
                                         val spacing = 8.dp.roundToPx()
-                                        val longWidth = longPlaceable?.width ?: 0
-                                        val shortWidth = shortPlaceable?.width ?: 0
-                                        val longHeight = longPlaceable?.height ?: 0
-                                        val shortHeight = shortPlaceable?.height ?: 0
+                                        val totalHeight = if (placeables.isEmpty()) 0 else placeables.sumOf { it.height } + (placeables.size - 1) * spacing
 
-                                        val lXPref = when (longRestAlignment) {
-                                            SlotAlignment.LEFT -> 0
-                                            SlotAlignment.CENTER -> (constraints.maxWidth - longWidth) / 2
-                                            SlotAlignment.RIGHT -> constraints.maxWidth - longWidth
-                                        }
-                                        val sXPref = when (shortRestAlignment) {
-                                            SlotAlignment.LEFT -> 0
-                                            SlotAlignment.CENTER -> (constraints.maxWidth - shortWidth) / 2
-                                            SlotAlignment.RIGHT -> constraints.maxWidth - shortWidth
-                                        }
-
-                                        val overlaps = if (longWidth > 0 && shortWidth > 0) {
-                                            if (lXPref < sXPref) {
-                                                lXPref + longWidth + spacing > sXPref
-                                            } else if (sXPref < lXPref) {
-                                                sXPref + shortWidth + spacing > lXPref
-                                            } else {
-                                                true
-                                            }
-                                        } else false
-
-                                        val canFitInOneLine = !overlaps && ((longWidth > 0 && shortWidth > 0 && longWidth + shortWidth + spacing <= constraints.maxWidth) || 
-                                                             (longWidth == 0 || shortWidth == 0))
-
-                                        val totalHeight = if (canFitInOneLine) {
-                                            maxOf(longHeight, shortHeight)
-                                        } else {
-                                            longHeight + shortHeight + spacing
-                                        }
-
+                                        var currentY = 0
                                         layout(constraints.maxWidth, totalHeight) {
-                                            if (canFitInOneLine) {
-                                                val longX = when (longRestAlignment) {
+                                            placeables.forEachIndexed { index, placeable ->
+                                                val alignment = when (index) {
+                                                    0 -> longRestAlignment
+                                                    1 -> shortRestAlignment
+                                                    else -> dawnRestAlignment
+                                                }
+                                                val x = when (alignment) {
                                                     SlotAlignment.LEFT -> 0
-                                                    SlotAlignment.CENTER -> (constraints.maxWidth - longWidth) / 2
-                                                    SlotAlignment.RIGHT -> {
-                                                        if (shortWidth > 0 && shortRestAlignment == SlotAlignment.RIGHT) {
-                                                            constraints.maxWidth - longWidth - shortWidth - spacing
-                                                        } else {
-                                                            constraints.maxWidth - longWidth
-                                                        }
-                                                    }
+                                                    SlotAlignment.CENTER -> (constraints.maxWidth - placeable.width) / 2
+                                                    SlotAlignment.RIGHT -> constraints.maxWidth - placeable.width
                                                 }
-
-                                                val shortX = when (shortRestAlignment) {
-                                                    SlotAlignment.LEFT -> {
-                                                        if (longWidth > 0 && longRestAlignment == SlotAlignment.LEFT) {
-                                                            longWidth + spacing
-                                                        } else {
-                                                            0
-                                                        }
-                                                    }
-                                                    SlotAlignment.CENTER -> (constraints.maxWidth - shortWidth) / 2
-                                                    SlotAlignment.RIGHT -> constraints.maxWidth - shortWidth
-                                                }
-
-                                                longPlaceable?.place(longX, 0)
-                                                shortPlaceable?.place(shortX, 0)
-                                            } else {
-                                                val longX = when (longRestAlignment) {
-                                                    SlotAlignment.LEFT -> 0
-                                                    SlotAlignment.CENTER -> (constraints.maxWidth - longWidth) / 2
-                                                    SlotAlignment.RIGHT -> constraints.maxWidth - longWidth
-                                                }
-                                                val shortX = when (shortRestAlignment) {
-                                                    SlotAlignment.LEFT -> 0
-                                                    SlotAlignment.CENTER -> (constraints.maxWidth - shortWidth) / 2
-                                                    SlotAlignment.RIGHT -> constraints.maxWidth - shortWidth
-                                                }
-                                                
-                                                longPlaceable?.place(longX, 0)
-                                                shortPlaceable?.place(shortX, longHeight + spacing)
+                                                placeable.place(x, currentY)
+                                                currentY += placeable.height + spacing
                                             }
                                         }
                                     }

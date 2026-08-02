@@ -13,6 +13,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.NightsStay
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,8 +39,8 @@ import ru.quasaris.characters.master.SpellSettings
 import ru.quasaris.characters.master.SpecialSlotSettings
 import ru.quasaris.characters.master.backend.SpellSlotCalculator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
-import ru.quasaris.characters.master.tabs.attacks.DicePart
-import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
@@ -546,7 +548,8 @@ fun SpellSettingsDialog(
                                 pactSlotsCount = pactSlotsCount,
                                 isPactEnabled = isPactEnabled,
                                 usedSlots = settings.usedSlots.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
-                                usedSlotsShortRest = settings.usedSlotsShortRest.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } }
+                                usedSlotsShortRest = settings.usedSlotsShortRest.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
+                                usedSlotsDawn = settings.usedSlotsDawn.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } }
                             )
                         )
                         onDismiss()
@@ -738,8 +741,8 @@ fun SpecialSlotItem(
                             SingleChoiceSegmentedButtonRow {
                                 SegmentedButton(
                                     selected = slot.restoreOnShortRest,
-                                    onClick = { onSlotChange(slot.copy(restoreOnShortRest = true)) },
-                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                                    onClick = { onSlotChange(slot.copy(restoreOnShortRest = true, restoreOnDawn = false)) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
                                 ) {
                                     Icon(
                                         Icons.Default.WbSunny,
@@ -748,9 +751,20 @@ fun SpecialSlotItem(
                                     )
                                 }
                                 SegmentedButton(
-                                    selected = !slot.restoreOnShortRest,
-                                    onClick = { onSlotChange(slot.copy(restoreOnShortRest = false)) },
-                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                                    selected = slot.restoreOnDawn,
+                                    onClick = { onSlotChange(slot.copy(restoreOnShortRest = false, restoreOnDawn = true)) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                                ) {
+                                    Icon(
+                                        Icons.Default.WbTwilight,
+                                        contentDescription = "Dawn",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                SegmentedButton(
+                                    selected = !slot.restoreOnShortRest && !slot.restoreOnDawn,
+                                    onClick = { onSlotChange(slot.copy(restoreOnShortRest = false, restoreOnDawn = false)) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
                                 ) {
                                     Icon(
                                         Icons.Default.NightsStay,

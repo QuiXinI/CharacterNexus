@@ -135,6 +135,14 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("short_rest_fill_direction", "LTR") ?: "LTR"
         set(value) = prefs.edit { putString("short_rest_fill_direction", value) }
 
+    var dawnRestAlignment: String
+        get() = prefs.getString("dawn_rest_alignment", "RIGHT") ?: "RIGHT"
+        set(value) = prefs.edit { putString("dawn_rest_alignment", value) }
+
+    var dawnRestFillDirection: String
+        get() = prefs.getString("dawn_rest_fill_direction", "LTR") ?: "LTR"
+        set(value) = prefs.edit { putString("dawn_rest_fill_direction", value) }
+
     // New Header Interfaces
     var useNewACInterface: Boolean
         get() = prefs.getBoolean("use_new_ac_interface", true)

@@ -10,6 +10,7 @@ sealed class DynamicContentBlock {
         val max: String,
         val shortRest: String = "0",
         val longRest: String = "0",
+        val dawnRest: String = "0",
         val link: String? = null,
         val notes: String = "",
         val showNotes: Boolean = false
@@ -21,6 +22,7 @@ sealed class DynamicContentBlock {
             parts.add("max=$max")
             if (shortRest != "0") parts.add("sr=$shortRest")
             if (longRest != "0") parts.add("lr=$longRest")
+            if (dawnRest != "0") parts.add("dr=$dawnRest")
             if (link != null) parts.add("link=$link")
             if (notes.isNotEmpty()) parts.add("notes=$notes")
             if (showNotes) parts.add("showNotes=true")
@@ -71,6 +73,7 @@ object DynamicContentParser {
                     max = params["max"] ?: "0",
                     shortRest = params["sr"] ?: params["shortrest"] ?: "0",
                     longRest = params["lr"] ?: params["longrest"] ?: "0",
+                    dawnRest = params["dr"] ?: params["dawnrest"] ?: params["dawn"] ?: "0",
                     link = params["link"],
                     notes = params["notes"] ?: "",
                     showNotes = params["shownotes"]?.toBoolean() ?: false

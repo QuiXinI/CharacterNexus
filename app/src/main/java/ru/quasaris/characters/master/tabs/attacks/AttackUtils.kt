@@ -2,45 +2,8 @@ package ru.quasaris.characters.master.tabs.attacks
 
 import ru.quasaris.characters.master.IBonus
 import ru.quasaris.characters.master.BonusOperation
-import ru.quasaris.characters.master.backend.preprocessFormula
-
-data class DicePart(val count: Int, val sides: Int)
-
-fun parseFormulaParts(
-    formula: String,
-    stats: Map<String, String> = emptyMap()
-): Pair<Int, List<DicePart>> {
-    val processed = preprocessFormula(formula, stats)
-    
-    var flat = 0
-    val dice = mutableMapOf<Int, Int>() // Sides -> Count
-    
-    val diceRegex = Regex("([+-]?\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
-    val remainingFormula = diceRegex.replace(processed) { match ->
-        val countStr = match.groupValues[1]
-        val count = when (countStr) {
-            "", "+" -> 1
-            "-" -> -1
-            else -> countStr.toIntOrNull() ?: 1
-        }
-        val sides = match.groupValues[2].toInt()
-        if (sides > 0) {
-            dice[sides] = (dice[sides] ?: 0) + count
-        }
-        ""
-    }
-    
-    val flatRegex = Regex("(?<![dkк\\d])([+-]?\\d+)(?![dkк\\d])", RegexOption.IGNORE_CASE)
-    flatRegex.findAll(remainingFormula).forEach { match ->
-        flat += match.groupValues[1].toIntOrNull() ?: 0
-    }
-    
-    val diceList = dice.map { DicePart(it.value, it.key) }
-        .filter { it.count != 0 }
-        .sortedBy { it.sides }
-    
-    return Pair(flat, diceList)
-}
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
 
 fun formatFullDamage(
     baseFormula: String,

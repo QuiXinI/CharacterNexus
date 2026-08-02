@@ -39,7 +39,13 @@ fun CharacterIdentitySection(
     activeSpeedValue: String,
     onSpeedClick: () -> Unit,
     imagePicker: androidx.activity.result.ActivityResultLauncher<String>,
-    onDownloadClick: (String) -> Unit
+    onDownloadClick: (String) -> Unit,
+    // New parameters for Rest system
+    onShortRest: () -> Unit = {},
+    onLongRest: () -> Unit = {},
+    onDawn: () -> Unit = {},
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
+    blurPopups: Boolean = false
 ) {
     CharacterHeader(
         name = name,
@@ -80,6 +86,11 @@ fun CharacterIdentitySection(
         onDownloadClick = {
             onDismissAvatarMenu()
             onDownloadClick("${name.ifEmpty { "character" }}.${ArchiveManager.EXPORT_EXTENSION}")
-        }
+        },
+        onShortRest = onShortRest,
+        onLongRest = onLongRest,
+        onDawn = onDawn,
+        hazeState = hazeState,
+        blurPopups = blurPopups
     )
 }

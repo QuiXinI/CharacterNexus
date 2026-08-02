@@ -1116,6 +1116,8 @@ fun SlotAlignmentSettingsSection(
     val longRestFillDirection by settingsViewModel.longRestFillDirection.collectAsState()
     val shortRestAlignment by settingsViewModel.shortRestAlignment.collectAsState()
     val shortRestFillDirection by settingsViewModel.shortRestFillDirection.collectAsState()
+    val dawnRestAlignment by settingsViewModel.dawnRestAlignment.collectAsState()
+    val dawnRestFillDirection by settingsViewModel.dawnRestFillDirection.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1230,6 +1232,51 @@ fun SlotAlignmentSettingsSection(
                         SegmentedButton(
                             selected = shortRestFillDirection == SlotFillDirection.RTL,
                             onClick = { settingsViewModel.updateShortRestFillDirection(SlotFillDirection.RTL) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                        ) { Text("Справа") }
+                    }
+                }
+
+                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                // Dawn Rest Section
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ячейки Рассвета", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    
+                    Text("Выравнивание", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = dawnRestAlignment == SlotAlignment.LEFT,
+                            onClick = { settingsViewModel.updateDawnRestAlignment(SlotAlignment.LEFT) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                        ) { Text("Слева") }
+                        SegmentedButton(
+                            selected = dawnRestAlignment == SlotAlignment.CENTER,
+                            onClick = { settingsViewModel.updateDawnRestAlignment(SlotAlignment.CENTER) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        ) { Text("Центр") }
+                        SegmentedButton(
+                            selected = dawnRestAlignment == SlotAlignment.RIGHT,
+                            onClick = { settingsViewModel.updateDawnRestAlignment(SlotAlignment.RIGHT) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                        ) { Text("Справа") }
+                    }
+
+                    Text("Заполнение", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = dawnRestFillDirection == SlotFillDirection.LTR,
+                            onClick = { settingsViewModel.updateDawnRestFillDirection(SlotFillDirection.LTR) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                        ) { Text("Слева") }
+                        SegmentedButton(
+                            selected = dawnRestFillDirection == SlotFillDirection.CENTER,
+                            onClick = { settingsViewModel.updateDawnRestFillDirection(SlotFillDirection.CENTER) },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        ) { Text("Центр") }
+                        SegmentedButton(
+                            selected = dawnRestFillDirection == SlotFillDirection.RTL,
+                            onClick = { settingsViewModel.updateDawnRestFillDirection(SlotFillDirection.RTL) },
                             shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
                         ) { Text("Справа") }
                     }

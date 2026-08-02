@@ -2,8 +2,6 @@ package ru.quasaris.characters.master.backend
 
 import androidx.compose.ui.graphics.Color
 import ru.quasaris.characters.master.Wallet
-import java.util.Stack
-import kotlin.math.floor
 import kotlin.math.roundToInt
 
 enum class Currency(
@@ -44,7 +42,6 @@ object CurrencyUtils {
             val formatted = "%.1f".format(num).replace(",", ".")
             val parts = formatted.split(".")
             val integerPart = parts[0]
-            val decimalPart = parts[1]
             
             if (integerPart.length >= maxDigits) {
                 integerPart.take(maxDigits) + suffix
@@ -55,74 +52,7 @@ object CurrencyUtils {
     }
 
     fun evaluateFormula(formula: String): Double {
-        var processed = formula.replace(",", ".").replace(" ", "")
-        if (processed.isEmpty()) return 0.0
-        
-        try {
-            val tokens = mutableListOf<String>()
-            var i = 0
-            while (i < processed.length) {
-                val c = processed[i]
-                if (c.isDigit() || c == '.') {
-                    val start = i
-                    while (i < processed.length && (processed[i].isDigit() || processed[i] == '.')) i++
-                    tokens.add(processed.substring(start, i))
-                } else if ("+*/()".contains(c)) {
-                    tokens.add(c.toString())
-                    i++
-                } else if (c == '-') {
-                    // Check if it's unary minus
-                    if (i == 0 || "+*/(".contains(processed[i - 1])) {
-                        val start = i
-                        i++
-                        while (i < processed.length && (processed[i].isDigit() || processed[i] == '.')) i++
-                        tokens.add(processed.substring(start, i))
-                    } else {
-                        tokens.add("-")
-                        i++
-                    }
-                } else i++
-            }
-
-            val values = Stack<Double>()
-            val ops = Stack<String>()
-
-            fun precedence(op: String): Int = when (op) {
-                "+", "-" -> 1
-                "*", "/" -> 2
-                else -> 0
-            }
-
-            fun applyOp(b: Double, a: Double, op: String): Double = when (op) {
-                "+" -> a + b
-                "-" -> a - b
-                "*" -> a * b
-                "/" -> if (b != 0.0) a / b else 0.0
-                else -> 0.0
-            }
-
-            for (token in tokens) {
-                when {
-                    token == "(" -> ops.push(token)
-                    token == ")" -> {
-                        while (ops.peek() != "(") values.push(applyOp(values.pop(), values.pop(), ops.pop()))
-                        ops.pop()
-                    }
-                    "+-*/".contains(token) -> {
-                        while (ops.isNotEmpty() && precedence(ops.peek()) >= precedence(token)) {
-                            values.push(applyOp(values.pop(), values.pop(), ops.pop()))
-                        }
-                        ops.push(token)
-                    }
-                    else -> values.push(token.toDouble())
-                }
-            }
-
-            while (ops.isNotEmpty()) values.push(applyOp(values.pop(), values.pop(), ops.pop()))
-            return values.pop()
-        } catch (e: Exception) {
-            return 0.0
-        }
+        return evaluateFormulaDouble(formula, emptyMap())
     }
 
     data class ConversionResult(

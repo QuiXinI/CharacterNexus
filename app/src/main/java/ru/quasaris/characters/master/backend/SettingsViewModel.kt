@@ -87,6 +87,12 @@ class SettingsViewModel(
     private val _shortRestFillDirection = MutableStateFlow(SlotFillDirection.valueOf(settingsManager?.shortRestFillDirection ?: "LTR"))
     val shortRestFillDirection = _shortRestFillDirection.asStateFlow()
 
+    private val _dawnRestAlignment = MutableStateFlow(SlotAlignment.valueOf(settingsManager?.dawnRestAlignment ?: "RIGHT"))
+    val dawnRestAlignment = _dawnRestAlignment.asStateFlow()
+
+    private val _dawnRestFillDirection = MutableStateFlow(SlotFillDirection.valueOf(settingsManager?.dawnRestFillDirection ?: "LTR"))
+    val dawnRestFillDirection = _dawnRestFillDirection.asStateFlow()
+
     private val _useNewACInterface = MutableStateFlow(settingsManager?.useNewACInterface ?: true)
     val useNewACInterface = _useNewACInterface.asStateFlow()
 
@@ -222,6 +228,16 @@ class SettingsViewModel(
         settingsManager?.shortRestFillDirection = direction.name
     }
 
+    fun updateDawnRestAlignment(alignment: SlotAlignment) {
+        _dawnRestAlignment.value = alignment
+        settingsManager?.dawnRestAlignment = alignment.name
+    }
+
+    fun updateDawnRestFillDirection(direction: SlotFillDirection) {
+        _dawnRestFillDirection.value = direction
+        settingsManager?.dawnRestFillDirection = direction.name
+    }
+
     fun updateUseNewACInterface(enabled: Boolean) {
         _useNewACInterface.value = enabled
         settingsManager?.useNewACInterface = enabled
@@ -294,6 +310,8 @@ class SettingsViewModel(
         _longRestFillDirection.value = SlotFillDirection.valueOf(settingsManager?.longRestFillDirection ?: "LTR")
         _shortRestAlignment.value = SlotAlignment.valueOf(settingsManager?.shortRestAlignment ?: "RIGHT")
         _shortRestFillDirection.value = SlotFillDirection.valueOf(settingsManager?.shortRestFillDirection ?: "LTR")
+        _dawnRestAlignment.value = SlotAlignment.valueOf(settingsManager?.dawnRestAlignment ?: "RIGHT")
+        _dawnRestFillDirection.value = SlotFillDirection.valueOf(settingsManager?.dawnRestFillDirection ?: "LTR")
         _useNewACInterface.value = settingsManager?.useNewACInterface ?: true
         _useNewInitInterface.value = settingsManager?.useNewInitInterface ?: true
         _useNewCondInterface.value = settingsManager?.useNewCondInterface ?: true

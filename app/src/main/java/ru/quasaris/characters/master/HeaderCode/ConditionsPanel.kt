@@ -162,23 +162,33 @@ fun ConditionItem(condition: Condition, isSelected: Boolean, onToggle: () -> Uni
         ) {
             Column {
                 HorizontalDivider(color = sep, thickness = 1.2.dp)
-                Text(formatDescription(condition.description), modifier = Modifier.padding(16.dp), fontSize = 14.sp, color = colorScheme.onSurface.copy(alpha = 0.8f))
+                Text(formatDescription(condition.description, colorScheme.primary), modifier = Modifier.padding(16.dp), fontSize = 14.sp, color = colorScheme.onSurface.copy(alpha = 0.8f))
             }
         }
     }
 }
 
-fun formatDescription(text: String): AnnotatedString {
+fun formatDescription(text: String, primaryColor: Color = Color.Unspecified): AnnotatedString {
     return buildAnnotatedString {
         val lines = text.lines()
         lines.forEachIndexed { i, line ->
             var l = line.trim()
-            if (l.startsWith("- ")) l = l.substring(2)
+            if (l.startsWith("- ")) {
+                withStyle(SpanStyle(fontWeight = FontWeight.Black, color = if (primaryColor != Color.Unspecified) primaryColor else Color.Unspecified)) {
+                    append("• ")
+                }
+                l = l.substring(2)
+            }
             val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
             var last = 0
             boldRegex.findAll(l).forEach { m ->
                 append(l.substring(last, m.range.first))
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(m.groupValues[1]) }
+                withStyle(SpanStyle(
+                    fontWeight = FontWeight.Bold,
+                    color = if (primaryColor != Color.Unspecified) primaryColor.copy(alpha = 0.9f) else Color.Unspecified
+                )) { 
+                    append(m.groupValues[1]) 
+                }
                 last = m.range.last + 1
             }
             append(l.substring(last))

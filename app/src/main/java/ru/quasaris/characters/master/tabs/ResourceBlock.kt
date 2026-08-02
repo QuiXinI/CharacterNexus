@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.WbTwilight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -52,7 +53,8 @@ import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.backend.evaluateFormula
 import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
-import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.backend.parseFormulaParts
+import ru.quasaris.characters.master.backend.DicePart
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 
 @Composable
@@ -125,6 +127,15 @@ fun ResourceBlock(
                         RestIndicator(
                             isShort = false,
                             value = resource.longRest,
+                            statsMap = statsMap,
+                            proficiencyBonus = pb
+                        )
+                    }
+                    if (resource.dawnRest != "0") {
+                        RestIndicator(
+                            isShort = false,
+                            isDawn = true,
+                            value = resource.dawnRest,
                             statsMap = statsMap,
                             proficiencyBonus = pb
                         )
@@ -284,12 +295,21 @@ fun ResourceActionButton(
 @Composable
 fun RestIndicator(
     isShort: Boolean,
+    isDawn: Boolean = false,
     value: String,
     statsMap: Map<String, String>,
     proficiencyBonus: Int
 ) {
-    val icon = if (isShort) Icons.Outlined.WbSunny else Icons.Outlined.NightsStay
-    val color = if (isShort) Color(0xFFFFB300) else Color(0xFF42A5F5)
+    val icon = when {
+        isDawn -> Icons.Outlined.WbTwilight
+        isShort -> Icons.Outlined.WbSunny
+        else -> Icons.Outlined.NightsStay
+    }
+    val color = when {
+        isDawn -> Color(0xFFCE93D8)
+        isShort -> Color(0xFFFFB300)
+        else -> Color(0xFF42A5F5)
+    }
 
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Icon(
@@ -346,6 +366,7 @@ fun ResourceConfigDialog(
 
     var shortRestAll by remember { mutableStateOf(resource.shortRest.lowercase() == "all" || resource.shortRest.lowercase() == "все") }
     var longRestAll by remember { mutableStateOf(resource.longRest.lowercase() == "all" || resource.longRest.lowercase() == "все") }
+    var dawnRestAll by remember { mutableStateOf(resource.dawnRest.lowercase() == "all" || resource.dawnRest.lowercase() == "все") }
 
     val emptyTextToolbar = remember {
         object : TextToolbar {
@@ -492,6 +513,36 @@ fun ResourceConfigDialog(
                                     OutlinedTextField(
                                         value = if (state.longRest.lowercase() == "all" || state.longRest.lowercase() == "все") "" else state.longRest,
                                         onValueChange = { state = state.copy(longRest = it) },
+                                        label = { Text("Восстановление") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Dawn recovery
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Рассвет", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                                    Text("Все", style = MaterialTheme.typography.labelMedium)
+                                    Switch(
+                                        checked = dawnRestAll,
+                                        onCheckedChange = {
+                                            dawnRestAll = it
+                                            if (it) state = state.copy(dawnRest = "all")
+                                        }
+                                    )
+                                }
+                                if (!dawnRestAll) {
+                                    OutlinedTextField(
+                                        value = if (state.dawnRest.lowercase() == "all" || state.dawnRest.lowercase() == "все") "" else state.dawnRest,
+                                        onValueChange = { state = state.copy(dawnRest = it) },
                                         label = { Text("Восстановление") },
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(8.dp)

@@ -52,6 +52,8 @@ object CharacterDataHandler {
         skilledProficiencies: List<String> = emptyList(),
         skilledExpertise: List<String> = emptyList(),
         themeSeedColorArgb: Int? = null,
+        hitDiceEntries: List<ru.quasaris.characters.master.HitDiceEntry> = emptyList(),
+        defaultHitDie: Int = 8,
         attacks: List<ru.quasaris.characters.master.AttackEntry> = emptyList(),
         notes: List<ru.quasaris.characters.master.DynamicNoteState> = listOf(ru.quasaris.characters.master.DynamicNoteState()),
         skillsAndTraits: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
@@ -120,7 +122,9 @@ object CharacterDataHandler {
                 ru.quasaris.characters.master.DynamicNoteState(title = "Идеалы"),
                 ru.quasaris.characters.master.DynamicNoteState(title = "Привязанности"),
                 ru.quasaris.characters.master.DynamicNoteState(title = "Слабости")
-            )
+            ),
+            hitDiceEntries = hitDiceEntries,
+            defaultHitDie = defaultHitDie
         )
         return baseChar.copy(
             skillsAndTraits = skillsAndTraits ?: baseChar.skillsAndTraits,

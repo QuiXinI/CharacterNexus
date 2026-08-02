@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
@@ -41,7 +43,8 @@ fun AttackBonusIndicator(
     showLabel: Boolean = true,
     showDice: Boolean = true,
     diceOnLeft: Boolean = false,
-    showPlus: Boolean = true
+    showPlus: Boolean = true,
+    diceSize: androidx.compose.ui.unit.Dp = 24.dp
 ) {
     val bonusText = if (bonus >= 0) (if (showPlus) "+$bonus" else bonus.toString()) else bonus.toString()
     
@@ -58,7 +61,7 @@ fun AttackBonusIndicator(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    dice.forEach { die -> DiceIcon(die) }
+                    dice.forEach { die -> DiceIcon(die, size = diceSize) }
                 }
             }
 
@@ -82,7 +85,7 @@ fun AttackBonusIndicator(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    dice.forEach { die -> DiceIcon(die) }
+                    dice.forEach { die -> DiceIcon(die, size = diceSize) }
                 }
             }
         }
@@ -90,7 +93,7 @@ fun AttackBonusIndicator(
 }
 
 @Composable
-fun DiceIcon(die: DicePart) {
+fun DiceIcon(die: DicePart, size: androidx.compose.ui.unit.Dp = 24.dp) {
     val iconRes = when (die.sides) {
         4 -> R.drawable.ic_d4_dice
         6 -> R.drawable.ic_d6_dice
@@ -103,7 +106,7 @@ fun DiceIcon(die: DicePart) {
 
     if (iconRes != null) {
         Box(
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(size),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -116,11 +119,14 @@ fun DiceIcon(die: DicePart) {
             val textColor = MaterialTheme.colorScheme.primary
             val outlineColor = MaterialTheme.colorScheme.background
             
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val textFontSize = with(density) { (size.toPx() * 0.58f).toSp() }
+
             Box(modifier = Modifier.padding(top = 1.dp)) {
                 listOf(-0.5f to -0.5f, 0.5f to -0.5f, -0.5f to 0.5f, 0.5f to 0.5f).forEach { (dx, dy) ->
                     Text(
                         text = die.count.toString(),
-                        fontSize = 14.sp,
+                        fontSize = textFontSize,
                         fontWeight = FontWeight.Black,
                         color = outlineColor,
                         modifier = Modifier.offset(dx.dp, dy.dp)
@@ -128,7 +134,7 @@ fun DiceIcon(die: DicePart) {
                 }
                 Text(
                     text = die.count.toString(),
-                    fontSize = 14.sp,
+                    fontSize = textFontSize,
                     fontWeight = FontWeight.Black,
                     color = textColor
                 )

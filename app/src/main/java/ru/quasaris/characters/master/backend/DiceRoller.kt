@@ -9,7 +9,7 @@ import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.IBonus
 import ru.quasaris.characters.master.BonusOperation
 import ru.quasaris.characters.master.AdvantagePreference
-import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.backend.parseFormulaParts
 import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.backend.getProficiencyBonus
 import java.util.UUID

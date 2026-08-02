@@ -135,6 +135,11 @@ fun CreateWindow(
 
     var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList<String>()) }
     var exhaustion by remember { mutableStateOf(character?.exhaustion ?: 0) }
+    var isRestPanelVisible by remember { mutableStateOf(false) }
+    var showHealthSettings by remember { mutableStateOf(false) }
+    var defaultHitDie by remember { mutableIntStateOf(character?.defaultHitDie ?: 8) }
+    var hitDiceEntries by remember { mutableStateOf(character?.hitDiceEntries ?: emptyList<ru.quasaris.characters.master.HitDiceEntry>()) }
+
     var isShieldActive by remember { mutableStateOf(character?.isShieldActive ?: false) }
     var shieldEntries by remember { mutableStateOf(character?.shieldEntries ?: listOf(
         ShieldEntry(name = "Базовый Щит", formula = "2")
@@ -191,7 +196,7 @@ fun CreateWindow(
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
             speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb
+            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, defaultHitDie
         )
         onCharacterChange(updated)
     }
@@ -203,7 +208,7 @@ fun CreateWindow(
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
             speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb
+            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, defaultHitDie
         )
         val scope = CoroutineScope(Dispatchers.IO)
         CharacterDataHandler.exportToLssKiller(context, uri, currentChar, scope)
@@ -256,7 +261,13 @@ fun CreateWindow(
                         isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                     },
                     imagePicker = imagePicker,
-                    onDownloadClick = { filename -> fileCreator.launch(filename) }
+                    onDownloadClick = { filename -> fileCreator.launch(filename) },
+                    onShortRest = { 
+                        isRestPanelVisible = !isRestPanelVisible
+                        isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                        isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                        isSpeedPanelVisible = false
+                    }
                 )
 
                 // Tab Selector Row with Advanced Mode Toggle
@@ -330,6 +341,28 @@ fun CreateWindow(
                     onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
                     onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true },
                     healthColor = healthColor, clampHp = clampHp,
+                    spentHitDice = hitDiceEntries.sumOf { it.spent },
+                    maxHitDice = hitDiceEntries.sumOf { evaluateFormula(it.formula.split('d').firstOrNull() ?: "0", statsMap) }.coerceAtLeast(level.toIntOrNull() ?: 1),
+                    onSpentHitDiceChange = { newSpent ->
+                        if (hitDiceEntries.isNotEmpty()) {
+                            val diff = newSpent - hitDiceEntries.sumOf { it.spent }
+                            val newList = hitDiceEntries.toMutableList()
+                            val first = newList[0]
+                            val maxFirst = evaluateFormula(first.formula.split('d').firstOrNull() ?: "0", statsMap)
+                            newList[0] = first.copy(spent = (first.spent + diff).coerceIn(0, maxFirst))
+                            hitDiceEntries = newList
+                        }
+                    },
+                    onOpenHealthSettings = { showHealthSettings = true },
+                    isRestPanelVisible = isRestPanelVisible,
+                    onRestPanelDismiss = { isRestPanelVisible = false },
+                    hitDiceEntries = hitDiceEntries,
+                    onHitDiceEntriesChange = { hitDiceEntries = it },
+                    onHealAmount = { amount ->
+                        currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + amount).toString()
+                    },
+                    onShortRestConfirmed = { isRestPanelVisible = false },
+                    defaultHitDie = defaultHitDie,
                     isArmorClassPanelVisible = isArmorClassPanelVisible, armorClassEntries = armorClassEntries,
                     activeArmorClassId = activeArmorClassId, acDeleteConfirmId = acDeleteConfirmId,
                     onArmorClassEntries = { armorClassEntries = it }, onActiveArmorClass = { activeArmorClassId = it },
@@ -415,6 +448,18 @@ fun CreateWindow(
                 showHpDialog = false
             }
         )
+
+        if (showHealthSettings) {
+            ru.quasaris.characters.master.HeaderCode.EnhancedHealthSettingsDialog(
+                currentHitDie = defaultHitDie,
+                onHitDieChange = { newDie ->
+                    defaultHitDie = newDie
+                },
+                hazeState = null,
+                forceBlurEnabled = false,
+                onDismiss = { showHealthSettings = false }
+            )
+        }
     }
 }
 

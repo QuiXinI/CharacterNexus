@@ -30,8 +30,8 @@ import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusField
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.AddBonusButton
-import ru.quasaris.characters.master.tabs.attacks.DicePart
-import ru.quasaris.characters.master.tabs.attacks.parseFormulaParts
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.parseFormulaParts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
