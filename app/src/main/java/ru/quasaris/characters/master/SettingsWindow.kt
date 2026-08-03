@@ -384,6 +384,8 @@ fun BlurSettingsSection(
     val blurFullscreen by settingsViewModel.blurFullscreen.collectAsState()
     val blurPopups by settingsViewModel.blurPopups.collectAsState()
     val rollAlpha by settingsViewModel.rollInterfaceAlpha.collectAsState()
+    val diceFabAlpha by settingsViewModel.diceFabAlpha.collectAsState()
+    val diceFabBlur by settingsViewModel.diceFabBlurEnabled.collectAsState()
     val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
     val performanceClass = settingsViewModel.performanceClass
     
@@ -437,6 +439,12 @@ fun BlurSettingsSection(
                 )
 
                 BlurSwitchRow(
+                    label = "Кнопка броска (к20)",
+                    checked = diceFabBlur,
+                    onCheckedChange = { onToggle(it) { settingsViewModel.updateDiceFabBlurEnabled(it) } }
+                )
+
+                BlurSwitchRow(
                     label = "Полноэкранные окна",
                     checked = blurFullscreen,
                     onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurFullscreen(it) } }
@@ -478,6 +486,49 @@ fun BlurSettingsSection(
                 valueRange = 0f..1f,
                 modifier = Modifier.fillMaxWidth()
             )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val isFabAlphaDisabled = masterBlurEnabled && diceFabBlur
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Прозрачность кнопки броска",
+                    fontSize = 16.sp,
+                    color = if (isFabAlphaDisabled) colorScheme.onSurface.copy(alpha = 0.38f) else colorScheme.onSurface
+                )
+                Text(
+                    text = "${((1f - diceFabAlpha) * 100).roundToInt()}%",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isFabAlphaDisabled) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.primary
+                )
+            }
+            Slider(
+                value = 1f - diceFabAlpha,
+                onValueChange = { settingsViewModel.updateDiceFabAlpha(1f - it) },
+                enabled = !isFabAlphaDisabled,
+                valueRange = 0f..1f,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+        Button(
+            onClick = { settingsViewModel.updateDiceFabPosition(-10f, -10f) },
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorScheme.surfaceVariant,
+                contentColor = colorScheme.primary
+            )
+        ) {
+            Text("Сбросить положение кнопки броска кубов")
         }
     }
 

@@ -25,6 +25,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -94,6 +96,8 @@ fun CharacterHeader(
     selectedImageUri: Uri?,
     onNavigateBack: () -> Unit,
     exhaustion: Int,
+    hasInspiration: Boolean = false,
+    onInspirationChange: (Boolean) -> Unit = {},
     onShortRest: () -> Unit = {},
     onLongRest: () -> Unit = {},
     onDawn: () -> Unit = {},
@@ -102,6 +106,10 @@ fun CharacterHeader(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val haptic = LocalHapticFeedback.current
+
+    val inspirationRotation by androidx.compose.animation.core.animateFloatAsState(if (hasInspiration) 0f else 45f)
+    val inspirationScale by androidx.compose.animation.core.animateFloatAsState(if (hasInspiration) 1f else 0.8f)
+    val isOled = colorScheme.background == Color.Black
 
     var totalDrag by remember { mutableStateOf(0f) }
     var showRestPopup by remember { mutableStateOf(false) }
@@ -142,60 +150,122 @@ fun CharacterHeader(
                 )
             }
 
-            Box(contentAlignment = Alignment.Center) {
-                IconButton(onClick = { showRestPopup = true }) {
-                    Icon(Icons.Default.WbSunny, null, modifier = Modifier.size(28.dp), tint = colorScheme.primary)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                // Inspiration
+                Box(contentAlignment = Alignment.Center) {
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onInspirationChange(!hasInspiration)
+                        },
+                        modifier = Modifier
+                            .scale(inspirationScale)
+                            .rotate(inspirationRotation)
+                    ) {
+                        if (hasInspiration && !isOled) {
+                            Surface(
+                                modifier = Modifier.size(24.dp),
+                                color = colorScheme.primary.copy(alpha = 0.3f),
+                                shape = CircleShape,
+                                shadowElevation = 12.dp,
+                                tonalElevation = 8.dp
+                            ) {}
+                        }
+                        Icon(
+                            painter = painterResource(R.drawable.ic_inspiration),
+                            contentDescription = "Героическое вдохновение",
+                            modifier = Modifier.size(32.dp),
+                            tint = if (hasInspiration) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                    }
                 }
-                
-                if (showRestPopup) {
-                    ru.quasaris.characters.master.ui.RestPopup(
-                        onShortRest = { onShortRest() },
-                        onLongRest = { onLongRest() },
-                        onDawn = { onDawn() },
-                        onDismiss = { showRestPopup = false },
-                        hazeState = hazeState,
-                        isOled = colorScheme.background == Color.Black
-                    )
-                }
-            }
 
-            Box(contentAlignment = Alignment.Center) {
-                Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(colorScheme.primaryContainer).clickable { 
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onAvatarClick() 
-                }, contentAlignment = Alignment.Center) {
-                    val context = LocalContext.current
-                    val portraitFile = remember(characterImageData) {
-                        if (characterImageData != null && characterImageData.length < 100) {
-                            ImageManager.getThumbnailFile(context, characterImageData)
-                        } else null
-                    }
-                    val base64Bitmap = remember(characterImageData) {
-                        if (characterImageData != null && characterImageData.length >= 100) {
-                            try {
-                                val decoded = Base64.decode(characterImageData, Base64.DEFAULT)
-                                BitmapFactory.decodeByteArray(decoded, 0, decoded.size)?.asImageBitmap()
-                            } catch (_: Exception) { null }
-                        } else null
+                // Rest
+                Box(contentAlignment = Alignment.Center) {
+                    IconButton(onClick = { showRestPopup = true }) {
+                        Icon(Icons.Default.WbSunny, null, modifier = Modifier.size(32.dp), tint = colorScheme.primary)
                     }
 
-                    if (portraitFile != null && portraitFile.exists()) {
-                        AsyncImage(model = portraitFile, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } else if (base64Bitmap != null) {
-                        Image(bitmap = base64Bitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } else {
-                        Icon(Icons.Default.Person, null, tint = colorScheme.onPrimaryContainer)
+                    if (showRestPopup) {
+                        ru.quasaris.characters.master.ui.RestPopup(
+                            onShortRest = { onShortRest() },
+                            onLongRest = { onLongRest() },
+                            onDawn = { onDawn() },
+                            onDismiss = { showRestPopup = false },
+                            hazeState = hazeState,
+                            isOled = colorScheme.background == Color.Black
+                        )
                     }
                 }
-                DropdownMenu(expanded = showAvatarMenu, onDismissRequest = onDismissAvatarMenu) {
-                    DropdownMenuItem(text = { Text("Выбор изображения") }, leadingIcon = { Icon(Icons.Default.Image, null) }, onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onImagePickerClick()
-                    })
-                    DropdownMenuItem(text = { Text("Скачать персонажа") }, leadingIcon = { Icon(Icons.Default.Download, null) }, onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDownloadClick()
-                    })
+
+                // Avatar
+                Box(contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onAvatarClick()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(colorScheme.primaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val context = LocalContext.current
+                            val portraitFile = remember(characterImageData) {
+                                if (characterImageData != null && characterImageData.length < 100) {
+                                    ImageManager.getThumbnailFile(context, characterImageData)
+                                } else null
+                            }
+                            val base64Bitmap = remember(characterImageData) {
+                                if (characterImageData != null && characterImageData.length >= 100) {
+                                    try {
+                                        val decoded = Base64.decode(characterImageData, Base64.DEFAULT)
+                                        BitmapFactory.decodeByteArray(decoded, 0, decoded.size)?.asImageBitmap()
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                } else null
+                            }
+
+                            if (portraitFile != null && portraitFile.exists()) {
+                                AsyncImage(
+                                    model = portraitFile,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else if (base64Bitmap != null) {
+                                Image(
+                                    bitmap = base64Bitmap,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, null, tint = colorScheme.onPrimaryContainer)
+                            }
+                        }
+                    }
+                    DropdownMenu(expanded = showAvatarMenu, onDismissRequest = onDismissAvatarMenu) {
+                        DropdownMenuItem(text = { Text("Выбор изображения") }, leadingIcon = { Icon(Icons.Default.Image, null) }, onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onImagePickerClick()
+                        })
+                        DropdownMenuItem(text = { Text("Скачать персонажа") }, leadingIcon = { Icon(Icons.Default.Download, null) }, onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onDownloadClick()
+                        })
+                    }
                 }
             }
         }

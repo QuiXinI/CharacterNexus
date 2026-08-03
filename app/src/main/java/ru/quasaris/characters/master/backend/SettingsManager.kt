@@ -160,6 +160,23 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("use_new_speed_interface", true)
         set(value) = prefs.edit { putBoolean("use_new_speed_interface", value) }
 
+    // Dice FAB Settings
+    var diceFabOffsetX: Float
+        get() = prefs.getFloat("dice_fab_offset_x", -40f)
+        set(value) = prefs.edit { putFloat("dice_fab_offset_x", value) }
+
+    var diceFabOffsetY: Float
+        get() = prefs.getFloat("dice_fab_offset_y", -40f)
+        set(value) = prefs.edit { putFloat("dice_fab_offset_y", value) }
+
+    var diceFabAlpha: Float
+        get() = prefs.getFloat("dice_fab_alpha", 0.0f)
+        set(value) = prefs.edit { putFloat("dice_fab_alpha", value) }
+
+    var diceFabBlurEnabled: Boolean
+        get() = prefs.getBoolean("dice_fab_blur_enabled", true)
+        set(value) = prefs.edit { putBoolean("dice_fab_blur_enabled", value) }
+
     fun resetToDefaults() {
         prefs.edit { clear() }
     }

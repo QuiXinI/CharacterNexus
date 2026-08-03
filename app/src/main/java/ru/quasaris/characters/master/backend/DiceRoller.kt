@@ -630,4 +630,28 @@ object DiceRoller {
     fun getProficiencyBonus(level: String): Int {
         return ru.quasaris.characters.master.backend.getProficiencyBonus(level)
     }
+
+    fun rollPool(
+        pool: Map<Int, Int>,
+        title: String = "Бросок кубов"
+    ): RollResult {
+        val allDice = mutableListOf<DieRoll>()
+        var total = 0
+        
+        pool.forEach { (sides, count) ->
+            repeat(count) {
+                val r = kotlin.random.Random.nextInt(1, sides + 1)
+                total += r
+                allDice.add(DieRoll(r, sides))
+            }
+        }
+        
+        return RollResult(
+            title = title,
+            total = total,
+            breakdown = pool.entries.joinToString(" + ") { "${it.value}d${it.key}" },
+            bonusDice = allDice,
+            sourceType = RollSourceType.OTHER
+        )
+    }
 }

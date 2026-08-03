@@ -311,6 +311,7 @@ data class Character(
     ),
     val hitDiceEntries: List<HitDiceEntry> = emptyList(),
     val defaultHitDie: Int = 8,
+    val hasInspiration: Boolean = false,
     val spellSettings: SpellSettings = SpellSettings(),
     val wallet: Wallet = Wallet(),
     val cropX: Float? = null,

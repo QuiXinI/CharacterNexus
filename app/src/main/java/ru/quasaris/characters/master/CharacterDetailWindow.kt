@@ -43,6 +43,7 @@ import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.LocalHazeStyle
 import ru.quasaris.characters.master.tabs.spells.SpellSettingsDialog
 import ru.quasaris.characters.master.tabs.spells.SpellsTab
+import ru.quasaris.characters.master.ui.DiceRollingFab
 import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
 import ru.quasaris.characters.master.ui.RestPopup
 import ru.quasaris.characters.master.ui.RestPanel
@@ -90,6 +91,16 @@ fun CharacterDetailWindow(
 
     var selectedConditions by remember { mutableStateOf(character?.selectedConditions ?: emptyList()) }
     var exhaustion by remember { mutableIntStateOf(character?.exhaustion ?: 0) }
+    var hasInspiration by remember { mutableStateOf(character?.hasInspiration ?: false) }
+
+    val diceFabOffsetX by settingsViewModel?.diceFabOffsetX?.collectAsState() ?: remember { mutableStateOf(-40f) }
+    val diceFabOffsetY by settingsViewModel?.diceFabOffsetY?.collectAsState() ?: remember { mutableStateOf(-40f) }
+    val diceFabAlphaSetting by settingsViewModel?.diceFabAlpha?.collectAsState() ?: remember { mutableStateOf(1.0f) }
+    val diceFabBlurEnabled by settingsViewModel?.diceFabBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+    val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+
+    val effectiveDiceFabBlur = masterBlurEnabled && diceFabBlurEnabled
+    val effectiveDiceFabAlpha = diceFabAlphaSetting
 
     val advantageLogic by settingsViewModel?.advantageLogic?.collectAsState() ?: remember { mutableStateOf(AdvantageLogic.TOTAL) }
 
@@ -390,7 +401,7 @@ fun CharacterDetailWindow(
             themeSeedColorArgb = themeSeedColorArgb, notes = notes, skillsAndTraits = skillsAndTraits,
             inventory = inventory, spells = spells, spellSettings = spellSettings, wallet = wallet,
             bioShortFields = bioShortFields, bioLongSections = bioLongSections, hitDiceEntries = hitDiceEntries,
-            defaultHitDie = character.defaultHitDie
+            defaultHitDie = character.defaultHitDie, hasInspiration = hasInspiration
         ))
     }
 
@@ -401,7 +412,7 @@ fun CharacterDetailWindow(
         activeInitiativeId, speedEntries, activeSpeedId, isShieldActive,
         shieldEntries, activeShieldId, themeSeedColorArgb, notes,
         skillsAndTraits, inventory, spells, spellSettings, wallet,
-        bioShortFields, bioLongSections, hitDiceEntries
+        bioShortFields, bioLongSections, hitDiceEntries, hasInspiration
     ) {
         saveCurrentCharacter()
     }
@@ -561,6 +572,8 @@ fun CharacterDetailWindow(
                     selectedImageUri = null,
                     onNavigateBack = onNavigateBack,
                     exhaustion = exhaustion,
+                    hasInspiration = hasInspiration,
+                    onInspirationChange = { hasInspiration = it },
                     onShortRest = { 
                         isRestPanelVisible = !isRestPanelVisible
                     },
@@ -911,6 +924,27 @@ fun CharacterDetailWindow(
                     }
                 }
             }
+
+            DiceRollingFab(
+                onRoll = { pool ->
+                    val res = DiceRoller.rollPool(pool)
+                    onRoll(res)
+                },
+                offsetX = diceFabOffsetX,
+                offsetY = diceFabOffsetY,
+                hazeState = hazeState,
+                isOled = colorScheme.background == Color.Black,
+                alpha = effectiveDiceFabAlpha,
+                forceBlurEnabled = effectiveDiceFabBlur,
+                positionKey = diceFabOffsetX to diceFabOffsetY,
+                onDrag = { dx, dy ->
+                    val density = context.resources.displayMetrics.density
+                    settingsViewModel?.updateDiceFabPosition(
+                        diceFabOffsetX + dx / density,
+                        diceFabOffsetY + dy / density
+                    )
+                }
+            )
 
             HealthDialog(
                 showDialog = showHpDialog,

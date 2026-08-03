@@ -397,7 +397,8 @@ class MainActivity : ComponentActivity() {
                             val rollPosition by settingsViewModel.rollPosition.collectAsState()
                             val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
 
-                            if (rollHistory.isNotEmpty()) {
+                            val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true
+                            if (rollHistory.isNotEmpty() && isOnCharacterScreen) {
                                 DiceRollOverlay(
                                     history = rollHistory,
                                     onClose = { rollHistory = emptyList() },

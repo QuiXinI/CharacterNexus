@@ -94,51 +94,76 @@ fun AttackBonusIndicator(
 
 @Composable
 fun DiceIcon(die: DicePart, size: androidx.compose.ui.unit.Dp = 24.dp) {
-    val iconRes = when (die.sides) {
-        4 -> R.drawable.ic_d4_dice
-        6 -> R.drawable.ic_d6_dice
-        8 -> R.drawable.ic_d8_dice
-        10 -> R.drawable.ic_d10_dice
-        12 -> R.drawable.ic_d12_dice
-        20 -> R.drawable.ic_d20_dice
-        else -> null
-    }
-
-    if (iconRes != null) {
-        Box(
-            modifier = Modifier.size(size),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = iconRes),
-                contentDescription = "d${die.sides}",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.fillMaxSize()
-            )
-            
-            val textColor = MaterialTheme.colorScheme.primary
-            val outlineColor = MaterialTheme.colorScheme.background
-            
-            val density = androidx.compose.ui.platform.LocalDensity.current
-            val textFontSize = with(density) { (size.toPx() * 0.58f).toSp() }
-
-            Box(modifier = Modifier.padding(top = 1.dp)) {
-                listOf(-0.5f to -0.5f, 0.5f to -0.5f, -0.5f to 0.5f, 0.5f to 0.5f).forEach { (dx, dy) ->
-                    Text(
-                        text = die.count.toString(),
-                        fontSize = textFontSize,
-                        fontWeight = FontWeight.Black,
-                        color = outlineColor,
-                        modifier = Modifier.offset(dx.dp, dy.dp)
+    val colorScheme = MaterialTheme.colorScheme
+    
+    Box(
+        modifier = Modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        when (die.sides) {
+            100 -> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val subSize = size * 0.65f
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_d10_dice),
+                        contentDescription = null,
+                        tint = colorScheme.primary,
+                        modifier = Modifier
+                            .size(subSize)
+                            .align(Alignment.TopStart)
+                    )
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_d10_dice),
+                        contentDescription = null,
+                        tint = colorScheme.primary,
+                        modifier = Modifier
+                            .size(subSize)
+                            .align(Alignment.BottomEnd)
                     )
                 }
+            }
+            else -> {
+                val iconRes = when (die.sides) {
+                    2 -> R.drawable.ic_d2_dice
+                    4 -> R.drawable.ic_d4_dice
+                    6 -> R.drawable.ic_d6_dice
+                    8 -> R.drawable.ic_d8_dice
+                    10 -> R.drawable.ic_d10_dice
+                    12 -> R.drawable.ic_d12_dice
+                    20 -> R.drawable.ic_d20_dice
+                    else -> R.drawable.ic_d20_dice
+                }
+                Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = "d${die.sides}",
+                    tint = colorScheme.primary,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        
+        val textColor = colorScheme.primary
+        val outlineColor = MaterialTheme.colorScheme.background
+        
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val textFontSize = with(density) { (size.toPx() * 0.58f).toSp() }
+
+        Box(modifier = Modifier.padding(top = 1.dp)) {
+            listOf(-0.5f to -0.5f, 0.5f to -0.5f, -0.5f to 0.5f, 0.5f to 0.5f).forEach { (dx, dy) ->
                 Text(
                     text = die.count.toString(),
                     fontSize = textFontSize,
                     fontWeight = FontWeight.Black,
-                    color = textColor
+                    color = outlineColor,
+                    modifier = Modifier.offset(dx.dp, dy.dp)
                 )
             }
+            Text(
+                text = die.count.toString(),
+                fontSize = textFontSize,
+                fontWeight = FontWeight.Black,
+                color = textColor
+            )
         }
     }
 }

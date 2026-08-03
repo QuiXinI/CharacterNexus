@@ -105,6 +105,18 @@ class SettingsViewModel(
     private val _useNewSpeedInterface = MutableStateFlow(settingsManager?.useNewSpeedInterface ?: true)
     val useNewSpeedInterface = _useNewSpeedInterface.asStateFlow()
 
+    private val _diceFabOffsetX = MutableStateFlow(settingsManager?.diceFabOffsetX ?: -40f)
+    val diceFabOffsetX = _diceFabOffsetX.asStateFlow()
+
+    private val _diceFabOffsetY = MutableStateFlow(settingsManager?.diceFabOffsetY ?: -40f)
+    val diceFabOffsetY = _diceFabOffsetY.asStateFlow()
+
+    private val _diceFabAlpha = MutableStateFlow(settingsManager?.diceFabAlpha ?: 0.0f)
+    val diceFabAlpha = _diceFabAlpha.asStateFlow()
+
+    private val _diceFabBlurEnabled = MutableStateFlow(settingsManager?.diceFabBlurEnabled ?: true)
+    val diceFabBlurEnabled = _diceFabBlurEnabled.asStateFlow()
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size
@@ -258,6 +270,23 @@ class SettingsViewModel(
         settingsManager?.useNewSpeedInterface = enabled
     }
 
+    fun updateDiceFabPosition(x: Float, y: Float) {
+        _diceFabOffsetX.value = x
+        _diceFabOffsetY.value = y
+        settingsManager?.diceFabOffsetX = x
+        settingsManager?.diceFabOffsetY = y
+    }
+
+    fun updateDiceFabAlpha(alpha: Float) {
+        _diceFabAlpha.value = alpha
+        settingsManager?.diceFabAlpha = alpha
+    }
+
+    fun updateDiceFabBlurEnabled(enabled: Boolean) {
+        _diceFabBlurEnabled.value = enabled
+        settingsManager?.diceFabBlurEnabled = enabled
+    }
+
     val performanceClass: Int
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Build.VERSION.MEDIA_PERFORMANCE_CLASS
@@ -316,5 +345,10 @@ class SettingsViewModel(
         _useNewInitInterface.value = settingsManager?.useNewInitInterface ?: true
         _useNewCondInterface.value = settingsManager?.useNewCondInterface ?: true
         _useNewSpeedInterface.value = settingsManager?.useNewSpeedInterface ?: true
+        
+        _diceFabOffsetX.value = settingsManager?.diceFabOffsetX ?: -40f
+        _diceFabOffsetY.value = settingsManager?.diceFabOffsetY ?: -40f
+        _diceFabAlpha.value = settingsManager?.diceFabAlpha ?: 0.0f
+        _diceFabBlurEnabled.value = settingsManager?.diceFabBlurEnabled ?: true
     }
 }
