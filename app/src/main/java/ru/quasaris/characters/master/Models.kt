@@ -234,6 +234,13 @@ data class HitDiceEntry(
     val spent: Int = 0
 )
 
+data class HPLevelEntry(
+    val level: Int,
+    val hitDie: Int,
+    val rollResult: Int? = null,
+    val manualValue: Int? = null
+)
+
 data class Character(
 
     val id: Int,
@@ -310,7 +317,16 @@ data class Character(
         DynamicNoteState(title = "Слабости")
     ),
     val hitDiceEntries: List<HitDiceEntry> = emptyList(),
+    val hitDiceMap: Map<Int, Int> = emptyMap(), // Die dimension -> Max count
     val defaultHitDie: Int = 8,
+    val hpLevelData: List<HPLevelEntry> = emptyList(),
+    val manualHPLevelData: List<HPLevelEntry> = emptyList(),
+    val isMulticlassHP: Boolean = false,
+    val isManualHP: Boolean = false,
+    val manualMaxHp: Int = 0,
+    val manualMaxHitDice: Int = 0,
+    val hpBonusesAtLevel: List<AttackBonus> = emptyList(),
+    val hpBonusesTotal: List<AttackBonus> = emptyList(),
     val hasInspiration: Boolean = false,
     val spellSettings: SpellSettings = SpellSettings(),
     val wallet: Wallet = Wallet(),

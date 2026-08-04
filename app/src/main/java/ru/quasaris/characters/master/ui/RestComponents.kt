@@ -24,7 +24,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Popup
+import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.HitDiceEntry
 import ru.quasaris.characters.master.backend.AppScaleProvider
 import ru.quasaris.characters.master.backend.LocalAppScale
@@ -251,6 +253,7 @@ fun RestPanel(
 
         currentHitDice.forEachIndexed { index, entry ->
             val maxHD = evaluateFormula(entry.formula.split('d').firstOrNull() ?: "0", statsMap)
+            val dieSize = entry.formula.split('d').lastOrNull()?.toIntOrNull() ?: defaultHitDie
             val available = maxHD - entry.spent
             
             Row(
@@ -259,21 +262,34 @@ fun RestPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(entry.name.ifBlank { "Кости Хитов" }, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(entry.name.ifBlank { "Кости Хитов" }, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(4.dp))
+                        val diceIcon = when (dieSize) {
+                            2 -> R.drawable.ic_d2_dice
+                            4 -> R.drawable.ic_d4_dice
+                            6 -> R.drawable.ic_d6_dice
+                            8 -> R.drawable.ic_d8_dice
+                            10 -> R.drawable.ic_d10_dice
+                            12 -> R.drawable.ic_d12_dice
+                            20 -> R.drawable.ic_d20_dice
+                            else -> R.drawable.ic_d20_dice
+                        }
+                        Icon(painterResource(diceIcon), null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
+                    }
                     Text("$available / $maxHD доступно", style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
                 }
                 
                 Button(
                     onClick = {
-                        val dieSides = entry.formula.split('d').getOrNull(1)?.toIntOrNull() ?: defaultHitDie
-                        val rollVal = (1..dieSides).random()
+                        val rollVal = (1..dieSize).random()
                         val conMod = calculateModifier(statsMap["constitution"] ?: "10")
                         val total = rollVal + conMod
                         
                         onHeal(total)
                         restRolls = restRolls + RestRoll(
                             hitDiceId = entry.id,
-                            formula = "1d$dieSides + $conMod",
+                            formula = "1d$dieSize + $conMod",
                             result = total
                         )
                         
@@ -284,7 +300,7 @@ fun RestPanel(
                     enabled = available > 0,
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Бросить d${entry.formula.split('d').lastOrNull() ?: defaultHitDie}")
+                    Text("Бросок")
                 }
             }
         }

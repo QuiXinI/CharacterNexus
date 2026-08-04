@@ -221,6 +221,8 @@ fun preprocessFormula(formula: String, stats: Map<String, String>): String {
             "AC", "КД" -> stats["ac"] ?: "10"
             "EX", "ИСТ", "EXHAUSTION" -> stats["exhaustion"] ?: "0"
             "COND", "СОСТ", "CONDITIONS" -> stats["conditions"] ?: "0"
+            "MHD", "МКХ" -> stats["totalMaxHitDice"] ?: stats["manualMaxHitDice"] ?: stats["level"] ?: "1"
+            "CHD", "ТКХ" -> stats["totalCurrentHitDice"] ?: stats["chd"] ?: "0"
             "БМ", "PB", "PROF" -> {
                 val level = stats["level"] ?: "1"
                 stats["proficiencyBonus"] ?: getProficiencyBonus(level).toString()

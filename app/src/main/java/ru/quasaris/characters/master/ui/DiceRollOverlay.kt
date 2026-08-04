@@ -334,32 +334,42 @@ fun DiceRollingFab(
     val haptic = LocalHapticFeedback.current
 
     val transition = updateTransition(expanded, label = "DiceMenu")
-
-    val menuScale by transition.animateFloat(label = "Scale") { if (it) 1f else 0f }
-    val mainButtonScale by transition.animateFloat(label = "MainButtonScale") { if (it) 0.8f else 1f }
+    val springSpec = spring<Float>(
+        dampingRatio = 0.5f,
+        stiffness = Spring.StiffnessLow
+    )
+    val menuScale by transition.animateFloat(
+        label = "Scale",
+        transitionSpec = { springSpec }
+    ) { if (it) 1f else 0f }
+    val mainButtonScale by transition.animateFloat(
+        label = "MainButtonScale",
+        transitionSpec = { springSpec }
+    ) { if (it) 0.8f else 1f }
 
     val dragScale by animateFloatAsState(if (isDragging) 1.2f else 1f, label = "DragScale")
 
     val diceTypes = listOf(2, 4, 6, 8, 10, 12, 20, 100)
+
     val colorScheme = MaterialTheme.colorScheme
 
     Dialog(
         onDismissRequest = { expanded = false },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
-            dismissOnBackPress = false,
+            dismissOnBackPress = true,
             dismissOnClickOutside = false
         )
     ) {
         AppScaleProvider(LocalAppScale.current) {
             val view = LocalView.current
             val window = (view.parent as? DialogWindowProvider)?.window
+            val density = view.resources.displayMetrics.density
 
             SideEffect {
                 window?.let { w ->
-                    // Настройки окна как в основном оверлее результатов
-                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
                     w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
                     w.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
                     w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                     w.setDimAmount(0f)
@@ -367,18 +377,16 @@ fun DiceRollingFab(
                     val params = w.attributes
                     params.gravity = Gravity.BOTTOM or Gravity.END
                     
-                    val density = view.resources.displayMetrics.density
-                    // Позиционируем окно на основе переданных смещений
-                    params.x = (-offsetX * density).roundToInt()
-                    params.y = (-offsetY * density).roundToInt()
+                    val baseOffsetX = offsetX * density
+                    val baseOffsetY = offsetY * density
                     
-                    params.width = WindowManager.LayoutParams.WRAP_CONTENT
-                    params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                    // Fixed size window to prevent animation jerks
+                    params.width = (192 * density).roundToInt()
+                    params.height = (192 * density).roundToInt()
+                    params.x = baseOffsetX.roundToInt()
+                    params.y = baseOffsetY.roundToInt()
+                    
                     w.attributes = params
-
-                    if (!isOled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        w.setBackgroundBlurRadius(120)
-                    }
                     w.setBackgroundDrawableResource(android.R.color.transparent)
                 }
             }
@@ -387,21 +395,15 @@ fun DiceRollingFab(
                 Box(
                     modifier = modifier
                         .size(192.dp)
-                        .pointerInput(Unit) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = {
-                                    isDragging = true
-                                    expanded = false
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                },
-                                onDragEnd = { isDragging = false },
-                                onDragCancel = { isDragging = false },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    onDrag(dragAmount.x, dragAmount.y)
-                                }
-                            )
-                        },
+                        .then(
+                            if (expanded) {
+                                Modifier.clickable(
+                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { expanded = false }
+                                )
+                            } else Modifier
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     diceTypes.forEachIndexed { index, sides ->
@@ -441,15 +443,34 @@ fun DiceRollingFab(
                             .shadow(if (!isPoolEmpty && !isOled) 10.dp else 3.dp, CircleShape)
                             .run {
                                 if (forceBlurEnabled && hazeState != null && !isOled) {
-                                    this.clip(CircleShape)
-                                        .then(
-                                            remember(hazeState, positionKey) {
-                                                Modifier.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                                                    inputScale = HazeInputScale.Fixed(0.6f)
-                                                }
-                                            }
-                                        )
-                                } else this
+                                    // Use a slightly larger container for haze to avoid cut-off edges
+                                    this.padding(0.dp)
+                                        .hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
+                                            inputScale = HazeInputScale.Fixed(0.6f)
+                                        }
+                                        .padding(0.dp)
+                                        .clip(CircleShape)
+                                } else this.clip(CircleShape)
+                            }
+                            .pointerInput(Unit) { // Removed 'expanded' key to prevent restart during animation
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        if (expanded) {
+                                            pool.clear()
+                                            expanded = false
+                                        }
+                                        isDragging = true
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    },
+                                    onDragEnd = { isDragging = false },
+                                    onDragCancel = { isDragging = false },
+                                    onDrag = { change, dragAmount ->
+                                        change.consume()
+                                        // Передаем инвертированные сырые пиксели, так как offsetX/Y - это расстояние ОТ правого/нижнего края.
+                                        // При движении вправо (dragAmount.x > 0) расстояние до правого края должно уменьшаться.
+                                        onDrag(-dragAmount.x, -dragAmount.y)
+                                    }
+                                )
                             }
                             .clickable {
                                 if (!expanded) {
@@ -532,28 +553,21 @@ fun DiceMenuItem(
 
     Box(
         modifier = modifier
-            .size(48.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
+            .size(48.dp),
         contentAlignment = Alignment.Center
     ) {
+        // 1. Background & Shadow layer
         Surface(
             modifier = Modifier
                 .fillMaxSize()
                 .shadow(if (count > 0) 6.dp else 2.dp, CircleShape)
                 .run {
                     if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.clip(CircleShape)
-                            .then(
-                                remember(hazeState, positionKey) {
-                                    Modifier.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                                        inputScale = HazeInputScale.Fixed(0.6f)
-                                    }
-                                }
-                            )
-                    } else this
+                        this.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
+                            inputScale = HazeInputScale.Fixed(0.6f)
+                        }
+                        .clip(CircleShape)
+                    } else this.clip(CircleShape)
                 },
             shape = CircleShape,
             color = when {
@@ -561,12 +575,19 @@ fun DiceMenuItem(
                 forceBlurEnabled && hazeState != null -> colorScheme.surface.copy(alpha = alpha)
                 else -> colorScheme.surfaceVariant.copy(alpha = alpha)
             },
-            border = if (count > 0) BorderStroke(2.dp, colorScheme.primary)
-            else BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
             tonalElevation = if (isOled || (forceBlurEnabled && hazeState != null)) 0.dp else 4.dp,
             shadowElevation = 0.dp
         ) {
-            Box(contentAlignment = Alignment.Center) {
+            // 2. Icon layer
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
                 when (sides) {
                     100 -> {
                         Box(modifier = Modifier.size(26.dp)) {
@@ -610,6 +631,18 @@ fun DiceMenuItem(
             }
         }
 
+        // 3. Stroke layer (drawn on top of icon)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .border(
+                    if (count > 0) BorderStroke(2.dp, colorScheme.primary)
+                    else BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
+                    CircleShape
+                )
+        )
+
+        // 4. Count (Badge) layer
         if (count > 0) {
             Badge(
                 modifier = Modifier

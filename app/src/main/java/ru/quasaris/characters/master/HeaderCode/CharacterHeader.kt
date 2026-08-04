@@ -380,15 +380,13 @@ fun ExpandingPanelsSection(
     onTempClick: () -> Unit,
     healthColor: Color,
     clampHp: () -> Unit,
-    spentHitDice: Int,
-    maxHitDice: Int,
-    onSpentHitDiceChange: (Int) -> Unit,
+    hpPanelHitDice: List<HitDiceEntry>,
+    onSpentHitDiceChange: (Int, Int) -> Unit,
     onOpenHealthSettings: () -> Unit,
 
     isRestPanelVisible: Boolean,
     onRestPanelDismiss: () -> Unit,
-    hitDiceEntries: List<HitDiceEntry>,
-    onHitDiceEntriesChange: (List<HitDiceEntry>) -> Unit,
+    onRestPanelHitDiceChange: (List<HitDiceEntry>) -> Unit,
     onHealAmount: (Int) -> Unit,
     onShortRestConfirmed: () -> Unit,
     defaultHitDie: Int,
@@ -443,10 +441,10 @@ fun ExpandingPanelsSection(
         Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent))))
         AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) }
         AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
-            HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp, spentHitDice, maxHitDice, onSpentHitDiceChange, onOpenHealthSettings) 
+            HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp, hpPanelHitDice, onSpentHitDiceChange, onOpenHealthSettings) 
         }
         AnimatedVisibility(isRestPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) {
-            ru.quasaris.characters.master.ui.RestPanel(hitDiceEntries, onHitDiceEntriesChange, onHealAmount, onShortRestConfirmed, onRestPanelDismiss, statsMap, defaultHitDie)
+            ru.quasaris.characters.master.ui.RestPanel(hpPanelHitDice, onRestPanelHitDiceChange, onHealAmount, onShortRestConfirmed, onRestPanelDismiss, statsMap, defaultHitDie)
         }
         AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
             Column(modifier = Modifier.animateContentSize(animationSpec)) {

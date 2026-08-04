@@ -29,6 +29,12 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.quasaris.characters.master.HitDiceEntry
+import ru.quasaris.characters.master.R
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.pager.VerticalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.pager.PagerDefaults
 
 @Composable
 fun HealthPanel(
@@ -44,9 +50,8 @@ fun HealthPanel(
     healthColor: Color,
     onFocusLost: () -> Unit,
     // Hit Dice Support
-    spentHitDice: Int,
-    maxHitDice: Int,
-    onSpentHitDiceChange: (Int) -> Unit,
+    hitDiceEntries: List<HitDiceEntry>,
+    onSpentHitDiceChange: (Int, Int) -> Unit, // Index, NewValue
     onOpenSettings: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -82,39 +87,87 @@ fun HealthPanel(
                 textAlign = TextAlign.Center
             )
 
-            // Hit Dice Counter
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.align(Alignment.CenterEnd)
+            // Hit Dice Counter (Snapping Pager)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width(130.dp)
+                    .height(34.dp) // Height for exactly 1 item
             ) {
-                IconButton(
-                    onClick = { onSpentHitDiceChange((spentHitDice + 1).coerceAtMost(maxHitDice)) },
-                    modifier = Modifier.size(32.dp),
-                    enabled = spentHitDice < maxHitDice
-                ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Remove, null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
-                }
+                val totalPages = if (hitDiceEntries.isNotEmpty()) 1000000 else 0
+                val pagerState = rememberPagerState(
+                    initialPage = if (totalPages > 0) (totalPages / 2) - (totalPages / 2 % hitDiceEntries.size) else 0,
+                    pageCount = { totalPages }
+                )
                 
-                Surface(
-                    color = colorScheme.primary.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.height(32.dp).widthIn(min = 60.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
-                        Text(
-                            "${maxHitDice - spentHitDice}/$maxHitDice КХ",
-                            style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
-                        )
+                VerticalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.End,
+                    flingBehavior = PagerDefaults.flingBehavior(
+                        state = pagerState,
+                        snapPositionalThreshold = 0.1f
+                    )
+                ) { pageIdx ->
+                    val actualIdx = if (hitDiceEntries.isNotEmpty()) pageIdx % hitDiceEntries.size else 0
+                    val entry = hitDiceEntries[actualIdx]
+                    val maxHD = entry.formula.split('d').firstOrNull()?.toIntOrNull() ?: 0
+                    val dieSize = entry.formula.split('d').lastOrNull()?.toIntOrNull() ?: 8
+                    val diceIcon = when (dieSize) {
+                        2 -> R.drawable.ic_d2_dice
+                        4 -> R.drawable.ic_d4_dice
+                        6 -> R.drawable.ic_d6_dice
+                        8 -> R.drawable.ic_d8_dice
+                        10 -> R.drawable.ic_d10_dice
+                        12 -> R.drawable.ic_d12_dice
+                        20 -> R.drawable.ic_d20_dice
+                        else -> R.drawable.ic_d20_dice
                     }
-                }
 
-                IconButton(
-                    onClick = { onSpentHitDiceChange((spentHitDice - 1).coerceAtLeast(0)) },
-                    modifier = Modifier.size(32.dp),
-                    enabled = spentHitDice > 0
-                ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Add, null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        IconButton(
+                            onClick = { onSpentHitDiceChange(actualIdx, (entry.spent + 1).coerceAtMost(maxHD)) },
+                            modifier = Modifier.size(24.dp),
+                            enabled = entry.spent < maxHD
+                        ) {
+                            Icon(Icons.Default.Remove, null, modifier = Modifier.size(14.dp), tint = colorScheme.primary)
+                        }
+                        
+                        Surface(
+                            color = colorScheme.primary.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.padding(horizontal = 2.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "${maxHD - entry.spent}/$maxHD",
+                                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
+                                )
+                                Spacer(Modifier.width(2.dp))
+                                Icon(
+                                    painter = painterResource(diceIcon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = colorScheme.primary
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { onSpentHitDiceChange(actualIdx, (entry.spent - 1).coerceAtLeast(0)) },
+                            modifier = Modifier.size(24.dp),
+                            enabled = entry.spent > 0
+                        ) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp), tint = colorScheme.primary)
+                        }
+                    }
                 }
             }
         }
@@ -123,7 +176,7 @@ fun HealthPanel(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            HealthValueBlock("Максимум", maxHp, colorScheme.onSurfaceVariant, Modifier.weight(1f)) {
+            HealthValueBlock("Максимум", maxHp, colorScheme.onSurfaceVariant, Modifier.weight(1f), readOnly = true) {
                 onMaxHpChange(it.filter { c -> c.isDigit() }) 
             }
             HealthValueBlock("Текущие", currentHp, healthColor, Modifier.weight(1f)) {
@@ -152,6 +205,7 @@ fun HealthValueBlock(
     value: String,
     accentColor: Color,
     modifier: Modifier = Modifier,
+    readOnly: Boolean = false,
     onValueChange: (String) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -187,9 +241,12 @@ fun HealthValueBlock(
             BasicTextField(
                 value = tv,
                 onValueChange = { 
-                    tv = it
-                    onValueChange(it.text)
+                    if (!readOnly) {
+                        tv = it
+                        onValueChange(it.text)
+                    }
                 },
+                readOnly = readOnly,
                 textStyle = TextStyle(
                     textAlign = TextAlign.Center,
                     fontSize = 20.sp,

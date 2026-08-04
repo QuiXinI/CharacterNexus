@@ -139,6 +139,15 @@ fun CreateWindow(
     var showHealthSettings by remember { mutableStateOf(false) }
     var defaultHitDie by remember { mutableIntStateOf(character?.defaultHitDie ?: 8) }
     var hitDiceEntries by remember { mutableStateOf(character?.hitDiceEntries ?: emptyList<ru.quasaris.characters.master.HitDiceEntry>()) }
+    var hitDiceMap by remember { mutableStateOf(character?.hitDiceMap ?: emptyMap<Int, Int>()) }
+    var hpLevelData by remember { mutableStateOf(character?.hpLevelData ?: emptyList<ru.quasaris.characters.master.HPLevelEntry>()) }
+    var manualHPLevelData by remember { mutableStateOf(character?.manualHPLevelData ?: emptyList<ru.quasaris.characters.master.HPLevelEntry>()) }
+    var isMulticlassHP by remember { mutableStateOf(character?.isMulticlassHP ?: false) }
+    var isManualHP by remember { mutableStateOf(character?.isManualHP ?: false) }
+    var manualMaxHp by remember { mutableIntStateOf(character?.manualMaxHp ?: 0) }
+    var manualMaxHitDice by remember { mutableIntStateOf(character?.manualMaxHitDice ?: 0) }
+    var hpBonusesAtLevel by remember { mutableStateOf(character?.hpBonusesAtLevel ?: emptyList<ru.quasaris.characters.master.AttackBonus>()) }
+    var hpBonusesTotal by remember { mutableStateOf(character?.hpBonusesTotal ?: emptyList<ru.quasaris.characters.master.AttackBonus>()) }
 
     var isShieldActive by remember { mutableStateOf(character?.isShieldActive ?: false) }
     var shieldEntries by remember { mutableStateOf(character?.shieldEntries ?: listOf(
@@ -158,7 +167,10 @@ fun CreateWindow(
     val statsMap = mapOf(
         "strength" to strength, "dexterity" to dexterity, "constitution" to constitution,
         "intelligence" to intelligence, "wisdom" to wisdom, "charisma" to charisma,
-        "proficiencyBonus" to proficiencyBonus, "level" to level
+        "proficiencyBonus" to proficiencyBonus, "level" to level,
+        "manualMaxHitDice" to manualMaxHitDice.toString(),
+        "totalMaxHitDice" to hitDiceMap.values.sum().toString(),
+        "totalCurrentHitDice" to (hitDiceMap.values.sum() - hitDiceEntries.sumOf { it.spent }).toString()
     )
 
     val activeACValue = remember(activeArmorClassId, armorClassEntries, statsMap, isShieldActive, activeShieldId, shieldEntries) {
@@ -181,6 +193,67 @@ fun CreateWindow(
 
     val evalPB = remember(proficiencyBonus, statsMap) { evaluateFormula(proficiencyBonus, statsMap).toString() }
 
+    val conMod = remember(statsMap) { evaluateFormula("[CON]", statsMap) }
+    val levelInt = remember(level) { level.toIntOrNull() ?: 1 }
+    val calculatedMaxHp = remember(isManualHP, manualMaxHp, hpLevelData, conMod, levelInt, hpBonusesAtLevel, hpBonusesTotal, statsMap) {
+        val totalPerLevelBonus = hpBonusesAtLevel.filter { it.isActive }.sumOf { evaluateFormula(it.formula, statsMap) }
+        val totalFixedBonus = hpBonusesTotal.filter { it.isActive }.sumOf { evaluateFormula(it.formula, statsMap) }
+        
+        if (isManualHP) {
+            manualMaxHp + totalFixedBonus
+        } else {
+            val dataToUse = hpLevelData.take(levelInt)
+            val totalRolls = dataToUse.sumOf { it.rollResult ?: 0 }
+            totalRolls + (conMod * levelInt) + (totalPerLevelBonus * levelInt) + totalFixedBonus
+        }
+    }
+
+    LaunchedEffect(calculatedMaxHp) {
+        maxHp = calculatedMaxHp.toString()
+    }
+
+    LaunchedEffect(level, isManualHP, hpLevelData, manualHPLevelData) {
+        val targetLevel = level.toIntOrNull() ?: 1
+        
+        // Sync hit dice counters for short rest
+        val dataToSync = if (isManualHP) manualHPLevelData else hpLevelData.take(targetLevel)
+        val groups = dataToSync.groupBy { it.hitDie }
+        
+        // Update hitDiceMap
+        val newHitDiceMap = groups.mapValues { it.value.size }
+        if (newHitDiceMap != hitDiceMap) {
+            hitDiceMap = newHitDiceMap
+        }
+
+        val newHitDiceEntries = groups.map { (die, list) ->
+            val existing = hitDiceEntries.find { it.formula.endsWith("d$die") }
+            ru.quasaris.characters.master.HitDiceEntry(
+                id = existing?.id ?: java.util.UUID.randomUUID().toString(),
+                name = existing?.name ?: "Кости Хитов d$die",
+                formula = "${list.size}d$die",
+                spent = existing?.spent?.coerceAtMost(list.size) ?: 0
+            )
+        }.sortedByDescending { 
+            it.formula.split('d').lastOrNull()?.toIntOrNull() ?: 0 
+        }
+
+        if (newHitDiceEntries != hitDiceEntries) {
+            hitDiceEntries = newHitDiceEntries
+        }
+
+        // Ensure level data size matches target level for automatic mode
+        if (hpLevelData.size < targetLevel) {
+            val newList = hpLevelData.toMutableList()
+            for (i in newList.size + 1..targetLevel) {
+                val die = if (isMulticlassHP) defaultHitDie else (newList.lastOrNull()?.hitDie ?: defaultHitDie)
+                newList.add(ru.quasaris.characters.master.HPLevelEntry(level = i, hitDie = die))
+            }
+            hpLevelData = newList
+        }
+        
+        // FOR MANUAL MODE: DO NOT auto-fill up to targetLevel.
+    }
+
     // Side Effects
     LaunchedEffect(level) { nextLevelExp = getNextLevelThreshold(level) }
 
@@ -189,14 +262,16 @@ fun CreateWindow(
         strProf, dexProf, conProf, intProf, wisProf, chaProf, armorClassEntries, activeArmorClassId,
         initiativeEntries, activeInitiativeId, speedEntries, activeSpeedId,
         maxHp, currentHp, tempHp, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-        skilledProficiencies, skilledExpertise, characterImageData, themeSeedColorArgb
+        skilledProficiencies, skilledExpertise, characterImageData, themeSeedColorArgb,
+        hitDiceEntries, defaultHitDie, hpLevelData, manualHPLevelData, isMulticlassHP, isManualHP, manualMaxHp, manualMaxHitDice, hpBonusesAtLevel, hpBonusesTotal
     ) {
         val updated = CharacterDataHandler.createCharacter(
             charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
             speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, defaultHitDie
+            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, hitDiceMap, defaultHitDie,
+            hpLevelData, manualHPLevelData, isMulticlassHP, isManualHP, manualMaxHp, manualMaxHitDice, hpBonusesAtLevel, hpBonusesTotal
         )
         onCharacterChange(updated)
     }
@@ -208,7 +283,8 @@ fun CreateWindow(
             strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
             armorClassEntries, activeArmorClassId, initiativeEntries, activeInitiativeId,
             speedEntries, activeSpeedId, selectedConditions, exhaustion, isShieldActive, shieldEntries, activeShieldId,
-            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, defaultHitDie
+            characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, hitDiceMap, defaultHitDie,
+            hpLevelData, manualHPLevelData, isMulticlassHP, isManualHP, manualMaxHp, manualMaxHitDice, hpBonusesAtLevel, hpBonusesTotal
         )
         val scope = CoroutineScope(Dispatchers.IO)
         CharacterDataHandler.exportToLssKiller(context, uri, currentChar, scope)
@@ -341,23 +417,18 @@ fun CreateWindow(
                     onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
                     onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true },
                     healthColor = healthColor, clampHp = clampHp,
-                    spentHitDice = hitDiceEntries.sumOf { it.spent },
-                    maxHitDice = hitDiceEntries.sumOf { evaluateFormula(it.formula.split('d').firstOrNull() ?: "0", statsMap) }.coerceAtLeast(level.toIntOrNull() ?: 1),
-                    onSpentHitDiceChange = { newSpent ->
-                        if (hitDiceEntries.isNotEmpty()) {
-                            val diff = newSpent - hitDiceEntries.sumOf { it.spent }
-                            val newList = hitDiceEntries.toMutableList()
-                            val first = newList[0]
-                            val maxFirst = evaluateFormula(first.formula.split('d').firstOrNull() ?: "0", statsMap)
-                            newList[0] = first.copy(spent = (first.spent + diff).coerceIn(0, maxFirst))
+                    hpPanelHitDice = hitDiceEntries,
+                    onSpentHitDiceChange = { idx, newValue ->
+                        val newList = hitDiceEntries.toMutableList()
+                        if (idx in newList.indices) {
+                            newList[idx] = newList[idx].copy(spent = newValue)
                             hitDiceEntries = newList
                         }
                     },
                     onOpenHealthSettings = { showHealthSettings = true },
                     isRestPanelVisible = isRestPanelVisible,
                     onRestPanelDismiss = { isRestPanelVisible = false },
-                    hitDiceEntries = hitDiceEntries,
-                    onHitDiceEntriesChange = { hitDiceEntries = it },
+                    onRestPanelHitDiceChange = { hitDiceEntries = it },
                     onHealAmount = { amount ->
                         currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + amount).toString()
                     },
@@ -450,11 +521,27 @@ fun CreateWindow(
         )
 
         if (showHealthSettings) {
-            ru.quasaris.characters.master.HeaderCode.EnhancedHealthSettingsDialog(
+            ru.quasaris.characters.master.HeaderCode.Fullscreen.HealthSettingsDialog(
+                isManual = isManualHP,
+                onManualChange = { isManualHP = it },
+                manualMaxHp = manualMaxHp,
+                onManualMaxHpChange = { manualMaxHp = it },
+                isMulticlass = isMulticlassHP,
+                onMulticlassChange = { isMulticlassHP = it },
                 currentHitDie = defaultHitDie,
-                onHitDieChange = { newDie ->
-                    defaultHitDie = newDie
-                },
+                onHitDieChange = { defaultHitDie = it },
+                hpLevelData = hpLevelData,
+                onHPLevelDataChange = { hpLevelData = it },
+                manualHPLevelData = manualHPLevelData,
+                onManualHPLevelDataChange = { manualHPLevelData = it },
+                manualMaxHitDice = manualMaxHitDice,
+                onManualMaxHitDiceChange = { manualMaxHitDice = it },
+                hpBonusesAtLevel = hpBonusesAtLevel,
+                onHpBonusesAtLevelChange = { hpBonusesAtLevel = it },
+                hpBonusesTotal = hpBonusesTotal,
+                onHpBonusesTotalChange = { hpBonusesTotal = it },
+                statsMap = statsMap,
+                level = level.toIntOrNull() ?: 1,
                 hazeState = null,
                 forceBlurEnabled = false,
                 onDismiss = { showHealthSettings = false }

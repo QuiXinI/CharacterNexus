@@ -53,7 +53,16 @@ object CharacterDataHandler {
         skilledExpertise: List<String> = emptyList(),
         themeSeedColorArgb: Int? = null,
         hitDiceEntries: List<ru.quasaris.characters.master.HitDiceEntry> = emptyList(),
+        hitDiceMap: Map<Int, Int> = emptyMap(),
         defaultHitDie: Int = 8,
+        hpLevelData: List<ru.quasaris.characters.master.HPLevelEntry> = emptyList(),
+        manualHPLevelData: List<ru.quasaris.characters.master.HPLevelEntry> = emptyList(),
+        isMulticlassHP: Boolean = false,
+        isManualHP: Boolean = false,
+        manualMaxHp: Int = 0,
+        manualMaxHitDice: Int = 0,
+        hpBonusesAtLevel: List<ru.quasaris.characters.master.AttackBonus> = emptyList(),
+        hpBonusesTotal: List<ru.quasaris.characters.master.AttackBonus> = emptyList(),
         attacks: List<ru.quasaris.characters.master.AttackEntry> = emptyList(),
         notes: List<ru.quasaris.characters.master.DynamicNoteState> = listOf(ru.quasaris.characters.master.DynamicNoteState()),
         skillsAndTraits: List<ru.quasaris.characters.master.DynamicNoteState>? = null,
@@ -124,7 +133,16 @@ object CharacterDataHandler {
                 ru.quasaris.characters.master.DynamicNoteState(title = "Слабости")
             ),
             hitDiceEntries = hitDiceEntries,
-            defaultHitDie = defaultHitDie
+            hitDiceMap = hitDiceMap,
+            defaultHitDie = defaultHitDie,
+            hpLevelData = hpLevelData,
+            manualHPLevelData = manualHPLevelData,
+            isMulticlassHP = isMulticlassHP,
+            isManualHP = isManualHP,
+            manualMaxHp = manualMaxHp,
+            manualMaxHitDice = manualMaxHitDice,
+            hpBonusesAtLevel = hpBonusesAtLevel,
+            hpBonusesTotal = hpBonusesTotal
         )
         return baseChar.copy(
             skillsAndTraits = skillsAndTraits ?: baseChar.skillsAndTraits,
