@@ -179,9 +179,7 @@ fun RestPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .shadow(6.dp, RoundedCornerShape(16.dp))
             .background(colorScheme.surface, RoundedCornerShape(16.dp))
-            .border(1.dp, colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -192,7 +190,7 @@ fun RestPanel(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Короткий отдых",
+                text = "Отдых",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Black,
                 color = colorScheme.primary
@@ -200,6 +198,23 @@ fun RestPanel(
             IconButton(onClick = onDismiss) {
                 Icon(Icons.Default.Close, null)
             }
+        }
+
+        Surface(
+            color = colorScheme.primary.copy(alpha = 0.1f),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+            border = BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.2f))
+        ) {
+            Text(
+                text = "КОРОТКИЙ ОТДЫХ",
+                modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = colorScheme.primary,
+                letterSpacing = 2.sp
+            )
         }
 
         // History of rolls

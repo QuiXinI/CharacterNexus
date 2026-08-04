@@ -25,31 +25,34 @@ fun InventoryTab(
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
-    statsMap: Map<String, String> = emptyMap()
+    statsMap: Map<String, String> = emptyMap(),
+    header: @Composable () -> Unit = {}
 ) {
     var editingCurrency by remember { mutableStateOf<Currency?>(null) }
 
-    Column {
-        CurrencyDisplayRow(
-            wallet = wallet,
-            onCurrencyClick = { editingCurrency = it }
-        )
-
-        DynamicFieldsTab(
-            fields = inventory,
-            onFieldsChange = onInventoryChange,
-            hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled,
-            blurPopups = blurPopups,
-            isEditMode = isEditMode,
-            addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
-            emptyListText = "Инвентарь пуст",
-            titlePlaceholder = "Название раздела",
-            contentPlaceholder = "Содержимое раздела...",
-            settingsViewModel = settingsViewModel,
-            statsMap = statsMap
-        )
-    }
+    DynamicFieldsTab(
+        fields = inventory,
+        onFieldsChange = onInventoryChange,
+        hazeState = hazeState,
+        forceBlurEnabled = forceBlurEnabled,
+        blurPopups = blurPopups,
+        isEditMode = isEditMode,
+        addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
+        emptyListText = "Инвентарь пуст",
+        titlePlaceholder = "Название раздела",
+        contentPlaceholder = "Содержимое раздела...",
+        settingsViewModel = settingsViewModel,
+        statsMap = statsMap,
+        header = {
+            Column {
+                header()
+                CurrencyDisplayRow(
+                    wallet = wallet,
+                    onCurrencyClick = { editingCurrency = it }
+                )
+            }
+        }
+    )
 
     editingCurrency?.let { currency ->
         CurrencyEditDialog(

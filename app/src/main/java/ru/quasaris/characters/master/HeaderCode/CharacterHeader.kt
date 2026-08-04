@@ -113,7 +113,7 @@ fun CharacterHeader(
 
     var totalDrag by remember { mutableStateOf(0f) }
     var showRestPopup by remember { mutableStateOf(false) }
-    
+
     Column(
         modifier = Modifier
             .background(colorScheme.surface)
@@ -389,6 +389,8 @@ fun ExpandingPanelsSection(
     onRestPanelHitDiceChange: (List<HitDiceEntry>) -> Unit,
     onHealAmount: (Int) -> Unit,
     onShortRestConfirmed: () -> Unit,
+    onLongRest: () -> Unit,
+    onDawn: () -> Unit,
     defaultHitDie: Int,
 
     isArmorClassPanelVisible: Boolean,
@@ -435,19 +437,60 @@ fun ExpandingPanelsSection(
     onSpeedDeleteReq: (String?) -> Unit,
     onAddSpeed: () -> Unit
 ) {
-    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
-    
-    Column {
-        Box(modifier = Modifier.fillMaxWidth().height(8.dp).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.3f), Color.Transparent))))
-        AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) }
-        AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
-            HealthPanel(maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, onHealClick, onDamageClick, onTempClick, healthColor, clampHp, hpPanelHitDice, onSpentHitDiceChange, onOpenHealthSettings) 
+    val enterSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
+    val exitSpec = spring<IntSize>(stiffness = Spring.StiffnessHigh)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        AnimatedVisibility(isRestPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) {
+            Column {
+                ru.quasaris.characters.master.ui.RestPanel(
+                    hpPanelHitDice, onRestPanelHitDiceChange, onHealAmount, 
+                    onShortRestConfirmed, onRestPanelDismiss, statsMap, defaultHitDie
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onLongRest,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Icon(Icons.Default.Bedtime, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Длинный отдых", fontSize = 13.sp)
+                    }
+                    Button(
+                        onClick = onDawn,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                    ) {
+                        Icon(Icons.Default.WbTwilight, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Рассвет", fontSize = 13.sp)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
         }
-        AnimatedVisibility(isRestPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) {
-            ru.quasaris.characters.master.ui.RestPanel(hpPanelHitDice, onRestPanelHitDiceChange, onHealAmount, onShortRestConfirmed, onRestPanelDismiss, statsMap, defaultHitDie)
+
+        AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) {
+            HealthPanel(
+                maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, 
+                onHealClick, onDamageClick, onTempClick, healthColor, clampHp, hpPanelHitDice, 
+                onSpentHitDiceChange, onOpenHealthSettings
+            )
         }
-        AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { 
-            Column(modifier = Modifier.animateContentSize(animationSpec)) {
+
+        AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { 
+            LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) 
+        }
+
+        AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) {
+            Column {
                 FormulaPanel("Класс Доспеха", armorClassEntries, activeArmorClassId, acDeleteConfirmId, { updated -> onArmorClassEntries(updated.filterIsInstance<ArmorClassEntry>()) }, onActiveArmorClass, onAcDeleteReq, onAddArmorClass) 
                 FormulaPanel(
                     title = "Щит",
@@ -468,9 +511,9 @@ fun ExpandingPanelsSection(
                 )
             }
         }
-        AnimatedVisibility(isInitiativePanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { FormulaPanel("Инициатива", initiativeEntries, activeInitiativeId, initDeleteConfirmId, { updated -> onInitiativeEntries(updated.filterIsInstance<InitiativeEntry>()) }, onActiveInitiative, onInitDeleteReq, onAddInitiative) }
-        AnimatedVisibility(isConditionsPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { ConditionsPanel(allConditions, selectedConditions, onToggleCondition, exhaustion, onExhaustionChange) }
-        AnimatedVisibility(isSpeedPanelVisible, enter = expandVertically(animationSpec), exit = shrinkVertically(animationSpec)) { FormulaPanel("Скорость", speedEntries, activeSpeedId, speedDeleteConfirmId, { updated -> onSpeedEntries(updated.filterIsInstance<SpeedEntry>()) }, onActiveSpeed, onSpeedDeleteReq, onAddSpeed) }
+        AnimatedVisibility(isInitiativePanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { FormulaPanel("Инициатива", initiativeEntries, activeInitiativeId, initDeleteConfirmId, { updated -> onInitiativeEntries(updated.filterIsInstance<InitiativeEntry>()) }, onActiveInitiative, onInitDeleteReq, onAddInitiative) }
+        AnimatedVisibility(isConditionsPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { ConditionsPanel(allConditions, selectedConditions, onToggleCondition, exhaustion, onExhaustionChange) }
+        AnimatedVisibility(isSpeedPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { FormulaPanel("Скорость", speedEntries, activeSpeedId, speedDeleteConfirmId, { updated -> onSpeedEntries(updated.filterIsInstance<SpeedEntry>()) }, onActiveSpeed, onSpeedDeleteReq, onAddSpeed) }
     }
 }
 

@@ -1,6 +1,9 @@
 package ru.quasaris.characters.master.HeaderCode
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -163,8 +166,20 @@ fun LevelPanel(
         colorScheme.onSurface.copy(alpha = 0.38f)
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(4.dp, RoundedCornerShape(12.dp)).background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)).animateContentSize()) {
-        Text("Уровень и Опыт", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.titleLarge, color = colorScheme.onSurfaceVariant)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .border(androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
+    ) {
+        Text(
+            text = "Уровень и Опыт",
+            modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black,
+            color = colorScheme.primary
+        )
         
         // Character Level Row
         Row(modifier = Modifier.fillMaxWidth().height(48.dp).clickable { ltv = ltv.copy(selection = TextRange(ltv.text.length)); fl.requestFocus() }, verticalAlignment = Alignment.CenterVertically) {

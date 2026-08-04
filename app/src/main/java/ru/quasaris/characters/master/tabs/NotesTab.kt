@@ -14,7 +14,8 @@ fun NotesTab(
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
-    statsMap: Map<String, String> = emptyMap()
+    statsMap: Map<String, String> = emptyMap(),
+    header: @Composable () -> Unit = {}
 ) {
     DynamicFieldsTab(
         fields = notes,
@@ -28,6 +29,7 @@ fun NotesTab(
         titlePlaceholder = "Заголовок заметки",
         contentPlaceholder = "Текст заметки...",
         settingsViewModel = settingsViewModel,
-        statsMap = statsMap
+        statsMap = statsMap,
+        header = header
     )
 }

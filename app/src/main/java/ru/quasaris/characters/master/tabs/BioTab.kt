@@ -55,7 +55,8 @@ fun BioTab(
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
-    statsMap: Map<String, String> = emptyMap()
+    statsMap: Map<String, String> = emptyMap(),
+    header: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -115,9 +116,10 @@ fun BioTab(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                    .padding(start = 8.dp, top = 0.dp, end = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                header()
                 // 1. Full-width square portrait container
                 Column {
                     Box(

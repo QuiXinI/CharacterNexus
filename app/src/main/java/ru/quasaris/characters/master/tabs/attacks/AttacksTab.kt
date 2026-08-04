@@ -86,7 +86,8 @@ fun AttacksTab(
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings(),
-    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
+    header: @Composable () -> Unit = {}
 ) {
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
     var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
@@ -101,21 +102,27 @@ fun AttacksTab(
             .fillMaxSize()
             .imePadding()
     ) {
-        if (attacks.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    "Список атак пуст", 
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    style = MaterialTheme.typography.bodyLarge
-                )
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                header()
             }
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 80.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+
+            if (attacks.isEmpty()) {
+                item {
+                    Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            "Список атак пуст", 
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            } else {
                 itemsIndexed(items, key = { _, attack -> attack.id }) { index, attack ->
                     val isDragging = draggedItemIndex == index
                     

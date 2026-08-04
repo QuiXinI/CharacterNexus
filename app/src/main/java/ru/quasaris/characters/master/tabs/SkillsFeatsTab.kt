@@ -14,7 +14,8 @@ fun SkillsFeatsTab(
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
-    statsMap: Map<String, String> = emptyMap()
+    statsMap: Map<String, String> = emptyMap(),
+    header: @Composable () -> Unit = {}
 ) {
     DynamicFieldsTab(
         fields = skillsAndTraits,
@@ -28,6 +29,7 @@ fun SkillsFeatsTab(
         titlePlaceholder = "Название раздела",
         contentPlaceholder = "Описание раздела...",
         settingsViewModel = settingsViewModel,
-        statsMap = statsMap
+        statsMap = statsMap,
+        header = header
     )
 }

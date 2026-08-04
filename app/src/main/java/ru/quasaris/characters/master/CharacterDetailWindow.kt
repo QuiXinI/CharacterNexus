@@ -4,6 +4,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,7 +24,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,7 +53,6 @@ import ru.quasaris.characters.master.ui.DiceRollingFab
 import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
 import ru.quasaris.characters.master.ui.RestPopup
 import ru.quasaris.characters.master.ui.RestPanel
-import androidx.compose.ui.draw.scale
 import java.util.UUID
 
 /**
@@ -159,7 +163,7 @@ fun CharacterDetailWindow(
         }.sortedByDescending { 
             it.formula.split('d').lastOrNull()?.toIntOrNull() ?: 0 
         }
-        
+
         if (newHitDiceEntries != state.hitDiceEntries) {
             state.hitDiceEntries = newHitDiceEntries
         }
@@ -200,10 +204,10 @@ fun CharacterDetailWindow(
 
     val statsMap = remember(state.statsState, state.level, state.proficiencyBonus, state.spellSettings, state.currentHp, state.maxHp, state.tempHp, state.exhaustion, state.selectedConditions, state.activeArmorClassId, state.armorClassEntries, state.isShieldActive, state.activeShieldId, state.shieldEntries, state.manualMaxHitDice) {
         val pbVal = (state.proficiencyBonus.replace("+", "").toIntOrNull() ?: getProficiencyBonus(state.level))
-        
+
         val baseStats = state.statsState.toStatsMap(state.level, pbVal.toString()) + ("manualMaxHitDice" to state.manualMaxHitDice.toString())
         val mutableStats = baseStats.toMutableMap()
-        
+
         Attribute.entries.forEach { attr ->
             if (attr == Attribute.NONE) return@forEach
             val key = attr.name.lowercase()
@@ -213,7 +217,7 @@ fun CharacterDetailWindow(
                 stats = baseStats,
                 initialValue = baseScore.toIntOrNull() ?: 10
             ).toString()
-            
+
             mutableStats[key] = effScore
             mutableStats["base_$key"] = baseScore
         }
@@ -306,145 +310,49 @@ fun CharacterDetailWindow(
         state.handleRestoration(restType, statsMap)
     }
 
-    Scaffold(
-        containerColor = colorScheme.background,
-        topBar = {
-            Column(modifier = Modifier.background(colorScheme.surface)) {
-                CharacterHeader(
-                    name = state.name, onNameChange = { state.name = it },
-                    level = state.level, experience = state.experience, nextLevelExp = state.nextLevelExp,
-                    characterImageData = state.characterImageData,
-                    onAvatarClick = { state.showAvatarMenu = true },
-                    onLevelClick = {
-                        state.isLevelPanelVisible = !state.isLevelPanelVisible
-                    },
-                    onOpenDrawer = onOpenDrawer,
-                    activeACValue = acValue,
-                    onACClick = { state.isShieldActive = !state.isShieldActive },
-                    onACLongClick = {
-                        if (useNewAC) {
-                            state.showEnhancedAC = true
-                        } else {
-                            state.isArmorClassPanelVisible = !state.isArmorClassPanelVisible
-                        }
-                    },
-                    isShieldActive = state.isShieldActive,
-                    activeInitValue = initValue,
-                    onInitClick = {
-                        val baseInit = (initValue.replace("+", "").toIntOrNull() ?: 0) + (state.exhaustion * 2)
-                        val activeEntry = state.initiativeEntries.find { it.id == state.activeInitiativeId }
-                        val advantage = if (activeEntry?.hasAdvantage == true) AdvantageType.ADVANTAGE else AdvantageType.NONE
-                        onRoll(DiceRoller.roll("Инициатива", baseInit, bonuses = activeEntry?.bonuses ?: emptyList(), stats = statsMap, exhaustion = state.exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = advantageLogic))
-                    },
-                    onInitLongClick = {
-                        if (useNewInit) {
-                            state.showEnhancedInit = true
-                        } else {
-                            state.isInitiativePanelVisible = !state.isInitiativePanelVisible
-                        }
-                    },
-                    currentHp = state.currentHp, maxHp = state.maxHp, tempHp = state.tempHp,
-                    healthColor = healthColor, healthIcon = healthIcon,
-                    onHealthClick = {
-                        state.isHealthPanelVisible = !state.isHealthPanelVisible
-                    },
-                    conditionsCount = state.exhaustion.toString(),
-                    selectedConditions = state.selectedConditions,
-                    onConditionsClick = {
-                        if (useNewCond) {
-                            state.showEnhancedCond = true
-                        } else {
-                            state.isConditionsPanelVisible = !state.isConditionsPanelVisible
-                        }
-                    },
-                    activeSpeedValue = speedValue,
-                    onSpeedClick = {
-                        if (useNewSpeed) {
-                            state.showEnhancedSpeed = true
-                        } else {
-                            state.isSpeedPanelVisible = !state.isSpeedPanelVisible
-                        }
-                    },
-                    showAvatarMenu = state.showAvatarMenu,
-                    onDismissAvatarMenu = { state.showAvatarMenu = false },
-                    onImagePickerClick = { imagePickerLauncher.launch("image/*"); state.showAvatarMenu = false },
-                    onDownloadClick = { fileCreatorLauncher.launch("MP_${state.name}.${ArchiveManager.EXPORT_EXTENSION}"); state.showAvatarMenu = false },
-                    selectedImageUri = null,
-                    onNavigateBack = onNavigateBack,
-                    exhaustion = state.exhaustion,
-                    hasInspiration = state.hasInspiration,
-                    onInspirationChange = { state.hasInspiration = it },
-                    onShortRest = { 
-                        state.isRestPanelVisible = !state.isRestPanelVisible
-                    },
-                    onLongRest = { handleRestoration("long") },
-                    onDawn = { handleRestoration("dawn") },
-                    hazeState = hazeState,
-                    blurPopups = blurPopups
-                )
-
-                TabNavigationBar(
-                    currentTab = currentTab,
-                    onShowTabSheet = { showTabSheet = true },
-                    isEditMode = state.isEditMode,
-                    onToggleEditMode = { state.isEditMode = !state.isEditMode },
-                    isAdvancedMode = state.isAdvancedMode,
-                    onToggleAdvancedMode = { state.isAdvancedMode = !state.isAdvancedMode },
-                    hasContentToEdit = when(currentTab) {
-                        CharacterTab.ATTACKS -> state.attacks.isNotEmpty()
-                        CharacterTab.NOTES -> state.notes.isNotEmpty()
-                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits.isNotEmpty()
-                        CharacterTab.INVENTORY -> state.inventory.isNotEmpty()
-                        CharacterTab.SPELLS -> state.spells.isNotEmpty()
-                        CharacterTab.BIO -> true
-                        else -> false
-                    },
-                    collapsibleTabs = listOf(
-                        CharacterTab.SKILLS_FEATS,
-                        CharacterTab.INVENTORY,
-                        CharacterTab.SPELLS,
-                        CharacterTab.NOTES
-                    ),
-                    anyCollapsed = when (currentTab) {
-                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits.any { !it.isExpanded }
-                        CharacterTab.INVENTORY -> state.inventory.any { !it.isExpanded }
-                        CharacterTab.SPELLS -> state.spells.any { !it.isExpanded }
-                        CharacterTab.NOTES -> state.notes.any { !it.isExpanded }
-                        else -> false
-                    },
-                    onToggleAllExpansion = {
-                        val currentList = when (currentTab) {
-                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
-                            CharacterTab.INVENTORY -> state.inventory
-                            CharacterTab.SPELLS -> state.spells
-                            CharacterTab.NOTES -> state.notes
-                            else -> emptyList()
-                        }
-                        val anyCollapsed = currentList.any { !it.isExpanded }
-                        val newState = if (anyCollapsed) {
-                            currentList.map { it.copy(isExpanded = true) }
-                        } else {
-                            currentList.map { it.copy(isExpanded = false) }
-                        }
-                        when (currentTab) {
-                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
-                            CharacterTab.INVENTORY -> state.inventory = newState
-                            CharacterTab.SPELLS -> state.spells = newState
-                            CharacterTab.NOTES -> state.notes = newState
-                            else -> {}
-                        }
-                    },
-                    onShowSpellSettings = { state.showSpellSettings = true }
-                )
-            }
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .background(colorScheme.background)) {
-
-            Column {
+    @Composable
+    fun ExpandingPanelsWrapper() {
+        val panelScrollState = rememberScrollState()
+        val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+        val surfaceColor = colorScheme.surface
+        
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize()
+                .heightIn(max = screenHeight / 2),
+            color = surfaceColor
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(panelScrollState)
+                    .padding(horizontal = 4.dp)
+                    .drawWithContent {
+                        drawContent()
+                        // Top Fade
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0f to surfaceColor,
+                                1f to Color.Transparent,
+                                startY = 0f,
+                                endY = 4.dp.toPx()
+                            ),
+                            size = size.copy(height = 4.dp.toPx())
+                        )
+                        // Bottom Fade
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                1f to surfaceColor,
+                                startY = size.height - 4.dp.toPx(),
+                                endY = size.height
+                            ),
+                            topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - 4.dp.toPx()),
+                            size = size.copy(height = 4.dp.toPx())
+                        )
+                    }
+            ) {
                 ExpandingPanelsSection(
                     isLevelPanelVisible = state.isLevelPanelVisible, level = state.level, onLevelChange = { state.level = it },
                     experience = state.experience, onExpChange = { state.experience = it },
@@ -476,7 +384,9 @@ fun CharacterDetailWindow(
                         handleRestoration("short")
                         state.isRestPanelVisible = false
                     },
-                    defaultHitDie = character?.defaultHitDie ?: 8,
+                    onLongRest = { handleRestoration("long") },
+                    onDawn = { handleRestoration("dawn") },
+                    defaultHitDie = character.defaultHitDie,
                     isArmorClassPanelVisible = state.isArmorClassPanelVisible, armorClassEntries = state.armorClassEntries,
                     activeArmorClassId = state.activeArmorClassId, acDeleteConfirmId = state.acDeleteConfirmId,
                     onArmorClassEntries = { state.armorClassEntries = it }, onActiveArmorClass = { state.activeArmorClassId = it },
@@ -504,128 +414,279 @@ fun CharacterDetailWindow(
                     onSpeedEntries = { state.speedEntries = it }, onActiveSpeed = { state.activeSpeedId = it },
                     onSpeedDeleteReq = { state.speedDeleteConfirmId = it }, onAddSpeed = { state.speedEntries = state.speedEntries + SpeedEntry() }
                 )
+            }
+        }
+    }
 
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.weight(1f),
-                    beyondViewportPageCount = 1
-                ) { page ->
-                    val tab = tabs[page % tabs.size]
+    Scaffold(
+        containerColor = colorScheme.background,
+        topBar = {
+            Column(modifier = Modifier.background(colorScheme.background)) {
+                Surface(
+                    tonalElevation = 1.dp,
+                    shadowElevation = 6.dp,
+                    color = colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column {
+                        CharacterHeader(
+                            name = state.name, onNameChange = { state.name = it },
+                            level = state.level, experience = state.experience, nextLevelExp = state.nextLevelExp,
+                            characterImageData = state.characterImageData,
+                            onAvatarClick = { state.showAvatarMenu = true },
+                            onLevelClick = {
+                                state.isLevelPanelVisible = !state.isLevelPanelVisible
+                            },
+                            onOpenDrawer = onOpenDrawer,
+                            activeACValue = acValue,
+                            onACClick = { state.isShieldActive = !state.isShieldActive },
+                            onACLongClick = {
+                                if (useNewAC) {
+                                    state.showEnhancedAC = true
+                                } else {
+                                    state.isArmorClassPanelVisible = !state.isArmorClassPanelVisible
+                                }
+                            },
+                            isShieldActive = state.isShieldActive,
+                            activeInitValue = initValue,
+                            onInitClick = {
+                                val baseInit = (initValue.replace("+", "").toIntOrNull() ?: 0) + (state.exhaustion * 2)
+                                val activeEntry = state.initiativeEntries.find { it.id == state.activeInitiativeId }
+                                val advantage = if (activeEntry?.hasAdvantage == true) AdvantageType.ADVANTAGE else AdvantageType.NONE
+                                onRoll(DiceRoller.roll("Инициатива", baseInit, bonuses = activeEntry?.bonuses ?: emptyList(), stats = statsMap, exhaustion = state.exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = advantageLogic))
+                            },
+                            onInitLongClick = {
+                                if (useNewInit) {
+                                    state.showEnhancedInit = true
+                                } else {
+                                    state.isInitiativePanelVisible = !state.isInitiativePanelVisible
+                                }
+                            },
+                            currentHp = state.currentHp, maxHp = state.maxHp, tempHp = state.tempHp,
+                            healthColor = healthColor, healthIcon = healthIcon,
+                            onHealthClick = {
+                                state.isHealthPanelVisible = !state.isHealthPanelVisible
+                            },
+                            conditionsCount = state.exhaustion.toString(),
+                            selectedConditions = state.selectedConditions,
+                            onConditionsClick = {
+                                if (useNewCond) {
+                                    state.showEnhancedCond = true
+                                } else {
+                                    state.isConditionsPanelVisible = !state.isConditionsPanelVisible
+                                }
+                            },
+                            activeSpeedValue = speedValue,
+                            onSpeedClick = {
+                                if (useNewSpeed) {
+                                    state.showEnhancedSpeed = true
+                                } else {
+                                    state.isSpeedPanelVisible = !state.isSpeedPanelVisible
+                                }
+                            },
+                            showAvatarMenu = state.showAvatarMenu,
+                            onDismissAvatarMenu = { state.showAvatarMenu = false },
+                            onImagePickerClick = { imagePickerLauncher.launch("image/*"); state.showAvatarMenu = false },
+                            onDownloadClick = { fileCreatorLauncher.launch("MP_${state.name}.${ArchiveManager.EXPORT_EXTENSION}"); state.showAvatarMenu = false },
+                            selectedImageUri = null,
+                            onNavigateBack = onNavigateBack,
+                            exhaustion = state.exhaustion,
+                            hasInspiration = state.hasInspiration,
+                            onInspirationChange = { state.hasInspiration = it },
+                            onShortRest = {
+                                state.isRestPanelVisible = !state.isRestPanelVisible
+                            },
+                            onLongRest = { handleRestoration("long") },
+                            onDawn = { handleRestoration("dawn") },
+                            hazeState = hazeState,
+                            blurPopups = blurPopups
+                        )
 
-                    when (tab) {
-                        CharacterTab.STATS -> {
-                            StatsTab(
-                                character = character,
-                                level = state.level,
-                                statsState = state.statsState,
-                                onStatsStateChange = { state.statsState = it },
-                                onRoll = onRoll,
-                                hazeState = hazeState,
-                                forceBlurEnabled = forceBlurEnabled,
-                                blurPopups = blurPopups,
-                                isAdvancedMode = state.isAdvancedMode,
-                                advantageLogic = advantageLogic,
-                                attributeModifiers = attributeModifiers,
-                                statsMap = statsMap
-                            )
-                        }
-                        CharacterTab.ATTACKS -> {
-                            AttacksTab(
-                                attacks = state.attacks,
-                                proficiencyBonus = pb,
-                                attributeModifiers = attributeModifiers,
-                                onUpdateAttacks = { state.attacks = it },
-                                onRoll = onRoll,
-                                stats = statsMap,
-                                exhaustion = state.exhaustion,
-                                hazeState = hazeState,
-                                forceBlurEnabled = forceBlurEnabled,
-                                blurPopups = blurPopups,
-                                isEditMode = state.isEditMode,
-                                settingsViewModel = settingsViewModel,
-                                spellSettings = state.spellSettings,
-                                advantageLogic = advantageLogic
-                            )
-                        }
-                        CharacterTab.BIO -> {
-                            BioTab(
-                                character = character.copy(
-                                    bioShortFields = state.bioShortFields,
-                                    bioLongSections = state.bioLongSections,
-                                    imageData = state.characterImageData
-                                ),
-                                onCharacterChange = { updated ->
-                                    state.bioShortFields = updated.bioShortFields
-                                    state.bioLongSections = updated.bioLongSections
-                                    state.characterImageData = updated.imageData
-                                },
-                                onAvatarEditRequest = {
-                                    imagePickerLauncher.launch("image/*")
-                                },
-                                hazeState = hazeState,
-                                forceBlurEnabled = forceBlurEnabled,
-                                blurPopups = blurPopups,
-                                isEditMode = state.isEditMode,
-                                settingsViewModel = settingsViewModel,
-                                statsMap = statsMap
-                            )
-                        }
-                        CharacterTab.SKILLS_FEATS -> {
-                            SkillsFeatsTab(
-                                skillsAndTraits = state.skillsAndTraits,
-                                onSkillsAndTraitsChange = { state.skillsAndTraits = it },
-                                hazeState = hazeState,
-                                forceBlurEnabled = forceBlurEnabled,
-                                blurPopups = blurPopups,
-                                isEditMode = state.isEditMode,
-                                settingsViewModel = settingsViewModel,
-                                statsMap = statsMap
-                            )
-                        }
-                        CharacterTab.INVENTORY -> {
-                            InventoryTab(
-                                inventory = state.inventory,
-                                onInventoryChange = { state.inventory = it },
-                                wallet = state.wallet,
-                                onWalletChange = { state.wallet = it },
-                                hazeState = hazeState,
-                                forceBlurEnabled = forceBlurEnabled,
-                                blurPopups = blurPopups,
-                                isEditMode = state.isEditMode,
-                                settingsViewModel = settingsViewModel,
-                                statsMap = statsMap
-                            )
-                        }
-                        CharacterTab.SPELLS -> {
-                            SpellsTab(
-                                spells = state.spells,
-                                onSpellsChange = { state.spells = it },
-                                characterLevel = state.level.toIntOrNull() ?: 1,
-                                spellSettings = state.spellSettings,
-                                onSpellSettingsChange = { state.spellSettings = it },
-                                hazeState = hazeState,
-                                forceBlurEnabled = forceBlurEnabled,
-                                blurPopups = blurPopups,
-                                isEditMode = state.isEditMode,
-                                settingsViewModel = settingsViewModel,
-                                onRoll = onRoll,
-                                statsMap = statsMap,
-                                exhaustion = state.exhaustion,
-                                advantageLogic = advantageLogic
-                            )
-                        }
-                        CharacterTab.NOTES -> {
-                            NotesTab(
-                                notes = state.notes,
-                                onNotesChange = { state.notes = it },
-                                hazeState = hazeState,
-                                forceBlurEnabled = forceBlurEnabled,
-                                blurPopups = blurPopups,
-                                isEditMode = state.isEditMode,
-                                settingsViewModel = settingsViewModel,
-                                statsMap = statsMap
-                            )
-                        }
+                        TabNavigationBar(
+                            currentTab = currentTab,
+                            onShowTabSheet = { showTabSheet = true },
+                            isEditMode = state.isEditMode,
+                            onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                            isAdvancedMode = state.isAdvancedMode,
+                            onToggleAdvancedMode = { state.isAdvancedMode = !state.isAdvancedMode },
+                            hasContentToEdit = when(currentTab) {
+                                CharacterTab.ATTACKS -> state.attacks.isNotEmpty()
+                                CharacterTab.NOTES -> state.notes.isNotEmpty()
+                                CharacterTab.SKILLS_FEATS -> state.skillsAndTraits.isNotEmpty()
+                                CharacterTab.INVENTORY -> state.inventory.isNotEmpty()
+                                CharacterTab.SPELLS -> state.spells.isNotEmpty()
+                                CharacterTab.BIO -> true
+                                else -> false
+                            },
+                            collapsibleTabs = listOf(
+                                CharacterTab.SKILLS_FEATS,
+                                CharacterTab.INVENTORY,
+                                CharacterTab.SPELLS,
+                                CharacterTab.NOTES
+                            ),
+                            anyCollapsed = when (currentTab) {
+                                CharacterTab.SKILLS_FEATS -> state.skillsAndTraits.any { !it.isExpanded }
+                                CharacterTab.INVENTORY -> state.inventory.any { !it.isExpanded }
+                                CharacterTab.SPELLS -> state.spells.any { !it.isExpanded }
+                                CharacterTab.NOTES -> state.notes.any { !it.isExpanded }
+                                else -> false
+                            },
+                            onToggleAllExpansion = {
+                                val currentList = when (currentTab) {
+                                    CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
+                                    CharacterTab.INVENTORY -> state.inventory
+                                    CharacterTab.SPELLS -> state.spells
+                                    CharacterTab.NOTES -> state.notes
+                                    else -> emptyList()
+                                }
+                                val anyCollapsed = currentList.any { !it.isExpanded }
+                                val newState = if (anyCollapsed) {
+                                    currentList.map { it.copy(isExpanded = true) }
+                                } else {
+                                    currentList.map { it.copy(isExpanded = false) }
+                                }
+                                when (currentTab) {
+                                    CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
+                                    CharacterTab.INVENTORY -> state.inventory = newState
+                                    CharacterTab.SPELLS -> state.spells = newState
+                                    CharacterTab.NOTES -> state.notes = newState
+                                    else -> {}
+                                }
+                            },
+                            onShowSpellSettings = { state.showSpellSettings = true }
+                        )
+                    }
+                }
+
+                ExpandingPanelsWrapper()
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .background(colorScheme.background)) {
+            
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                beyondViewportPageCount = 1
+            ) { page ->
+                val tab = tabs[page % tabs.size]
+
+                when (tab) {
+                    CharacterTab.STATS -> {
+                        StatsTab(
+                            character = character,
+                            level = state.level,
+                            statsState = state.statsState,
+                            onStatsStateChange = { state.statsState = it },
+                            onRoll = onRoll,
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isAdvancedMode = state.isAdvancedMode,
+                            advantageLogic = advantageLogic,
+                            attributeModifiers = attributeModifiers,
+                            statsMap = statsMap
+                        )
+                    }
+                    CharacterTab.ATTACKS -> {
+                        AttacksTab(
+                            attacks = state.attacks,
+                            proficiencyBonus = pb,
+                            attributeModifiers = attributeModifiers,
+                            onUpdateAttacks = { state.attacks = it },
+                            onRoll = onRoll,
+                            stats = statsMap,
+                            exhaustion = state.exhaustion,
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isEditMode = state.isEditMode,
+                            settingsViewModel = settingsViewModel,
+                            spellSettings = state.spellSettings,
+                            advantageLogic = advantageLogic
+                        )
+                    }
+                    CharacterTab.BIO -> {
+                        BioTab(
+                            character = character.copy(
+                                bioShortFields = state.bioShortFields,
+                                bioLongSections = state.bioLongSections,
+                                imageData = state.characterImageData
+                            ),
+                            onCharacterChange = { updated ->
+                                state.bioShortFields = updated.bioShortFields
+                                state.bioLongSections = updated.bioLongSections
+                                state.characterImageData = updated.imageData
+                            },
+                            onAvatarEditRequest = {
+                                imagePickerLauncher.launch("image/*")
+                            },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isEditMode = state.isEditMode,
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
+                        )
+                    }
+                    CharacterTab.SKILLS_FEATS -> {
+                        SkillsFeatsTab(
+                            skillsAndTraits = state.skillsAndTraits,
+                            onSkillsAndTraitsChange = { state.skillsAndTraits = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isEditMode = state.isEditMode,
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
+                        )
+                    }
+                    CharacterTab.INVENTORY -> {
+                        InventoryTab(
+                            inventory = state.inventory,
+                            onInventoryChange = { state.inventory = it },
+                            wallet = state.wallet,
+                            onWalletChange = { state.wallet = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isEditMode = state.isEditMode,
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
+                        )
+                    }
+                    CharacterTab.SPELLS -> {
+                        SpellsTab(
+                            spells = state.spells,
+                            onSpellsChange = { state.spells = it },
+                            characterLevel = state.level.toIntOrNull() ?: 1,
+                            spellSettings = state.spellSettings,
+                            onSpellSettingsChange = { state.spellSettings = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isEditMode = state.isEditMode,
+                            settingsViewModel = settingsViewModel,
+                            onRoll = onRoll,
+                            statsMap = statsMap,
+                            exhaustion = state.exhaustion,
+                            advantageLogic = advantageLogic
+                        )
+                    }
+                    CharacterTab.NOTES -> {
+                        NotesTab(
+                            notes = state.notes,
+                            onNotesChange = { state.notes = it },
+                            hazeState = hazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            isEditMode = state.isEditMode,
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap
+                        )
                     }
                 }
             }

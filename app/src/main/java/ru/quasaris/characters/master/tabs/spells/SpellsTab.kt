@@ -64,7 +64,8 @@ fun SpellsTab(
     onRoll: (RollResult) -> Unit = {},
     statsMap: Map<String, String> = emptyMap(),
     exhaustion: Int = 0,
-    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
+    header: @Composable () -> Unit = {}
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
     
@@ -184,7 +185,7 @@ fun SpellsTab(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -321,6 +322,7 @@ fun SpellsTab(
                 isTitleReadOnly = true,
                 isAddButtonVisible = false,
                 isReorderButtonVisible = false,
+                header = header,
                 footer = {
                     if (spellSettings.isMagicEnabled) {
                         Box(

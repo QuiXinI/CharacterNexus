@@ -44,18 +44,38 @@ fun ConditionsPanel(
     onExhaustionChange: (Int) -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
     
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp).shadow(4.dp, RoundedCornerShape(12.dp)).background(colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).border(1.dp, colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)).animateContentSize(animationSpec)) {
-        Text("Состояния", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally), style = MaterialTheme.typography.titleLarge, color = colorScheme.onSurfaceVariant)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+    ) {
+        Text(
+            text = "Состояния",
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.CenterHorizontally),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black,
+            color = colorScheme.primary
+        )
 
         ExhaustionSection(exhaustion, onExhaustionChange)
-        HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.3f), thickness = 1.dp)
+        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.3f), thickness = 1.dp)
 
-        Column(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
-            allConditions.forEach { condition ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 400.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            allConditions.forEachIndexed { i, condition ->
                 ConditionItem(condition, selectedConditions.contains(condition.name)) { onToggleCondition(condition.name) }
-                HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.15f), thickness = 1.dp)
+                if (i < allConditions.size - 1) {
+                    HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.15f), thickness = 1.dp)
+                }
             }
         }
     }
@@ -69,31 +89,37 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(
-                "Истощение", 
+                text = "Истощение", 
                 modifier = Modifier.weight(1f), 
-                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
                 color = colorScheme.onSurface
             )
             
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
                     onClick = { if (exhaustion > 0) onExhaustionChange(exhaustion - 1) },
                     modifier = Modifier.size(36.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = colorScheme.secondaryContainer,
-                        contentColor = colorScheme.onSecondaryContainer
-                    )
+                    shape = RoundedCornerShape(8.dp),
+                    color = colorScheme.primary.copy(alpha = 0.1f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.2f))
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Decrease")
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Decrease",
+                            modifier = Modifier.size(20.dp),
+                            tint = colorScheme.primary
+                        )
+                    }
                 }
 
                 var textValue by remember(exhaustion) { mutableStateOf(exhaustion.toString()) }
                 Box(
                     modifier = Modifier
-                        .size(height = 54.dp, width = 54.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(colorScheme.primaryContainer)
-                        .border(1.dp, colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                        .size(height = 44.dp, width = 48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colorScheme.surfaceVariant.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center
                 ) {
                     BasicTextField(
@@ -104,23 +130,30 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
                         },
                         textStyle = TextStyle(
                             textAlign = TextAlign.Center, 
-                            fontSize = 22.sp, 
-                            color = colorScheme.onPrimaryContainer, 
+                            fontSize = 20.sp, 
+                            color = colorScheme.primary, 
                             fontWeight = FontWeight.Bold
                         ),
-                        singleLine = true
+                        singleLine = true,
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(colorScheme.primary)
                     )
                 }
 
-                IconButton(
+                Surface(
                     onClick = { if (exhaustion < 6) onExhaustionChange(exhaustion + 1) },
                     modifier = Modifier.size(36.dp),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = colorScheme.secondaryContainer,
-                        contentColor = colorScheme.onSecondaryContainer
-                    )
+                    shape = RoundedCornerShape(8.dp),
+                    color = colorScheme.primary.copy(alpha = 0.1f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.2f))
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Increase")
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Increase",
+                            modifier = Modifier.size(20.dp),
+                            tint = colorScheme.primary
+                        )
+                    }
                 }
             }
         }
@@ -144,15 +177,47 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
 @Composable
 fun ConditionItem(condition: Condition, isSelected: Boolean, onToggle: () -> Unit) {
     val colorScheme = MaterialTheme.colorScheme; var expanded by remember { mutableStateOf(false) }
-    val sep = colorScheme.outline.copy(alpha = 0.2f)
+    val sep = colorScheme.outlineVariant.copy(alpha = 0.2f)
     val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessHigh)
     
-    Column(modifier = Modifier.fillMaxWidth().background(if (isSelected) colorScheme.primaryContainer else Color.Transparent).animateContentSize(animationSpec)) {
-        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).heightIn(min = 44.dp).clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
-            Text(condition.name, modifier = Modifier.weight(1f).padding(horizontal = 12.dp), fontSize = 16.sp, color = colorScheme.onSurface, textAlign = TextAlign.Center)
-            Box(modifier = Modifier.width(1.2.dp).fillMaxHeight().background(sep))
-            Box(modifier = Modifier.width(44.dp).fillMaxHeight().clickable { onToggle() }, contentAlignment = Alignment.Center) {
-                Icon(if (isSelected) Icons.Default.Close else Icons.Default.Check, null, modifier = Modifier.size(20.dp), tint = if (isSelected) colorScheme.error else colorScheme.onSurface)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (isSelected) colorScheme.primary.copy(alpha = 0.05f) else Color.Transparent)
+            .animateContentSize(animationSpec)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .heightIn(min = 48.dp)
+                .clickable { expanded = !expanded },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = condition.name,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
+                fontSize = 16.sp,
+                color = if (isSelected) colorScheme.primary else colorScheme.onSurface,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                textAlign = TextAlign.Center
+            )
+            VerticalDivider(modifier = Modifier.fillMaxHeight().width(1.dp), color = sep)
+            Box(
+                modifier = Modifier
+                    .width(48.dp)
+                    .fillMaxHeight()
+                    .clickable { onToggle() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isSelected) Icons.Default.Close else Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
             }
         }
         AnimatedVisibility(

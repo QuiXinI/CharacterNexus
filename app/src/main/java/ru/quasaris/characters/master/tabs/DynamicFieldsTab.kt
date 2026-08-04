@@ -164,7 +164,7 @@ fun DynamicFieldsTab(
                 .fillMaxSize()
                 .padding(horizontal = 8.dp),
             userScrollEnabled = isScrollEnabled,
-            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(top = 0.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {

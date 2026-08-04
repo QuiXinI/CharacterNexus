@@ -35,6 +35,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun HealthPanel(
@@ -49,9 +56,8 @@ fun HealthPanel(
     onTempClick: () -> Unit,
     healthColor: Color,
     onFocusLost: () -> Unit,
-    // Hit Dice Support
     hitDiceEntries: List<HitDiceEntry>,
-    onSpentHitDiceChange: (Int, Int) -> Unit, // Index, NewValue
+    onSpentHitDiceChange: (Int, Int) -> Unit,
     onOpenSettings: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -60,14 +66,11 @@ fun HealthPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .shadow(6.dp, RoundedCornerShape(16.dp))
-            .background(colorScheme.surface, RoundedCornerShape(16.dp))
-            .border(1.dp, colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
-            .animateContentSize()
+            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .border(androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Заголовок с шестеренкой и костями хитов
         Box(
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
             contentAlignment = Alignment.Center
@@ -87,85 +90,112 @@ fun HealthPanel(
                 textAlign = TextAlign.Center
             )
 
-            // Hit Dice Counter (Snapping Pager)
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .width(130.dp)
-                    .height(34.dp) // Height for exactly 1 item
+                    .height(34.dp)
             ) {
                 val totalPages = if (hitDiceEntries.isNotEmpty()) 1000000 else 0
                 val pagerState = rememberPagerState(
                     initialPage = if (totalPages > 0) (totalPages / 2) - (totalPages / 2 % hitDiceEntries.size) else 0,
                     pageCount = { totalPages }
                 )
-                
-                VerticalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.End,
-                    flingBehavior = PagerDefaults.flingBehavior(
+                val coroutineScope = rememberCoroutineScope()
+                var totalDragOffset by remember { mutableFloatStateOf(0f) }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(hitDiceEntries.size) {
+                            if (hitDiceEntries.size <= 1) return@pointerInput
+
+                            detectVerticalDragGestures(
+                                onDragStart = { totalDragOffset = 0f },
+                                onDragEnd = {
+                                    // Порог в 10dp отсекает случайные микро-сдвиги при тапе по кнопкам
+                                    val minThreshold = 10.dp.toPx()
+                                    if (abs(totalDragOffset) >= minThreshold) {
+                                        coroutineScope.launch {
+                                            if (totalDragOffset < 0) {
+                                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                            } else {
+                                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                            }
+                                        }
+                                    }
+                                },
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    totalDragOffset += dragAmount
+                                }
+                            )
+                        }
+                ) {
+                    VerticalPager(
                         state = pagerState,
-                        snapPositionalThreshold = 0.1f
-                    )
-                ) { pageIdx ->
-                    val actualIdx = if (hitDiceEntries.isNotEmpty()) pageIdx % hitDiceEntries.size else 0
-                    val entry = hitDiceEntries[actualIdx]
-                    val maxHD = entry.formula.split('d').firstOrNull()?.toIntOrNull() ?: 0
-                    val dieSize = entry.formula.split('d').lastOrNull()?.toIntOrNull() ?: 8
-                    val diceIcon = when (dieSize) {
-                        2 -> R.drawable.ic_d2_dice
-                        4 -> R.drawable.ic_d4_dice
-                        6 -> R.drawable.ic_d6_dice
-                        8 -> R.drawable.ic_d8_dice
-                        10 -> R.drawable.ic_d10_dice
-                        12 -> R.drawable.ic_d12_dice
-                        20 -> R.drawable.ic_d20_dice
-                        else -> R.drawable.ic_d20_dice
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        IconButton(
-                            onClick = { onSpentHitDiceChange(actualIdx, (entry.spent + 1).coerceAtMost(maxHD)) },
-                            modifier = Modifier.size(24.dp),
-                            enabled = entry.spent < maxHD
-                        ) {
-                            Icon(Icons.Default.Remove, null, modifier = Modifier.size(14.dp), tint = colorScheme.primary)
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.End,
+                        userScrollEnabled = false
+                    ) { pageIdx ->
+                        val actualIdx = if (hitDiceEntries.isNotEmpty()) pageIdx % hitDiceEntries.size else 0
+                        val entry = hitDiceEntries[actualIdx]
+                        val maxHD = entry.formula.split('d').firstOrNull()?.toIntOrNull() ?: 0
+                        val dieSize = entry.formula.split('d').lastOrNull()?.toIntOrNull() ?: 8
+                        val diceIcon = when (dieSize) {
+                            2 -> R.drawable.ic_d2_dice
+                            4 -> R.drawable.ic_d4_dice
+                            6 -> R.drawable.ic_d6_dice
+                            8 -> R.drawable.ic_d8_dice
+                            10 -> R.drawable.ic_d10_dice
+                            12 -> R.drawable.ic_d12_dice
+                            20 -> R.drawable.ic_d20_dice
+                            else -> R.drawable.ic_d20_dice
                         }
-                        
-                        Surface(
-                            color = colorScheme.primary.copy(alpha = 0.05f),
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.padding(horizontal = 2.dp)
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                            IconButton(
+                                onClick = { onSpentHitDiceChange(actualIdx, (entry.spent + 1).coerceAtMost(maxHD)) },
+                                modifier = Modifier.size(24.dp),
+                                enabled = entry.spent < maxHD
                             ) {
-                                Text(
-                                    "${maxHD - entry.spent}/$maxHD",
-                                    style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
-                                )
-                                Spacer(Modifier.width(2.dp))
-                                Icon(
-                                    painter = painterResource(diceIcon),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = colorScheme.primary
-                                )
+                                Icon(Icons.Default.Remove, null, modifier = Modifier.size(14.dp), tint = colorScheme.primary)
                             }
-                        }
 
-                        IconButton(
-                            onClick = { onSpentHitDiceChange(actualIdx, (entry.spent - 1).coerceAtLeast(0)) },
-                            modifier = Modifier.size(24.dp),
-                            enabled = entry.spent > 0
-                        ) {
-                            Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp), tint = colorScheme.primary)
+                            Surface(
+                                color = colorScheme.primary.copy(alpha = 0.05f),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.padding(horizontal = 2.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        "${maxHD - entry.spent}/$maxHD",
+                                        style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
+                                    )
+                                    Spacer(Modifier.width(2.dp))
+                                    Icon(
+                                        painter = painterResource(diceIcon),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { onSpentHitDiceChange(actualIdx, (entry.spent - 1).coerceAtLeast(0)) },
+                                modifier = Modifier.size(24.dp),
+                                enabled = entry.spent > 0
+                            ) {
+                                Icon(Icons.Default.Add, null, modifier = Modifier.size(14.dp), tint = colorScheme.primary)
+                            }
                         }
                     }
                 }

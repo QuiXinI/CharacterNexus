@@ -89,7 +89,8 @@ fun StatsTab(
     isAdvancedMode: Boolean = false,
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     attributeModifiers: Map<Attribute, Int> = emptyMap(),
-    statsMap: Map<String, String> = emptyMap()
+    statsMap: Map<String, String> = emptyMap(),
+    header: @Composable () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
@@ -103,6 +104,8 @@ fun StatsTab(
             .background(colorScheme.surface)
             .verticalScroll(rememberScrollState())
     ) {
+        header()
+
         // Stats Section
         Column(modifier = Modifier.padding(horizontal = 3.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             AttributesSection(

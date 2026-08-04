@@ -2,6 +2,7 @@ package ru.quasaris.characters.master.MainWindow
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,6 +15,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -293,177 +298,240 @@ fun CreateWindow(
     Scaffold(
         containerColor = colorScheme.background,
         topBar = {
-            Column(modifier = Modifier.background(colorScheme.surface)) {
-                CharacterIdentitySection(
-                    name = name, onNameChange = { name = it },
-                    level = level, experience = experience, nextLevelExp = nextLevelExp,
-                    selectedImageUri = selectedImageUri, characterImageData = characterImageData,
-                    showAvatarMenu = showAvatarMenu, onAvatarClick = { showAvatarMenu = true },
-                    onDismissAvatarMenu = { showAvatarMenu = false },
-                    onLevelClick = {
-                        isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                    },
-                    onNavigateBack = onNavigateBack,
-                    onOpenDrawer = onOpenDrawer,
-                    activeACValue = activeACValue,
-                    onACClick = { isShieldActive = !isShieldActive },
-                    onACLongClick = {
-                        isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                    },
-                    isShieldActive = isShieldActive,
-                    activeInitValue = activeInitValue,
-                    onInitClick = {
-                        isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                    },
-                    currentHp = currentHp, maxHp = maxHp, tempHp = tempHp,
-                    healthColor = healthColor, healthIcon = healthIcon,
-                    onHealthClick = {
-                        isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                    },
-                    conditionsCount = exhaustion.toString(),
-                    selectedConditions = selectedConditions,
-                    onConditionsClick = {
-                        isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
-                    },
-                    exhaustion = exhaustion,
-                    activeSpeedValue = activeSpeedValue,
-                    onSpeedClick = {
-                        isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                    },
-                    imagePicker = imagePicker,
-                    onDownloadClick = { filename -> fileCreator.launch(filename) },
-                    onShortRest = { 
-                        isRestPanelVisible = !isRestPanelVisible
-                        isArmorClassPanelVisible = false; isInitiativePanelVisible = false
-                        isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
-                        isSpeedPanelVisible = false
-                    }
-                )
+            Column(modifier = Modifier.background(colorScheme.background)) {
+                Surface(
+                    tonalElevation = 1.dp,
+                    shadowElevation = 6.dp,
+                    color = colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column {
+                        CharacterIdentitySection(
+                            name = name, onNameChange = { name = it },
+                            level = level, experience = experience, nextLevelExp = nextLevelExp,
+                            selectedImageUri = selectedImageUri, characterImageData = characterImageData,
+                            showAvatarMenu = showAvatarMenu, onAvatarClick = { showAvatarMenu = true },
+                            onDismissAvatarMenu = { showAvatarMenu = false },
+                            onLevelClick = {
+                                isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                                isSpeedPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                            },
+                            onNavigateBack = onNavigateBack,
+                            onOpenDrawer = onOpenDrawer,
+                            activeACValue = activeACValue,
+                            onACClick = { isShieldActive = !isShieldActive },
+                            onACLongClick = {
+                                isArmorClassPanelVisible = !isArmorClassPanelVisible; isInitiativePanelVisible = false
+                                isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                            },
+                            isShieldActive = isShieldActive,
+                            activeInitValue = activeInitValue,
+                            onInitClick = {
+                                isInitiativePanelVisible = !isInitiativePanelVisible; isArmorClassPanelVisible = false
+                                isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                            },
+                            currentHp = currentHp, maxHp = maxHp, tempHp = tempHp,
+                            healthColor = healthColor, healthIcon = healthIcon,
+                            onHealthClick = {
+                                isHealthPanelVisible = !isHealthPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                                isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                            },
+                            conditionsCount = exhaustion.toString(),
+                            selectedConditions = selectedConditions,
+                            onConditionsClick = {
+                                isConditionsPanelVisible = !isConditionsPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                                isSpeedPanelVisible = false; isLevelPanelVisible = false; isHealthPanelVisible = false
+                            },
+                            exhaustion = exhaustion,
+                            activeSpeedValue = activeSpeedValue,
+                            onSpeedClick = {
+                                isSpeedPanelVisible = !isSpeedPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                                isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                            },
+                            imagePicker = imagePicker,
+                            onDownloadClick = { filename -> fileCreator.launch(filename) },
+                            onShortRest = {
+                                isRestPanelVisible = !isRestPanelVisible
+                                isArmorClassPanelVisible = false; isInitiativePanelVisible = false
+                                isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
+                                isSpeedPanelVisible = false
+                            }
+                        )
 
-                // Tab Selector Row with Advanced Mode Toggle
-                Row(
+                        // Tab Selector Row with Advanced Mode Toggle
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                IconButton(
+                                    onClick = { isAdvancedMode = !isAdvancedMode },
+                                    modifier = Modifier.padding(start = 8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isAdvancedMode) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
+                                        contentDescription = "Toggle Advanced Mode",
+                                        tint = colorScheme.primary
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                color = colorScheme.primary.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(16.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "ПЕРСОНАЖ",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = colorScheme.primary,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Box(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                // Expanding Panels Section (Scrollable internally)
+                val panelScrollState = rememberScrollState()
+                val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+                val surfaceColor = colorScheme.surface
+                
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                        .animateContentSize()
+                        .heightIn(max = screenHeight / 2),
+                    color = surfaceColor
                 ) {
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        IconButton(
-                            onClick = { isAdvancedMode = !isAdvancedMode },
-                            modifier = Modifier.padding(start = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isAdvancedMode) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
-                                contentDescription = "Toggle Advanced Mode",
-                                tint = colorScheme.primary
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(panelScrollState)
+                        .drawWithContent {
+                            drawContent()
+                            // Top Fade
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to surfaceColor,
+                                    1f to Color.Transparent,
+                                    startY = 0f,
+                                    endY = 4.dp.toPx()
+                                ),
+                                size = size.copy(height = 4.dp.toPx())
+                            )
+                            // Bottom Fade
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    1f to surfaceColor,
+                                    startY = size.height - 4.dp.toPx(),
+                                    endY = size.height
+                                ),
+                                topLeft = androidx.compose.ui.geometry.Offset(0f, size.height - 4.dp.toPx()),
+                                size = size.copy(height = 4.dp.toPx())
                             )
                         }
-                    }
-
-                    Surface(
-                        color = colorScheme.primary.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(16.dp),
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "ПЕРСОНАЖ",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = colorScheme.primary,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                Icons.Default.ArrowDropDown,
-                                contentDescription = null,
-                                tint = colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        ExpandingPanelsSection(
+                            isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it },
+                            experience = experience, onExpChange = { experience = it },
+                            proficiencyBonus = proficiencyBonus, onProfChange = { proficiencyBonus = it },
+                            nextLevelExp = nextLevelExp, statsMap = statsMap,
+                            isHealthPanelVisible = isHealthPanelVisible, maxHp = maxHp, onMaxHpChange = { maxHp = it },
+                            tempHp = tempHp, onTempHpChange = { tempHp = it },
+                            currentHp = currentHp, onCurrentHpChange = { currentHp = it },
+                            onHealClick = { hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true },
+                            onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
+                            onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true },
+                            healthColor = healthColor, clampHp = clampHp,
+                            hpPanelHitDice = hitDiceEntries,
+                            onSpentHitDiceChange = { idx, newValue ->
+                                val newList = hitDiceEntries.toMutableList()
+                                if (idx in newList.indices) {
+                                    newList[idx] = newList[idx].copy(spent = newValue)
+                                    hitDiceEntries = newList
+                                }
+                            },
+                            onOpenHealthSettings = { showHealthSettings = true },
+                            isRestPanelVisible = isRestPanelVisible,
+                            onRestPanelDismiss = { isRestPanelVisible = false },
+                            onRestPanelHitDiceChange = { hitDiceEntries = it },
+                            onHealAmount = { amount ->
+                                currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + amount).toString()
+                            },
+                            onShortRestConfirmed = { isRestPanelVisible = false },
+                            onLongRest = { /* No-op for now */ },
+                            onDawn = { /* No-op for now */ },
+                            defaultHitDie = defaultHitDie,
+                            isArmorClassPanelVisible = isArmorClassPanelVisible, armorClassEntries = armorClassEntries,
+                            activeArmorClassId = activeArmorClassId, acDeleteConfirmId = acDeleteConfirmId,
+                            onArmorClassEntries = { armorClassEntries = it }, onActiveArmorClass = { activeArmorClassId = it },
+                            onAcDeleteReq = { acDeleteConfirmId = it }, onAddArmorClass = { armorClassEntries = armorClassEntries + ArmorClassEntry() },
+                            isInitiativePanelVisible = isInitiativePanelVisible, initiativeEntries = initiativeEntries,
+                            activeInitiativeId = activeInitiativeId, initDeleteConfirmId = initDeleteConfirmId,
+                            onInitiativeEntries = { initiativeEntries = it }, onActiveInitiative = { activeInitiativeId = it },
+                            onInitDeleteReq = { initDeleteConfirmId = it }, onAddInitiative = { initiativeEntries = initiativeEntries + InitiativeEntry() },
+                            isConditionsPanelVisible = isConditionsPanelVisible, allConditions = allConditions,
+                            selectedConditions = selectedConditions,
+                            onToggleCondition = { n -> selectedConditions =
+                                toggleCondition(selectedConditions, n)
+                            },
+                            exhaustion = exhaustion,
+                            onExhaustionChange = { exhaustion = it },
+                            isShieldActive = isShieldActive,
+                            onShieldActiveChange = { isShieldActive = it },
+                            shieldEntries = shieldEntries,
+                            activeShieldId = activeShieldId,
+                            shieldDeleteConfirmId = shieldDeleteConfirmId,
+                            onShieldEntries = { shieldEntries = it },
+                            onActiveShield = { activeShieldId = it },
+                            onShieldDeleteReq = { shieldDeleteConfirmId = it },
+                            onAddShield = { shieldEntries = shieldEntries + ShieldEntry() },
+                            isSpeedPanelVisible = isSpeedPanelVisible, speedEntries = speedEntries,
+                            activeSpeedId = activeSpeedId, speedDeleteConfirmId = speedDeleteConfirmId,
+                            onSpeedEntries = { speedEntries = it }, onActiveSpeed = { activeSpeedId = it },
+                            onSpeedDeleteReq = { speedDeleteConfirmId = it }, onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
+                        )
                     }
-
-                    Box(modifier = Modifier.weight(1f))
                 }
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding).background(colorScheme.background).clickable(remember { MutableInteractionSource() }, null) { 
-            focusManager.clearFocus(); acDeleteConfirmId = null; initDeleteConfirmId = null; speedDeleteConfirmId = null 
-        }) {
-            // Multi-Phase Synchronized Animation
-            Column(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(colorScheme.surface).verticalScroll(rememberScrollState())) {
-                ExpandingPanelsSection(
-                    isLevelPanelVisible = isLevelPanelVisible, level = level, onLevelChange = { level = it },
-                    experience = experience, onExpChange = { experience = it },
-                    proficiencyBonus = proficiencyBonus, onProfChange = { proficiencyBonus = it },
-                    nextLevelExp = nextLevelExp, statsMap = statsMap,
-                    isHealthPanelVisible = isHealthPanelVisible, maxHp = maxHp, onMaxHpChange = { maxHp = it },
-                    tempHp = tempHp, onTempHpChange = { tempHp = it },
-                    currentHp = currentHp, onCurrentHpChange = { currentHp = it },
-                    onHealClick = { hpDialogType = "heal"; hpDialogValue = ""; showHpDialog = true },
-                    onDamageClick = { hpDialogType = "damage"; hpDialogValue = ""; showHpDialog = true },
-                    onTempClick = { hpDialogType = "temp"; hpDialogValue = ""; showHpDialog = true },
-                    healthColor = healthColor, clampHp = clampHp,
-                    hpPanelHitDice = hitDiceEntries,
-                    onSpentHitDiceChange = { idx, newValue ->
-                        val newList = hitDiceEntries.toMutableList()
-                        if (idx in newList.indices) {
-                            newList[idx] = newList[idx].copy(spent = newValue)
-                            hitDiceEntries = newList
-                        }
-                    },
-                    onOpenHealthSettings = { showHealthSettings = true },
-                    isRestPanelVisible = isRestPanelVisible,
-                    onRestPanelDismiss = { isRestPanelVisible = false },
-                    onRestPanelHitDiceChange = { hitDiceEntries = it },
-                    onHealAmount = { amount ->
-                        currentHp = minOf(maxHp.toIntOrNull() ?: 0, (currentHp.toIntOrNull() ?: 0) + amount).toString()
-                    },
-                    onShortRestConfirmed = { isRestPanelVisible = false },
-                    defaultHitDie = defaultHitDie,
-                    isArmorClassPanelVisible = isArmorClassPanelVisible, armorClassEntries = armorClassEntries,
-                    activeArmorClassId = activeArmorClassId, acDeleteConfirmId = acDeleteConfirmId,
-                    onArmorClassEntries = { armorClassEntries = it }, onActiveArmorClass = { activeArmorClassId = it },
-                    onAcDeleteReq = { acDeleteConfirmId = it }, onAddArmorClass = { armorClassEntries = armorClassEntries + ArmorClassEntry() },
-                    isInitiativePanelVisible = isInitiativePanelVisible, initiativeEntries = initiativeEntries,
-                    activeInitiativeId = activeInitiativeId, initDeleteConfirmId = initDeleteConfirmId,
-                    onInitiativeEntries = { initiativeEntries = it }, onActiveInitiative = { activeInitiativeId = it },
-                    onInitDeleteReq = { initDeleteConfirmId = it }, onAddInitiative = { initiativeEntries = initiativeEntries + InitiativeEntry() },
-                    isConditionsPanelVisible = isConditionsPanelVisible, allConditions = allConditions,
-                    selectedConditions = selectedConditions,
-                    onToggleCondition = { n -> selectedConditions =
-                        toggleCondition(selectedConditions, n)
-                    },
-                    exhaustion = exhaustion,
-                    onExhaustionChange = { exhaustion = it },
-                    isShieldActive = isShieldActive,
-                    onShieldActiveChange = { isShieldActive = it },
-                    shieldEntries = shieldEntries,
-                    activeShieldId = activeShieldId,
-                    shieldDeleteConfirmId = shieldDeleteConfirmId,
-                    onShieldEntries = { shieldEntries = it },
-                    onActiveShield = { activeShieldId = it },
-                    onShieldDeleteReq = { shieldDeleteConfirmId = it },
-                    onAddShield = { shieldEntries = shieldEntries + ShieldEntry() },
-                    isSpeedPanelVisible = isSpeedPanelVisible, speedEntries = speedEntries,
-                    activeSpeedId = activeSpeedId, speedDeleteConfirmId = speedDeleteConfirmId,
-                    onSpeedEntries = { speedEntries = it }, onActiveSpeed = { activeSpeedId = it },
-                    onSpeedDeleteReq = { speedDeleteConfirmId = it }, onAddSpeed = { speedEntries = speedEntries + SpeedEntry() }
-                )
-                
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .background(colorScheme.background)
+            .clickable(remember { MutableInteractionSource() }, null) { 
+                focusManager.clearFocus(); acDeleteConfirmId = null; initDeleteConfirmId = null; speedDeleteConfirmId = null 
+            }
+        ) {
+            // Main Content Area
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(colorScheme.surface)
+                .verticalScroll(rememberScrollState())
+            ) {
                 AttributesSection(
                     strength = strength, onStrengthChange = { strength = it }, strProf = strProf, onStrProfChange = { strProf = it },
                     intelligence = intelligence, onIntelligenceChange = { intelligence = it }, intProf = intProf, onIntProfChange = { intProf = it },
