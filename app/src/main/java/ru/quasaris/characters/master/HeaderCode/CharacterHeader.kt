@@ -464,47 +464,18 @@ fun ExpandingPanelsSection(
     val exitSpec = shrinkVertically(animationSpec = panelsSpringSpec) + fadeOut(animationSpec = floatSpring)
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        AnimatedVisibility(isRestPanelVisible, enter = enterSpec, exit = exitSpec) {
-            Column {
-                ru.quasaris.characters.master.ui.RestPanel(
-                    hpPanelHitDice, onRestPanelHitDiceChange, onHealAmount, 
-                    onShortRestConfirmed, onRestPanelDismiss, statsMap, defaultHitDie
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = onLongRest,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        Icon(Icons.Default.Bedtime, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Длинный отдых", fontSize = 13.sp)
-                    }
-                    Button(
-                        onClick = onDawn,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                    ) {
-                        Icon(Icons.Default.WbTwilight, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Рассвет", fontSize = 13.sp)
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-            }
-        }
-
         AnimatedVisibility(isHealthPanelVisible, enter = enterSpec, exit = exitSpec) {
             HealthPanel(
                 maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, 
                 onHealClick, onDamageClick, onTempClick, healthColor, clampHp, hpPanelHitDice, 
                 onSpentHitDiceChange, onOpenHealthSettings
+            )
+        }
+
+        AnimatedVisibility(isRestPanelVisible, enter = enterSpec, exit = exitSpec) {
+            ru.quasaris.characters.master.ui.RestPanel(
+                hpPanelHitDice, onRestPanelHitDiceChange, onHealAmount, 
+                onShortRestConfirmed, onRestPanelDismiss, statsMap, defaultHitDie
             )
         }
 
