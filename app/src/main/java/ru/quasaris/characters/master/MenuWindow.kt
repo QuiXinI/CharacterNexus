@@ -52,7 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 
 import dev.chrisbanes.haze.HazeState
-import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
+import ru.quasaris.characters.master.backend.cropper.AvatarCropperWindow
 
 @Composable
 fun MenuWindow(

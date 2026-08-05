@@ -1,9 +1,7 @@
-package ru.quasaris.characters.master.ui.cropper
+package ru.quasaris.characters.master.backend.cropper
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.ImageBitmap
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 sealed interface ImageCropResult {
     data object Idle : ImageCropResult

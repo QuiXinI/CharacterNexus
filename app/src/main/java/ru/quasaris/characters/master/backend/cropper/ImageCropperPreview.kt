@@ -1,5 +1,6 @@
-package ru.quasaris.characters.master.ui.cropper
+package ru.quasaris.characters.master.backend.cropper
 
+import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -49,7 +50,7 @@ fun ImageCropperPreview(
         // 1. Image Layer (Bottom)
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawIntoCanvas { canvas ->
-                val paint = android.graphics.Paint().apply {
+                val paint = Paint().apply {
                     isFilterBitmap = true
                     isAntiAlias = true
                 }

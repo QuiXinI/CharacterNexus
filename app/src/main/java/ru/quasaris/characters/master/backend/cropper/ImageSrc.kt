@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.ui.cropper
+package ru.quasaris.characters.master.backend.cropper
 
 import androidx.compose.ui.graphics.ImageBitmap
 

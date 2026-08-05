@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.ui.cropper
+package ru.quasaris.characters.master.backend.cropper
 
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
@@ -9,7 +9,6 @@ import androidx.compose.material.icons.automirrored.filled.RotateLeft
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Flip
-import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,9 +21,13 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.vector.ImageVector
+import dev.chrisbanes.haze.HazeInputScale
 import ru.quasaris.characters.master.backend.AppScaleProvider
 import ru.quasaris.characters.master.backend.LocalAppScale
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.launch
 
@@ -62,11 +65,11 @@ fun AvatarCropperWindow(
                     .run {
                         if (useHaze && hazeState != null) {
                             this.hazeEffect(state = hazeState) {
-                                style = dev.chrisbanes.haze.HazeStyle(
+                                style = HazeStyle(
                                     blurRadius = 24.dp,
-                                    tints = listOf(dev.chrisbanes.haze.HazeTint(Color.Black.copy(alpha = 0.1f)))
+                                    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.1f)))
                                 )
-                                inputScale = dev.chrisbanes.haze.HazeInputScale.Fixed(0.6f)
+                                inputScale = HazeInputScale.Fixed(0.6f)
                             }
                         } else this
                     }
@@ -164,7 +167,7 @@ fun AvatarCropperWindow(
 @Composable
 fun RowScope.CropperButton(
     onClick: () -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     contentDescription: String,
     rotation: Float = 0f
 ) {

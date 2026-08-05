@@ -1,5 +1,8 @@
 package ru.quasaris.characters.master.HeaderCode
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
@@ -23,6 +26,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characters.master.R
@@ -76,7 +80,9 @@ fun StatIconBox(value: String, iconRes: Int, onClick: () -> Unit = {}, isHighlig
         if (iconRes == R.drawable.ic_sword) {
             Box(Modifier.fillMaxSize()) {
                 Image(painterResource(R.drawable.ic_sword), null, modifier = Modifier.size(46.dp), colorFilter = ColorFilter.tint(tint))
-                Image(painterResource(R.drawable.ic_sword), null, modifier = Modifier.size(46.dp).graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
+                Image(painterResource(R.drawable.ic_sword), null, modifier = Modifier
+                    .size(46.dp)
+                    .graphicsLayer(scaleX = -1f), colorFilter = ColorFilter.tint(tint))
             }
         } else Image(painterResource(iconRes), null, modifier = Modifier.fillMaxSize(), colorFilter = ColorFilter.tint(tint))
 

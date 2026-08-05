@@ -105,6 +105,7 @@ fun StatsTab(
             .verticalScroll(rememberScrollState())
     ) {
         header()
+        Spacer(Modifier.height(12.dp))
 
         // Stats Section
         Column(modifier = Modifier.padding(horizontal = 3.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

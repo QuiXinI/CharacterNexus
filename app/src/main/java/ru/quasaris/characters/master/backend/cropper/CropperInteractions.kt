@@ -1,4 +1,4 @@
-package ru.quasaris.characters.master.ui.cropper
+package ru.quasaris.characters.master.backend.cropper
 
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.Modifier

@@ -1,6 +1,7 @@
-package ru.quasaris.characters.master.ui.cropper
+package ru.quasaris.characters.master.backend.cropper
 
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -16,7 +17,7 @@ object CircleImgCropShape : ImageCropShape {
     override val label: String = "Circle"
     override val shape: Shape = object : Shape {
         override fun createOutline(
-            size: androidx.compose.ui.geometry.Size,
+            size: Size,
             layoutDirection: LayoutDirection,
             density: Density
         ): Outline {
@@ -32,7 +33,7 @@ object RectImgCropShape : ImageCropShape {
     override val label: String = "Rectangle"
     override val shape: Shape = object : Shape {
         override fun createOutline(
-            size: androidx.compose.ui.geometry.Size,
+            size: Size,
             layoutDirection: LayoutDirection,
             density: Density
         ): Outline {

@@ -84,7 +84,18 @@ fun ConditionsPanel(
 @Composable
 fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
     val colorScheme = MaterialTheme.colorScheme
-    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
+    val animationSpec = remember {
+        spring<IntSize>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
+    val floatSpring = remember {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
     
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -160,8 +171,8 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
         
         AnimatedVisibility(
             visible = exhaustion > 0,
-            enter = expandVertically(animationSpec) + fadeIn(),
-            exit = shrinkVertically(animationSpec) + fadeOut()
+            enter = expandVertically(animationSpec) + fadeIn(floatSpring),
+            exit = shrinkVertically(animationSpec) + fadeOut(floatSpring)
         ) {
             Column(modifier = Modifier.padding(top = 12.dp)) {
                 if (exhaustion == 6) {
@@ -178,7 +189,12 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
 fun ConditionItem(condition: Condition, isSelected: Boolean, onToggle: () -> Unit) {
     val colorScheme = MaterialTheme.colorScheme; var expanded by remember { mutableStateOf(false) }
     val sep = colorScheme.outlineVariant.copy(alpha = 0.2f)
-    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessHigh)
+    val animationSpec = remember {
+        spring<IntSize>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
     
     Column(
         modifier = Modifier

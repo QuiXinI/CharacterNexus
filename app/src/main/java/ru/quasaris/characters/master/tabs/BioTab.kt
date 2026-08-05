@@ -1,9 +1,6 @@
 package ru.quasaris.characters.master.tabs
 
 import android.graphics.BitmapFactory
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -12,9 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -36,13 +31,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.quasaris.characters.master.BioShortField
 import ru.quasaris.characters.master.Character
-import ru.quasaris.characters.master.DynamicNoteState
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
-import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
 import dev.chrisbanes.haze.HazeState
-import java.io.File
-import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,6 +111,7 @@ fun BioTab(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 header()
+                Spacer(Modifier.height(12.dp))
                 // 1. Full-width square portrait container
                 Column {
                     Box(

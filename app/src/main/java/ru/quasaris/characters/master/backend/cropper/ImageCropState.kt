@@ -1,13 +1,16 @@
-package ru.quasaris.characters.master.ui.cropper
+package ru.quasaris.characters.master.backend.cropper
 
+import android.graphics.Matrix
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.IntSize
+import kotlin.math.max
+import kotlin.math.min
 
 interface ImageCropState {
-    var matrix: android.graphics.Matrix
+    var matrix: Matrix
     var shape: ImageCropShape
     
     var containerSize: Size
@@ -29,7 +32,7 @@ class ImageCropStateImpl(
     initialShape: ImageCropShape,
     @Suppress("UNUSED_PARAMETER") initialAspectRatio: ImageAspectRatio,
 ) : ImageCropState {
-    override var matrix by mutableStateOf(android.graphics.Matrix())
+    override var matrix by mutableStateOf(Matrix())
     override var shape by mutableStateOf(initialShape)
     
     override var containerSize by mutableStateOf(Size.Zero)
@@ -38,7 +41,7 @@ class ImageCropStateImpl(
     override val viewportRect: Rect
         get() {
             if (containerSize == Size.Zero) return Rect.Zero
-            val side = kotlin.math.min(containerSize.width, containerSize.height) * 0.8f
+            val side = min(containerSize.width, containerSize.height) * 0.8f
             return Rect(
                 offset = Offset((containerSize.width - side) / 2f, (containerSize.height - side) / 2f),
                 size = Size(side, side)
@@ -46,35 +49,35 @@ class ImageCropStateImpl(
         }
 
     override fun rotateCW() {
-        val newMatrix = android.graphics.Matrix(matrix)
+        val newMatrix = Matrix(matrix)
         newMatrix.postRotate(90f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun rotateCCW() {
-        val newMatrix = android.graphics.Matrix(matrix)
+        val newMatrix = Matrix(matrix)
         newMatrix.postRotate(-90f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun flipHorizontal() {
-        val newMatrix = android.graphics.Matrix(matrix)
+        val newMatrix = Matrix(matrix)
         newMatrix.postScale(-1f, 1f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun flipVertical() {
-        val newMatrix = android.graphics.Matrix(matrix)
+        val newMatrix = Matrix(matrix)
         newMatrix.postScale(1f, -1f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun onTransform(pan: Offset, zoom: Float) {
-        val newMatrix = android.graphics.Matrix(matrix)
+        val newMatrix = Matrix(matrix)
         val center = viewportRect.center
         newMatrix.postScale(zoom, zoom, center.x, center.y)
         newMatrix.postTranslate(pan.x, pan.y)
@@ -89,10 +92,10 @@ class ImageCropStateImpl(
         val imgW = imageSize.width.toFloat()
         val imgH = imageSize.height.toFloat()
         
-        val newMatrix = android.graphics.Matrix()
+        val newMatrix = Matrix()
         
         // 1. Initial scale to cover viewport
-        val scale = kotlin.math.max(viewport.width / imgW, viewport.height / imgH)
+        val scale = max(viewport.width / imgW, viewport.height / imgH)
         newMatrix.postScale(scale, scale)
         
         // 2. Initial translation to center
@@ -111,7 +114,7 @@ class ImageCropStateImpl(
         val imgW = imageSize.width.toFloat()
         val imgH = imageSize.height.toFloat()
         
-        val newMatrix = android.graphics.Matrix(matrix)
+        val newMatrix = Matrix(matrix)
         
         // Transformed image corners
         val corners = floatArrayOf(
@@ -123,26 +126,26 @@ class ImageCropStateImpl(
         newMatrix.mapPoints(corners)
         
         // For 90-degree rotations, the image is still an axis-aligned rectangle on screen
-        val left = kotlin.math.min(kotlin.math.min(corners[0], corners[2]), kotlin.math.min(corners[4], corners[6]))
-        val top = kotlin.math.min(kotlin.math.min(corners[1], corners[3]), kotlin.math.min(corners[5], corners[7]))
-        val right = kotlin.math.max(kotlin.math.max(corners[0], corners[2]), kotlin.math.max(corners[4], corners[6]))
-        val bottom = kotlin.math.max(kotlin.math.max(corners[1], corners[3]), kotlin.math.max(corners[5], corners[7]))
+        val left = min(min(corners[0], corners[2]), min(corners[4], corners[6]))
+        val top = min(min(corners[1], corners[3]), min(corners[5], corners[7]))
+        val right = max(max(corners[0], corners[2]), max(corners[4], corners[6]))
+        val bottom = max(max(corners[1], corners[3]), max(corners[5], corners[7]))
         
         val currentW = right - left
         val currentH = bottom - top
         
         // If image is smaller than viewport in any dimension, scale it up
         if (currentW < viewport.width || currentH < viewport.height) {
-            val scaleFactor = kotlin.math.max(viewport.width / currentW, viewport.height / currentH)
+            val scaleFactor = max(viewport.width / currentW, viewport.height / currentH)
             newMatrix.postScale(scaleFactor, scaleFactor, viewport.center.x, viewport.center.y)
             
             // Re-calculate boundaries after scale
             val newCorners = floatArrayOf(0f, 0f, imgW, 0f, imgW, imgH, 0f, imgH)
             newMatrix.mapPoints(newCorners)
-            val nLeft = kotlin.math.min(kotlin.math.min(newCorners[0], newCorners[2]), kotlin.math.min(newCorners[4], newCorners[6]))
-            val nTop = kotlin.math.min(kotlin.math.min(newCorners[1], newCorners[3]), kotlin.math.min(newCorners[5], newCorners[7]))
-            val nRight = kotlin.math.max(kotlin.math.max(newCorners[0], newCorners[2]), kotlin.math.max(newCorners[4], newCorners[6]))
-            val nBottom = kotlin.math.max(kotlin.math.max(newCorners[1], newCorners[3]), kotlin.math.max(newCorners[5], newCorners[7]))
+            val nLeft = min(min(newCorners[0], newCorners[2]), min(newCorners[4], newCorners[6]))
+            val nTop = min(min(newCorners[1], newCorners[3]), min(newCorners[5], newCorners[7]))
+            val nRight = max(max(newCorners[0], newCorners[2]), max(newCorners[4], newCorners[6]))
+            val nBottom = max(max(newCorners[1], newCorners[3]), max(newCorners[5], newCorners[7]))
             
             // Clamp translation
             var dx = 0f

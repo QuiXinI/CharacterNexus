@@ -52,6 +52,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import dev.chrisbanes.haze.HazeState
@@ -114,10 +116,18 @@ fun CharacterHeader(
     var totalDrag by remember { mutableStateOf(0f) }
     var showRestPopup by remember { mutableStateOf(false) }
 
+    val panelsSpringSpec = remember {
+        spring<IntSize>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
+
     Column(
         modifier = Modifier
             .background(colorScheme.surface)
             .statusBarsPadding()
+            .animateContentSize(animationSpec = panelsSpringSpec)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragStart = { totalDrag = 0f },
@@ -437,11 +447,24 @@ fun ExpandingPanelsSection(
     onSpeedDeleteReq: (String?) -> Unit,
     onAddSpeed: () -> Unit
 ) {
-    val enterSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
-    val exitSpec = spring<IntSize>(stiffness = Spring.StiffnessHigh)
+    val panelsSpringSpec = remember {
+        spring<IntSize>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
+    val floatSpring = remember {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
+
+    val enterSpec = expandVertically(animationSpec = panelsSpringSpec) + fadeIn(animationSpec = floatSpring)
+    val exitSpec = shrinkVertically(animationSpec = panelsSpringSpec) + fadeOut(animationSpec = floatSpring)
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        AnimatedVisibility(isRestPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) {
+        AnimatedVisibility(isRestPanelVisible, enter = enterSpec, exit = exitSpec) {
             Column {
                 ru.quasaris.characters.master.ui.RestPanel(
                     hpPanelHitDice, onRestPanelHitDiceChange, onHealAmount, 
@@ -477,7 +500,7 @@ fun ExpandingPanelsSection(
             }
         }
 
-        AnimatedVisibility(isHealthPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) {
+        AnimatedVisibility(isHealthPanelVisible, enter = enterSpec, exit = exitSpec) {
             HealthPanel(
                 maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, 
                 onHealClick, onDamageClick, onTempClick, healthColor, clampHp, hpPanelHitDice, 
@@ -485,11 +508,11 @@ fun ExpandingPanelsSection(
             )
         }
 
-        AnimatedVisibility(isLevelPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { 
+        AnimatedVisibility(isLevelPanelVisible, enter = enterSpec, exit = exitSpec) { 
             LevelPanel(level, onLevelChange, experience, onExpChange, proficiencyBonus, onProfChange, nextLevelExp, statsMap) 
         }
 
-        AnimatedVisibility(isArmorClassPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) {
+        AnimatedVisibility(isArmorClassPanelVisible, enter = enterSpec, exit = exitSpec) {
             Column {
                 FormulaPanel("Класс Доспеха", armorClassEntries, activeArmorClassId, acDeleteConfirmId, { updated -> onArmorClassEntries(updated.filterIsInstance<ArmorClassEntry>()) }, onActiveArmorClass, onAcDeleteReq, onAddArmorClass) 
                 FormulaPanel(
@@ -511,9 +534,9 @@ fun ExpandingPanelsSection(
                 )
             }
         }
-        AnimatedVisibility(isInitiativePanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { FormulaPanel("Инициатива", initiativeEntries, activeInitiativeId, initDeleteConfirmId, { updated -> onInitiativeEntries(updated.filterIsInstance<InitiativeEntry>()) }, onActiveInitiative, onInitDeleteReq, onAddInitiative) }
-        AnimatedVisibility(isConditionsPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { ConditionsPanel(allConditions, selectedConditions, onToggleCondition, exhaustion, onExhaustionChange) }
-        AnimatedVisibility(isSpeedPanelVisible, enter = expandVertically(enterSpec), exit = shrinkVertically(exitSpec)) { FormulaPanel("Скорость", speedEntries, activeSpeedId, speedDeleteConfirmId, { updated -> onSpeedEntries(updated.filterIsInstance<SpeedEntry>()) }, onActiveSpeed, onSpeedDeleteReq, onAddSpeed) }
+        AnimatedVisibility(isInitiativePanelVisible, enter = enterSpec, exit = exitSpec) { FormulaPanel("Инициатива", initiativeEntries, activeInitiativeId, initDeleteConfirmId, { updated -> onInitiativeEntries(updated.filterIsInstance<InitiativeEntry>()) }, onActiveInitiative, onInitDeleteReq, onAddInitiative) }
+        AnimatedVisibility(isConditionsPanelVisible, enter = enterSpec, exit = exitSpec) { ConditionsPanel(allConditions, selectedConditions, onToggleCondition, exhaustion, onExhaustionChange) }
+        AnimatedVisibility(isSpeedPanelVisible, enter = enterSpec, exit = exitSpec) { FormulaPanel("Скорость", speedEntries, activeSpeedId, speedDeleteConfirmId, { updated -> onSpeedEntries(updated.filterIsInstance<SpeedEntry>()) }, onActiveSpeed, onSpeedDeleteReq, onAddSpeed) }
     }
 }
 

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -171,7 +172,18 @@ fun FormulaEntryItem(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val sep = colorScheme.outlineVariant.copy(alpha = 0.3f)
-    val animationSpec = spring<IntSize>(stiffness = Spring.StiffnessMedium)
+    val animationSpec = remember {
+        spring<IntSize>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
+    val floatSpring = remember {
+        spring<Float>(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        )
+    }
     
     Column(
         modifier = Modifier
@@ -277,7 +289,11 @@ fun FormulaEntryItem(
             }
         }
         
-        AnimatedVisibility(visible = isActive) {
+        AnimatedVisibility(
+            visible = isActive,
+            enter = expandVertically(animationSpec) + fadeIn(floatSpring),
+            exit = shrinkVertically(animationSpec) + fadeOut(floatSpring)
+        ) {
             Column {
                 HorizontalDivider(color = sep, thickness = 1.dp)
                 Box(

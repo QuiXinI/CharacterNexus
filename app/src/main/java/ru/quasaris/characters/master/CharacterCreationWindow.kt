@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 import ru.quasaris.characters.master.ui.MorphingPolygonShape
 import ru.quasaris.characters.master.ui.theme.quasarisTheme
 import ru.quasaris.characters.master.backend.ImageManager
-import ru.quasaris.characters.master.ui.cropper.AvatarCropperWindow
+import ru.quasaris.characters.master.backend.cropper.AvatarCropperWindow
 
 import dev.chrisbanes.haze.HazeState
 
