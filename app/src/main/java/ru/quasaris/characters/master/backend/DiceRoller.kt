@@ -134,11 +134,16 @@ object DiceRoller {
         exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
         stats: Map<String, String>
     ): RollResult {
-        val rollHasAdvantage = advantageType != AdvantageType.NONE || bonuses.any { resolveAdvantage(advantageType, it.advantagePreference) != AdvantageType.NONE }
+        val rollHasAdvantage = (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) || 
+                               bonuses.any { 
+                                   val res = resolveAdvantage(advantageType, it.advantagePreference)
+                                   res == AdvantageType.ADVANTAGE || res == AdvantageType.DISADVANTAGE 
+                               }
         
         data class ComponentRoll(
             val sum1: Int, val dice1: List<DieRoll>, val sum2: Int, val dice2: List<DieRoll>,
-            val d20Main: Int? = null, val d20Alt: Int? = null, val isOverride: Boolean = false
+            val d20Main: Int? = null, val d20Alt: Int? = null, val isOverride: Boolean = false,
+            val flat1: Int = 0, val flat2: Int = 0
         )
 
         val components = mutableListOf<ComponentRoll>()
@@ -147,9 +152,9 @@ object DiceRoller {
             val r1 = Random.nextInt(1, 21)
             val r2 = if (advantageType != AdvantageType.NONE) Random.nextInt(1, 21) else r1
             val baseModSum = baseModifier + (if (exhaustion > 0) -2 * exhaustion else 0)
-            components.add(ComponentRoll(r1 + baseModSum, emptyList(), r2 + baseModSum, emptyList(), r1, r2))
+            components.add(ComponentRoll(r1 + baseModSum, emptyList(), r2 + baseModSum, emptyList(), r1, r2, flat1 = baseModSum, flat2 = baseModSum))
         } else {
-            components.add(ComponentRoll(baseModifier, emptyList(), baseModifier, emptyList()))
+            components.add(ComponentRoll(baseModifier, emptyList(), baseModifier, emptyList(), flat1 = baseModifier, flat2 = baseModifier))
         }
 
         bonuses.forEach { bonus ->
@@ -164,7 +169,7 @@ object DiceRoller {
                 repeat(count) {
                     val sign = if (ds.count > 0) 1 else -1
                     val r1 = Random.nextInt(1, ds.sides + 1)
-                    val r2 = if (bonusAdv != AdvantageType.NONE) Random.nextInt(1, ds.sides + 1) else r1
+                    val r2 = if (bonusAdv == AdvantageType.ADVANTAGE || bonusAdv == AdvantageType.DISADVANTAGE) Random.nextInt(1, ds.sides + 1) else r1
                     
                     val val1 = r1 * sign
                     val val2 = r2 * sign
@@ -178,7 +183,12 @@ object DiceRoller {
                     bDice2.add(DieRoll(disp2, ds.sides))
                 }
             }
-            components.add(ComponentRoll(bSum1, bDice1, bSum2, bDice2, isOverride = bonus.operation == BonusOperation.OVERRIDE))
+            components.add(ComponentRoll(
+                bSum1, bDice1, bSum2, bDice2, 
+                isOverride = bonus.operation == BonusOperation.OVERRIDE,
+                flat1 = if (bonus.operation == BonusOperation.SUBTRACT) -fFlat else fFlat,
+                flat2 = if (bonus.operation == BonusOperation.SUBTRACT) -fFlat else fFlat
+            ))
         }
 
         fun assemble(variant: Int): Triple<Int, List<DieRoll>, Pair<List<Int>, Int?>> {
@@ -191,6 +201,7 @@ object DiceRoller {
                 val cSum = if (variant == 1) comp.sum1 else comp.sum2
                 val cDice = if (variant == 1) comp.dice1 else comp.dice2
                 val cd20 = if (variant == 1) comp.d20Main else comp.d20Alt
+                val cFlat = if (variant == 1) comp.flat1 else comp.flat2
 
                 if (comp.isOverride) {
                     sum = cSum
@@ -199,11 +210,9 @@ object DiceRoller {
                     sum += cSum
                 }
                 allDice.addAll(cDice)
+                if (cFlat != 0) flats.add(cFlat)
                 if (cd20 != null) d20Res = cd20
             }
-            
-            flats.add(baseModifier)
-            if (exhaustion > 0) flats.add(-2 * exhaustion)
             
             return Triple(sum, allDice, flats to d20Res)
         }
@@ -263,7 +272,7 @@ object DiceRoller {
                 else -> d20_1 to d20_1
             }
             total = chosen; total2 = discarded
-            mainD20 = chosen; altD20 = if (advantageType != AdvantageType.NONE) discarded else null
+            mainD20 = chosen; altD20 = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) discarded else null
             if (baseModifier != 0) { total += baseModifier; total2 += baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier) }
             if (exhaustion > 0) { val penalty = -2 * exhaustion; total += penalty; total2 += penalty; flatBonusValues.add(penalty); altFlatBonusValues.add(penalty) }
         } else {
@@ -298,8 +307,9 @@ object DiceRoller {
                     val dispVal1 = if (bonus.operation == BonusOperation.SUBTRACT) -val1 else val1
                     val dispVal2 = if (bonus.operation == BonusOperation.SUBTRACT) -val2 else val2
                     
-                    currentDice1.add(DieRoll(dispVal1, diceSpec.sides, discardedValue = if (adv != AdvantageType.NONE) dispVal2 else null))
-                    if (adv != AdvantageType.NONE || advantageType != AdvantageType.NONE) {
+                    val isComp = adv == AdvantageType.ADVANTAGE || adv == AdvantageType.DISADVANTAGE
+                    currentDice1.add(DieRoll(dispVal1, diceSpec.sides, discardedValue = if (isComp) dispVal2 else null))
+                    if (isComp || (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE)) {
                          currentDice2.add(DieRoll(dispVal2, diceSpec.sides))
                     }
                 }
@@ -336,7 +346,11 @@ object DiceRoller {
             }
         }
         
-        val hasAlt = advantageType != AdvantageType.NONE || bonuses.any { it.advantagePreference != AdvantagePreference.NONE }
+        val hasAlt = (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) || 
+                     bonuses.any { 
+                         val res = resolveAdvantage(advantageType, it.advantagePreference)
+                         res == AdvantageType.ADVANTAGE || res == AdvantageType.DISADVANTAGE 
+                     }
 
         return RollResult(
             title = title, total = total, breakdown = "",
@@ -375,7 +389,8 @@ object DiceRoller {
                 AdvantageType.DISADVANTAGE -> if (s1 <= s2) (d20_1 to s1) to (d20_2 to s2) else (d20_2 to s2) to (d20_1 to s1)
                 else -> (d20_1 to s1) to (d20_1 to s1)
             }
-            total = m.second; total2 = a.second; mainD20 = m.first; altD20 = if (advantageType != AdvantageType.NONE) a.first else null
+            total = m.second; total2 = a.second; mainD20 = m.first
+            altD20 = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) a.first else null
             if (baseModifier != 0) { flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier) }
             if (exhaustion > 0) { val p = -2 * exhaustion; flatBonusValues.add(p); altFlatBonusValues.add(p) }
         } else {
@@ -416,9 +431,9 @@ object DiceRoller {
             }
 
             val r1 = rollBonusSet(adv)
-            val hasBonusAlt = adv != AdvantageType.NONE
+            val hasBonusAlt = adv == AdvantageType.ADVANTAGE || adv == AdvantageType.DISADVANTAGE
             
-            if (hasBonusAlt || advantageType != AdvantageType.NONE) {
+            if (hasBonusAlt || (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE)) {
                 val r2 = if (hasBonusAlt) rollBonusSet(adv) else r1
                 
                 when (bonus.operation) {
@@ -465,7 +480,11 @@ object DiceRoller {
             }
         }
 
-        val hasAlt = advantageType != AdvantageType.NONE || bonuses.any { it.advantagePreference != AdvantagePreference.NONE }
+        val hasAlt = (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) || 
+                     bonuses.any { 
+                         val res = resolveAdvantage(advantageType, it.advantagePreference)
+                         res == AdvantageType.ADVANTAGE || res == AdvantageType.DISADVANTAGE 
+                     }
 
         return RollResult(
             title = title, total = total, breakdown = "",
@@ -501,7 +520,8 @@ object DiceRoller {
                 AdvantageType.DISADVANTAGE -> if (d20_1 <= d20_2) d20_1 to d20_2 else d20_2 to d20_1
                 else -> d20_1 to d20_1
             }
-            total = chosen; total2 = discarded; mainD20 = chosen; altD20 = if (advantageType != AdvantageType.NONE) discarded else null
+            total = chosen; total2 = discarded; mainD20 = chosen
+            altD20 = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) discarded else null
             if (baseModifier != 0) { total += baseModifier; total2 += baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier) }
             if (exhaustion > 0) { val p = -2 * exhaustion; total += p; total2 += p; flatBonusValues.add(p); altFlatBonusValues.add(p) }
         } else {
@@ -521,7 +541,7 @@ object DiceRoller {
                 val count = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(ds.count) * 2 else kotlin.math.abs(ds.count)
                 val sign = if (ds.count > 0) 1 else -1
                 
-                if (adv != AdvantageType.NONE) {
+                if (adv == AdvantageType.ADVANTAGE || adv == AdvantageType.DISADVANTAGE) {
                     val rolls = List(count * 2) { Random.nextInt(1, ds.sides + 1) * sign }.sortedBy { it * sign }
                     val (chosen, discarded) = if (adv == AdvantageType.ADVANTAGE) {
                         rolls.takeLast(count) to rolls.take(count)
@@ -572,7 +592,11 @@ object DiceRoller {
             }
         }
 
-        val hasAlt = advantageType != AdvantageType.NONE || bonuses.any { it.advantagePreference != AdvantagePreference.NONE }
+        val hasAlt = (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) || 
+                     bonuses.any { 
+                         val res = resolveAdvantage(advantageType, it.advantagePreference)
+                         res == AdvantageType.ADVANTAGE || res == AdvantageType.DISADVANTAGE 
+                     }
 
         return RollResult(
             title = title, total = total, breakdown = "",

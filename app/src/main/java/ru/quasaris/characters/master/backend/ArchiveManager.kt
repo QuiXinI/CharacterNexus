@@ -16,12 +16,13 @@ import java.util.zip.ZipOutputStream
 object ArchiveManager {
     const val EXPORT_EXTENSION = "lsskiller"
     private val gson = GsonFactory.create()
+    private val exportGson = GsonFactory.createPretty()
 
     suspend fun exportCharacter(context: Context, character: Character, uri: Uri) = withContext(Dispatchers.IO) {
         try {
             context.contentResolver.openOutputStream(uri)?.use { os ->
                 ZipOutputStream(BufferedOutputStream(os)).use { zos ->
-                    val json = gson.toJson(character)
+                    val json = exportGson.toJson(character)
                     zos.putNextEntry(ZipEntry("character.json"))
                     zos.write(json.toByteArray())
                     zos.closeEntry()

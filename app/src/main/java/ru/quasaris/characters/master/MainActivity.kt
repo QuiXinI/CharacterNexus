@@ -51,6 +51,9 @@ import ru.quasaris.characters.master.backend.RollResult
 import ru.quasaris.characters.master.backend.SettingsManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import ru.quasaris.characters.master.ui.DiceRollOverlay
+import androidx.compose.material.icons.filled.MenuBook
+import ru.quasaris.characters.master.backend.SpellbookManager
+import ru.quasaris.characters.master.SpellbookWindow
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -102,6 +105,7 @@ class MainActivity : ComponentActivity() {
             context = applicationContext,
             appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         )
+        val spellbookManager = SpellbookManager(applicationContext)
         
         ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver(characterRepository))
 
@@ -257,6 +261,19 @@ class MainActivity : ComponentActivity() {
                                             icon = { Icon(Icons.Default.Functions, null) },
                                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                                         )
+
+                                        NavigationDrawerItem(
+                                            label = { Text("Книга заклинаний") },
+                                            selected = currentRoute == "spellbook",
+                                            onClick = {
+                                                scope.launch { drawerState.close() }
+                                                if (currentRoute != "spellbook") {
+                                                    navController.navigate("spellbook")
+                                                }
+                                            },
+                                            icon = { Icon(Icons.Default.MenuBook, null) },
+                                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                        )
                                     }
                                 }
                             ) {
@@ -325,6 +342,16 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
 
+                                        composable("spellbook") {
+                                            SpellbookWindow(
+                                                spellbookManager = spellbookManager,
+                                                onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                hazeState = hazeState,
+                                                forceBlurEnabled = effectiveBlurFullscreen,
+                                                settingsViewModel = settingsViewModel
+                                            )
+                                        }
+
                                         composable(
                                             "create_setup"
                                         ) {
@@ -385,7 +412,8 @@ class MainActivity : ComponentActivity() {
                                                 hazeState = hazeState,
                                                 forceBlurEnabled = effectiveBlurFullscreen,
                                                 blurPopups = effectiveBlurPopups,
-                                                settingsViewModel = settingsViewModel
+                                                settingsViewModel = settingsViewModel,
+                                                spellbookManager = spellbookManager
                                             )
                                         }
                                     }

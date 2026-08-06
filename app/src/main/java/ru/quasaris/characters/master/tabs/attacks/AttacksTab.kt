@@ -284,7 +284,7 @@ fun AttackItem(
             } else 0
             
             val baseFlat = (if (attack.magicType == MagicAttackType.SAVE) 8 else 0) + proficiencyBonus + abilityModifier
-            var totalFlat = calculateTotalBonus(bonuses, stats, initialValue = baseFlat)
+            val totalFlat = calculateTotalBonus(bonuses, stats, initialValue = baseFlat)
             
             val allDice = mutableMapOf<Int, Int>()
             bonuses.filter { it.isActive }.forEach { bonus ->
@@ -294,16 +294,16 @@ fun AttackItem(
                     allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
                 }
             }
-            return@remember Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+            return@remember Triple(totalFlat, baseFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
         }
 
         if (attack.attribute == Attribute.NONE) {
-            return@remember Pair(0, emptyList<DicePart>())
+            return@remember Triple(0, 0, emptyList<DicePart>())
         }
         val attrMod = attributeModifiers[attack.attribute] ?: 0
         val prof = if (attack.isProficient) proficiencyBonus else 0
         val baseFlat = attrMod + prof + attack.attackBonus
-        var totalFlat = calculateTotalBonus(attack.attackBonuses, stats, initialValue = baseFlat)
+        val totalFlat = calculateTotalBonus(attack.attackBonuses, stats, initialValue = baseFlat)
         
         val allDice = mutableMapOf<Int, Int>()
         attack.attackBonuses.filter { it.isActive }.forEach { bonus ->
@@ -313,11 +313,12 @@ fun AttackItem(
                 allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
             }
         }
-        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+        Triple(totalFlat, baseFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
 
     val totalAttackBonus = attackCalculation.first
-    val attackDice = attackCalculation.second
+    val baseAttackBonus = attackCalculation.second
+    val attackDice = attackCalculation.third
     
     // Для отображения вычитаем истощение, если это не спасбросок (хотя в 5е 2024 истощение влияет и на DC)
     // Но пока придерживаемся логики: броски d20 штрафуются в DiceRoller.
@@ -626,7 +627,7 @@ fun AttackItem(
                                             val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses else attack.attackBonuses
                                             onRoll(DiceRoller.roll(
                                                 title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
-                                                baseModifier = totalAttackBonus,
+                                                baseModifier = baseAttackBonus,
                                                 bonuses = bonuses,
                                                 isDamage = false,
                                                 stats = stats,
@@ -665,7 +666,7 @@ fun AttackItem(
                                                 val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses else attack.attackBonuses
                                                 onRoll(DiceRoller.roll(
                                                     title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
-                                                    baseModifier = totalAttackBonus,
+                                                    baseModifier = baseAttackBonus,
                                                     bonuses = bonuses,
                                                     isDamage = false,
                                                     stats = stats,
@@ -679,7 +680,7 @@ fun AttackItem(
                                                 val bonuses = if (attack.isMagic) spellSettings.spellAttackBonuses else attack.attackBonuses
                                                 onRoll(DiceRoller.roll(
                                                     title = if (attack.isMagic) "Магическая атака: ${attack.name}" else "Атака: ${attack.name}",
-                                                    baseModifier = totalAttackBonus,
+                                                    baseModifier = baseAttackBonus,
                                                     bonuses = bonuses,
                                                     isDamage = false,
                                                     stats = stats,

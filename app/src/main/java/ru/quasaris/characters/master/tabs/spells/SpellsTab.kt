@@ -8,6 +8,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import ru.quasaris.characters.master.SpellCard
+import ru.quasaris.characters.master.SpellMode
+import ru.quasaris.characters.master.MagicAttackType
+import ru.quasaris.characters.master.MaterialComponentType
+import ru.quasaris.characters.master.backend.SpellbookManager
+import ru.quasaris.characters.master.backend.SimpleBonus
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,12 +72,21 @@ fun SpellsTab(
     statsMap: Map<String, String> = emptyMap(),
     exhaustion: Int = 0,
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
+    spellbookManager: SpellbookManager? = null,
     header: @Composable () -> Unit = {}
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
     
     var showSpellAtkPopup by remember { mutableStateOf(false) }
     var spellAtkBtnSize by remember { mutableStateOf(IntSize.Zero) }
+    
+    var editingSpell by remember { mutableStateOf<SpellCard?>(null) }
+    var showSelectionDialog by remember { mutableStateOf(false) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+
+    val characterSpells = remember(spellSettings.selectedSpellIds, refreshTrigger) {
+        spellbookManager?.loadSpells()?.filter { it.id in spellSettings.selectedSpellIds } ?: emptyList()
+    }
 
     val autoSlots = remember(spellSettings.casterType, spellSettings.isMulticlass, spellSettings.fullCasterLevel, spellSettings.halfCasterLevel, spellSettings.thirdCasterLevel, characterLevel) {
         if (spellSettings.isMulticlass) {
@@ -83,12 +99,14 @@ fun SpellsTab(
     fun parseLevelFromTitle(title: String): Float {
         val t = title.lowercase(Locale.getDefault())
         if (t.contains("заговор")) return 0f
+        if (t.contains("прочее")) return -1f
         val match = Regex("([\\d.]+)").find(t)
-        return match?.value?.toFloatOrNull() ?: 0f
+        return match?.value?.toFloatOrNull() ?: -1f
     }
 
     fun formatLevelTitle(level: Float): String {
         if (level == 0f) return "Заговоры"
+        if (level == -1f) return "Прочее"
         val isInt = level == floor(level)
         val levelStr = if (isInt) level.toInt().toString() else level.toString()
         return "$levelStr уровень"
@@ -109,7 +127,8 @@ fun SpellsTab(
     } else 0
 
     val magicAtkCalculation = remember(spellSettings.spellAttackBonuses, pb, abilityModifier, statsMap, exhaustion) {
-        var totalFlat = pb + abilityModifier - (exhaustion * 2)
+        val baseFlat = pb + abilityModifier
+        var totalFlat = baseFlat - (exhaustion * 2)
         val allDice = mutableMapOf<Int, Int>()
         
         totalFlat = calculateTotalBonus(spellSettings.spellAttackBonuses, statsMap, initialValue = totalFlat)
@@ -120,11 +139,12 @@ fun SpellsTab(
                 allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
             }
         }
-        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+        Triple(totalFlat, baseFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
 
     val magicSaveCalculation = remember(spellSettings.spellSaveDcBonuses, pb, abilityModifier, statsMap) {
-        var totalFlat = 8 + pb + abilityModifier
+        val baseFlat = 8 + pb + abilityModifier
+        var totalFlat = baseFlat
         val allDice = mutableMapOf<Int, Int>()
         
         totalFlat = calculateTotalBonus(spellSettings.spellSaveDcBonuses, statsMap, initialValue = totalFlat)
@@ -135,13 +155,15 @@ fun SpellsTab(
                 allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
             }
         }
-        Pair(totalFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+        Triple(totalFlat, baseFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
     }
 
     val spellAttackBonus = magicAtkCalculation.first
-    val spellAttackDice = magicAtkCalculation.second
+    val spellAttackBase = magicAtkCalculation.second
+    val spellAttackDice = magicAtkCalculation.third
     val spellSaveDc = magicSaveCalculation.first
-    val spellSaveDice = magicSaveCalculation.second
+    val spellSaveBase = magicSaveCalculation.second
+    val spellSaveDice = magicSaveCalculation.third
 
     val longRestAlignment by settingsViewModel?.longRestAlignment?.collectAsState() ?: remember { mutableStateOf(SlotAlignment.RIGHT) }
     val longRestFillDirection by settingsViewModel?.longRestFillDirection?.collectAsState() ?: remember { mutableStateOf(SlotFillDirection.LTR) }
@@ -150,7 +172,7 @@ fun SpellsTab(
     val dawnRestAlignment by settingsViewModel?.dawnRestAlignment?.collectAsState() ?: remember { mutableStateOf(SlotAlignment.RIGHT) }
     val dawnRestFillDirection by settingsViewModel?.dawnRestFillDirection?.collectAsState() ?: remember { mutableStateOf(SlotFillDirection.LTR) }
 
-    val processedSpells = remember(spells, spellSettings.specialSlots, spellSettings.pactSlotLevel, spellSettings.isPactEnabled, spellSettings.casterType, spellSettings.isMulticlass) {
+    val processedSpells = remember(spells, spellSettings.selectedSpellIds, spellSettings.specialSlots, spellSettings.pactSlotLevel, spellSettings.isPactEnabled, spellSettings.casterType, spellSettings.isMulticlass, characterSpells) {
         val specialLevels = spellSettings.specialSlots.map { it.level }.toMutableSet()
         if (spellSettings.isPactEnabled) specialLevels.add(spellSettings.pactSlotLevel)
         
@@ -158,6 +180,11 @@ fun SpellsTab(
             for (i in 1..9) specialLevels.add(i.toFloat())
         }
         specialLevels.add(0f)
+        
+        // Add "Other" (-1f) if there are spells with non-numeric levels
+        if (characterSpells.any { it.level.trim() != "0" && it.level.trim().toIntOrNull() == null }) {
+            specialLevels.add(-1f)
+        }
 
         val currentList = spells.toMutableList()
         val existingLevels = currentList.map { parseLevelFromTitle(it.title) }
@@ -230,7 +257,7 @@ fun SpellsTab(
                             onClick = { 
                                 onRoll(DiceRoller.roll(
                                     title = "Атака заклинанием", 
-                                    baseModifier = spellAttackBonus + (exhaustion * 2), 
+                                    baseModifier = spellAttackBase, 
                                     bonuses = spellSettings.spellAttackBonuses,
                                     stats = statsMap, 
                                     exhaustion = exhaustion, 
@@ -273,7 +300,7 @@ fun SpellsTab(
                                 onAdvantage = {
                                     onRoll(DiceRoller.roll(
                                         title = "Атака заклинанием", 
-                                        baseModifier = spellAttackBonus + (exhaustion * 2), 
+                                        baseModifier = spellAttackBase, 
                                         bonuses = spellSettings.spellAttackBonuses,
                                         stats = statsMap, 
                                         exhaustion = exhaustion, 
@@ -285,7 +312,7 @@ fun SpellsTab(
                                 onDisadvantage = {
                                     onRoll(DiceRoller.roll(
                                         title = "Атака заклинанием", 
-                                        baseModifier = spellAttackBonus + (exhaustion * 2), 
+                                        baseModifier = spellAttackBase, 
                                         bonuses = spellSettings.spellAttackBonuses,
                                         stats = statsMap, 
                                         exhaustion = exhaustion, 
@@ -442,6 +469,92 @@ fun SpellsTab(
                             }
                         }
                     }
+
+                    if (spellSettings.spellMode == SpellMode.CARDS) {
+                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                            val levelStr = if (level == 0f) "0" else if (level == -1f) "" else level.toInt().toString()
+                            val levelSpells = characterSpells.filter { 
+                                val cardLevel = it.level.trim()
+                                if (level == -1f) {
+                                    cardLevel != "0" && cardLevel.toIntOrNull() == null
+                                } else {
+                                    cardLevel == levelStr
+                                }
+                            }
+                            
+                            levelSpells.forEach { card ->
+                                var expanded by remember { mutableStateOf(false) }
+                                SpellCardItem(
+                                    spell = card,
+                                    isExpanded = expanded,
+                                    onToggleExpand = { expanded = !expanded },
+                                    onEdit = { editingSpell = card },
+                                    onRollDamage = { advantage ->
+                                        onRoll(DiceRoller.roll(
+                                            title = "Урон: ${card.name}",
+                                            baseModifier = 0,
+                                            bonuses = listOf(SimpleBonus(formula = card.damageFormula, name = "Базовый урон")),
+                                            isDamage = true,
+                                            stats = statsMap,
+                                            exhaustion = 0,
+                                            sourceType = RollSourceType.OTHER,
+                                            advantageType = advantage,
+                                            advantageLogic = advantageLogic
+                                        ))
+                                    },
+                                    onRollAttack = { advantage ->
+                                        if (card.attackType == MagicAttackType.ATTACK) {
+                                            onRoll(DiceRoller.roll(
+                                                title = "${card.name} (Атака)",
+                                                baseModifier = spellAttackBase,
+                                                bonuses = spellSettings.spellAttackBonuses,
+                                                stats = statsMap,
+                                                exhaustion = exhaustion,
+                                                sourceType = RollSourceType.ATTACK,
+                                                advantageType = advantage,
+                                                advantageLogic = advantageLogic
+                                            ))
+                                        }
+                                    },
+                                    isEditable = true,
+                                    statsMap = statsMap,
+                                    spellAttackBonus = spellAttackBonus,
+                                    spellAttackDice = spellAttackDice,
+                                    spellSaveDc = spellSaveDc,
+                                    spellSaveDice = spellSaveDice,
+                                    hazeState = hazeState
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { 
+                                        val initialLevel = if (level == 0f) "0" else if (level == -1f) "" else level.toInt().toString()
+                                        editingSpell = SpellCard(level = initialLevel) 
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Добавить", fontSize = 12.sp)
+                                }
+                                OutlinedButton(
+                                    onClick = { showSelectionDialog = true },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Выбрать", fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
                 }
             )
         }
@@ -483,6 +596,44 @@ fun SpellsTab(
                     Text("Отмена")
                 }
             }
+        )
+    }
+
+    editingSpell?.let { spell ->
+        SpellCardEditorDialog(
+            spell = spell,
+            onDismiss = { editingSpell = null },
+            onSave = { updated ->
+                spellbookManager?.addOrUpdateSpell(updated)
+                if (updated.id !in spellSettings.selectedSpellIds) {
+                    onSpellSettingsChange(spellSettings.copy(selectedSpellIds = spellSettings.selectedSpellIds + updated.id))
+                }
+                editingSpell = null
+                refreshTrigger++
+            },
+            onDelete = {
+                spellbookManager?.deleteSpell(it.id)
+                onSpellSettingsChange(spellSettings.copy(selectedSpellIds = spellSettings.selectedSpellIds - it.id))
+                editingSpell = null
+                refreshTrigger++
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled,
+            settingsViewModel = settingsViewModel
+        )
+    }
+
+    if (showSelectionDialog && spellbookManager != null) {
+        SpellbookSelectionDialog(
+            spellbookManager = spellbookManager,
+            selectedIds = spellSettings.selectedSpellIds,
+            onDismiss = { showSelectionDialog = false },
+            onSave = { newIds ->
+                onSpellSettingsChange(spellSettings.copy(selectedSpellIds = newIds))
+                refreshTrigger++
+            },
+            hazeState = hazeState,
+            forceBlurEnabled = forceBlurEnabled
         )
     }
 }

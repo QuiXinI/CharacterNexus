@@ -37,6 +37,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import ru.quasaris.characters.master.tabs.spells.SpellsTab
+import ru.quasaris.characters.master.backend.SpellbookManager
 import ru.quasaris.characters.master.ui.DiceRollingFab
 import ru.quasaris.characters.master.backend.cropper.AvatarCropperWindow
 
@@ -60,7 +61,8 @@ fun CharacterDetailWindow(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
-    settingsViewModel: SettingsViewModel? = null
+    settingsViewModel: SettingsViewModel? = null,
+    spellbookManager: SpellbookManager? = null
 ) {
     if (character == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -212,6 +214,14 @@ fun CharacterDetailWindow(
             put("[МАГ АТК БОН]", state.spellSettings.spellAttackBonus.ifBlank { "0" })
             put("[MAG SAVE BON]", state.spellSettings.spellSaveDcBonus.ifBlank { "0" })
             put("[МАГ СПАС БОН]", state.spellSettings.spellSaveDcBonus.ifBlank { "0" })
+
+            if (state.spellSettings.spellcastingAbility != Attribute.NONE) {
+                val score = get(state.spellSettings.spellcastingAbility.name.lowercase()) ?: "10"
+                val mod = calculateModifier(score)
+                put("[mdmg]", mod.toString())
+            } else {
+                put("[mdmg]", "0")
+            }
 
             put("hp", state.currentHp)
             put("max_hp", state.maxHp)
@@ -692,7 +702,8 @@ fun CharacterDetailWindow(
                             onRoll = onRoll,
                             statsMap = statsMap,
                             exhaustion = state.exhaustion,
-                            advantageLogic = advantageLogic
+                            advantageLogic = advantageLogic,
+                            spellbookManager = spellbookManager
                         )
                     }
                     CharacterTab.NOTES -> {

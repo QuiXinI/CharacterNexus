@@ -302,8 +302,7 @@ fun SpellSettingsDialog(
                         }
                         SegmentedButton(
                             selected = spellMode == SpellMode.CARDS,
-                            onClick = { /* spellMode = SpellMode.CARDS */ },
-                            enabled = false,
+                            onClick = { spellMode = SpellMode.CARDS },
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
                         ) {
                             Text("Карточки")

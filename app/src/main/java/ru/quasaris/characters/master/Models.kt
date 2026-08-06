@@ -1,5 +1,6 @@
 package ru.quasaris.characters.master
 
+import com.google.gson.annotations.SerializedName
 import java.util.UUID
 
 interface FormulaEntry {
@@ -170,6 +171,121 @@ data class AttackEntry(
     val magicType: MagicAttackType = MagicAttackType.ATTACK
 )
 
+enum class MaterialComponentType(val displayName: String) {
+    NONE("Нет"), M("М"), M_PLUS("М+"), M_PLUS_PLUS("М++")
+}
+
+enum class SpellSchool(val displayName: String) {
+    EVOCATION("Воплощение"),
+    ILLUSION("Иллюзия"),
+    NECROMANCY("Некромантия"),
+    ABJURATION("Ограждение"),
+    ENCHANTMENT("Очарование"),
+    TRANSMUTATION("Преобразование"),
+    CONJURATION("Призыв"),
+    DIVINATION("Прорицание"),
+    NONE("Нет")
+}
+
+enum class SpellVersion(val displayName: String) {
+    V5_5("5.5"),
+    V5E("5e"),
+    HB("ХБ"),
+    NONE("Нет")
+}
+
+enum class CharacterClass(val displayName: String) {
+    BARD("Бард"), WIZARD("Волшебник"), DRUID("Друид"), CLERIC("Жрец"), 
+    ARTIFICER("Изобретатель"), WARLOCK("Колдун"), PALADIN("Паладин"), 
+    RANGER("Следопыт"), SORCERER("Чародей"),
+    BARBARIAN("Варвар"), FIGHTER("Воин"), PUGILIST("Кулачник"),
+    MONK("Монах"), ROGUE("Плут"), KINDRED("Сородич")
+}
+
+enum class DurationUnit(val displayName: String, val requiresValue: Boolean) {
+    INSTANT("Мгновенная", false),
+    SECONDS("Сек", true),
+    MINUTES("Мин", true),
+    HOURS("Ч", true),
+    DAYS("Д", true),
+    PERMANENT("Пока не будет рассеяно", false);
+}
+
+enum class CastingTimeType(val displayName: String) {
+    ACTION("Действие"),
+    BONUS_ACTION("Бонусное действие"),
+    REACTION("Реакция"),
+    OTHER("Другое")
+}
+
+data class SpellLink(
+    @SerializedName("id") val id: String = UUID.randomUUID().toString(),
+    @SerializedName("name") val name: String = "",
+    @SerializedName("url") val url: String = ""
+)
+
+data class SpellCard(
+    @SerializedName("name") val name: String = "",
+    @SerializedName("englishName") val englishName: String = "",
+    @SerializedName("showEnglishName") val showEnglishName: Boolean = false,
+    @SerializedName("level") val level: String = "0",
+    @SerializedName("version") val version: SpellVersion = SpellVersion.HB,
+    @SerializedName("school") val school: SpellSchool = SpellSchool.NONE,
+    @SerializedName("classes") val classes: List<CharacterClass> = emptyList(),
+    @SerializedName("castingTimeType") val castingTimeType: CastingTimeType = CastingTimeType.ACTION,
+    @SerializedName("castingTime") val castingTime: String = "",
+    @SerializedName("hasVerbalComponent") val hasVerbalComponent: Boolean = false,
+    @SerializedName("hasSomaticComponent") val hasSomaticComponent: Boolean = false,
+    @SerializedName("isRitual") val isRitual: Boolean = false,
+    @SerializedName("isCircle") val isCircle: Boolean = false,
+    @SerializedName("materialComponentType") val materialComponentType: MaterialComponentType = MaterialComponentType.NONE,
+    @SerializedName("materialComponents") val materialComponents: String = "",
+    @SerializedName("hasConcentration") val hasConcentration: Boolean = false,
+    @SerializedName("durationValue") val durationValue: String = "",
+    @SerializedName("durationUnit") val durationUnit: DurationUnit = DurationUnit.INSTANT,
+    @SerializedName("description") val description: String = "",
+    @SerializedName("hasDamage") val hasDamage: Boolean = false,
+    @SerializedName("damageFormula") val damageFormula: String = "",
+    @SerializedName("damageType") val damageType: String = "",
+    @SerializedName("attackType") val attackType: MagicAttackType? = null,
+    @SerializedName("savingThrowAttributes") val savingThrowAttributes: List<Attribute> = emptyList(),
+    @SerializedName("distance") val distance: String = "",
+    @SerializedName("notes") val notes: String = "",
+    @SerializedName("link") val link: String? = null,
+    @SerializedName("additionalLinks") val additionalLinks: List<SpellLink> = emptyList(),
+    @SerializedName("id") val id: String = UUID.randomUUID().toString()
+) {
+    val duration: String get() = if (durationUnit.requiresValue) {
+        if (durationValue.isBlank()) durationUnit.displayName else "$durationValue ${durationUnit.displayName}"
+    } else {
+        durationUnit.displayName
+    }
+}
+
+enum class SpellComponentFilter {
+    VERBAL, SOMATIC, MATERIAL, MATERIAL_COST, MATERIAL_CONSUMED,
+    NO_VERBAL, NO_SOMATIC, NO_MATERIAL, NO_MATERIAL_COST, NO_MATERIAL_CONSUMED
+}
+
+data class SpellFilterState(
+    val levels: Set<String> = emptySet(),
+    val classes: Set<CharacterClass> = emptySet(),
+    val schools: Set<SpellSchool> = emptySet(),
+    val versions: Set<SpellVersion> = emptySet(),
+    val castingTimeTypes: Set<CastingTimeType> = emptySet(),
+    val castingTimeQuery: String = "",
+    val durationUnits: Set<DurationUnit> = emptySet(),
+    val durationQuery: String = "",
+    val attackTypes: Set<MagicAttackType?> = emptySet(),
+    val savingThrowAttributes: Set<Attribute> = emptySet(),
+    val components: Set<SpellComponentFilter> = emptySet(),
+    val hasConcentration: Boolean? = null,
+    val hasDamage: Boolean? = null,
+    val isRitual: Boolean? = null,
+    val isCircle: Boolean? = null,
+    val attackOrSave: MagicAttackType? = null
+)
+
 data class SpellSettings(
     val isMagicEnabled: Boolean = true,
     val spellAttackBonus: String = "",
@@ -190,7 +306,8 @@ data class SpellSettings(
     val pactSlotsCount: Int = 0,
     val usedSlots: Map<Float, Int> = emptyMap(), // Key 1-9 are levels (Long Rest)
     val usedSlotsShortRest: Map<Float, Int> = emptyMap(), // Key 0 is Pact (if not merged), 1-9 are levels
-    val usedSlotsDawn: Map<Float, Int> = emptyMap()
+    val usedSlotsDawn: Map<Float, Int> = emptyMap(),
+    val selectedSpellIds: List<String> = emptyList()
 )
 
 data class SpecialSlotSettings(
