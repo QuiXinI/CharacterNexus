@@ -143,6 +143,22 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("dawn_rest_fill_direction", "LTR") ?: "LTR"
         set(value) = prefs.edit { putString("dawn_rest_fill_direction", value) }
 
+    var lastModuleExportName: String
+        get() = prefs.getString("last_module_export_name", "") ?: ""
+        set(value) = prefs.edit { putString("last_module_export_name", value) }
+
+    var lastModuleExportDescription: String
+        get() = prefs.getString("last_module_export_description", "") ?: ""
+        set(value) = prefs.edit { putString("last_module_export_description", value) }
+
+    var lastModuleExportVersion: String
+        get() = prefs.getString("last_module_export_version", "1.0.0") ?: "1.0.0"
+        set(value) = prefs.edit { putString("last_module_export_version", value) }
+
+    var lastModuleExportId: String
+        get() = prefs.getString("last_module_export_id", "") ?: ""
+        set(value) = prefs.edit { putString("last_module_export_id", value) }
+
     // New Header Interfaces
     var useNewACInterface: Boolean
         get() = prefs.getBoolean("use_new_ac_interface", true)

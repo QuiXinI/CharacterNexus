@@ -30,7 +30,7 @@ build/
 .externalNativeBuild/
 .cxx/
 /ndkBuild/
-/tmp
+/imports
 
 # Релизы и пакеты
 *.apk

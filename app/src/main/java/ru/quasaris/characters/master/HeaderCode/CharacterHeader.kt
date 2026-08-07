@@ -61,6 +61,7 @@ import ru.quasaris.characters.master.backend.Condition
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.getPreviousLevelThreshold
 import ru.quasaris.characters.master.backend.parseConditions
+import ru.quasaris.characters.master.ui.AvatarPopup
 
 @Composable
 fun CharacterHeader(
@@ -95,6 +96,8 @@ fun CharacterHeader(
     onDismissAvatarMenu: () -> Unit,
     onImagePickerClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    onDeletePortraitClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     selectedImageUri: Uri?,
     onNavigateBack: () -> Unit,
     exhaustion: Int,
@@ -266,15 +269,17 @@ fun CharacterHeader(
                             }
                         }
                     }
-                    DropdownMenu(expanded = showAvatarMenu, onDismissRequest = onDismissAvatarMenu) {
-                        DropdownMenuItem(text = { Text("Выбор изображения") }, leadingIcon = { Icon(Icons.Default.Image, null) }, onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onImagePickerClick()
-                        })
-                        DropdownMenuItem(text = { Text("Скачать персонажа") }, leadingIcon = { Icon(Icons.Default.Download, null) }, onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onDownloadClick()
-                        })
+                    if (showAvatarMenu) {
+                        AvatarPopup(
+                            hasImage = characterImageData != null,
+                            onSettingsClick = onSettingsClick,
+                            onImagePickerClick = onImagePickerClick,
+                            onDownloadClick = onDownloadClick,
+                            onDeleteClick = onDeletePortraitClick,
+                            onDismiss = onDismissAvatarMenu,
+                            hazeState = hazeState,
+                            isOled = isOled
+                        )
                     }
                 }
             }

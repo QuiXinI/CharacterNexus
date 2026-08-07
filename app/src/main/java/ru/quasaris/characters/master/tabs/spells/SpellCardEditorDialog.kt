@@ -51,6 +51,8 @@ fun SpellCardEditorDialog(
 ) {
     var state by remember { mutableStateOf(spell) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var englishNameError by remember { mutableStateOf<String?>(null) }
+    val allowedCharsRegex = remember { Regex("^[a-zA-Z0-9'\\-._,() ]*$") }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -114,8 +116,27 @@ fun SpellCardEditorDialog(
 
                     OutlinedTextField(
                         value = state.englishName,
-                        onValueChange = { state = state.copy(englishName = it) },
+                        onValueChange = { newValue ->
+                            if (newValue.all { it.toString().matches(allowedCharsRegex) }) {
+                                state = state.copy(englishName = newValue)
+                                englishNameError = null
+                            } else {
+                                englishNameError = "Разрешены только латиница, цифры и знаки ' - . _ , ( )"
+                            }
+                        },
                         label = { Text("English Name") },
+                        isError = englishNameError != null,
+                        supportingText = {
+                            if (englishNameError != null) {
+                                Text(englishNameError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            errorContainerColor = Color.Yellow.copy(alpha = 0.15f),
+                            errorTextColor = MaterialTheme.colorScheme.onSurface,
+                            errorLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            errorBorderColor = Color.Yellow.copy(alpha = 0.8f)
+                        ),
                         modifier = Modifier.fillMaxWidth().alpha(if (state.showEnglishName) 1f else 0.5f),
                         shape = RoundedCornerShape(8.dp)
                     )

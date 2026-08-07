@@ -120,6 +120,29 @@ class SettingsViewModel(
     private val _diceFabBlurEnabled = MutableStateFlow(settingsManager?.diceFabBlurEnabled ?: true)
     val diceFabBlurEnabled = _diceFabBlurEnabled.asStateFlow()
 
+    private val _lastModuleExportName = MutableStateFlow(settingsManager?.lastModuleExportName ?: "")
+    val lastModuleExportName = _lastModuleExportName.asStateFlow()
+
+    private val _lastModuleExportDescription = MutableStateFlow(settingsManager?.lastModuleExportDescription ?: "")
+    val lastModuleExportDescription = _lastModuleExportDescription.asStateFlow()
+
+    private val _lastModuleExportVersion = MutableStateFlow(settingsManager?.lastModuleExportVersion ?: "1.0.0")
+    val lastModuleExportVersion = _lastModuleExportVersion.asStateFlow()
+
+    private val _lastModuleExportId = MutableStateFlow(settingsManager?.lastModuleExportId ?: "")
+    val lastModuleExportId = _lastModuleExportId.asStateFlow()
+
+    fun updateLastModuleExport(name: String, description: String, version: String, id: String) {
+        _lastModuleExportName.value = name
+        _lastModuleExportDescription.value = description
+        _lastModuleExportVersion.value = version
+        _lastModuleExportId.value = id
+        settingsManager?.lastModuleExportName = name
+        settingsManager?.lastModuleExportDescription = description
+        settingsManager?.lastModuleExportVersion = version
+        settingsManager?.lastModuleExportId = id
+    }
+
     fun updateRollHistorySize(size: Int) {
         _rollHistorySize.value = size
         settingsManager?.rollHistorySize = size

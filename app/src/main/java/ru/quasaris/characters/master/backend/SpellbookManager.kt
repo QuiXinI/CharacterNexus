@@ -20,60 +20,104 @@ class SpellbookManager(private val context: Context) {
     private val gson = GsonFactory.create()
     private val exportGson = GsonFactory.createPretty()
     private val spellbookFile = File(context.filesDir, "spellbook.json")
+    private val glossaryDir = File(context.filesDir, "glossary/spells").apply { mkdirs() }
 
     private var cachedSpells: MutableList<SpellCard>? = null
 
+    init {
+        migrateIfNeeded()
+    }
+
+    private fun migrateIfNeeded() {
+        if (spellbookFile.exists()) {
+            try {
+                val json = spellbookFile.readText()
+                val type = object : com.google.gson.reflect.TypeToken<List<SpellCard>>() {}.type
+                val spells: List<SpellCard> = gson.fromJson(json, type)
+                spells.forEach { saveSingleSpell(it) }
+                // Rename to backup
+                spellbookFile.renameTo(File(context.filesDir, "spellbook.json.bak"))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     enum class ImportAction {
         REPLACE, RENAME, SKIP, CANCEL
+    }
+
+    fun slugify(name: String): String {
+        return name.lowercase()
+            .replace(" ", "_")
+            .replace(Regex("[^a-z0-9_'\\-.()]"), "")
+            .ifBlank { "unnamed" }
+    }
+
+    private fun getFileForSpell(spell: SpellCard): File {
+        val identifier = if (spell.englishName.isNotBlank()) slugify(spell.englishName) else spell.id
+        return File(glossaryDir, "$identifier.json")
     }
 
     fun loadSpells(): List<SpellCard> {
         val currentCached = cachedSpells
         if (currentCached != null) return currentCached
         
-        if (!spellbookFile.exists()) {
-            cachedSpells = mutableListOf()
-            return cachedSpells!!
+        val spells = mutableListOf<SpellCard>()
+        glossaryDir.listFiles()?.filter { it.extension == "json" }?.forEach { file ->
+            try {
+                val spell = gson.fromJson(file.readText(), SpellCard::class.java)
+                if (spell != null) spells.add(spell)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
-
-        return try {
-            val json = spellbookFile.readText()
-            val type = object : com.google.gson.reflect.TypeToken<List<SpellCard>>() {}.type
-            val spells: List<SpellCard> = gson.fromJson(json, type)
-            cachedSpells = spells.toMutableList()
-            cachedSpells!!
-        } catch (e: Exception) {
-            e.printStackTrace()
-            cachedSpells = mutableListOf()
-            cachedSpells!!
-        }
+        
+        cachedSpells = spells.sortedBy { it.name }.toMutableList()
+        return cachedSpells!!
     }
 
-    fun saveSpells(spells: List<SpellCard>) {
-        cachedSpells = spells.toMutableList()
+    private fun saveSingleSpell(spell: SpellCard) {
         try {
-            val json = gson.toJson(spells)
-            spellbookFile.writeText(json)
+            val file = getFileForSpell(spell)
+            val json = exportGson.toJson(spell)
+            file.writeText(json)
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     fun addOrUpdateSpell(spell: SpellCard) {
-        val spells = loadSpells().toMutableList()
-        val index = spells.indexOfFirst { it.id == spell.id }
-        if (index != -1) {
-            spells[index] = spell
-        } else {
-            spells.add(spell)
+        val allSpells = loadSpells()
+        val oldSpell = allSpells.find { it.id == spell.id }
+        
+        if (oldSpell != null) {
+            val oldFile = getFileForSpell(oldSpell)
+            val newFile = getFileForSpell(spell)
+            if (oldFile.absolutePath != newFile.absolutePath) {
+                oldFile.delete()
+            }
         }
-        saveSpells(spells)
+
+        saveSingleSpell(spell)
+        cachedSpells = null // Invalidate cache
     }
 
     fun deleteSpell(spellId: String) {
-        val spells = loadSpells().toMutableList()
-        spells.removeAll { it.id == spellId }
-        saveSpells(spells)
+        val spells = loadSpells()
+        val spellToDelete = spells.find { it.id == spellId }
+        spellToDelete?.let {
+            getFileForSpell(it).delete()
+        }
+        cachedSpells = null // Invalidate cache
+    }
+
+    fun resolveRef(ref: String): SpellCard? {
+        val path = ref.removePrefix("ref://spells/").lowercase()
+        val spells = loadSpells()
+        // Try slug match first
+        return spells.find { slugify(it.englishName) == path } 
+            ?: spells.find { it.id == path }
     }
 
     fun searchSpells(query: String): List<SpellCard> {
@@ -86,15 +130,30 @@ class SpellbookManager(private val context: Context) {
         }
     }
 
-    suspend fun exportSpellbook(uri: Uri, spellIds: List<String>? = null) = withContext(Dispatchers.IO) {
-        val spells = if (spellIds == null) loadSpells() else loadSpells().filter { it.id in spellIds }
+    suspend fun exportSpellbook(uri: Uri, manifest: ru.quasaris.characters.master.ModuleManifest, spellIds: List<String>? = null) = withContext(Dispatchers.IO) {
+        val allSpells = loadSpells()
+        val spells = if (spellIds == null) allSpells else allSpells.filter { it.id in spellIds }
         try {
             context.contentResolver.openOutputStream(uri)?.use { os ->
-                ZipOutputStream(BufferedOutputStream(os)).use { zos ->
+                java.util.zip.ZipOutputStream(BufferedOutputStream(os)).use { zos ->
+                    // Add manifest
+                    zos.putNextEntry(java.util.zip.ZipEntry("manifest.json"))
+                    val updatedManifest = manifest.copy(
+                        contents = spells.map { spell ->
+                            ru.quasaris.characters.master.ModuleContent(
+                                type = "spell",
+                                id = spell.id,
+                                file = "${slugify(spell.englishName.ifBlank { spell.name })}.json"
+                            )
+                        }
+                    )
+                    zos.write(exportGson.toJson(updatedManifest).toByteArray())
+                    zos.closeEntry()
+
                     spells.forEach { spell ->
-                        val json = exportGson.toJson(spell)
-                        val safeName = spell.name.ifBlank { spell.id }.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                        zos.putNextEntry(ZipEntry("$safeName.json"))
+                        val json = exportGson.toJson(spell.copy(sourceModuleId = manifest.id, sourceModuleVersion = manifest.version))
+                        val fileName = "${slugify(spell.englishName.ifBlank { spell.name })}.json"
+                        zos.putNextEntry(java.util.zip.ZipEntry(fileName))
                         zos.write(json.toByteArray())
                         zos.closeEntry()
                     }

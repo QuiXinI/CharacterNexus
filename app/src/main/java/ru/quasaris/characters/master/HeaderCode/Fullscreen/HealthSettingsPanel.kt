@@ -65,48 +65,6 @@ fun HealthSettingsDialog(
     ) {
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
-        
-        val isDarkMode = colorScheme.surface.let { 
-            (0.299 * it.red + 0.587 * it.green + 0.114 * it.blue) < 0.5
-        }
-        val warningColor = if (isDarkMode) Color(0xFFEF9A9A) else Color(0xFFD32F2F)
-
-        data class HPGroupState(val countText: String, val hitDie: Int)
-
-        val localGroups = remember {
-            val initial = mutableListOf<HPGroupState>()
-            if (manualHPLevelData.isNotEmpty()) {
-                var currentDie = manualHPLevelData[0].hitDie
-                var currentCount = 0
-                manualHPLevelData.forEach {
-                    if (it.hitDie == currentDie) {
-                        currentCount++
-                    } else {
-                        initial.add(HPGroupState(currentCount.toString(), currentDie))
-                        currentDie = it.hitDie
-                        currentCount = 1
-                    }
-                }
-                if (currentCount > 0) initial.add(HPGroupState(currentCount.toString(), currentDie))
-            } else {
-                initial.add(HPGroupState("", currentHitDie))
-            }
-            mutableStateListOf(*initial.toTypedArray())
-        }
-
-        val syncToModel = {
-            val newList = mutableListOf<HPLevelEntry>()
-            var processed = 0
-            localGroups.forEach { group ->
-                val count = group.countText.toIntOrNull() ?: 0
-                for (i in 1..count) {
-                    processed++
-                    newList.add(HPLevelEntry(level = processed, hitDie = group.hitDie))
-                }
-            }
-            onManualHPLevelDataChange(newList)
-            onManualMaxHitDiceChange(newList.size)
-        }
 
         Scaffold(
             topBar = {
@@ -129,10 +87,7 @@ fun HealthSettingsDialog(
                     color = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
                 ) {
                     Button(
-                        onClick = {
-                            if (isManual) syncToModel()
-                            onDismiss()
-                        },
+                        onClick = onDismiss,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
@@ -140,7 +95,7 @@ fun HealthSettingsDialog(
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
                     ) {
-                        Text("Сохранить изменения", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Закрыть", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 }
             },
@@ -154,14 +109,108 @@ fun HealthSettingsDialog(
                 } else this
             }
         ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Box(modifier = Modifier.padding(paddingValues)) {
+                HealthSettingsContent(
+                    isManual = isManual,
+                    onManualChange = onManualChange,
+                    manualMaxHp = manualMaxHp,
+                    onManualMaxHpChange = onManualMaxHpChange,
+                    isMulticlass = isMulticlass,
+                    onMulticlassChange = onMulticlassChange,
+                    currentHitDie = currentHitDie,
+                    onHitDieChange = onHitDieChange,
+                    hpLevelData = hpLevelData,
+                    onHPLevelDataChange = onHPLevelDataChange,
+                    manualHPLevelData = manualHPLevelData,
+                    onManualHPLevelDataChange = onManualHPLevelDataChange,
+                    manualMaxHitDice = manualMaxHitDice,
+                    onManualMaxHitDiceChange = onManualMaxHitDiceChange,
+                    hpBonusesAtLevel = hpBonusesAtLevel,
+                    onHpBonusesAtLevelChange = onHpBonusesAtLevelChange,
+                    hpBonusesTotal = hpBonusesTotal,
+                    onHpBonusesTotalChange = onHpBonusesTotalChange,
+                    statsMap = statsMap,
+                    level = level
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HealthSettingsContent(
+    isManual: Boolean,
+    onManualChange: (Boolean) -> Unit,
+    manualMaxHp: Int,
+    onManualMaxHpChange: (Int) -> Unit,
+    isMulticlass: Boolean,
+    onMulticlassChange: (Boolean) -> Unit,
+    currentHitDie: Int,
+    onHitDieChange: (Int) -> Unit,
+    hpLevelData: List<HPLevelEntry>,
+    onHPLevelDataChange: (List<HPLevelEntry>) -> Unit,
+    manualHPLevelData: List<HPLevelEntry>,
+    onManualHPLevelDataChange: (List<HPLevelEntry>) -> Unit,
+    manualMaxHitDice: Int,
+    onManualMaxHitDiceChange: (Int) -> Unit,
+    hpBonusesAtLevel: List<AttackBonus>,
+    onHpBonusesAtLevelChange: (List<AttackBonus>) -> Unit,
+    hpBonusesTotal: List<AttackBonus>,
+    onHpBonusesTotalChange: (List<AttackBonus>) -> Unit,
+    statsMap: Map<String, String>,
+    level: Int
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isDarkMode = colorScheme.surface.let { 
+        (0.299 * it.red + 0.587 * it.green + 0.114 * it.blue) < 0.5
+    }
+    val warningColor = if (isDarkMode) Color(0xFFEF9A9A) else Color(0xFFD32F2F)
+
+    data class HPGroupState(val countText: String, val hitDie: Int)
+
+    val localGroups = remember(manualHPLevelData, currentHitDie) {
+        val initial = mutableListOf<HPGroupState>()
+        if (manualHPLevelData.isNotEmpty()) {
+            var currentDie = manualHPLevelData[0].hitDie
+            var currentCount = 0
+            manualHPLevelData.forEach {
+                if (it.hitDie == currentDie) {
+                    currentCount++
+                } else {
+                    initial.add(HPGroupState(currentCount.toString(), currentDie))
+                    currentDie = it.hitDie
+                    currentCount = 1
+                }
+            }
+            if (currentCount > 0) initial.add(HPGroupState(currentCount.toString(), currentDie))
+        } else {
+            initial.add(HPGroupState("", currentHitDie))
+        }
+        mutableStateListOf(*initial.toTypedArray())
+    }
+
+    val syncToModel = {
+        val newList = mutableListOf<HPLevelEntry>()
+        var processed = 0
+        localGroups.forEach { group ->
+            val count = group.countText.toIntOrNull() ?: 0
+            for (i in 1..count) {
+                processed++
+                newList.add(HPLevelEntry(level = processed, hitDie = group.hitDie))
+            }
+        }
+        onManualHPLevelDataChange(newList)
+        onManualMaxHitDiceChange(newList.size)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
                 // Toggles
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Card(
@@ -579,6 +628,4 @@ fun HealthSettingsDialog(
 
                 Spacer(modifier = Modifier.height(32.dp))
             }
-        }
-    }
 }

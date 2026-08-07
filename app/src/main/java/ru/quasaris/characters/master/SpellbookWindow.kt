@@ -23,6 +23,7 @@ import ru.quasaris.characters.master.backend.SpellbookManager
 import ru.quasaris.characters.master.tabs.spells.SpellCardItem
 import ru.quasaris.characters.master.tabs.spells.SpellCardEditorDialog
 import ru.quasaris.characters.master.tabs.spells.SpellFiltersArea
+import ru.quasaris.characters.master.tabs.spells.ExportModuleDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
@@ -35,6 +36,7 @@ import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 @Composable
 fun SpellbookWindow(
     spellbookManager: SpellbookManager,
+    glossaryImporter: ru.quasaris.characters.master.backend.GlossaryImporter,
     onOpenDrawer: () -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
@@ -58,6 +60,13 @@ fun SpellbookWindow(
     var errorDialogData by remember { mutableStateOf<Triple<String, String, (SpellbookManager.ImportAction) -> Unit>?>(null) }
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
 
+    var showExportModuleDialog by remember { mutableStateOf(false) }
+    var pendingManifest by remember { mutableStateOf<ModuleManifest?>(null) }
+    val lastExportName by settingsViewModel?.lastModuleExportName?.collectAsState() ?: remember { mutableStateOf("") }
+    val lastExportDesc by settingsViewModel?.lastModuleExportDescription?.collectAsState() ?: remember { mutableStateOf("") }
+    val lastExportVersion by settingsViewModel?.lastModuleExportVersion?.collectAsState() ?: remember { mutableStateOf("1.0.0") }
+    val lastExportId by settingsViewModel?.lastModuleExportId?.collectAsState() ?: remember { mutableStateOf("") }
+
     // A trigger to refresh the list when spells are updated
     var refreshTrigger by remember { mutableIntStateOf(0) }
     
@@ -68,18 +77,42 @@ fun SpellbookWindow(
         }.sortedBy { it.level }
     }
 
+    var downgradeData by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var downgradeResult = remember { mutableStateOf<Boolean?>(null) }
+
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
             scope.launch {
-                spellbookManager.importSpells(
+                val success = glossaryImporter.importModule(
                     uri = it,
                     onProgress = { cur, total -> importProgress = cur to total },
-                    onError = { name, reason, callback -> errorDialogData = Triple(name, reason, callback) }
+                    onDowngradeConfirm = { name, oldV, newV ->
+                        downgradeData = Triple(name, oldV, newV)
+                        while (downgradeResult.value == null) {
+                            kotlinx.coroutines.delay(100)
+                        }
+                        val res = downgradeResult.value ?: false
+                        downgradeResult.value = null
+                        downgradeData = null
+                        res
+                    },
+                    onError = { name, reason ->
+                        // Fallback to legacy import or show error
+                        scope.launch {
+                             spellbookManager.importSpells(
+                                uri = it,
+                                onProgress = { cur, total -> importProgress = cur to total },
+                                onError = { n, r, callback -> errorDialogData = Triple(n, r, callback) }
+                            )
+                            importProgress = null
+                            refreshTrigger++
+                        }
+                    }
                 )
                 importProgress = null
-                refreshTrigger++
+                if (success) refreshTrigger++
             }
         }
     }
@@ -89,10 +122,12 @@ fun SpellbookWindow(
     ) { uri ->
         uri?.let {
             scope.launch {
-                if (selectedSpellIds.isNotEmpty()) {
-                    spellbookManager.exportSpellbook(it, selectedSpellIds.toList())
-                } else {
-                    spellbookManager.exportSpellbook(it)
+                pendingManifest?.let { manifest ->
+                    if (selectedSpellIds.isNotEmpty()) {
+                        spellbookManager.exportSpellbook(it, manifest, selectedSpellIds.toList())
+                    } else {
+                        spellbookManager.exportSpellbook(it, manifest)
+                    }
                 }
             }
         }
@@ -146,7 +181,9 @@ fun SpellbookWindow(
                             }) {
                                 Icon(Icons.Default.Flip, contentDescription = "Инвертировать выделение")
                             }
-                            IconButton(onClick = { exportLauncher.launch("selected_spells.spellbook") }) {
+                            IconButton(onClick = { 
+                                showExportModuleDialog = true 
+                            }) {
                                 Icon(Icons.Default.FileUpload, contentDescription = "Экспорт выбранных")
                             }
                         } else {
@@ -156,7 +193,9 @@ fun SpellbookWindow(
                             IconButton(onClick = { importLauncher.launch("*/*") }) {
                                 Icon(Icons.Default.FileDownload, contentDescription = "Импорт")
                             }
-                            IconButton(onClick = { exportLauncher.launch("spellbook.spellbook") }) {
+                            IconButton(onClick = { 
+                                showExportModuleDialog = true 
+                            }) {
                                 Icon(Icons.Default.FileUpload, contentDescription = "Экспорт")
                             }
                         }
@@ -356,6 +395,41 @@ fun SpellbookWindow(
         title = "Удалить выбранные заклинания (${selectedSpellIds.size})?",
         settingsViewModel = settingsViewModel
     )
+
+    if (downgradeData != null) {
+        AlertDialog(
+            onDismissRequest = { downgradeResult.value = false },
+            title = { Text("Понижение версии") },
+            text = { Text("Вы хотите понизить версию модуля \"${downgradeData!!.first}\" с ${downgradeData!!.second} до ${downgradeData!!.third}?") },
+            confirmButton = {
+                Button(onClick = { downgradeResult.value = true }) { Text("Да") }
+            },
+            dismissButton = {
+                TextButton(onClick = { downgradeResult.value = false }) { Text("Нет") }
+            }
+        )
+    }
+
+    if (showExportModuleDialog) {
+        ExportModuleDialog(
+            initialName = lastExportName,
+            initialDescription = lastExportDesc,
+            initialVersion = lastExportVersion,
+            initialId = lastExportId,
+            onDismiss = { showExportModuleDialog = false },
+            onConfirm = { name, desc, version, id ->
+                settingsViewModel?.updateLastModuleExport(name, desc, version, id)
+                pendingManifest = ru.quasaris.characters.master.ModuleManifest(
+                    id = id,
+                    name = name,
+                    version = version,
+                    description = desc
+                )
+                showExportModuleDialog = false
+                exportLauncher.launch("${spellbookManager.slugify(name)}.spellbook")
+            }
+        )
+    }
 }
 
 @Composable

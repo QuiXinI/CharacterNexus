@@ -25,6 +25,8 @@ class CharacterDetailState(
 ) {
     var name by mutableStateOf(initialCharacter?.name ?: "")
     var characterClass by mutableStateOf(initialCharacter?.characterClass ?: "")
+    var race by mutableStateOf(initialCharacter?.race ?: "")
+    var classes by mutableStateOf(initialCharacter?.classes ?: emptyList<ClassEntry>())
     var order by mutableStateOf(initialCharacter?.order ?: "")
     var level by mutableStateOf(initialCharacter?.level ?: "1")
     var experience by mutableStateOf(initialCharacter?.experience ?: "50")
@@ -164,6 +166,7 @@ class CharacterDetailState(
     var showEnhancedInit by mutableStateOf(false)
     var showEnhancedSpeed by mutableStateOf(false)
     var showEnhancedCond by mutableStateOf(false)
+    var showCharacterSettings by mutableStateOf(false)
     var showHealthSettings by mutableStateOf(false)
     var showSpellSettings by mutableStateOf(false)
     var showAvatarMenu by mutableStateOf(false)
@@ -179,7 +182,7 @@ class CharacterDetailState(
 
     fun toCharacter(character: Character): Character {
         return character.copy(
-            name = name, characterClass = characterClass, order = order, level = level, experience = experience,
+            name = name, characterClass = characterClass, race = race, classes = classes, order = order, level = level, experience = experience,
             imageData = characterImageData, strength = statsState.strength, dexterity = statsState.dexterity,
             constitution = statsState.constitution, intelligence = statsState.intelligence, wisdom = statsState.wisdom,
             charisma = statsState.charisma, strengthProficient = statsState.strProf, dexterityProficient = statsState.dexProf,
@@ -288,5 +291,71 @@ class CharacterDetailState(
             }
             if (exhaustion > 0) exhaustion--
         }
+    }
+
+    fun syncIdentity() {
+        if (classes.isEmpty()) return
+
+        val totalLevel = classes.sumOf { it.level }
+        level = totalLevel.toString()
+
+        characterClass = classes.joinToString(" / ") {
+            if (it.subclass.isNotBlank()) "${it.className.displayName} (${it.subclass}) ${it.level}"
+            else "${it.className.displayName} ${it.level}"
+        }
+
+        // Sync HP Level Data
+        val newHpLevelData = mutableListOf<HPLevelEntry>()
+        var currentLvl = 1
+        classes.forEach { entry ->
+            val die = when (entry.className) {
+                CharacterClass.BARBARIAN -> 12
+                CharacterClass.FIGHTER -> 10
+                CharacterClass.ARTIFICER -> 8
+                CharacterClass.WIZARD -> 6
+                else -> 8
+            }
+            for (i in 1..entry.level) {
+                // Try to preserve existing roll results if the level and hit die match
+                val existing = hpLevelData.getOrNull(currentLvl - 1)
+                newHpLevelData.add(
+                    HPLevelEntry(
+                        level = currentLvl,
+                        hitDie = die,
+                        rollResult = if (existing?.hitDie == die) existing.rollResult else null,
+                        manualValue = if (existing?.hitDie == die) existing.manualValue else null
+                    )
+                )
+                currentLvl++
+            }
+        }
+        hpLevelData = newHpLevelData
+
+        // Sync Spell Settings
+        var fullLevels = 0
+        var halfLevels = 0
+        var thirdLevels = 0
+        
+        classes.forEach { entry ->
+            when (entry.className) {
+                CharacterClass.WIZARD -> fullLevels += entry.level
+                CharacterClass.ARTIFICER -> halfLevels += entry.level
+                else -> {} // Fighter/Barbarian no slots by default
+            }
+        }
+
+        spellSettings = spellSettings.copy(
+            fullCasterLevel = fullLevels,
+            halfCasterLevel = halfLevels,
+            thirdCasterLevel = thirdLevels,
+            isMulticlass = classes.size > 1,
+            casterType = if (classes.size == 1) {
+                when (classes[0].className) {
+                    CharacterClass.WIZARD -> CasterType.FULL
+                    CharacterClass.ARTIFICER -> CasterType.HALF
+                    else -> CasterType.NONE
+                }
+            } else spellSettings.casterType
+        )
     }
 }

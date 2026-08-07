@@ -518,6 +518,8 @@ fun CharacterDetailWindow(
                         onDismissAvatarMenu = { state.showAvatarMenu = false },
                         onImagePickerClick = { imagePickerLauncher.launch("image/*"); state.showAvatarMenu = false },
                         onDownloadClick = { fileCreatorLauncher.launch("MP_${state.name}.${ArchiveManager.EXPORT_EXTENSION}"); state.showAvatarMenu = false },
+                        onDeletePortraitClick = { state.characterImageData = null; state.showAvatarMenu = false },
+                        onSettingsClick = { state.showCharacterSettings = true; state.showAvatarMenu = false },
                         selectedImageUri = null,
                         onNavigateBack = onNavigateBack,
                         exhaustion = state.exhaustion,
@@ -755,6 +757,16 @@ fun CharacterDetailWindow(
                 blurPopups = blurPopups,
                 allConditions = allConditions
             )
+
+            if (state.showCharacterSettings) {
+                CharacterSettingsWindow(
+                    state = state,
+                    statsMap = statsMap,
+                    onDismiss = { state.showCharacterSettings = false },
+                    hazeState = hazeState,
+                    forceBlurEnabled = blurPopups
+                )
+            }
         }
     }
 

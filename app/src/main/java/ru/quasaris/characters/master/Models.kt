@@ -32,6 +32,13 @@ data class SpeedEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+data class ClassEntry(
+    val id: String = UUID.randomUUID().toString(),
+    val className: CharacterClass = CharacterClass.FIGHTER,
+    val subclass: String = "",
+    val level: Int = 1
+)
+
 enum class CharacterTab(val title: String) {
     STATS("Характеристики"),
     ATTACKS("Атаки"),
@@ -279,7 +286,9 @@ data class SpellCard(
     @SerializedName("notes") val notes: String = "",
     @SerializedName("link") val link: String? = null,
     @SerializedName("additionalLinks") val additionalLinks: List<SpellLink> = emptyList(),
-    @SerializedName("id") val id: String = UUID.randomUUID().toString()
+    @SerializedName("id") val id: String = UUID.randomUUID().toString(),
+    @SerializedName("sourceModuleId") val sourceModuleId: String? = null,
+    @SerializedName("sourceModuleVersion") val sourceModuleVersion: String? = null
 ) {
     val duration: String get() = if (durationUnit.requiresValue) {
         if (durationValue.isBlank()) durationUnit.displayName else "$durationValue ${durationUnit.displayName}"
@@ -533,7 +542,9 @@ data class Character(
     val cropX: Float? = null,
     val cropY: Float? = null,
     val cropW: Float? = null,
-    val cropH: Float? = null
+    val cropH: Float? = null,
+    val race: String = "",
+    val classes: List<ClassEntry> = emptyList()
 )
 
 
@@ -543,3 +554,24 @@ data class ShieldEntry(
     override val formula: String = "",
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
+
+data class ModuleContent(
+    @SerializedName("type") val type: String,
+    @SerializedName("id") val id: String,
+    @SerializedName("file") val file: String
+)
+
+data class ModuleManifest(
+    @SerializedName("manifest_version") val manifestVersion: String = "1.0",
+    @SerializedName("id") val id: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("version") val version: String,
+    @SerializedName("description") val description: String = "",
+    @SerializedName("system") val system: String = "dnd_5.5",
+    @SerializedName("contents") val contents: List<ModuleContent> = emptyList()
+)
+
+data class InstalledModule(
+    val manifest: ModuleManifest,
+    val installTimestamp: Long = System.currentTimeMillis()
+)

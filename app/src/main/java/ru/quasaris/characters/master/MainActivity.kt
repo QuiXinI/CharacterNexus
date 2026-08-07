@@ -28,7 +28,9 @@ import ru.quasaris.characters.master.ui.theme.quasarisTheme
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.HistoryEdu
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -107,6 +109,8 @@ class MainActivity : ComponentActivity() {
             appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         )
         val spellbookManager = SpellbookManager(applicationContext)
+        val moduleManager = ru.quasaris.characters.master.backend.ModuleManager(applicationContext)
+        val glossaryImporter = ru.quasaris.characters.master.backend.GlossaryImporter(applicationContext, spellbookManager, moduleManager)
         
         ProcessLifecycleOwner.get().lifecycle.addObserver(AppLifecycleObserver(characterRepository))
 
@@ -203,7 +207,12 @@ class MainActivity : ComponentActivity() {
                         Box(modifier = Modifier.fillMaxSize().hazeSource(state = hazeState)) {
                             ModalNavigationDrawer(
                                 drawerState = drawerState,
-                                gesturesEnabled = currentRoute == "menu" || currentRoute == "settings" || currentRoute?.startsWith("edit/") == true,
+                                gesturesEnabled = currentRoute == "menu" || 
+                                        currentRoute == "settings" || 
+                                        currentRoute == "spellbook" || 
+                                        currentRoute == "glossary" || 
+                                        currentRoute == "formula_info" ||
+                                        currentRoute?.startsWith("edit/") == true,
                                 drawerContent = {
                                     ModalDrawerSheet {
                                         Spacer(Modifier.height(12.dp))
@@ -272,7 +281,33 @@ class MainActivity : ComponentActivity() {
                                                     navController.navigate("spellbook")
                                                 }
                                             },
-                                            icon = { Icon(Icons.Default.MenuBook, null) },
+                                            icon = { Icon(Icons.Default.AutoFixHigh, null) },
+                                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                        )
+
+                                        NavigationDrawerItem(
+                                            label = { Text("Глоссарий") },
+                                            selected = currentRoute == "glossary",
+                                            onClick = {
+                                                scope.launch { drawerState.close() }
+                                                if (currentRoute != "glossary") {
+                                                    navController.navigate("glossary")
+                                                }
+                                            },
+                                            icon = { Icon(Icons.Default.HistoryEdu, null) },
+                                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                        )
+
+                                        NavigationDrawerItem(
+                                            label = { Text("Модули") },
+                                            selected = currentRoute == "modules",
+                                            onClick = {
+                                                scope.launch { drawerState.close() }
+                                                if (currentRoute != "modules") {
+                                                    navController.navigate("modules")
+                                                }
+                                            },
+                                            icon = { Icon(Icons.Default.Extension, null) },
                                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                                         )
                                     }
@@ -346,6 +381,30 @@ class MainActivity : ComponentActivity() {
                                         composable("spellbook") {
                                             SpellbookWindow(
                                                 spellbookManager = spellbookManager,
+                                                glossaryImporter = glossaryImporter,
+                                                onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                hazeState = hazeState,
+                                                forceBlurEnabled = effectiveBlurFullscreen,
+                                                settingsViewModel = settingsViewModel
+                                            )
+                                        }
+
+                                        composable("glossary") {
+                                            GlossaryWindow(
+                                                spellbookManager = spellbookManager,
+                                                moduleManager = moduleManager,
+                                                onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                onNavigateToSpells = { navController.navigate("spellbook") },
+                                                hazeState = hazeState,
+                                                forceBlurEnabled = effectiveBlurFullscreen,
+                                                settingsViewModel = settingsViewModel
+                                            )
+                                        }
+
+                                        composable("modules") {
+                                            ModulesWindow(
+                                                moduleManager = moduleManager,
+                                                glossaryImporter = glossaryImporter,
                                                 onOpenDrawer = { scope.launch { drawerState.open() } },
                                                 hazeState = hazeState,
                                                 forceBlurEnabled = effectiveBlurFullscreen,
