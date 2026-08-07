@@ -68,6 +68,7 @@ fun SpellSettingsDialog(
     val focusManager = LocalFocusManager.current
     var isMagicEnabled by remember { mutableStateOf(settings.isMagicEnabled) }
     var spellcastingAbility by remember { mutableStateOf(settings.spellcastingAbility) }
+    var isSpellbookEnabled by remember { mutableStateOf(settings.isSpellbookEnabled) }
     var spellAttackBonuses by remember { mutableStateOf(settings.spellAttackBonuses) }
     var spellSaveDcBonuses by remember { mutableStateOf(settings.spellSaveDcBonuses) }
     var spellMode by remember { mutableStateOf(settings.spellMode) }
@@ -218,6 +219,30 @@ fun SpellSettingsDialog(
                 }
 
                 if (isMagicEnabled) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Книга заклинаний", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "Разделение на книгу и подготовку",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(checked = isSpellbookEnabled, onCheckedChange = { isSpellbookEnabled = it })
+                        }
+                    }
+
                     // Characteristic Selection
                     SectionTitle("ХАРАКТЕРИСТИКА")
                     var expanded by remember { mutableStateOf(false) }
@@ -296,14 +321,21 @@ fun SpellSettingsDialog(
                         SegmentedButton(
                             selected = spellMode == SpellMode.TEXT,
                             onClick = { spellMode = SpellMode.TEXT },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
                         ) {
                             Text("Текст")
                         }
                         SegmentedButton(
+                            selected = spellMode == SpellMode.HYBRID,
+                            onClick = { spellMode = SpellMode.HYBRID },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                        ) {
+                            Text("Гибрид")
+                        }
+                        SegmentedButton(
                             selected = spellMode == SpellMode.CARDS,
                             onClick = { spellMode = SpellMode.CARDS },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
                         ) {
                             Text("Карточки")
                         }
@@ -546,6 +578,7 @@ fun SpellSettingsDialog(
                                 pactSlotLevel = pactSlotLevel,
                                 pactSlotsCount = pactSlotsCount,
                                 isPactEnabled = isPactEnabled,
+                                isSpellbookEnabled = isSpellbookEnabled,
                                 usedSlots = settings.usedSlots.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
                                 usedSlotsShortRest = settings.usedSlotsShortRest.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
                                 usedSlotsDawn = settings.usedSlotsDawn.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } }

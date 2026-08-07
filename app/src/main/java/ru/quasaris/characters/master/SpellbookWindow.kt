@@ -64,54 +64,7 @@ fun SpellbookWindow(
     val allSpells = remember(refreshTrigger) { spellbookManager.loadSpells() }
     val filteredSpells = remember(allSpells, searchQuery, filterState) {
         allSpells.filter { spell ->
-            val matchesSearch = searchQuery.isBlank() || 
-                spell.name.contains(searchQuery, ignoreCase = true) || 
-                (spell.showEnglishName && spell.englishName.contains(searchQuery, ignoreCase = true))
-            
-            val matchesLevel = filterState.levels.isEmpty() || spell.level in filterState.levels
-            val matchesClass = filterState.classes.isEmpty() || spell.classes.any { it in filterState.classes }
-            val matchesSchool = filterState.schools.isEmpty() || spell.school in filterState.schools
-            val matchesVersion = filterState.versions.isEmpty() || spell.version in filterState.versions
-            val matchesCastingTime = filterState.castingTimeTypes.isEmpty() || spell.castingTimeType in filterState.castingTimeTypes
-            val matchesDuration = filterState.durationUnits.isEmpty() || spell.durationUnit in filterState.durationUnits
-            val matchesAttackType = filterState.attackTypes.isEmpty() || spell.attackType in filterState.attackTypes
-            val matchesSaveAttr = filterState.savingThrowAttributes.isEmpty() || spell.savingThrowAttributes.any { it in filterState.savingThrowAttributes }
-            
-            val matchesConc = filterState.hasConcentration == null || spell.hasConcentration == filterState.hasConcentration
-            val matchesRitual = filterState.isRitual == null || spell.isRitual == filterState.isRitual
-            val matchesCircle = filterState.isCircle == null || spell.isCircle == filterState.isCircle
-            val matchesDamage = filterState.hasDamage == null || spell.hasDamage == filterState.hasDamage
-            
-            val matchesAttackOrSave = when(filterState.attackOrSave) {
-                MagicAttackType.ATTACK -> spell.attackType == MagicAttackType.ATTACK
-                MagicAttackType.SAVE -> spell.attackType == MagicAttackType.SAVE
-                null -> true
-            }
-
-            val matchesComponents = if (filterState.components.isEmpty()) true else {
-                filterState.components.all { component ->
-                    when(component) {
-                        SpellComponentFilter.VERBAL -> spell.hasVerbalComponent
-                        SpellComponentFilter.SOMATIC -> spell.hasSomaticComponent
-                        SpellComponentFilter.MATERIAL -> spell.materialComponentType != MaterialComponentType.NONE
-                        SpellComponentFilter.MATERIAL_COST -> spell.materialComponents.contains("gp", ignoreCase = true) || spell.materialComponents.contains(" зм", ignoreCase = true)
-                        SpellComponentFilter.MATERIAL_CONSUMED -> spell.materialComponents.contains("consume", ignoreCase = true) || spell.materialComponents.contains("расходует", ignoreCase = true)
-                        SpellComponentFilter.NO_VERBAL -> !spell.hasVerbalComponent
-                        SpellComponentFilter.NO_SOMATIC -> !spell.hasSomaticComponent
-                        SpellComponentFilter.NO_MATERIAL -> spell.materialComponentType == MaterialComponentType.NONE
-                        SpellComponentFilter.NO_MATERIAL_COST -> !(spell.materialComponents.contains("gp", ignoreCase = true) || spell.materialComponents.contains(" зм", ignoreCase = true))
-                        SpellComponentFilter.NO_MATERIAL_CONSUMED -> !(spell.materialComponents.contains("consume", ignoreCase = true) || spell.materialComponents.contains("расходует", ignoreCase = true))
-                    }
-                }
-            }
-
-            val matchesCastingTimeQuery = filterState.castingTimeQuery.isBlank() || spell.castingTime.contains(filterState.castingTimeQuery, ignoreCase = true)
-            val matchesDurationQuery = filterState.durationQuery.isBlank() || spell.durationValue == filterState.durationQuery
-
-            matchesSearch && matchesLevel && matchesClass && matchesSchool && matchesVersion && 
-            matchesCastingTime && matchesDuration && matchesAttackType && matchesSaveAttr &&
-            matchesConc && matchesRitual && matchesCircle && matchesDamage && matchesComponents &&
-            matchesAttackOrSave && matchesCastingTimeQuery && matchesDurationQuery
+            spell.matches(filterState, searchQuery)
         }.sortedBy { it.level }
     }
 
@@ -293,7 +246,9 @@ fun SpellbookWindow(
                                         isSelectionMode = true
                                         selectedSpellIds = setOf(spell.id)
                                     }
-                                }
+                                },
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled
                             )
                         }
                     }

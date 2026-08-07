@@ -43,6 +43,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalDensity
 import ru.quasaris.characters.master.backend.AppLifecycleObserver
 import ru.quasaris.characters.master.backend.AppScaleManager
 import ru.quasaris.characters.master.backend.AppScaleProvider
@@ -425,8 +426,9 @@ class MainActivity : ComponentActivity() {
                             val rollPosition by settingsViewModel.rollPosition.collectAsState()
                             val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
 
+                            val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
                             val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true
-                            if (rollHistory.isNotEmpty() && isOnCharacterScreen) {
+                            if (rollHistory.isNotEmpty() && isOnCharacterScreen && !isKeyboardVisible) {
                                 DiceRollOverlay(
                                     history = rollHistory,
                                     onClose = { rollHistory = emptyList() },

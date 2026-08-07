@@ -44,9 +44,14 @@ fun AttackBonusIndicator(
     showDice: Boolean = true,
     diceOnLeft: Boolean = false,
     showPlus: Boolean = true,
-    diceSize: androidx.compose.ui.unit.Dp = 24.dp
+    diceSize: androidx.compose.ui.unit.Dp = 24.dp,
+    useXForZero: Boolean = false
 ) {
-    val bonusText = if (bonus >= 0) (if (showPlus) "+$bonus" else bonus.toString()) else bonus.toString()
+    val bonusText = when {
+        useXForZero && bonus == 0 -> "X"
+        bonus >= 0 -> if (showPlus) "+$bonus" else bonus.toString()
+        else -> bonus.toString()
+    }
     
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (showLabel) {

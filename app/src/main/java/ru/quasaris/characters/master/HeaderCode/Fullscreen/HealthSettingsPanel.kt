@@ -405,40 +405,58 @@ fun HealthSettingsDialog(
 
                                     Box(modifier = Modifier.weight(0.35f), contentAlignment = Alignment.Center) {
                                         if (entry.rollResult == null) {
-                                            Button(
-                                                onClick = {
-                                                    val roll = (1..entry.hitDie).random()
-                                                    val newList = hpLevelData.toMutableList()
-                                                    newList[index] = entry.copy(rollResult = roll)
-                                                    onHPLevelDataChange(newList)
-                                                },
-                                                modifier = Modifier.height(42.dp).fillMaxWidth(),
-                                                contentPadding = PaddingValues(horizontal = 8.dp),
-                                                shape = RoundedCornerShape(8.dp)
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().height(42.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(1.dp)
                                             ) {
-                                                val diceIcon = when (entry.hitDie) {
-                                                    2 -> R.drawable.ic_d2_dice
-                                                    4 -> R.drawable.ic_d4_dice
-                                                    6 -> R.drawable.ic_d6_dice
-                                                    8 -> R.drawable.ic_d8_dice
-                                                    10 -> R.drawable.ic_d10_dice
-                                                    12 -> R.drawable.ic_d12_dice
-                                                    20 -> R.drawable.ic_d20_dice
-                                                    else -> R.drawable.ic_d20_dice
+                                                Button(
+                                                    onClick = {
+                                                        val roll = (1..entry.hitDie).random()
+                                                        val newList = hpLevelData.toMutableList()
+                                                        newList[index] = entry.copy(rollResult = roll)
+                                                        onHPLevelDataChange(newList)
+                                                    },
+                                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                                    contentPadding = PaddingValues(horizontal = 4.dp),
+                                                    shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 0.dp, bottomEnd = 0.dp)
+                                                ) {
+                                                    val diceIcon = when (entry.hitDie) {
+                                                        2 -> R.drawable.ic_d2_dice
+                                                        4 -> R.drawable.ic_d4_dice
+                                                        6 -> R.drawable.ic_d6_dice
+                                                        8 -> R.drawable.ic_d8_dice
+                                                        10 -> R.drawable.ic_d10_dice
+                                                        12 -> R.drawable.ic_d12_dice
+                                                        20 -> R.drawable.ic_d20_dice
+                                                        else -> R.drawable.ic_d20_dice
+                                                    }
+                                                    Icon(
+                                                        painter = painterResource(id = diceIcon), 
+                                                        contentDescription = null, 
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text("Бросок", fontSize = 12.sp * 1.15f)
                                                 }
-                                                Icon(
-                                                    painter = painterResource(id = diceIcon), 
-                                                    contentDescription = null, 
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                                Spacer(Modifier.width(6.dp))
-                                                Text("Бросок", fontSize = 14.sp * 1.15f)
+                                                
+                                                Button(
+                                                    onClick = {
+                                                        val newList = hpLevelData.toMutableList()
+                                                        newList[index] = entry.copy(rollResult = 0)
+                                                        onHPLevelDataChange(newList)
+                                                    },
+                                                    modifier = Modifier.width(42.dp).fillMaxHeight(),
+                                                    contentPadding = PaddingValues(0.dp),
+                                                    shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 8.dp, bottomEnd = 8.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
+                                                }
                                             }
                                         } else {
                                             OutlinedTextField(
-                                                value = entry.rollResult.toString(),
+                                                value = if (entry.rollResult == 0) "" else entry.rollResult.toString(),
                                                 onValueChange = { s ->
-                                                    val v = s.filter { it.isDigit() }.toIntOrNull()
+                                                    val v = s.filter { it.isDigit() }.toIntOrNull() ?: 0
                                                     val newList = hpLevelData.toMutableList()
                                                     newList[index] = entry.copy(rollResult = v)
                                                     onHPLevelDataChange(newList)
@@ -447,6 +465,7 @@ fun HealthSettingsDialog(
                                                 textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontSize = 16.sp * 1.15f),
                                                 singleLine = true,
                                                 shape = RoundedCornerShape(8.dp),
+                                                placeholder = { Text("0", modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
                                                 trailingIcon = {
                                                     IconButton(onClick = {
                                                         val newList = hpLevelData.toMutableList()

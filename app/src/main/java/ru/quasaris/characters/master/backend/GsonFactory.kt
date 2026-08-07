@@ -2,6 +2,8 @@ package ru.quasaris.characters.master.backend
 
 import com.google.gson.*
 import ru.quasaris.characters.master.Character
+import ru.quasaris.characters.master.DamageType
+import ru.quasaris.characters.master.MagicAttackType
 import ru.quasaris.characters.master.SpellCard
 import java.lang.reflect.Type
 
@@ -10,6 +12,7 @@ object GsonFactory {
         return GsonBuilder()
             .registerTypeAdapter(Character::class.java, CharacterDeserializer())
             .registerTypeAdapter(SpellCard::class.java, SpellCardSerializer())
+            .registerTypeAdapter(SpellCard::class.java, SpellCardDeserializer())
             .create()
     }
 
@@ -17,6 +20,7 @@ object GsonFactory {
         return GsonBuilder()
             .registerTypeAdapter(Character::class.java, CharacterDeserializer())
             .registerTypeAdapter(SpellCard::class.java, SpellCardSerializer())
+            .registerTypeAdapter(SpellCard::class.java, SpellCardDeserializer())
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .create()
@@ -37,18 +41,22 @@ class SpellCardSerializer : JsonSerializer<SpellCard> {
         json.addProperty("castingTime", src.castingTime)
         json.addProperty("hasVerbalComponent", src.hasVerbalComponent)
         json.addProperty("hasSomaticComponent", src.hasSomaticComponent)
+        json.addProperty("isRitual", src.isRitual)
+        json.addProperty("isCircle", src.isCircle)
         json.add("materialComponentType", context.serialize(src.materialComponentType))
         json.addProperty("materialComponents", src.materialComponents)
         json.addProperty("hasConcentration", src.hasConcentration)
         json.addProperty("durationValue", src.durationValue)
         json.add("durationUnit", context.serialize(src.durationUnit))
-        json.addProperty("isRitual", src.isRitual)
-        json.addProperty("isCircle", src.isCircle)
         json.addProperty("description", src.description)
         json.addProperty("hasDamage", src.hasDamage)
         json.addProperty("damageFormula", src.damageFormula)
         json.addProperty("damageType", src.damageType)
+        json.add("damageTypes", context.serialize(src.damageTypes))
+        json.add("additionalDamageFormulas", context.serialize(src.additionalDamageFormulas))
+        json.add("additionalDamageTypesList", context.serialize(src.additionalDamageTypesList))
         json.add("attackType", context.serialize(src.attackType))
+        json.add("attackTypes", context.serialize(src.attackTypes))
         json.add("savingThrowAttributes", context.serialize(src.savingThrowAttributes))
         json.addProperty("distance", src.distance)
         json.addProperty("notes", src.notes)
@@ -56,6 +64,67 @@ class SpellCardSerializer : JsonSerializer<SpellCard> {
         json.add("additionalLinks", context.serialize(src.additionalLinks))
         json.addProperty("id", src.id)
         return json
+    }
+}
+
+class SpellCardDeserializer : JsonDeserializer<SpellCard> {
+    override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): SpellCard {
+        val jsonObject = json.asJsonObject
+        
+        // Migration for attackType -> attackTypes
+        if (!jsonObject.has("attackTypes") || jsonObject.get("attackTypes").isJsonNull) {
+            val attackTypes = JsonArray()
+            if (jsonObject.has("attackType") && !jsonObject.get("attackType").isJsonNull) {
+                attackTypes.add(jsonObject.get("attackType"))
+            }
+            jsonObject.add("attackTypes", attackTypes)
+        }
+
+        // Migration for damageType (String) -> damageTypes (List<DamageType>)
+        if (!jsonObject.has("damageTypes") || jsonObject.get("damageTypes").isJsonNull) {
+            val damageTypesList = JsonArray()
+            if (jsonObject.has("damageType") && !jsonObject.get("damageType").isJsonNull) {
+                val oldType = jsonObject.get("damageType").asString
+                if (oldType.isNotBlank()) {
+                    val parts = oldType.split(Regex("[/,]")).map { it.trim() }.filter { it.isNotBlank() }
+                    parts.forEach { part ->
+                        val enumType = DamageType.fromDisplayName(part)
+                        if (enumType != null) {
+                            damageTypesList.add(part) // GSON will handle string to enum if it matches displayName or name? No, usually it matches name.
+                        } else {
+                            damageTypesList.add(DamageType.OTHER.name)
+                        }
+                    }
+                }
+            }
+            // Actually it's better to use names for enums in JSON
+            val damageTypesNamesList = JsonArray()
+            if (jsonObject.has("damageType") && !jsonObject.get("damageType").isJsonNull) {
+                val oldType = jsonObject.get("damageType").asString
+                if (oldType.isNotBlank()) {
+                    val parts = oldType.split(Regex("[/,]")).map { it.trim() }.filter { it.isNotBlank() }
+                    parts.forEach { part ->
+                        val enumType = DamageType.fromDisplayName(part)
+                        if (enumType != null) {
+                            damageTypesNamesList.add(enumType.name)
+                        } else {
+                            damageTypesNamesList.add(DamageType.OTHER.name)
+                        }
+                    }
+                }
+            }
+            jsonObject.add("damageTypes", damageTypesNamesList)
+        }
+
+        // Initialize other new lists if missing
+        if (!jsonObject.has("additionalDamageFormulas") || jsonObject.get("additionalDamageFormulas").isJsonNull) {
+            jsonObject.add("additionalDamageFormulas", JsonArray())
+        }
+        if (!jsonObject.has("additionalDamageTypesList") || jsonObject.get("additionalDamageTypesList").isJsonNull) {
+            jsonObject.add("additionalDamageTypesList", JsonArray())
+        }
+        
+        return Gson().fromJson(jsonObject, SpellCard::class.java)
     }
 }
 

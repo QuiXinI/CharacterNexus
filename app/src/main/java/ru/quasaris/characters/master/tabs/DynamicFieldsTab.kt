@@ -118,6 +118,7 @@ fun DynamicFieldsTab(
     isAddButtonVisible: Boolean = true,
     isReorderButtonVisible: Boolean = true,
     isScrollEnabled: Boolean = true,
+    isContentVisible: Boolean = true,
     header: @Composable () -> Unit = {},
     footer: @Composable () -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
@@ -235,6 +236,7 @@ fun DynamicFieldsTab(
                     isCollapsible = isCollapsible,
                     isTitleReadOnly = isTitleReadOnly,
                     isReorderButtonVisible = isReorderButtonVisible,
+                    isContentVisible = isContentVisible,
                     isLockedGlobal = fullscreenEditingOnly,
                     hazeState = hazeState,
                     forceBlurEnabled = forceBlurEnabled,
@@ -330,6 +332,7 @@ fun DynamicFieldItem(
     isCollapsible: Boolean = true,
     isTitleReadOnly: Boolean = false,
     isReorderButtonVisible: Boolean = true,
+    isContentVisible: Boolean = true,
     isLockedGlobal: Boolean = false,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
@@ -522,222 +525,224 @@ fun DynamicFieldItem(
                         if (isCollapsible) {
                             extraContent(field)
                         }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 4.dp, end = 4.dp, bottom = 4.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .padding(12.dp),
-                            contentAlignment = Alignment.TopCenter
-                        ) {
-                            FormattingToolbar(
-                                value = toolbarState.first,
-                                onValueChange = {
-                                    contentValue = it
-                                    onFieldChange(field.copy(content = it.text))
-                                },
-                                isFocused = toolbarState.second,
-                                isSelectionActive = toolbarState.third,
-                                onLinkRequest = { showLinkDialog = true },
-                                onSave = { focusManager.clearFocus() },
-                                hazeState = hazeState
-                            )
-
-                            key(field.id) {
-                                BasicTextField(
-                                    value = contentValue,
-                                    onValueChange = { 
-                                        val oldText = contentValue.text
+                        if (isContentVisible) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 4.dp, end = 4.dp, bottom = 4.dp)
+                                    .border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .padding(12.dp),
+                                contentAlignment = Alignment.TopCenter
+                            ) {
+                                FormattingToolbar(
+                                    value = toolbarState.first,
+                                    onValueChange = {
                                         contentValue = it
-                                        if (oldText != it.text) {
-                                            onFieldChange(field.copy(content = it.text))
-                                        }
+                                        onFieldChange(field.copy(content = it.text))
                                     },
-                                    enabled = canEdit,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .bringIntoViewRequester(bringIntoViewRequester)
-                                        .focusRequester(focusRequester)
-                                        .onFocusChanged { isFocused = it.isFocused },
-                                    onTextLayout = { textLayoutResult = it },
-                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                        fontSize = 17.sp,
-                                        lineHeight = 24.sp,
-                                        color = if (isFocused) MaterialTheme.colorScheme.onSurface else Color.Transparent
-                                    ),
-                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                                    decorationBox = { innerTextField ->
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            val onSurface = MaterialTheme.colorScheme.onSurface
-                                            val uriHandler = LocalUriHandler.current
-                                            var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+                                    isFocused = toolbarState.second,
+                                    isSelectionActive = toolbarState.third,
+                                    onLinkRequest = { showLinkDialog = true },
+                                    onSave = { focusManager.clearFocus() },
+                                    hazeState = hazeState
+                                )
 
-                                            val blocks = remember(field.content) {
-                                                DynamicContentParser.parse(field.content)
+                                key(field.id) {
+                                    BasicTextField(
+                                        value = contentValue,
+                                        onValueChange = {
+                                            val oldText = contentValue.text
+                                            contentValue = it
+                                            if (oldText != it.text) {
+                                                onFieldChange(field.copy(content = it.text))
                                             }
+                                        },
+                                        enabled = canEdit,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .bringIntoViewRequester(bringIntoViewRequester)
+                                            .focusRequester(focusRequester)
+                                            .onFocusChanged { isFocused = it.isFocused },
+                                        onTextLayout = { textLayoutResult = it },
+                                        textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                            fontSize = 17.sp,
+                                            lineHeight = 24.sp,
+                                            color = if (isFocused) MaterialTheme.colorScheme.onSurface else Color.Transparent
+                                        ),
+                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                        decorationBox = { innerTextField ->
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                val onSurface = MaterialTheme.colorScheme.onSurface
+                                                val uriHandler = LocalUriHandler.current
+                                                var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
-                                            val marginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
-                                            val customMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
-                                            val topMargin = if (marginStep == 5) customMargin.dp else (marginStep * 48).dp
-
-                                            if (isFocused) {
-                                                Column {
-                                                    if (toolbarState.second) {
-                                                        Spacer(modifier = Modifier.height(topMargin))
-                                                    }
-                                                    innerTextField()
-                                                    Spacer(modifier = Modifier.height(16.dp))
+                                                val blocks = remember(field.content) {
+                                                    DynamicContentParser.parse(field.content)
                                                 }
-                                            } else {
-                                                // Raw text field must still be present for focus/IME, but we hide it and remove from layout height
-                                                Box(
-                                                    Modifier
-                                                        .alpha(0f)
-                                                        .layout { measurable, constraints ->
-                                                            val placeable = measurable.measure(constraints)
-                                                            layout(placeable.width, 0) {
-                                                                placeable.place(0, 0)
-                                                            }
+
+                                                val marginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
+                                                val customMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
+                                                val topMargin = if (marginStep == 5) customMargin.dp else (marginStep * 48).dp
+
+                                                if (isFocused) {
+                                                    Column {
+                                                        if (toolbarState.second) {
+                                                            Spacer(modifier = Modifier.height(topMargin))
                                                         }
-                                                ) {
-                                                    innerTextField()
-                                                }
-
-                                                Column(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                ) {
-                                                    blocks.forEach { block ->
-                                                        when (block) {
-                                                            is DynamicContentBlock.Text -> {
-                                                                val annotated = remember(block.content, onSurface) {
-                                                                    MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                        innerTextField()
+                                                        Spacer(modifier = Modifier.height(16.dp))
+                                                    }
+                                                } else {
+                                                    // Raw text field must still be present for focus/IME, but we hide it and remove from layout height
+                                                    Box(
+                                                        Modifier
+                                                            .alpha(0f)
+                                                            .layout { measurable, constraints ->
+                                                                val placeable = measurable.measure(constraints)
+                                                                layout(placeable.width, 0) {
+                                                                    placeable.place(0, 0)
                                                                 }
-                                                                Text(
-                                                                    text = annotated,
-                                                                    fontSize = 17.sp,
-                                                                    lineHeight = 24.sp,
-                                                                    color = onSurface,
-                                                                    modifier = Modifier
-                                                                        .fillMaxWidth()
-                                                                        .pointerInput(annotated) {
-                                                                            detectTapGestures(
-                                                                                onTap = { offset ->
-                                                                                    layoutResult?.let { textLayoutResult ->
-                                                                                        val position = textLayoutResult.getOffsetForPosition(offset)
-                                                                                        val line = textLayoutResult.getLineForOffset(position)
-                                                                                        val isWithinBounds = offset.x <= textLayoutResult.getLineRight(line)
+                                                            }
+                                                    ) {
+                                                        innerTextField()
+                                                    }
 
-                                                                                        if (isWithinBounds) {
-                                                                                            val annotation = annotated.getLinkAnnotations(position, position)
-                                                                                                .firstOrNull()
-                                                                                            if (annotation != null && annotation.item is LinkAnnotation.Url) {
-                                                                                                uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
-                                                                                            } else {
-                                                                                                if (canEdit) focusRequester.requestFocus()
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                    ) {
+                                                        blocks.forEach { block ->
+                                                            when (block) {
+                                                                is DynamicContentBlock.Text -> {
+                                                                    val annotated = remember(block.content, onSurface) {
+                                                                        MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                    }
+                                                                    Text(
+                                                                        text = annotated,
+                                                                        fontSize = 17.sp,
+                                                                        lineHeight = 24.sp,
+                                                                        color = onSurface,
+                                                                        modifier = Modifier
+                                                                            .fillMaxWidth()
+                                                                            .pointerInput(annotated) {
+                                                                                detectTapGestures(
+                                                                                    onTap = { offset ->
+                                                                                        layoutResult?.let { textLayoutResult ->
+                                                                                            val position = textLayoutResult.getOffsetForPosition(offset)
+                                                                                            val line = textLayoutResult.getLineForOffset(position)
+                                                                                            val isWithinBounds = offset.x <= textLayoutResult.getLineRight(line)
+
+                                                                                            if (isWithinBounds) {
+                                                                                                val annotation = annotated.getLinkAnnotations(position, position)
+                                                                                                    .firstOrNull()
+                                                                                                if (annotation != null && annotation.item is LinkAnnotation.Url) {
+                                                                                                    uriHandler.openUri((annotation.item as LinkAnnotation.Url).url)
+                                                                                                } else {
+                                                                                                    if (canEdit) focusRequester.requestFocus()
+                                                                                                }
                                                                                             }
                                                                                         }
                                                                                     }
-                                                                                }
-                                                                            )
-                                                                        },
-                                                                    onTextLayout = { layoutResult = it }
-                                                                )
-                                                            }
-                                                            is DynamicContentBlock.Divider -> {
-                                                                HorizontalDivider(
-                                                                    modifier = Modifier.padding(vertical = 12.dp),
-                                                                    thickness = 1.dp,
-                                                                    color = onSurface.copy(alpha = 0.1f)
-                                                                )
-                                                            }
-                                                            is DynamicContentBlock.Spoiler -> {
-                                                                val annotated = remember(block.content, onSurface) {
-                                                                    MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                                )
+                                                                            },
+                                                                        onTextLayout = { layoutResult = it }
+                                                                    )
                                                                 }
-                                                                SpoilerComponent(content = annotated)
-                                                            }
-                                                            is DynamicContentBlock.Resource -> {
-                                                                ResourceBlock(
-                                                                    resource = block,
-                                                                    statsMap = statsMap,
-                                                                    onUpdate = { updatedResource ->
-                                                                        val newBlocks = blocks.toMutableList()
-                                                                        val blockIndex = newBlocks.indexOf(block)
-                                                                        if (blockIndex != -1) {
-                                                                            newBlocks[blockIndex] = updatedResource
-                                                                            val newContent = DynamicContentParser.render(newBlocks)
-                                                                            onFieldChange(field.copy(content = newContent))
-                                                                        }
-                                                                    },
-                                                                    hazeState = hazeState,
-                                                                    forceBlurEnabled = forceBlurEnabled,
-                                                                    blurPopups = blurPopups,
-                                                                    settingsViewModel = settingsViewModel,
-                                                                    onDeleteRequest = {
-                                                                        val newBlocks = blocks.toMutableList()
-                                                                        val blockIndex = newBlocks.indexOf(block)
-                                                                        if (blockIndex != -1) {
-                                                                            newBlocks.removeAt(blockIndex)
-                                                                            val newContent = DynamicContentParser.render(newBlocks)
-                                                                            onFieldChange(field.copy(content = newContent))
-                                                                        }
+                                                                is DynamicContentBlock.Divider -> {
+                                                                    HorizontalDivider(
+                                                                        modifier = Modifier.padding(vertical = 12.dp),
+                                                                        thickness = 1.dp,
+                                                                        color = onSurface.copy(alpha = 0.1f)
+                                                                    )
+                                                                }
+                                                                is DynamicContentBlock.Spoiler -> {
+                                                                    val annotated = remember(block.content, onSurface) {
+                                                                        MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
                                                                     }
-                                                                )
+                                                                    SpoilerComponent(content = annotated)
+                                                                }
+                                                                is DynamicContentBlock.Resource -> {
+                                                                    ResourceBlock(
+                                                                        resource = block,
+                                                                        statsMap = statsMap,
+                                                                        onUpdate = { updatedResource ->
+                                                                            val newBlocks = blocks.toMutableList()
+                                                                            val blockIndex = newBlocks.indexOf(block)
+                                                                            if (blockIndex != -1) {
+                                                                                newBlocks[blockIndex] = updatedResource
+                                                                                val newContent = DynamicContentParser.render(newBlocks)
+                                                                                onFieldChange(field.copy(content = newContent))
+                                                                            }
+                                                                        },
+                                                                        hazeState = hazeState,
+                                                                        forceBlurEnabled = forceBlurEnabled,
+                                                                        blurPopups = blurPopups,
+                                                                        settingsViewModel = settingsViewModel,
+                                                                        onDeleteRequest = {
+                                                                            val newBlocks = blocks.toMutableList()
+                                                                            val blockIndex = newBlocks.indexOf(block)
+                                                                            if (blockIndex != -1) {
+                                                                                newBlocks.removeAt(blockIndex)
+                                                                                val newContent = DynamicContentParser.render(newBlocks)
+                                                                                onFieldChange(field.copy(content = newContent))
+                                                                            }
+                                                                        }
+                                                                    )
+                                                                }
                                                             }
                                                         }
+                                                        Spacer(modifier = Modifier.height(16.dp))
                                                     }
-                                                    Spacer(modifier = Modifier.height(16.dp))
-                                                }
 
-                                                if (field.content.isEmpty()) {
-                                                    Text(
-                                                        contentPlaceholder,
-                                                        fontSize = 17.sp,
-                                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                                    )
+                                                    if (field.content.isEmpty()) {
+                                                        Text(
+                                                            contentPlaceholder,
+                                                            fontSize = 17.sp,
+                                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
                                     )
                                 }
 
-                            Row(
-                                modifier = Modifier.align(Alignment.BottomEnd),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (canEdit) {
+                                Row(
+                                    modifier = Modifier.align(Alignment.BottomEnd),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (canEdit) {
+                                        IconButton(
+                                            onClick = {
+                                                if (isFocused) focusManager.clearFocus()
+                                                else focusRequester.requestFocus()
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isFocused) Icons.Default.Check else Icons.Default.Edit,
+                                                contentDescription = "Edit/Save",
+                                                modifier = Modifier.size(20.dp),
+                                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
                                     IconButton(
-                                        onClick = { 
-                                            if (isFocused) focusManager.clearFocus() 
-                                            else focusRequester.requestFocus()
-                                        },
+                                        onClick = { onFullscreenRequest() },
                                         modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (isFocused) Icons.Default.Check else Icons.Default.Edit,
-                                            contentDescription = "Edit/Save",
+                                            imageVector = Icons.Default.OpenInFull,
+                                            contentDescription = "Fullscreen",
                                             modifier = Modifier.size(20.dp),
                                             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                                         )
                                     }
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                }
-                                IconButton(
-                                    onClick = { onFullscreenRequest() },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.OpenInFull,
-                                        contentDescription = "Fullscreen",
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                                    )
                                 }
                             }
                         }

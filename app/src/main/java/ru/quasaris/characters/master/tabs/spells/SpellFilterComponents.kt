@@ -241,6 +241,15 @@ fun SpellFiltersArea(
                         )
                     }
                 }
+
+                // Row 8: Damage Types
+                MultiChoiceDropdown(
+                    label = "Виды урона",
+                    options = DamageType.entries.toList(),
+                    selectedOptions = filterState.damageTypes,
+                    onSelectionChange = { onFilterChange(filterState.copy(damageTypes = it)) },
+                    optionLabel = { it.displayName }
+                )
             }
         }
     }

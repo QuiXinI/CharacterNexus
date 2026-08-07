@@ -84,8 +84,15 @@ fun SpellsTab(
     var showSelectionDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
-    val characterSpells = remember(spellSettings.selectedSpellIds, refreshTrigger) {
-        spellbookManager?.loadSpells()?.filter { it.id in spellSettings.selectedSpellIds } ?: emptyList()
+    val characterSpells = remember(spellSettings.selectedSpellIds, spellSettings.preparedSpellIds, spellSettings.isSpellbookEnabled, refreshTrigger) {
+        val all = spellbookManager?.loadSpells() ?: emptyList()
+        if (spellSettings.isSpellbookEnabled) {
+            all.filter { 
+                it.id in spellSettings.preparedSpellIds || (it.id in spellSettings.selectedSpellIds && it.isRitual)
+            }
+        } else {
+            all.filter { it.id in spellSettings.selectedSpellIds }
+        }
     }
 
     val autoSlots = remember(spellSettings.casterType, spellSettings.isMulticlass, spellSettings.fullCasterLevel, spellSettings.halfCasterLevel, spellSettings.thirdCasterLevel, characterLevel) {
@@ -289,7 +296,8 @@ fun SpellsTab(
                                 fontSize = 16.sp,
                                 showLabel = false,
                                 showDice = true,
-                                diceOnLeft = true
+                                diceOnLeft = true,
+                                useXForZero = true
                             )
                         }
                         
@@ -349,6 +357,7 @@ fun SpellsTab(
                 isTitleReadOnly = true,
                 isAddButtonVisible = false,
                 isReorderButtonVisible = false,
+                isContentVisible = spellSettings.spellMode != SpellMode.CARDS,
                 header = header,
                 footer = {
                     if (spellSettings.isMagicEnabled) {
@@ -470,7 +479,7 @@ fun SpellsTab(
                         }
                     }
 
-                    if (spellSettings.spellMode == SpellMode.CARDS) {
+                    if (spellSettings.spellMode == SpellMode.CARDS || spellSettings.spellMode == SpellMode.HYBRID) {
                         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                             val levelStr = if (level == 0f) "0" else if (level == -1f) "" else level.toInt().toString()
                             val levelSpells = characterSpells.filter { 
@@ -489,11 +498,11 @@ fun SpellsTab(
                                     isExpanded = expanded,
                                     onToggleExpand = { expanded = !expanded },
                                     onEdit = { editingSpell = card },
-                                    onRollDamage = { advantage ->
+                                    onRollDamage = { formula, title, advantage ->
                                         onRoll(DiceRoller.roll(
-                                            title = "Урон: ${card.name}",
+                                            title = title,
                                             baseModifier = 0,
-                                            bonuses = listOf(SimpleBonus(formula = card.damageFormula, name = "Базовый урон")),
+                                            bonuses = listOf(SimpleBonus(formula = formula, name = "Урон")),
                                             isDamage = true,
                                             stats = statsMap,
                                             exhaustion = 0,
@@ -503,7 +512,7 @@ fun SpellsTab(
                                         ))
                                     },
                                     onRollAttack = { advantage ->
-                                        if (card.attackType == MagicAttackType.ATTACK) {
+                                        if (card.attackTypes.contains(MagicAttackType.ATTACK)) {
                                             onRoll(DiceRoller.roll(
                                                 title = "${card.name} (Атака)",
                                                 baseModifier = spellAttackBase,
@@ -522,7 +531,9 @@ fun SpellsTab(
                                     spellAttackDice = spellAttackDice,
                                     spellSaveDc = spellSaveDc,
                                     spellSaveDice = spellSaveDice,
-                                    hazeState = hazeState
+                                    hazeState = hazeState,
+                                    forceBlurEnabled = forceBlurEnabled,
+                                    highlightRitual = spellSettings.isSpellbookEnabled && card.id !in spellSettings.preparedSpellIds && card.isRitual
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                             }
@@ -627,13 +638,48 @@ fun SpellsTab(
         SpellbookSelectionDialog(
             spellbookManager = spellbookManager,
             selectedIds = spellSettings.selectedSpellIds,
+            preparedIds = spellSettings.preparedSpellIds,
+            isSpellbookEnabled = spellSettings.isSpellbookEnabled,
             onDismiss = { showSelectionDialog = false },
-            onSave = { newIds ->
-                onSpellSettingsChange(spellSettings.copy(selectedSpellIds = newIds))
+            onSave = { newIds, newPrepared ->
+                onSpellSettingsChange(spellSettings.copy(
+                    selectedSpellIds = newIds,
+                    preparedSpellIds = newPrepared
+                ))
                 refreshTrigger++
             },
             hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled
+            forceBlurEnabled = forceBlurEnabled,
+            statsMap = statsMap,
+            spellAttackBonus = spellAttackBonus,
+            spellAttackDice = spellAttackDice,
+            spellSaveDc = spellSaveDc,
+            spellSaveDice = spellSaveDice,
+            onRollDamage = { formula, title, advantage ->
+                onRoll(DiceRoller.roll(
+                    title = title,
+                    baseModifier = 0,
+                    bonuses = listOf(SimpleBonus(formula = formula, name = "Урон")),
+                    isDamage = true,
+                    stats = statsMap,
+                    exhaustion = 0,
+                    sourceType = RollSourceType.OTHER,
+                    advantageType = advantage,
+                    advantageLogic = advantageLogic
+                ))
+            },
+            onRollAttack = { advantage ->
+                onRoll(DiceRoller.roll(
+                    title = "Атака заклинанием",
+                    baseModifier = spellAttackBase,
+                    bonuses = spellSettings.spellAttackBonuses,
+                    stats = statsMap,
+                    exhaustion = exhaustion,
+                    sourceType = RollSourceType.ATTACK,
+                    advantageType = advantage,
+                    advantageLogic = advantageLogic
+                ))
+            }
         )
     }
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ru.quasaris.characters.master.tabs.*
@@ -721,26 +722,30 @@ fun CharacterDetailWindow(
                 }
             }
 
-            DiceRollingFab(
-                onRoll = { pool ->
-                    val res = DiceRoller.rollPool(pool)
-                    onRoll(res)
-                },
-                offsetX = diceFabOffsetX,
-                offsetY = diceFabOffsetY,
-                hazeState = hazeState,
-                isOled = colorScheme.background == Color.Black,
-                alpha = effectiveDiceFabAlpha,
-                forceBlurEnabled = effectiveDiceFabBlur,
-                positionKey = diceFabOffsetX to diceFabOffsetY,
-                onDrag = { dx, dy ->
-                    val density = context.resources.displayMetrics.density
-                    settingsViewModel?.updateDiceFabPosition(
-                        diceFabOffsetX + dx / density,
-                        diceFabOffsetY + dy / density
-                    )
-                }
-            )
+            val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+
+            if (!isKeyboardVisible) {
+                DiceRollingFab(
+                    onRoll = { pool ->
+                        val res = DiceRoller.rollPool(pool)
+                        onRoll(res)
+                    },
+                    offsetX = diceFabOffsetX,
+                    offsetY = diceFabOffsetY,
+                    hazeState = hazeState,
+                    isOled = colorScheme.background == Color.Black,
+                    alpha = effectiveDiceFabAlpha,
+                    forceBlurEnabled = effectiveDiceFabBlur,
+                    positionKey = diceFabOffsetX to diceFabOffsetY,
+                    onDrag = { dx, dy ->
+                        val density = context.resources.displayMetrics.density
+                        settingsViewModel?.updateDiceFabPosition(
+                            diceFabOffsetX + dx / density,
+                            diceFabOffsetY + dy / density
+                        )
+                    }
+                )
+            }
 
             CharacterDetailDialogs(
                 state = state,

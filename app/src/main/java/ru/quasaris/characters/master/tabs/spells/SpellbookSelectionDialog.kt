@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +29,8 @@ import ru.quasaris.characters.master.MagicAttackType
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.MaterialComponentType
 import ru.quasaris.characters.master.backend.SpellbookManager
+import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.AdvantageType
 import ru.quasaris.characters.master.tabs.spells.SpellFiltersArea
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
@@ -40,67 +43,34 @@ import dev.chrisbanes.haze.HazeInputScale
 fun SpellbookSelectionDialog(
     spellbookManager: SpellbookManager,
     selectedIds: List<String>,
+    preparedIds: List<String> = emptyList(),
+    isSpellbookEnabled: Boolean = false,
     onDismiss: () -> Unit,
-    onSave: (List<String>) -> Unit,
+    onSave: (List<String>, List<String>) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    statsMap: Map<String, String> = emptyMap(),
+    spellAttackBonus: Int = 0,
+    spellAttackDice: List<DicePart> = emptyList(),
+    spellSaveDc: Int = 0,
+    spellSaveDice: List<DicePart> = emptyList(),
+    onRollDamage: (String, String, AdvantageType) -> Unit = { _, _, _ -> },
+    onRollAttack: (AdvantageType) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var currentSelected by remember { mutableStateOf(selectedIds.toSet()) }
+    var currentPrepared by remember { mutableStateOf(preparedIds.toSet()) }
+    var isBookMode by remember { mutableStateOf(false) }
+    
+    var expandedIds by remember { mutableStateOf(setOf<String>()) }
     var showFilters by remember { mutableStateOf(false) }
     var filterState by remember { mutableStateOf(SpellFilterState()) }
     
     val allSpells = remember { spellbookManager.loadSpells() }
-    val filteredSpells = remember(allSpells, searchQuery, filterState) {
+    val filteredSpells = remember(allSpells, searchQuery, filterState, isBookMode, currentSelected) {
         allSpells.filter { spell ->
-            val matchesSearch = searchQuery.isBlank() || 
-                spell.name.contains(searchQuery, ignoreCase = true) || 
-                (spell.showEnglishName && spell.englishName.contains(searchQuery, ignoreCase = true))
-            
-            val matchesLevel = filterState.levels.isEmpty() || spell.level in filterState.levels
-            val matchesClass = filterState.classes.isEmpty() || spell.classes.any { it in filterState.classes }
-            val matchesSchool = filterState.schools.isEmpty() || spell.school in filterState.schools
-            val matchesVersion = filterState.versions.isEmpty() || spell.version in filterState.versions
-            val matchesCastingTime = filterState.castingTimeTypes.isEmpty() || spell.castingTimeType in filterState.castingTimeTypes
-            val matchesDuration = filterState.durationUnits.isEmpty() || spell.durationUnit in filterState.durationUnits
-            val matchesAttackType = filterState.attackTypes.isEmpty() || spell.attackType in filterState.attackTypes
-            val matchesSaveAttr = filterState.savingThrowAttributes.isEmpty() || spell.savingThrowAttributes.any { it in filterState.savingThrowAttributes }
-            
-            val matchesConc = filterState.hasConcentration == null || spell.hasConcentration == filterState.hasConcentration
-            val matchesRitual = filterState.isRitual == null || spell.isRitual == filterState.isRitual
-            val matchesCircle = filterState.isCircle == null || spell.isCircle == filterState.isCircle
-            val matchesDamage = filterState.hasDamage == null || spell.hasDamage == filterState.hasDamage
-            
-            val matchesAttackOrSave = when(filterState.attackOrSave) {
-                MagicAttackType.ATTACK -> spell.attackType == MagicAttackType.ATTACK
-                MagicAttackType.SAVE -> spell.attackType == MagicAttackType.SAVE
-                null -> true
-            }
-
-            val matchesComponents = if (filterState.components.isEmpty()) true else {
-                filterState.components.all { component ->
-                    when(component) {
-                        SpellComponentFilter.VERBAL -> spell.hasVerbalComponent
-                        SpellComponentFilter.SOMATIC -> spell.hasSomaticComponent
-                        SpellComponentFilter.MATERIAL -> spell.materialComponentType != MaterialComponentType.NONE
-                        SpellComponentFilter.MATERIAL_COST -> spell.materialComponents.contains("gp", ignoreCase = true) || spell.materialComponents.contains(" зм", ignoreCase = true)
-                        SpellComponentFilter.MATERIAL_CONSUMED -> spell.materialComponents.contains("consume", ignoreCase = true) || spell.materialComponents.contains("расходует", ignoreCase = true)
-                        SpellComponentFilter.NO_VERBAL -> !spell.hasVerbalComponent
-                        SpellComponentFilter.NO_SOMATIC -> !spell.hasSomaticComponent
-                        SpellComponentFilter.NO_MATERIAL -> spell.materialComponentType == MaterialComponentType.NONE
-                        SpellComponentFilter.NO_MATERIAL_COST -> !(spell.materialComponents.contains("gp", ignoreCase = true) || spell.materialComponents.contains(" зм", ignoreCase = true))
-                        SpellComponentFilter.NO_MATERIAL_CONSUMED -> !(spell.materialComponents.contains("consume", ignoreCase = true) || spell.materialComponents.contains("расходует", ignoreCase = true))
-                    }
-                }
-            }
-
-            val matchesCastingTimeQuery = filterState.castingTimeQuery.isBlank() || spell.castingTime.contains(filterState.castingTimeQuery, ignoreCase = true)
-            val matchesDurationQuery = filterState.durationQuery.isBlank() || spell.durationValue == filterState.durationQuery
-
-            matchesSearch && matchesLevel && matchesClass && matchesSchool && matchesVersion && 
-            matchesCastingTime && matchesDuration && matchesAttackType && matchesSaveAttr &&
-            matchesConc && matchesRitual && matchesCircle && matchesDamage && matchesComponents &&
-            matchesAttackOrSave && matchesCastingTimeQuery && matchesDurationQuery
+            val matchesSearch = spell.matches(filterState, searchQuery)
+            if (isBookMode) matchesSearch && spell.id in currentSelected else matchesSearch
         }
     }
 
@@ -114,7 +84,23 @@ fun SpellbookSelectionDialog(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Книга заклинаний", fontWeight = FontWeight.Black) },
+                    title = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isSpellbookEnabled) {
+                                IconButton(
+                                    onClick = { isBookMode = !isBookMode },
+                                    modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Icon(
+                                        if (isBookMode) Icons.Default.MenuBook else Icons.Default.Public,
+                                        contentDescription = "Режим книги",
+                                        tint = if (isBookMode) colorScheme.primary else colorScheme.onSurface
+                                    )
+                                }
+                            }
+                            Text(if (isBookMode) "Книга заклинаний" else "Список заклинаний", fontWeight = FontWeight.Black)
+                        }
+                    },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
                             Icon(Icons.Default.Close, contentDescription = "Закрыть")
@@ -124,9 +110,9 @@ fun SpellbookSelectionDialog(
                         IconButton(onClick = { showFilters = !showFilters }) {
                             Icon(Icons.Default.FilterList, null, tint = if (showFilters) colorScheme.primary else colorScheme.onSurface)
                         }
-                        // Level counters (0..9)
+                        val targetSet = if (isSpellbookEnabled) currentPrepared else currentSelected
                         val counts = (0..9).map { level ->
-                            allSpells.filter { it.id in currentSelected && it.level == level.toString() }.size
+                            allSpells.filter { it.id in targetSet && it.level == level.toString() }.size
                         }
                         Text(
                             text = counts.joinToString("/") { it.toString() },
@@ -221,36 +207,72 @@ fun SpellbookSelectionDialog(
                             )
                         }
                         items(grouped[levelStr] ?: emptyList(), key = { it.id }) { spell ->
-                            ListItem(
-                                headlineContent = { Text(spell.name) },
-                                supportingContent = { 
-                                    if (spell.showEnglishName && spell.englishName.isNotBlank()) {
-                                        Text(spell.englishName)
-                                    }
-                                },
-                                leadingContent = {
-                                    Checkbox(
-                                        checked = spell.id in currentSelected,
-                                        onCheckedChange = { checked ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val isChecked = if (isBookMode) spell.id in currentPrepared else spell.id in currentSelected
+                                Checkbox(
+                                    checked = isChecked,
+                                    onCheckedChange = { checked ->
+                                        if (isBookMode) {
+                                            currentPrepared = if (checked) currentPrepared + spell.id else currentPrepared - spell.id
+                                        } else {
                                             currentSelected = if (checked) currentSelected + spell.id else currentSelected - spell.id
+                                            // If adding to book and not in spellbook mode, also add to prepared
+                                            if (!isSpellbookEnabled) {
+                                                currentPrepared = currentSelected
+                                            }
                                         }
-                                    )
-                                },
-                                modifier = Modifier.clickable {
-                                    val checked = spell.id !in currentSelected
-                                    currentSelected = if (checked) currentSelected + spell.id else currentSelected - spell.id
-                                }
-                            )
+                                    }
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                SpellCardItem(
+                                    spell = spell,
+                                    isExpanded = spell.id in expandedIds,
+                                    onToggleExpand = {
+                                        expandedIds = if (spell.id in expandedIds) expandedIds - spell.id else expandedIds + spell.id
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    isSelected = isChecked,
+                                    onLongClick = {
+                                        val checked = !isChecked
+                                        if (isBookMode) {
+                                            currentPrepared = if (checked) currentPrepared + spell.id else currentPrepared - spell.id
+                                        } else {
+                                            currentSelected = if (checked) currentSelected + spell.id else currentSelected - spell.id
+                                            if (!isSpellbookEnabled) {
+                                                currentPrepared = currentSelected
+                                            }
+                                        }
+                                    },
+                                    isEditable = false,
+                                    statsMap = statsMap,
+                                    spellAttackBonus = spellAttackBonus,
+                                    spellAttackDice = spellAttackDice,
+                                    spellSaveDc = spellSaveDc,
+                                    spellSaveDice = spellSaveDice,
+                                    onRollDamage = onRollDamage,
+                                    onRollAttack = onRollAttack,
+                                    hazeState = hazeState,
+                                    forceBlurEnabled = forceBlurEnabled
+                                )
+                            }
                         }
                     }
                 }
 
                 Button(
-                    onClick = { onSave(currentSelected.toList()); onDismiss() },
+                    onClick = { 
+                        val finalPrepared = if (isSpellbookEnabled) currentPrepared else currentSelected
+                        onSave(currentSelected.toList(), finalPrepared.toList())
+                        onDismiss() 
+                    },
                     modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Выбрать (${currentSelected.size})", fontWeight = FontWeight.Bold)
+                    val count = if (isBookMode) currentPrepared.size else currentSelected.size
+                    Text("Выбрать ($count)", fontWeight = FontWeight.Bold)
                 }
             }
         }

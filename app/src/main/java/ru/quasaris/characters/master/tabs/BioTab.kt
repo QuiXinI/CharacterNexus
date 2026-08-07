@@ -111,8 +111,7 @@ fun BioTab(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 header()
-                Spacer(Modifier.height(12.dp))
-                // 1. Full-width square portrait container
+                Spacer(Modifier.height(0.dp))
                 Column {
                     Box(
                         modifier = Modifier

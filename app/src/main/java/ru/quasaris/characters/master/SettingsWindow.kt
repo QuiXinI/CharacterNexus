@@ -205,6 +205,12 @@ fun SettingsWindow(
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            MainMenuSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
             FullscreenEditingSettingsSection(
                 settingsViewModel = settingsViewModel
             )
@@ -598,7 +604,6 @@ fun DiceRollSettingsSection(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy((-9).dp)
         ) {
-            // TOP ROW
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = rollPosition == DiceRollPosition.TOP_LEFT,
@@ -613,7 +618,6 @@ fun DiceRollSettingsSection(
                 ) { Text("Справа-вверху", fontSize = 12.sp) }
             }
 
-            // BOTTOM ROW
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = rollPosition == DiceRollPosition.BOTTOM_LEFT,
@@ -816,6 +820,49 @@ fun FullscreenEditingSettingsSection(
             Switch(
                 checked = fullscreenEditingOnly,
                 onCheckedChange = { settingsViewModel.updateFullscreenEditingOnly(it) }
+            )
+        }
+    }
+}
+
+@Composable
+fun MainMenuSettingsSection(
+    settingsViewModel: SettingsViewModel
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val useOldAvatarStyle by settingsViewModel.useOldAvatarStyle.collectAsState()
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Главное меню",
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Старое отображение аватарок",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Возвращает классический вид иконок персонажей в списке",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = useOldAvatarStyle,
+                onCheckedChange = { settingsViewModel.updateUseOldAvatarStyle(it) }
             )
         }
     }

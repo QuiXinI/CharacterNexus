@@ -54,6 +54,7 @@ enum class Attribute(val fullName: String, val shortName: String) {
 
 enum class SpellMode {
     TEXT,
+    HYBRID,
     CARDS
 }
 
@@ -72,9 +73,30 @@ enum class SlotFillDirection {
     LTR, CENTER, RTL
 }
 
-enum class MagicAttackType {
-    ATTACK,
-    SAVE
+enum class DamageType(val displayName: String) {
+    BLUDGEONING("Дробящий"),
+    PIERCING("Колющий"),
+    SLASHING("Рубящий"),
+    THUNDER("Звуковой"),
+    RADIANT("Излучающий"),
+    ACID("Кислотный"),
+    NECROTIC("Некротический"),
+    FIRE("Огненный"),
+    PSYCHIC("Психический"),
+    FORCE("Силовой"),
+    COLD("Холодный"),
+    LIGHTNING("Электрический"),
+    POISON("Ядовитый"),
+    OTHER("Другой");
+
+    companion object {
+        fun fromDisplayName(name: String): DamageType? = entries.find { it.displayName.equals(name, ignoreCase = true) }
+    }
+}
+
+enum class MagicAttackType(val displayName: String) {
+    ATTACK("Бросок атаки"),
+    SAVE("Спасбросок")
 }
 
 enum class BonusOperation {
@@ -247,7 +269,11 @@ data class SpellCard(
     @SerializedName("hasDamage") val hasDamage: Boolean = false,
     @SerializedName("damageFormula") val damageFormula: String = "",
     @SerializedName("damageType") val damageType: String = "",
+    @SerializedName("damageTypes") val damageTypes: List<DamageType> = emptyList(),
+    @SerializedName("additionalDamageFormulas") val additionalDamageFormulas: List<String> = emptyList(),
+    @SerializedName("additionalDamageTypesList") val additionalDamageTypesList: List<List<DamageType>> = emptyList(),
     @SerializedName("attackType") val attackType: MagicAttackType? = null,
+    @SerializedName("attackTypes") val attackTypes: List<MagicAttackType> = emptyList(),
     @SerializedName("savingThrowAttributes") val savingThrowAttributes: List<Attribute> = emptyList(),
     @SerializedName("distance") val distance: String = "",
     @SerializedName("notes") val notes: String = "",
@@ -259,6 +285,60 @@ data class SpellCard(
         if (durationValue.isBlank()) durationUnit.displayName else "$durationValue ${durationUnit.displayName}"
     } else {
         durationUnit.displayName
+    }
+
+    fun matches(filter: SpellFilterState, searchQuery: String): Boolean {
+        val matchesSearch = searchQuery.isBlank() ||
+                name.contains(searchQuery, ignoreCase = true) ||
+                (showEnglishName && englishName.contains(searchQuery, ignoreCase = true))
+
+        val matchesLevel = filter.levels.isEmpty() || level in filter.levels
+        val matchesClass = filter.classes.isEmpty() || classes.any { it in filter.classes }
+        val matchesSchool = filter.schools.isEmpty() || school in filter.schools
+        val matchesVersion = filter.versions.isEmpty() || version in filter.versions
+        val matchesCastingTime = filter.castingTimeTypes.isEmpty() || castingTimeType in filter.castingTimeTypes
+        val matchesDuration = filter.durationUnits.isEmpty() || durationUnit in filter.durationUnits
+        val matchesAttackType = filter.attackTypes.isEmpty() || attackTypes.any { it in filter.attackTypes }
+        val matchesDamageType = filter.damageTypes.isEmpty() ||
+                damageTypes.any { it in filter.damageTypes } ||
+                additionalDamageTypesList.any { list -> list.any { it in filter.damageTypes } }
+        val matchesSaveAttr = filter.savingThrowAttributes.isEmpty() || savingThrowAttributes.any { it in filter.savingThrowAttributes }
+
+        val matchesConc = filter.hasConcentration == null || hasConcentration == filter.hasConcentration
+        val matchesRitual = filter.isRitual == null || isRitual == filter.isRitual
+        val matchesCircle = filter.isCircle == null || isCircle == filter.isCircle
+        val matchesDamage = filter.hasDamage == null || hasDamage == filter.hasDamage
+
+        val matchesAttackOrSave = when(filter.attackOrSave) {
+            MagicAttackType.ATTACK -> attackTypes.contains(MagicAttackType.ATTACK)
+            MagicAttackType.SAVE -> attackTypes.contains(MagicAttackType.SAVE)
+            null -> true
+        }
+
+        val matchesComponents = if (filter.components.isEmpty()) true else {
+            filter.components.all { component ->
+                when(component) {
+                    SpellComponentFilter.VERBAL -> hasVerbalComponent
+                    SpellComponentFilter.SOMATIC -> hasSomaticComponent
+                    SpellComponentFilter.MATERIAL -> materialComponentType != MaterialComponentType.NONE
+                    SpellComponentFilter.MATERIAL_COST -> materialComponents.contains("gp", ignoreCase = true) || materialComponents.contains(" зм", ignoreCase = true)
+                    SpellComponentFilter.MATERIAL_CONSUMED -> materialComponents.contains("consume", ignoreCase = true) || materialComponents.contains("расходует", ignoreCase = true)
+                    SpellComponentFilter.NO_VERBAL -> !hasVerbalComponent
+                    SpellComponentFilter.NO_SOMATIC -> !hasSomaticComponent
+                    SpellComponentFilter.NO_MATERIAL -> materialComponentType == MaterialComponentType.NONE
+                    SpellComponentFilter.NO_MATERIAL_COST -> !(materialComponents.contains("gp", ignoreCase = true) || materialComponents.contains(" зм", ignoreCase = true))
+                    SpellComponentFilter.NO_MATERIAL_CONSUMED -> !(materialComponents.contains("consume", ignoreCase = true) || materialComponents.contains("расходует", ignoreCase = true))
+                }
+            }
+        }
+
+        val matchesCastingTimeQuery = filter.castingTimeQuery.isBlank() || castingTime.contains(filter.castingTimeQuery, ignoreCase = true)
+        val matchesDurationQuery = filter.durationQuery.isBlank() || durationValue == filter.durationQuery
+
+        return matchesSearch && matchesLevel && matchesClass && matchesSchool && matchesVersion &&
+                matchesCastingTime && matchesDuration && matchesAttackType && matchesDamageType && matchesSaveAttr &&
+                matchesConc && matchesRitual && matchesCircle && matchesDamage && matchesComponents &&
+                matchesAttackOrSave && matchesCastingTimeQuery && matchesDurationQuery
     }
 }
 
@@ -277,6 +357,7 @@ data class SpellFilterState(
     val durationUnits: Set<DurationUnit> = emptySet(),
     val durationQuery: String = "",
     val attackTypes: Set<MagicAttackType?> = emptySet(),
+    val damageTypes: Set<DamageType> = emptySet(),
     val savingThrowAttributes: Set<Attribute> = emptySet(),
     val components: Set<SpellComponentFilter> = emptySet(),
     val hasConcentration: Boolean? = null,
@@ -304,10 +385,12 @@ data class SpellSettings(
     val overrideSlots: Map<Float, Int> = emptyMap(),
     val pactSlotLevel: Float = 1f,
     val pactSlotsCount: Int = 0,
-    val usedSlots: Map<Float, Int> = emptyMap(), // Key 1-9 are levels (Long Rest)
-    val usedSlotsShortRest: Map<Float, Int> = emptyMap(), // Key 0 is Pact (if not merged), 1-9 are levels
+    val usedSlots: Map<Float, Int> = emptyMap(),
+    val usedSlotsShortRest: Map<Float, Int> = emptyMap(),
     val usedSlotsDawn: Map<Float, Int> = emptyMap(),
-    val selectedSpellIds: List<String> = emptyList()
+    val selectedSpellIds: List<String> = emptyList(),
+    val preparedSpellIds: List<String> = emptyList(),
+    val isSpellbookEnabled: Boolean = false
 )
 
 data class SpecialSlotSettings(
@@ -333,7 +416,7 @@ data class BioShortField(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
     val value: String = "",
-    val widthRatio: Float = 0.5f, // 0.5 for 1/2, 0.33f for 1/3
+    val widthRatio: Float = 0.5f,
     val isCustom: Boolean = false
 )
 

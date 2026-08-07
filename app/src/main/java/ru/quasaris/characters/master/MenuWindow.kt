@@ -48,6 +48,13 @@ import ru.quasaris.characters.master.backend.SettingsViewModel
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.BiasAlignment
+import ru.quasaris.characters.master.backend.getNextLevelThreshold
+import ru.quasaris.characters.master.backend.getPreviousLevelThreshold
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 
@@ -76,6 +83,7 @@ fun MenuWindow(
 
     val autoDownload by settingsViewModel?.autoDownloadLssAvatar?.collectAsState() ?: remember { mutableStateOf(false) }
     val debugEnabled by settingsViewModel?.debugInfoEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
+    val useOldAvatarStyle by settingsViewModel?.useOldAvatarStyle?.collectAsState() ?: remember { mutableStateOf(false) }
     var lssAvatarToDownload by remember { mutableStateOf<Character?>(null) }
     var bitmapToCrop by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var lssCharacter by remember { mutableStateOf<Character?>(null) }
@@ -189,6 +197,7 @@ fun MenuWindow(
                         CharacterCard(
                             character = character,
                             isSelected = isSelected,
+                            useOldAvatarStyle = useOldAvatarStyle,
                             onClick = {
                                 if (selectedIds.isNotEmpty()) {
                                     if (isSelected) selectedIds.remove(character.id)
@@ -359,9 +368,10 @@ private fun downloadLssAvatar(
 fun CharacterCard(
     character: Character,
     isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    useOldAvatarStyle: Boolean = false,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onLongClick: () -> Unit
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
@@ -376,6 +386,34 @@ fun CharacterCard(
         colorScheme.surfaceVariant
     }
 
+    val levelStr = character.level.filter { it.isDigit() }.ifEmpty { "1" }
+    val expStr = character.experience.filter { it.isDigit() }.ifEmpty { "0" }
+    
+    val exp = expStr.toLongOrNull() ?: 0L
+    val prevThreshold = getPreviousLevelThreshold(levelStr).toLongOrNull() ?: 0L
+    val nextThreshold = getNextLevelThreshold(levelStr).toLongOrNull() ?: 300L
+
+    val progress = if (nextThreshold > prevThreshold) {
+        ((exp - prevThreshold).toFloat() / (nextThreshold - prevThreshold).toFloat()).coerceIn(0f, 1f)
+    } else 1f
+
+    val currentHp = character.currentHp.toIntOrNull() ?: 0
+    val maxHp = character.maxHp.toIntOrNull() ?: 1
+    val tempHp = character.tempHp.toIntOrNull() ?: 0
+
+    val baseHpColor = if (maxHp > 0 && currentHp.toFloat() / maxHp.toFloat() > 0.5f) {
+        Color(0xFF4CAF50) // Green
+    } else {
+        Color(0xFFF44336) // Red
+    }
+    
+    val hpColor = lerp(baseHpColor, colorScheme.onSurfaceVariant, 0.5f)
+
+    val hpText = buildString {
+        append("$currentHp/$maxHp")
+        if (tempHp > 0) append(" (+$tempHp)")
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -385,47 +423,159 @@ fun CharacterCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 2.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = onLongClick
-                )
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        val contentClipShape = RoundedCornerShape(16.dp)
+
+        // Modern Style parameters used for calculation
+        val avatarSize = 90.dp
+        val avatarOffset = (-18).dp
+
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
+            val contentClipShape = RoundedCornerShape(16.dp)
             Box(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(colorScheme.surface),
-                contentAlignment = Alignment.Center
-            ) {
-                if (thumbFile != null && thumbFile.exists()) {
-                    AsyncImage(
-                        model = thumbFile,
-                        contentDescription = "Иконка",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                    .fillMaxWidth()
+                    .clip(contentClipShape)
+                    .drawBehind {
+                        val startPointPx = if (useOldAvatarStyle) 0f else {
+                            val avatarSizeDp = 90.dp
+                            val avatarOffsetDp = (-18).dp
+                            (avatarOffsetDp + avatarSizeDp / 2).toPx()
+                        }
+                        drawRect(
+                            color = colorScheme.primary.copy(alpha = 0.2f),
+                            topLeft = androidx.compose.ui.geometry.Offset(startPointPx, 0f),
+                            size = Size((size.width - startPointPx) * progress, size.height)
+                        )
+                    }
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick
                     )
-                } else {
-                    Icon(Icons.Default.Person, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(80.dp)
+                        .padding(if (useOldAvatarStyle) 12.dp else 0.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (useOldAvatarStyle) {
+                        Box(
+                            modifier = Modifier
+                                .requiredSize(60.dp)
+                                .clip(CircleShape)
+                                .background(colorScheme.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (thumbFile != null && thumbFile.exists()) {
+                                AsyncImage(
+                                    model = thumbFile,
+                                    contentDescription = "Иконка",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Person,
+                                    null,
+                                    modifier = Modifier.size(28.dp),
+                                    tint = colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = character.name.ifEmpty { "Без имени" },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Уровень ${character.level} • ${character.characterClass} • ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = hpText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hpColor,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    } else {
+                        val avatarSize = 90.dp
+                        val avatarOffset = (-18).dp
+                        val amplifiedSize = 90.dp
+                        val imageOffset = 7.dp
+
+                        Box(
+                            modifier = Modifier
+                                .requiredSize(avatarSize)
+                                .offset(x = avatarOffset)
+                                .clip(CircleShape)
+                                .background(colorScheme.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (thumbFile != null && thumbFile.exists()) {
+                                AsyncImage(
+                                    model = thumbFile,
+                                    contentDescription = "Иконка",
+                                    modifier = Modifier
+                                        .requiredSize(amplifiedSize)
+                                        .offset(x = imageOffset),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Person,
+                                    null,
+                                    modifier = Modifier.size(40.dp),
+                                    tint = colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(vertical = 4.dp)
+                                .padding(end = 12.dp)
+                                .offset(x = (-8).dp), // Adjust to balance the shifted avatar
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = character.name.ifEmpty { "Без имени" },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface,
+                                maxLines = 1
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Уровень ${character.level} • ${character.characterClass} • ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = hpText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hpColor,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = character.name.ifEmpty { "Без имени" },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Уровень ${character.level} • ${character.characterClass}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -436,8 +586,27 @@ fun CharacterCard(
 fun MenuWindowPreview() {
     quasarisTheme {
         val previewCharacters = listOf(
-            Character(1, "Гаррик", "Воин", "Человек"),
-            Character(2, "Лиара", "Плут", "Эльф", imageData = null)
+            Character(
+                id = 1,
+                name = "Гаррик",
+                characterClass = "Воин",
+                order = "Человек",
+                level = "3",
+                experience = "1500",
+                currentHp = "25",
+                maxHp = "30"
+            ),
+            Character(
+                id = 2,
+                name = "Лиара",
+                characterClass = "Плут",
+                order = "Эльф",
+                level = "1",
+                experience = "150",
+                currentHp = "5",
+                maxHp = "12",
+                tempHp = "5"
+            )
         )
         MenuWindow(
             characters = previewCharacters,

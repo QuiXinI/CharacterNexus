@@ -26,6 +26,7 @@ import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.SpellCard
 import ru.quasaris.characters.master.MaterialComponentType
 import ru.quasaris.characters.master.MagicAttackType
+import ru.quasaris.characters.master.DamageType
 import ru.quasaris.characters.master.SpellSchool
 import ru.quasaris.characters.master.SpellVersion
 import ru.quasaris.characters.master.CharacterClass
@@ -221,23 +222,23 @@ fun SpellCardEditorDialog(
                     }
 
                     // Components
-                    Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SpellCardSectionTitle("КОМПОНЕНТЫ")
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             ComponentToggleButton("О", state.isCircle) { state = state.copy(isCircle = it) }
                             ComponentToggleButton("Р", state.isRitual) { state = state.copy(isRitual = it) }
                             ComponentToggleButton("В", state.hasVerbalComponent) { state = state.copy(hasVerbalComponent = it) }
                             ComponentToggleButton("С", state.hasSomaticComponent) { state = state.copy(hasSomaticComponent = it) }
+                        }
 
-                            SingleChoiceSegmentedButtonRow(modifier = Modifier.weight(1f)) {
-                                MaterialComponentType.entries.forEachIndexed { index, type ->
-                                    SegmentedButton(
-                                        selected = state.materialComponentType == type,
-                                        onClick = { state = state.copy(materialComponentType = type) },
-                                        shape = SegmentedButtonDefaults.itemShape(index = index, count = MaterialComponentType.entries.size)
-                                    ) {
-                                        Text(type.displayName)
-                                    }
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            MaterialComponentType.entries.forEachIndexed { index, type ->
+                                SegmentedButton(
+                                    selected = state.materialComponentType == type,
+                                    onClick = { state = state.copy(materialComponentType = type) },
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = MaterialComponentType.entries.size)
+                                ) {
+                                    Text(type.displayName)
                                 }
                             }
                         }
@@ -255,15 +256,43 @@ fun SpellCardEditorDialog(
                     // Casting Time
                     Column {
                         SpellCardSectionTitle("ВРЕМЯ НАЛОЖЕНИЯ")
-                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            ru.quasaris.characters.master.CastingTimeType.entries.forEachIndexed { index, type ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        val cornerRadius = 16.dp
+                        val castingTypes = ru.quasaris.characters.master.CastingTimeType.entries
+                        
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy((-9).dp)
+                        ) {
+                            // Top Row: ACTION and BONUS_ACTION
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                                 SegmentedButton(
-                                    selected = state.castingTimeType == type,
-                                    onClick = { state = state.copy(castingTimeType = type) },
-                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = ru.quasaris.characters.master.CastingTimeType.entries.size)
-                                ) {
-                                    Text(type.displayName, maxLines = 1)
-                                }
+                                    selected = state.castingTimeType == castingTypes[0], // ACTION
+                                    onClick = { state = state.copy(castingTimeType = castingTypes[0]) },
+                                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
+                                ) { Text(castingTypes[0].displayName, fontSize = 12.sp) }
+
+                                SegmentedButton(
+                                    selected = state.castingTimeType == castingTypes[1], // BONUS_ACTION
+                                    onClick = { state = state.copy(castingTimeType = castingTypes[1]) },
+                                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp)
+                                ) { Text(castingTypes[1].displayName, fontSize = 12.sp) }
+                            }
+
+                            // Bottom Row: REACTION and OTHER
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                SegmentedButton(
+                                    selected = state.castingTimeType == castingTypes[2], // REACTION
+                                    onClick = { state = state.copy(castingTimeType = castingTypes[2]) },
+                                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius)
+                                ) { Text(castingTypes[2].displayName, fontSize = 12.sp) }
+
+                                SegmentedButton(
+                                    selected = state.castingTimeType == castingTypes[3], // OTHER
+                                    onClick = { state = state.copy(castingTimeType = castingTypes[3]) },
+                                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
+                                ) { Text(castingTypes[3].displayName, fontSize = 12.sp) }
                             }
                         }
                         
@@ -272,7 +301,7 @@ fun SpellCardEditorDialog(
                                                  state.castingTimeType == ru.quasaris.characters.master.CastingTimeType.REACTION || 
                                                  state.castingTimeType == ru.quasaris.characters.master.CastingTimeType.OTHER
                         
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                         
                         OutlinedTextField(
                             value = state.castingTime,
@@ -359,29 +388,91 @@ fun SpellCardEditorDialog(
                             Switch(checked = state.hasDamage, onCheckedChange = { state = state.copy(hasDamage = it) })
                         }
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth().alpha(if (state.hasDamage) 1f else 0.5f),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = state.damageFormula,
-                                onValueChange = { state = state.copy(damageFormula = it) },
-                                label = { Text("Формула") },
-                                modifier = Modifier.weight(1f),
-                                placeholder = { Text("1d8") },
-                                shape = RoundedCornerShape(8.dp),
-                                enabled = state.hasDamage
-                            )
+                        if (state.hasDamage) {
+                            // Base damage row
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = state.damageFormula,
+                                    onValueChange = { state = state.copy(damageFormula = it) },
+                                    label = { Text("Формула") },
+                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("1d8") },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
 
-                            OutlinedTextField(
-                                value = state.damageType,
-                                onValueChange = { state = state.copy(damageType = it) },
-                                label = { Text("Вид Урона") },
-                                modifier = Modifier.weight(1f),
-                                placeholder = { Text("Огненный") },
+                                DamageTypeMultiSelect(
+                                    selectedTypes = state.damageTypes,
+                                    onToggle = { type ->
+                                        val newList = if (state.damageTypes.contains(type)) state.damageTypes - type else state.damageTypes + type
+                                        state = state.copy(damageTypes = newList)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            // Additional damage rows
+                            state.additionalDamageFormulas.forEachIndexed { index, formula ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = formula,
+                                        onValueChange = { newFormula ->
+                                            val newList = state.additionalDamageFormulas.toMutableList()
+                                            newList[index] = newFormula
+                                            state = state.copy(additionalDamageFormulas = newList)
+                                        },
+                                        label = { Text("Доп. Формула") },
+                                        modifier = Modifier.weight(1f),
+                                        placeholder = { Text("1d4") },
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+
+                                    val currentTypes = state.additionalDamageTypesList.getOrNull(index) ?: emptyList()
+                                    DamageTypeMultiSelect(
+                                        selectedTypes = currentTypes,
+                                        onToggle = { type ->
+                                            val newList = state.additionalDamageTypesList.toMutableList()
+                                            while (newList.size <= index) newList.add(emptyList())
+                                            val rowList = newList[index]
+                                            newList[index] = if (rowList.contains(type)) rowList - type else rowList + type
+                                            state = state.copy(additionalDamageTypesList = newList)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    IconButton(onClick = {
+                                        val newFormulas = state.additionalDamageFormulas.toMutableList()
+                                        newFormulas.removeAt(index)
+                                        val newTypes = state.additionalDamageTypesList.toMutableList()
+                                        if (index < newTypes.size) newTypes.removeAt(index)
+                                        state = state.copy(additionalDamageFormulas = newFormulas, additionalDamageTypesList = newTypes)
+                                    }) {
+                                        Icon(Icons.Default.Delete, contentDescription = null, tint = colorScheme.error)
+                                    }
+                                }
+                            }
+
+                            Button(
+                                onClick = {
+                                    state = state.copy(
+                                        additionalDamageFormulas = state.additionalDamageFormulas + "",
+                                        additionalDamageTypesList = state.additionalDamageTypesList + listOf(emptyList<DamageType>())
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp),
-                                enabled = state.hasDamage
-                            )
+                                colors = ButtonDefaults.buttonColors(containerColor = colorScheme.secondaryContainer, contentColor = colorScheme.onSecondaryContainer)
+                            ) {
+                                Icon(Icons.Default.Add, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Добавить урон")
+                            }
                         }
                     }
 
@@ -389,12 +480,9 @@ fun SpellCardEditorDialog(
                     Column {
                         var typeExpanded by remember { mutableStateOf(false) }
                         Box(modifier = Modifier.fillMaxWidth()) {
+                            val selectedTypesText = if (state.attackTypes.isEmpty()) "Нет" else state.attackTypes.joinToString { it.displayName }
                             OutlinedTextField(
-                                value = when(state.attackType) {
-                                    null -> "Нет"
-                                    MagicAttackType.ATTACK -> "Бросок атаки"
-                                    MagicAttackType.SAVE -> "Спасбросок"
-                                },
+                                value = selectedTypesText,
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("Тип проверки") },
@@ -411,13 +499,25 @@ fun SpellCardEditorDialog(
                             )
                             Box(modifier = Modifier.matchParentSize().clickable { typeExpanded = true })
                             DropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
-                                DropdownMenuItem(text = { Text("Нет") }, onClick = { state = state.copy(attackType = null); typeExpanded = false })
-                                DropdownMenuItem(text = { Text("Бросок атаки") }, onClick = { state = state.copy(attackType = MagicAttackType.ATTACK); typeExpanded = false })
-                                DropdownMenuItem(text = { Text("Спасбросок") }, onClick = { state = state.copy(attackType = MagicAttackType.SAVE); typeExpanded = false })
+                                MagicAttackType.entries.forEach { type ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Checkbox(checked = state.attackTypes.contains(type), onCheckedChange = null)
+                                                Spacer(Modifier.width(8.dp))
+                                                Text(type.displayName)
+                                            }
+                                        },
+                                        onClick = {
+                                            val newList = if (state.attackTypes.contains(type)) state.attackTypes - type else state.attackTypes + type
+                                            state = state.copy(attackTypes = newList)
+                                        }
+                                    )
+                                }
                             }
                         }
                         
-                        val isSave = state.attackType == MagicAttackType.SAVE
+                        val isSave = state.attackTypes.contains(MagicAttackType.SAVE)
                         var attrExpanded by remember { mutableStateOf(false) }
                         Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp).alpha(if (isSave) 1f else 0.5f)) {
                             val selectedAttrsText = if (state.savingThrowAttributes.isEmpty()) "Не выбрано" else state.savingThrowAttributes.joinToString { it.fullName }
@@ -553,6 +653,50 @@ fun SpellCardEditorDialog(
         },
         settingsViewModel = settingsViewModel
     )
+}
+
+@Composable
+fun DamageTypeMultiSelect(
+    selectedTypes: List<DamageType>,
+    onToggle: (DamageType) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        val text = if (selectedTypes.isEmpty()) "Вид урона" else selectedTypes.joinToString("/") { it.displayName }
+        OutlinedTextField(
+            value = text,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Вид урона") },
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = false,
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            shape = RoundedCornerShape(8.dp)
+        )
+        Box(modifier = Modifier.matchParentSize().clickable(enabled = enabled) { expanded = true })
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DamageType.entries.forEach { type ->
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = selectedTypes.contains(type), onCheckedChange = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(type.displayName)
+                        }
+                    },
+                    onClick = { onToggle(type) }
+                )
+            }
+        }
+    }
 }
 
 @Composable
