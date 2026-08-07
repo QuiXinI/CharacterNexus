@@ -160,7 +160,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("use_new_speed_interface", true)
         set(value) = prefs.edit { putBoolean("use_new_speed_interface", value) }
 
-    // Dice FAB Settings
+    var useOldAvatarStyle: Boolean
+        get() = prefs.getBoolean("use_old_avatar_style", false)
+        set(value) = prefs.edit { putBoolean("use_old_avatar_style", value) }
+
     var diceFabOffsetX: Float
         get() = prefs.getFloat("dice_fab_offset_x", -40f)
         set(value) = prefs.edit { putFloat("dice_fab_offset_x", value) }

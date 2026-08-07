@@ -350,9 +350,9 @@ fun DiceRollingFab(
     val dragScale by animateFloatAsState(if (isDragging) 1.2f else 1f, label = "DragScale")
 
     val diceTypes = listOf(2, 4, 6, 8, 10, 12, 20, 100)
-
     val colorScheme = MaterialTheme.colorScheme
 
+    // 1. Меню и Блюр (Большое окно 224dp)
     Dialog(
         onDismissRequest = { expanded = false },
         properties = DialogProperties(
@@ -374,15 +374,22 @@ fun DiceRollingFab(
                     w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                     w.setDimAmount(0f)
 
+                    // Пропускаем клики, если меню закрыто
+                    if (!expanded) {
+                        w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                    } else {
+                        w.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                    }
+
                     val params = w.attributes
                     params.gravity = Gravity.BOTTOM or Gravity.END
                     
                     val baseOffsetX = offsetX * density
                     val baseOffsetY = offsetY * density
                     
-                    // Fixed size window to prevent animation jerks
-                    params.width = (192 * density).roundToInt()
-                    params.height = (192 * density).roundToInt()
+                    // Увеличиваем до 224dp, чтобы блюр не обрезался
+                    params.width = (224 * density).roundToInt()
+                    params.height = (224 * density).roundToInt()
                     params.x = baseOffsetX.roundToInt()
                     params.y = baseOffsetY.roundToInt()
                     
@@ -394,7 +401,7 @@ fun DiceRollingFab(
             CompositionLocalProvider(LocalHazeStyle provides DiceRollHazeStyle) {
                 Box(
                     modifier = modifier
-                        .size(192.dp)
+                        .size(224.dp)
                         .then(
                             if (expanded) {
                                 Modifier.clickable(
@@ -408,7 +415,7 @@ fun DiceRollingFab(
                 ) {
                     diceTypes.forEachIndexed { index, sides ->
                         val angle = Math.toRadians(index * 45.0 - 90.0)
-                        val radius = 68.dp
+                        val radius = 80.dp // Чуть больше радиус для 224dp окна
 
                         val offsetXPx = (radius.value * cos(angle)).dp
                         val offsetYPx = (radius.value * sin(angle)).dp
@@ -435,98 +442,137 @@ fun DiceRollingFab(
                             positionKey = positionKey to expanded
                         )
                     }
+                }
+            }
+        }
+    }
 
-                    Surface(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .scale(mainButtonScale * dragScale)
-                            .shadow(if (!isPoolEmpty && !isOled) 10.dp else 3.dp, CircleShape)
-                            .run {
-                                if (forceBlurEnabled && hazeState != null && !isOled) {
-                                    // Use a slightly larger container for haze to avoid cut-off edges
-                                    this.padding(0.dp)
-                                        .hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                                            inputScale = HazeInputScale.Fixed(0.6f)
-                                        }
-                                        .padding(0.dp)
-                                        .clip(CircleShape)
-                                } else this.clip(CircleShape)
+    // 2. Кнопка FAB (Маленькое окно 72dp)
+    Dialog(
+        onDismissRequest = { expanded = false },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        )
+    ) {
+        AppScaleProvider(LocalAppScale.current) {
+            val view = LocalView.current
+            val window = (view.parent as? DialogWindowProvider)?.window
+            val density = view.resources.displayMetrics.density
+
+            SideEffect {
+                window?.let { w ->
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                    w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+                    w.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+                    w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                    w.setDimAmount(0f)
+
+                    val params = w.attributes
+                    params.gravity = Gravity.BOTTOM or Gravity.END
+                    
+                    val baseOffsetX = offsetX * density
+                    val baseOffsetY = offsetY * density
+                    
+                    // Центрируем 72dp окно внутри 224dp области
+                    // (224 - 72) / 2 = 76dp
+                    val offsetAdjustment = 76 * density
+                    
+                    params.width = (72 * density).roundToInt()
+                    params.height = (72 * density).roundToInt()
+                    params.x = (baseOffsetX + offsetAdjustment).roundToInt()
+                    params.y = (baseOffsetY + offsetAdjustment).roundToInt()
+                    
+                    w.attributes = params
+                    w.setBackgroundDrawableResource(android.R.color.transparent)
+                }
+            }
+
+            Surface(
+                modifier = Modifier
+                    .size(72.dp)
+                    .scale(mainButtonScale * dragScale)
+                    .shadow(if (!isPoolEmpty && !isOled) 10.dp else 3.dp, CircleShape)
+                    .run {
+                        if (forceBlurEnabled && hazeState != null && !isOled) {
+                            this.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
+                                inputScale = HazeInputScale.Fixed(0.6f)
                             }
-                            .pointerInput(Unit) { // Removed 'expanded' key to prevent restart during animation
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = {
-                                        if (expanded) {
-                                            pool.clear()
-                                            expanded = false
-                                        }
-                                        isDragging = true
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    },
-                                    onDragEnd = { isDragging = false },
-                                    onDragCancel = { isDragging = false },
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        // Передаем инвертированные сырые пиксели, так как offsetX/Y - это расстояние ОТ правого/нижнего края.
-                                        // При движении вправо (dragAmount.x > 0) расстояние до правого края должно уменьшаться.
-                                        onDrag(-dragAmount.x, -dragAmount.y)
-                                    }
-                                )
-                            }
-                            .clickable {
-                                if (!expanded) {
-                                    expanded = true
-                                } else if (!isPoolEmpty) {
-                                    onRoll(pool.toMap())
+                            .clip(CircleShape)
+                        } else this.clip(CircleShape)
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                if (expanded) {
                                     pool.clear()
                                     expanded = false
-                                } else {
-                                    expanded = false
                                 }
+                                isDragging = true
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             },
-                        shape = CircleShape,
-                        color = when {
-                            isOled -> Color.Black
-                            forceBlurEnabled && hazeState != null -> colorScheme.surface.copy(alpha = alpha)
-                            isPoolEmpty -> colorScheme.surfaceVariant.copy(alpha = alpha)
-                            else -> colorScheme.primary.copy(alpha = alpha)
-                        },
-                        tonalElevation = if (isOled || (forceBlurEnabled && hazeState != null)) 0.dp else 8.dp,
-                        shadowElevation = 0.dp,
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (!isPoolEmpty && !isOled) {
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = colorScheme.primary.copy(alpha = 0.15f),
-                                    shape = CircleShape,
-                                    shadowElevation = 19.dp
-                                ) {}
+                            onDragEnd = { isDragging = false },
+                            onDragCancel = { isDragging = false },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onDrag(-dragAmount.x, -dragAmount.y)
                             }
+                        )
+                    }
+                    .clickable {
+                        if (!expanded) {
+                            expanded = true
+                        } else if (!isPoolEmpty) {
+                            onRoll(pool.toMap())
+                            pool.clear()
+                            expanded = false
+                        } else {
+                            expanded = false
+                        }
+                    },
+                shape = CircleShape,
+                color = when {
+                    isOled -> Color.Black
+                    forceBlurEnabled && hazeState != null -> colorScheme.surface.copy(alpha = alpha)
+                    isPoolEmpty -> colorScheme.surfaceVariant.copy(alpha = alpha)
+                    else -> colorScheme.primary.copy(alpha = alpha)
+                },
+                tonalElevation = if (isOled || (forceBlurEnabled && hazeState != null)) 0.dp else 8.dp,
+                shadowElevation = 0.dp,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    if (!isPoolEmpty && !isOled) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = colorScheme.primary.copy(alpha = 0.15f),
+                            shape = CircleShape,
+                            shadowElevation = 19.dp
+                        ) {}
+                    }
 
-                            AnimatedContent(
-                                targetState = isPoolEmpty,
-                                transitionSpec = {
-                                    fadeIn(tween(300)) togetherWith fadeOut(tween(300))
-                                },
-                                label = "CentralIcon"
-                            ) { empty ->
-                                if (empty) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_d20_dice),
-                                        contentDescription = "Open Dice Menu",
-                                        modifier = Modifier.size(38.dp),
-                                        tint = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else if (isPoolEmpty) colorScheme.primary else colorScheme.onPrimary
-                                    )
-                                } else {
-                                    Text(
-                                        "Бросить",
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 16.sp,
-                                        color = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else colorScheme.onPrimary
-                                    )
-                                }
-                            }
+                    AnimatedContent(
+                        targetState = isPoolEmpty,
+                        transitionSpec = {
+                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                        },
+                        label = "CentralIcon"
+                    ) { empty ->
+                        if (empty) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_d20_dice),
+                                contentDescription = "Open Dice Menu",
+                                modifier = Modifier.size(38.dp),
+                                tint = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else if (isPoolEmpty) colorScheme.primary else colorScheme.onPrimary
+                            )
+                        } else {
+                            Text(
+                                "Бросить",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp,
+                                color = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else colorScheme.onPrimary
+                            )
                         }
                     }
                 }

@@ -105,6 +105,9 @@ class SettingsViewModel(
     private val _useNewSpeedInterface = MutableStateFlow(settingsManager?.useNewSpeedInterface ?: true)
     val useNewSpeedInterface = _useNewSpeedInterface.asStateFlow()
 
+    private val _useOldAvatarStyle = MutableStateFlow(settingsManager?.useOldAvatarStyle ?: false)
+    val useOldAvatarStyle = _useOldAvatarStyle.asStateFlow()
+
     private val _diceFabOffsetX = MutableStateFlow(settingsManager?.diceFabOffsetX ?: -40f)
     val diceFabOffsetX = _diceFabOffsetX.asStateFlow()
 
@@ -270,6 +273,11 @@ class SettingsViewModel(
         settingsManager?.useNewSpeedInterface = enabled
     }
 
+    fun updateUseOldAvatarStyle(enabled: Boolean) {
+        _useOldAvatarStyle.value = enabled
+        settingsManager?.useOldAvatarStyle = enabled
+    }
+
     fun updateDiceFabPosition(x: Float, y: Float) {
         _diceFabOffsetX.value = x
         _diceFabOffsetY.value = y
@@ -345,6 +353,7 @@ class SettingsViewModel(
         _useNewInitInterface.value = settingsManager?.useNewInitInterface ?: true
         _useNewCondInterface.value = settingsManager?.useNewCondInterface ?: true
         _useNewSpeedInterface.value = settingsManager?.useNewSpeedInterface ?: true
+        _useOldAvatarStyle.value = settingsManager?.useOldAvatarStyle ?: false
         
         _diceFabOffsetX.value = settingsManager?.diceFabOffsetX ?: -40f
         _diceFabOffsetY.value = settingsManager?.diceFabOffsetY ?: -40f
