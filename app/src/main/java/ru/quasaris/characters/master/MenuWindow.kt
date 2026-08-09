@@ -72,6 +72,7 @@ fun MenuWindow(
     modifier: Modifier = Modifier,
     settingsViewModel: SettingsViewModel? = null,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false
 ) {
@@ -289,7 +290,7 @@ fun MenuWindow(
         if (bitmapToCrop != null && lssCharacter != null) {
             AvatarCropperWindow(
                 imageToCrop = bitmapToCrop!!,
-                hazeState = hazeState,
+                hazeState = popupHazeState ?: hazeState,
                 forceBlurEnabled = blurPopups,
                 onCropSuccess = { cropped ->
                     scope.launch {

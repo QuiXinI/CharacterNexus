@@ -28,6 +28,7 @@ fun ModulesWindow(
     glossaryImporter: GlossaryImporter,
     onOpenDrawer: () -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
 ) {

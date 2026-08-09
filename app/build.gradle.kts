@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+kotlin {
+    jvmToolchain(24)
+}
+
 android {
     namespace = "ru.quasaris.characters.master"
     compileSdk = 36
@@ -29,11 +33,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_24
+        targetCompatibility = JavaVersion.VERSION_24
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "24"
     }
     buildFeatures {
         compose = true
@@ -53,6 +57,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.reorderable)
     implementation("androidx.navigation:navigation-compose:2.9.6")
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("io.coil-kt:coil-compose:2.7.0")

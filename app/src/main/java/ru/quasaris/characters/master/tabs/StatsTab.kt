@@ -84,6 +84,7 @@ fun StatsTab(
     onStatsStateChange: (StatsState) -> Unit,
     onRoll: (RollResult) -> Unit = {},
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isAdvancedMode: Boolean = false,

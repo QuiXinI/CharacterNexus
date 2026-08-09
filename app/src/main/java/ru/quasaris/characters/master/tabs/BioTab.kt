@@ -42,6 +42,7 @@ fun BioTab(
     onCharacterChange: (Character) -> Unit,
     onAvatarEditRequest: () -> Unit = {},
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
@@ -94,6 +95,7 @@ fun BioTab(
             saveChanges()
         },
         hazeState = hazeState,
+        popupHazeState = popupHazeState,
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,

@@ -389,6 +389,8 @@ fun BlurSettingsSection(
     val blurRolls by settingsViewModel.blurRolls.collectAsState()
     val blurFullscreen by settingsViewModel.blurFullscreen.collectAsState()
     val blurPopups by settingsViewModel.blurPopups.collectAsState()
+    val blurCards by settingsViewModel.blurCards.collectAsState()
+    val blurDynamicFields by settingsViewModel.blurDynamicFields.collectAsState()
     val rollAlpha by settingsViewModel.rollInterfaceAlpha.collectAsState()
     val diceFabAlpha by settingsViewModel.diceFabAlpha.collectAsState()
     val diceFabBlur by settingsViewModel.diceFabBlurEnabled.collectAsState()
@@ -460,6 +462,18 @@ fun BlurSettingsSection(
                     label = "Всплывающие окна",
                     checked = blurPopups,
                     onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurPopups(it) } }
+                )
+
+                BlurSwitchRow(
+                    label = "Карточки",
+                    checked = blurCards,
+                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurCards(it) } }
+                )
+
+                BlurSwitchRow(
+                    label = "Большие поля",
+                    checked = blurDynamicFields,
+                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurDynamicFields(it) } }
                 )
             }
         }
@@ -558,6 +572,9 @@ fun DiceRollSettingsSection(
     val colorScheme = MaterialTheme.colorScheme
     val rollPassThrough by settingsViewModel.rollPassThrough.collectAsState()
     val rollPosition by settingsViewModel.rollPosition.collectAsState()
+    val diceFabEnabled by settingsViewModel.diceFabEnabled.collectAsState()
+    val renderDiceInOrder by settingsViewModel.renderDiceInOrder.collectAsState()
+    val collapseActionsOnEdit by settingsViewModel.collapseActionsOnEdit.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -569,6 +586,75 @@ fun DiceRollSettingsSection(
             color = colorScheme.primary,
             fontWeight = FontWeight.Bold
         )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Сворачивать атаки при редактировании",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Автоматически сворачивает карточки заклинаний и атак в режиме сортировки",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = collapseActionsOnEdit,
+                onCheckedChange = { settingsViewModel.updateCollapseActionsOnEdit(it) }
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Кнопка броска (FAB)",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Позволяет быстро бросать кубы из любого места",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = diceFabEnabled,
+                onCheckedChange = { settingsViewModel.updateDiceFabEnabled(it) }
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Отображать кубы по порядку",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Рендерит кубы в порядке их написания в формуле, а не по размеру",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = renderDiceInOrder,
+                onCheckedChange = { settingsViewModel.updateRenderDiceInOrder(it) }
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

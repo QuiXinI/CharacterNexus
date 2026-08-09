@@ -26,6 +26,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -47,6 +48,7 @@ import ru.quasaris.characters.master.backend.SettingsViewModel
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
@@ -55,6 +57,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import sh.calvin.reorderable.*
 import kotlinx.coroutines.launch
 
 @Composable
@@ -104,6 +107,7 @@ fun DynamicFieldsTab(
     fields: List<DynamicNoteState>,
     onFieldsChange: (List<DynamicNoteState>) -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
@@ -125,6 +129,7 @@ fun DynamicFieldsTab(
 ) {
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     
     val items = remember { mutableStateListOf<DynamicNoteState>().apply { addAll(fields) } }
 
@@ -140,20 +145,41 @@ fun DynamicFieldsTab(
             }
         }
     }
-    var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
-    var draggingOffset by remember { mutableStateOf(0f) }
+
+    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+        // Adjust for header index (header is at 0, items start at 1)
+        val fromIdx = from.index - 1
+        val toIdx = to.index - 1
+        if (fromIdx in items.indices && toIdx in items.indices) {
+            items.add(toIdx, items.removeAt(fromIdx))
+            onFieldsChange(items.toList())
+        }
+    }
     
     var fullscreenFieldIndex by remember { mutableStateOf<Int?>(null) }
     var fieldToDeleteIndex by remember { mutableStateOf<Int?>(null) }
     
     val fullscreenEditingOnly by settingsViewModel?.fullscreenEditingOnly?.collectAsState() ?: remember { mutableStateOf(false) }
+    val collapseActionsOnEdit by settingsViewModel?.collapseActionsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
+    val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
+
+    LaunchedEffect(isEditMode) {
+        if (isEditMode && collapseActionsOnEdit) {
+            val collapsedList = items.map { it.copy(isExpanded = false) }
+            if (collapsedList != items.toList()) {
+                items.clear()
+                items.addAll(collapsedList)
+                onFieldsChange(collapsedList)
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
     ) {
-        if (items.isEmpty() && isScrollEnabled) { // Show empty text only if it's the main scrolling content
+        if (items.isEmpty() && isScrollEnabled) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(emptyListText, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
@@ -173,77 +199,39 @@ fun DynamicFieldsTab(
             }
 
             itemsIndexed(items, key = { _, field -> field.id }) { index, field ->
-                val isDragging = draggedItemIndex == index
-                
-                val dragModifier = if (isEditMode && isReorderButtonVisible) {
-                    Modifier.pointerInput(index) {
-                        detectDragGestures(
-                            onDragStart = { 
-                                draggedItemIndex = index
-                                draggingOffset = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                draggingOffset += dragAmount.y
-                                
-                                val layoutInfo = listState.layoutInfo
-                                val draggedItemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
-                                
-                                if (draggedItemInfo != null) {
-                                    val currentCenter = draggedItemInfo.offset + (draggedItemInfo.size / 2) + draggingOffset.toInt()
-                                    val targetItem = layoutInfo.visibleItemsInfo.find { item ->
-                                        item.index != index && currentCenter in item.offset..(item.offset + item.size)
-                                    }
+                ReorderableItem(reorderableState, key = field.id) { isDragging ->
+                    val dragModifier = if (isEditMode && isReorderButtonVisible) {
+                        Modifier.draggableHandle()
+                    } else Modifier
 
-                                    if (targetItem != null) {
-                                        val targetIndex = targetItem.index
-                                        if (targetIndex in items.indices) {
-                                            items.add(targetIndex, items.removeAt(index))
-                                            draggingOffset += (draggedItemInfo.offset - targetItem.offset)
-                                            draggedItemIndex = targetIndex
-                                            onFieldsChange(items.toList())
-                                        }
-                                    }
-                                }
-                            },
-                            onDragEnd = {
-                                draggedItemIndex = null
-                                draggingOffset = 0f
-                            },
-                            onDragCancel = {
-                                draggedItemIndex = null
-                                draggingOffset = 0f
-                            }
-                        )
-                    }
-                } else Modifier
-
-                DynamicFieldItem(
-                    field = field,
-                    isEditMode = isEditMode,
-                    isDragging = isDragging,
-                    titlePlaceholder = titlePlaceholder,
-                    contentPlaceholder = contentPlaceholder,
-                    onFieldChange = { updatedField ->
-                        items[index] = updatedField
-                        onFieldsChange(items.toList())
-                    },
-                    onDelete = { fieldToDeleteIndex = index },
-                    onFullscreenRequest = { fullscreenFieldIndex = index },
-                    dragModifier = dragModifier,
-                    modifier = Modifier.animateItem(),
-                    extraContent = extraContent,
-                    isCollapsible = isCollapsible,
-                    isTitleReadOnly = isTitleReadOnly,
-                    isReorderButtonVisible = isReorderButtonVisible,
-                    isContentVisible = isContentVisible,
-                    isLockedGlobal = fullscreenEditingOnly,
-                    hazeState = hazeState,
-                    forceBlurEnabled = forceBlurEnabled,
-                    blurPopups = blurPopups,
-                    settingsViewModel = settingsViewModel,
-                    statsMap = statsMap
-                )
+                    DynamicFieldItem(
+                        field = field,
+                        isEditMode = isEditMode,
+                        isDragging = isDragging,
+                        titlePlaceholder = titlePlaceholder,
+                        contentPlaceholder = contentPlaceholder,
+                        onFieldChange = { updatedField ->
+                            items[index] = updatedField
+                            onFieldsChange(items.toList())
+                        },
+                        onDelete = { fieldToDeleteIndex = index },
+                        onFullscreenRequest = { fullscreenFieldIndex = index },
+                        dragModifier = dragModifier,
+                        modifier = Modifier.animateItem(),
+                        extraContent = extraContent,
+                        isCollapsible = isCollapsible,
+                        isTitleReadOnly = isTitleReadOnly,
+                        isReorderButtonVisible = isReorderButtonVisible,
+                        isContentVisible = isContentVisible,
+                        isLockedGlobal = fullscreenEditingOnly,
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        settingsViewModel = settingsViewModel,
+                        statsMap = statsMap
+                    )
+                }
             }
 
             item {
@@ -310,6 +298,8 @@ fun DynamicFieldsTab(
                 onDismiss = { fullscreenFieldIndex = null },
                 hazeState = hazeState,
                 forceBlurEnabled = forceBlurEnabled,
+                blurDynamicFields = blurDynamicFields,
+                blurPopups = blurPopups,
                 settingsViewModel = settingsViewModel,
                 statsMap = statsMap
             )
@@ -335,18 +325,27 @@ fun DynamicFieldItem(
     isContentVisible: Boolean = true,
     isLockedGlobal: Boolean = false,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
+    val internalHazeState = remember { HazeState() }
+    val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
+
     val isExpanded = if (isCollapsible) field.isExpanded else true
     val rotation by animateFloatAsState(targetValue = if (isExpanded) 0f else 180f)
-    val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
+    val scale by animateFloatAsState(targetValue = when {
+        isDragging -> 1.05f
+        isEditMode -> 0.95f
+        else -> 1f
+    })
     val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
     
     val focusManager = LocalFocusManager.current
+    val colorScheme = MaterialTheme.colorScheme
     val focusRequester = remember { FocusRequester() }
     val canEdit = !isEditMode && !isLockedGlobal && !field.isLocked
 
@@ -413,16 +412,26 @@ fun DynamicFieldItem(
         )
     }
 
+    val useHaze = hazeState != null && blurDynamicFields
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .padding(padding),
+            .padding(padding)
+            .run {
+                if (useHaze) {
+                    val targetState = if (isDragging) (popupHazeState ?: hazeState!!) else hazeState!!
+                    this.clip(RoundedCornerShape(12.dp))
+                        .hazeEffect(state = targetState, style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f)))))
+                } else this
+            },
         shape = RoundedCornerShape(12.dp),
-        color = if (isExpanded || isEditMode) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isEditMode) 0.6f else 0.3f) 
+        color = if (useHaze) Color.Transparent
+                else if (isExpanded || isEditMode) colorScheme.surfaceVariant.copy(alpha = if (isEditMode) 0.6f else 0.3f) 
                 else Color.Transparent,
         shadowElevation = if (isDragging) 8.dp else (if (isExpanded || isEditMode) 1.dp else 0.dp),
-        border = if (isExpanded || isEditMode) BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+        border = if (isExpanded || isEditMode) BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.2f))
                  else null
     ) {
         Row(
@@ -548,7 +557,7 @@ fun DynamicFieldItem(
                                     isSelectionActive = toolbarState.third,
                                     onLinkRequest = { showLinkDialog = true },
                                     onSave = { focusManager.clearFocus() },
-                                    hazeState = hazeState
+                                    hazeState = internalHazeState
                                 )
 
                                 key(field.id) {
@@ -564,6 +573,7 @@ fun DynamicFieldItem(
                                         enabled = canEdit,
                                         modifier = Modifier
                                             .fillMaxWidth()
+                                            .hazeSource(state = internalHazeState)
                                             .bringIntoViewRequester(bringIntoViewRequester)
                                             .focusRequester(focusRequester)
                                             .onFocusChanged { isFocused = it.isFocused },
@@ -680,6 +690,7 @@ fun DynamicFieldItem(
                                                                         },
                                                                         hazeState = hazeState,
                                                                         forceBlurEnabled = forceBlurEnabled,
+                                                                        blurDynamicFields = blurDynamicFields,
                                                                         blurPopups = blurPopups,
                                                                         settingsViewModel = settingsViewModel,
                                                                         onDeleteRequest = {
@@ -777,6 +788,7 @@ fun DynamicFieldFullscreenDialog(
     onDismiss: () -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurDynamicFields: Boolean = true,
     blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap()
@@ -896,15 +908,15 @@ fun DynamicFieldFullscreenDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (blurDynamicFields && !isOled) Color.Transparent else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+            containerColor = if (blurDynamicFields && !isOled) Color.Transparent else colorScheme.background,
             modifier = Modifier
                 .imePadding()
                 .run {
-                if (forceBlurEnabled && hazeState != null && !isOled) {
+                if (blurDynamicFields && hazeState != null && !isOled) {
                     hazeEffect(state = hazeState) {
                         style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
                         inputScale = HazeInputScale.Fixed(0.7f)
@@ -995,6 +1007,7 @@ fun DynamicFieldFullscreenDialog(
                                                     },
                                                     hazeState = hazeState,
                                                     forceBlurEnabled = blurPopups,
+                                                    blurDynamicFields = blurDynamicFields,
                                                     settingsViewModel = settingsViewModel,
                                                     onDeleteRequest = {
                                                         val newBlocks = blocks.toMutableList()

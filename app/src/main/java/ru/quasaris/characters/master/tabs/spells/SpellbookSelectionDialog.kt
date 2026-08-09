@@ -49,6 +49,7 @@ fun SpellbookSelectionDialog(
     onSave: (List<String>, List<String>) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurCards: Boolean = true,
     statsMap: Map<String, String> = emptyMap(),
     spellAttackBonus: Int = 0,
     spellAttackDice: List<DicePart> = emptyList(),
@@ -255,7 +256,8 @@ fun SpellbookSelectionDialog(
                                     onRollDamage = onRollDamage,
                                     onRollAttack = onRollAttack,
                                     hazeState = hazeState,
-                                    forceBlurEnabled = forceBlurEnabled
+                                    forceBlurEnabled = forceBlurEnabled,
+                                    blurCards = blurCards
                                 )
                             }
                         }

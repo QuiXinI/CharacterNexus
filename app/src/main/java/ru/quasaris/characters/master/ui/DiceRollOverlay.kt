@@ -1,5 +1,6 @@
 package ru.quasaris.characters.master.ui
 
+import ru.quasaris.characters.master.backend.RollPart
 import android.os.Build
 import android.view.Gravity
 import android.view.WindowManager
@@ -27,6 +28,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -181,13 +183,7 @@ fun DiceRollOverlay(
                         .run {
                             if (forceBlurEnabled && hazeState != null && !isOled) {
                                 this.clip(RoundedCornerShape(24.dp))
-                                    .then(
-                                        remember(hazeState) {
-                                            Modifier.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                                                inputScale = HazeInputScale.Fixed(0.6f)
-                                            }
-                                        }
-                                    )
+                                    .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
                             } else this
                         },
                     shape = RoundedCornerShape(24.dp),
@@ -272,13 +268,7 @@ fun DiceRollOverlay(
                         .run {
                             if (forceBlurEnabled && hazeState != null && !isOled) {
                                 this.clip(RoundedCornerShape(12.dp))
-                                    .then(
-                                        remember(hazeState) {
-                                            Modifier.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                                                inputScale = HazeInputScale.Fixed(0.6f)
-                                            }
-                                        }
-                                    )
+                                    .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
                             } else this
                         }
                         .clip(RoundedCornerShape(12.dp))
@@ -352,7 +342,7 @@ fun DiceRollingFab(
     val diceTypes = listOf(2, 4, 6, 8, 10, 12, 20, 100)
     val colorScheme = MaterialTheme.colorScheme
 
-    // 1. Меню и Блюр (Большое окно 224dp)
+    // 1. Меню и Блюр (Большое окно 280dp)
     Dialog(
         onDismissRequest = { expanded = false },
         properties = DialogProperties(
@@ -366,6 +356,10 @@ fun DiceRollingFab(
             val window = (view.parent as? DialogWindowProvider)?.window
             val density = view.resources.displayMetrics.density
 
+            val windowSize = (280 * density).roundToInt()
+            val baseSize = (224 * density).roundToInt()
+            val shift = (windowSize - baseSize) / 2
+
             SideEffect {
                 window?.let { w ->
                     w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
@@ -374,7 +368,6 @@ fun DiceRollingFab(
                     w.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                     w.setDimAmount(0f)
 
-                    // Пропускаем клики, если меню закрыто
                     if (!expanded) {
                         w.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                     } else {
@@ -384,14 +377,10 @@ fun DiceRollingFab(
                     val params = w.attributes
                     params.gravity = Gravity.BOTTOM or Gravity.END
                     
-                    val baseOffsetX = offsetX * density
-                    val baseOffsetY = offsetY * density
-                    
-                    // Увеличиваем до 224dp, чтобы блюр не обрезался
-                    params.width = (224 * density).roundToInt()
-                    params.height = (224 * density).roundToInt()
-                    params.x = baseOffsetX.roundToInt()
-                    params.y = baseOffsetY.roundToInt()
+                    params.width = windowSize
+                    params.height = windowSize
+                    params.x = (offsetX * density).roundToInt() - shift
+                    params.y = (offsetY * density).roundToInt() - shift
                     
                     w.attributes = params
                     w.setBackgroundDrawableResource(android.R.color.transparent)
@@ -400,54 +389,59 @@ fun DiceRollingFab(
 
             CompositionLocalProvider(LocalHazeStyle provides DiceRollHazeStyle) {
                 Box(
-                    modifier = modifier
-                        .size(224.dp)
-                        .then(
-                            if (expanded) {
-                                Modifier.clickable(
-                                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { expanded = false }
-                                )
-                            } else Modifier
-                        ),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    diceTypes.forEachIndexed { index, sides ->
-                        val angle = Math.toRadians(index * 45.0 - 90.0)
-                        val radius = 80.dp // Чуть больше радиус для 224dp окна
+                    Box(
+                        modifier = modifier
+                            .size(224.dp)
+                            .then(
+                                if (expanded) {
+                                    Modifier.clickable(
+                                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { expanded = false }
+                                    )
+                                } else Modifier
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        diceTypes.forEachIndexed { index, sides ->
+                            val angle = Math.toRadians(index * 45.0 - 90.0)
+                            val radius = 80.dp 
 
-                        val offsetXPx = (radius.value * cos(angle)).dp
-                        val offsetYPx = (radius.value * sin(angle)).dp
+                            val offsetXPx = (radius.value * cos(angle)).dp
+                            val offsetYPx = (radius.value * sin(angle)).dp
 
-                        DiceMenuItem(
-                            sides = sides,
-                            count = pool[sides] ?: 0,
-                            onClick = {
-                                pool[sides] = (pool[sides] ?: 0) + 1
-                            },
-                            onLongClick = {
-                                if ((pool[sides] ?: 0) > 0) {
-                                    pool[sides] = (pool[sides] ?: 0) - 1
-                                }
-                            },
-                            modifier = Modifier
-                                .offset(x = offsetXPx * menuScale, y = offsetYPx * menuScale)
-                                .scale(menuScale)
-                                .alpha(menuScale),
-                            isOled = isOled,
-                            alpha = alpha,
-                            hazeState = hazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            positionKey = positionKey to expanded
-                        )
+                            DiceMenuItem(
+                                sides = sides,
+                                count = pool[sides] ?: 0,
+                                onClick = {
+                                    pool[sides] = (pool[sides] ?: 0) + 1
+                                },
+                                onLongClick = {
+                                    if ((pool[sides] ?: 0) > 0) {
+                                        pool[sides] = (pool[sides] ?: 0) - 1
+                                    }
+                                },
+                                modifier = Modifier
+                                    .offset(x = offsetXPx * menuScale, y = offsetYPx * menuScale)
+                                    .scale(menuScale)
+                                    .alpha(menuScale),
+                                isOled = isOled,
+                                alpha = alpha,
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                positionKey = positionKey to expanded
+                            )
+                        }
                     }
                 }
             }
         }
     }
 
-    // 2. Кнопка FAB (Маленькое окно 72dp)
+    // 2. Кнопка FAB (Окно 280dp, совпадает с меню для идеального наложения)
     Dialog(
         onDismissRequest = { expanded = false },
         properties = DialogProperties(
@@ -461,6 +455,10 @@ fun DiceRollingFab(
             val window = (view.parent as? DialogWindowProvider)?.window
             val density = view.resources.displayMetrics.density
 
+            val windowSize = (280 * density).roundToInt()
+            val baseSize = (224 * density).roundToInt()
+            val shift = (windowSize - baseSize) / 2
+
             SideEffect {
                 window?.let { w ->
                     w.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
@@ -472,107 +470,110 @@ fun DiceRollingFab(
                     val params = w.attributes
                     params.gravity = Gravity.BOTTOM or Gravity.END
                     
-                    val baseOffsetX = offsetX * density
-                    val baseOffsetY = offsetY * density
-                    
-                    // Центрируем 72dp окно внутри 224dp области
-                    // (224 - 72) / 2 = 76dp
-                    val offsetAdjustment = 76 * density
-                    
-                    params.width = (72 * density).roundToInt()
-                    params.height = (72 * density).roundToInt()
-                    params.x = (baseOffsetX + offsetAdjustment).roundToInt()
-                    params.y = (baseOffsetY + offsetAdjustment).roundToInt()
+                    params.width = windowSize
+                    params.height = windowSize
+                    params.x = (offsetX * density).roundToInt() - shift
+                    params.y = (offsetY * density).roundToInt() - shift
                     
                     w.attributes = params
                     w.setBackgroundDrawableResource(android.R.color.transparent)
                 }
             }
 
-            Surface(
-                modifier = Modifier
-                    .size(72.dp)
-                    .scale(mainButtonScale * dragScale)
-                    .shadow(if (!isPoolEmpty && !isOled) 10.dp else 3.dp, CircleShape)
-                    .run {
-                        if (forceBlurEnabled && hazeState != null && !isOled) {
-                            this.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                                inputScale = HazeInputScale.Fixed(0.6f)
-                            }
-                            .clip(CircleShape)
-                        } else this.clip(CircleShape)
-                    }
-                    .pointerInput(Unit) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = {
-                                if (expanded) {
-                                    pool.clear()
-                                    expanded = false
-                                }
-                                isDragging = true
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            },
-                            onDragEnd = { isDragging = false },
-                            onDragCancel = { isDragging = false },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onDrag(-dragAmount.x, -dragAmount.y)
-                            }
-                        )
-                    }
-                    .clickable {
-                        if (!expanded) {
-                            expanded = true
-                        } else if (!isPoolEmpty) {
-                            onRoll(pool.toMap())
-                            pool.clear()
-                            expanded = false
-                        } else {
-                            expanded = false
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Surface(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .graphicsLayer {
+                            val s = mainButtonScale * dragScale
+                            scaleX = s
+                            scaleY = s
                         }
-                    },
-                shape = CircleShape,
-                color = when {
-                    isOled -> Color.Black
-                    forceBlurEnabled && hazeState != null -> colorScheme.surface.copy(alpha = alpha)
-                    isPoolEmpty -> colorScheme.surfaceVariant.copy(alpha = alpha)
-                    else -> colorScheme.primary.copy(alpha = alpha)
-                },
-                tonalElevation = if (isOled || (forceBlurEnabled && hazeState != null)) 0.dp else 8.dp,
-                shadowElevation = 0.dp,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (!isPoolEmpty && !isOled) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = colorScheme.primary.copy(alpha = 0.15f),
-                            shape = CircleShape,
-                            shadowElevation = 19.dp
-                        ) {}
-                    }
-
-                    AnimatedContent(
-                        targetState = isPoolEmpty,
-                        transitionSpec = {
-                            fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                        .shadow(if (!isPoolEmpty && !isOled) 10.dp else 3.dp, CircleShape)
+                        .clip(CircleShape)
+                        .pointerInput(Unit) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = {
+                                    if (expanded) {
+                                        pool.clear()
+                                        expanded = false
+                                    }
+                                    isDragging = true
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                },
+                                onDragEnd = { isDragging = false },
+                                onDragCancel = { isDragging = false },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDrag(-dragAmount.x, -dragAmount.y)
+                                }
+                            )
+                        }
+                        .clickable {
+                            if (!expanded) {
+                                expanded = true
+                            } else if (!isPoolEmpty) {
+                                onRoll(pool.toMap())
+                                pool.clear()
+                                expanded = false
+                            } else {
+                                expanded = false
+                            }
                         },
-                        label = "CentralIcon"
-                    ) { empty ->
-                        if (empty) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_d20_dice),
-                                contentDescription = "Open Dice Menu",
-                                modifier = Modifier.size(38.dp),
-                                tint = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else if (isPoolEmpty) colorScheme.primary else colorScheme.onPrimary
+                    shape = CircleShape,
+                    color = when {
+                        isOled -> Color.Black
+                        forceBlurEnabled && hazeState != null -> Color.Transparent 
+                        isPoolEmpty -> colorScheme.surfaceVariant.copy(alpha = alpha)
+                        else -> colorScheme.primary.copy(alpha = alpha)
+                    },
+                    tonalElevation = if (isOled || (forceBlurEnabled && hazeState != null)) 0.dp else 8.dp,
+                    shadowElevation = 0.dp,
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        // Слой блюра с огромным запасом (overscan). 
+                        if (forceBlurEnabled && hazeState != null && !isOled) {
+                            Box(
+                                modifier = Modifier
+                                    .wrapContentSize(unbounded = true)
+                                    .size(160.dp) 
+                                    .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
+                                    .background(colorScheme.surface.copy(alpha = alpha))
                             )
-                        } else {
-                            Text(
-                                "Бросить",
-                                fontWeight = FontWeight.Black,
-                                fontSize = 16.sp,
-                                color = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else colorScheme.onPrimary
-                            )
+                        }
+
+                        if (!isPoolEmpty && !isOled) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                color = colorScheme.primary.copy(alpha = 0.15f),
+                                shape = CircleShape,
+                                shadowElevation = 19.dp
+                            ) {}
+                        }
+
+                        AnimatedContent(
+                            targetState = isPoolEmpty,
+                            transitionSpec = {
+                                fadeIn(tween(300)) togetherWith fadeOut(tween(300))
+                            },
+                            label = "CentralIcon"
+                        ) { empty ->
+                            if (empty) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_d20_dice),
+                                    contentDescription = "Open Dice Menu",
+                                    modifier = Modifier.size(38.dp),
+                                    tint = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else if (isPoolEmpty) colorScheme.primary else colorScheme.onPrimary
+                                )
+                            } else {
+                                Text(
+                                    "Бросить",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 16.sp,
+                                    color = if (alpha < 0.3f && forceBlurEnabled) colorScheme.primary else colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
                 }
@@ -607,18 +608,11 @@ fun DiceMenuItem(
             modifier = Modifier
                 .fillMaxSize()
                 .shadow(if (count > 0) 6.dp else 2.dp, CircleShape)
-                .run {
-                    if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                            inputScale = HazeInputScale.Fixed(0.6f)
-                        }
-                        .clip(CircleShape)
-                    } else this.clip(CircleShape)
-                },
+                .clip(CircleShape),
             shape = CircleShape,
             color = when {
                 isOled -> Color.Black
-                forceBlurEnabled && hazeState != null -> colorScheme.surface.copy(alpha = alpha)
+                forceBlurEnabled && hazeState != null -> Color.Transparent
                 else -> colorScheme.surfaceVariant.copy(alpha = alpha)
             },
             tonalElevation = if (isOled || (forceBlurEnabled && hazeState != null)) 0.dp else 4.dp,
@@ -634,6 +628,17 @@ fun DiceMenuItem(
                     ),
                 contentAlignment = Alignment.Center
             ) {
+                // Слой блюра с запасом. Используем wrapContentSize(unbounded = true)
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    Box(
+                        modifier = Modifier
+                            .wrapContentSize(unbounded = true)
+                            .size(80.dp) // Больше 48dp, с запасом для стабильности
+                            .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
+                            .background(colorScheme.surface.copy(alpha = alpha))
+                    )
+                }
+
                 when (sides) {
                     100 -> {
                         Box(modifier = Modifier.size(26.dp)) {
@@ -730,6 +735,7 @@ fun RollItem(result: RollResult, isCompact: Boolean, isOled: Boolean) {
             val resultColor = when {
                 result.isCriticalFailure -> Color(0xFFEF5350)
                 result.isCriticalSuccess -> if (isOled) Color(0xFF00E1FF) else colorScheme.primary
+                result.isHealing -> Color(0xFF00C46F)
                 else -> colorScheme.onSurface
             }
 
@@ -740,6 +746,10 @@ fun RollItem(result: RollResult, isCompact: Boolean, isOled: Boolean) {
             } else if (result.isCriticalFailure) {
                 Brush.linearGradient(
                     colors = listOf(Color(0xFFFF5252), Color(0xFFFFB74D))
+                )
+            } else if (result.isHealing) {
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF00C46F), Color(0xFF69F0AE))
                 )
             } else null
 
@@ -794,12 +804,13 @@ fun RollItem(result: RollResult, isCompact: Boolean, isOled: Boolean) {
     }
 }
 
+// ... existing code ...
+
 fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme, isOled: Boolean, useSecond: Boolean = false): AnnotatedString {
     return buildAnnotatedString {
         var first = true
 
-        val diceList = if (useSecond) result.alternativeDice ?: emptyList() else result.bonusDice
-        val flatList = if (useSecond) result.alternativeFlatBonuses ?: emptyList() else result.flatBonuses
+        val ordered = if (useSecond) result.altOrderedParts else result.orderedParts
         val d20Value = if (useSecond) result.alternativeD20 else result.mainD20
 
         d20Value?.let { value ->
@@ -810,40 +821,85 @@ fun buildStyledBreakdown(result: RollResult, colorScheme: ColorScheme, isOled: B
             first = false
         }
 
-        diceList.forEach { dice ->
-            val diceVal = dice.value
-            val sign = if (diceVal >= 0) " + " else " - "
-            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
-                if (!first) append(sign)
-                else if (diceVal < 0) append("-")
-            }
+        if (ordered != null && ordered.isNotEmpty()) {
+            ordered.forEach { part ->
+                when (part) {
+                    is RollPart.Dice -> {
+                        val diceVal = part.roll.value
+                        val sign = if (diceVal >= 0) " + " else " - "
+                        withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
+                            if (!first) append(sign)
+                            else if (diceVal < 0) append("-")
+                        }
 
-            withStyle(SpanStyle(color = getDiceColor(kotlin.math.abs(diceVal), dice.sides).copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Bold)) {
-                append(kotlin.math.abs(diceVal).toString())
-            }
+                        withStyle(SpanStyle(color = getDiceColor(kotlin.math.abs(diceVal), part.roll.sides).copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Bold)) {
+                            append(kotlin.math.abs(diceVal).toString())
+                        }
 
-            dice.discardedValue?.let { disc ->
-                withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.4f), fontWeight = FontWeight.Normal, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) {
-                    append(" (")
-                    append(kotlin.math.abs(disc).toString())
-                    append(")")
+                        part.roll.discardedValue?.let { disc ->
+                            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.4f), fontWeight = FontWeight.Normal, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) {
+                                append(" (")
+                                append(kotlin.math.abs(disc).toString())
+                                append(")")
+                            }
+                        }
+                    }
+                    is RollPart.Flat -> {
+                        val bonusVal = part.value
+                        if (bonusVal == 0) return@forEach
+                        val sign = if (bonusVal >= 0) " + " else " - "
+                        withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
+                            if (!first) append(sign)
+                            else if (bonusVal < 0) append("-")
+                        }
+
+                        withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Normal)) {
+                            append(kotlin.math.abs(bonusVal).toString())
+                        }
+                    }
                 }
+                first = false
             }
-            first = false
-        }
+        } else {
+            // Fallback to legacy lists if orderedParts is not available
+            val diceList = if (useSecond) result.alternativeDice ?: emptyList() else result.bonusDice
+            val flatList = if (useSecond) result.alternativeFlatBonuses ?: emptyList() else result.flatBonuses
 
-        flatList.forEach { bonusVal ->
-            if (bonusVal == 0) return@forEach
-            val sign = if (bonusVal >= 0) " + " else " - "
-            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
-                if (!first) append(sign)
-                else if (bonusVal < 0) append("-")
+            diceList.forEach { dice ->
+                val diceVal = dice.value
+                val sign = if (diceVal >= 0) " + " else " - "
+                withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
+                    if (!first) append(sign)
+                    else if (diceVal < 0) append("-")
+                }
+
+                withStyle(SpanStyle(color = getDiceColor(kotlin.math.abs(diceVal), dice.sides).copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Bold)) {
+                    append(kotlin.math.abs(diceVal).toString())
+                }
+
+                dice.discardedValue?.let { disc ->
+                    withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = 0.4f), fontWeight = FontWeight.Normal, textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)) {
+                        append(" (")
+                        append(kotlin.math.abs(disc).toString())
+                        append(")")
+                    }
+                }
+                first = false
             }
 
-            withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Normal)) {
-                append(kotlin.math.abs(bonusVal).toString())
+            flatList.forEach { bonusVal ->
+                if (bonusVal == 0) return@forEach
+                val sign = if (bonusVal >= 0) " + " else " - "
+                withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.4f else 0.7f), fontWeight = FontWeight.Light)) {
+                    if (!first) append(sign)
+                    else if (bonusVal < 0) append("-")
+                }
+
+                withStyle(SpanStyle(color = colorScheme.onSurface.copy(alpha = if (useSecond) 0.6f else 1.0f), fontWeight = FontWeight.Normal)) {
+                    append(kotlin.math.abs(bonusVal).toString())
+                }
+                first = false
             }
-            first = false
         }
 
         if (length == 0) {
@@ -920,13 +976,7 @@ fun DiceRollAdvantagePopup(
                     .run {
                         if (hazeState != null && !isOled) {
                             this.clip(RoundedCornerShape(12.dp))
-                                .then(
-                                    remember(hazeState) {
-                                        Modifier.hazeEffect(state = hazeState, style = DiceRollHazeStyle) {
-                                            inputScale = HazeInputScale.Fixed(0.6f)
-                                        }
-                                    }
-                                )
+                                .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
                         } else this
                     },
                 shape = RoundedCornerShape(12.dp),

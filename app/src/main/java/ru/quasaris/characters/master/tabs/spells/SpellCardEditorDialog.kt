@@ -100,7 +100,6 @@ fun SpellCardEditorDialog(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Name and English Name
                     OutlinedTextField(
                         value = state.name,
                         onValueChange = { state = state.copy(name = it) },
@@ -401,6 +400,20 @@ fun SpellCardEditorDialog(
                         shape = RoundedCornerShape(8.dp)
                     )
 
+                    if (state.level == "0") {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SpellCardSectionTitle("НАСТРОЙКИ ЗАГОВОРА")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Нет урона на 1 уровне", modifier = Modifier.weight(1f))
+                                Switch(checked = state.noDamageAtLevel1, onCheckedChange = { state = state.copy(noDamageAtLevel1 = it) })
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Урон не увеличивается с уровнем", modifier = Modifier.weight(1f))
+                                Switch(checked = state.noScaling, onCheckedChange = { state = state.copy(noScaling = it) })
+                            }
+                        }
+                    }
+
                     // Damage
                     Column {
                         SpellCardSectionTitle("УРОН")
@@ -431,6 +444,17 @@ fun SpellCardEditorDialog(
                                         state = state.copy(damageTypes = newList)
                                     },
                                     modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            if (state.level != "0" && state.level.isNotBlank() && state.level.toIntOrNull() != null) {
+                                OutlinedTextField(
+                                    value = state.upcastDamageFormula,
+                                    onValueChange = { state = state.copy(upcastDamageFormula = it) },
+                                    label = { Text("Урон за уровень ячейки") },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                    placeholder = { Text("1d8") },
+                                    shape = RoundedCornerShape(8.dp)
                                 )
                             }
 

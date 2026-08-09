@@ -65,6 +65,7 @@ fun ResourceBlock(
     hazeState: HazeState? = null,
     onDeleteRequest: () -> Unit,
     forceBlurEnabled: Boolean = false,
+    blurDynamicFields: Boolean = true,
     blurPopups: Boolean = false,
     settingsViewModel: ru.quasaris.characters.master.backend.SettingsViewModel? = null
 ) {
@@ -81,13 +82,20 @@ fun ResourceBlock(
 
     val canIncrement = curValue < maxValue || resource.max == "0"
     val canDecrement = curValue > 0
+    
+    val useHaze = hazeState != null && blurDynamicFields
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .background(if (useHaze) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .run {
+                if (useHaze) {
+                    this.hazeEffect(state = hazeState, style = HazeStyle(blurRadius = 15.dp, tints = listOf(HazeTint(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)))))
+                } else this
+            }
             .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -252,6 +260,7 @@ fun ResourceBlock(
             },
             hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
+            blurDynamicFields = blurDynamicFields,
             settingsViewModel = settingsViewModel
         )
     }
@@ -359,6 +368,7 @@ fun ResourceConfigDialog(
     onDelete: (DynamicContentBlock.Resource) -> Unit,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
+    blurDynamicFields: Boolean = true,
     settingsViewModel: ru.quasaris.characters.master.backend.SettingsViewModel? = null
 ) {
     var state by remember { mutableStateOf(resource) }
@@ -401,13 +411,13 @@ fun ResourceConfigDialog(
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                            containerColor = if (blurDynamicFields && !isOled) Color.Transparent else colorScheme.surface
                         )
                     )
                 },
-                containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+                containerColor = if (blurDynamicFields && !isOled) Color.Transparent else colorScheme.background,
                 modifier = Modifier.run {
-                    if (forceBlurEnabled && hazeState != null && !isOled) {
+                    if (blurDynamicFields && hazeState != null && !isOled) {
                         hazeEffect(state = hazeState) {
                             style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
                             inputScale = HazeInputScale.Fixed(0.7f)

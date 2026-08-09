@@ -94,6 +94,7 @@ enum class DamageType(val displayName: String) {
     COLD("Холодный"),
     LIGHTNING("Электрический"),
     POISON("Ядовитый"),
+    HEALING("Лечение"),
     OTHER("Другой");
 
     companion object {
@@ -274,7 +275,10 @@ data class SpellCard(
     @SerializedName("durationUnit") val durationUnit: DurationUnit = DurationUnit.INSTANT,
     @SerializedName("description") val description: String = "",
     @SerializedName("hasDamage") val hasDamage: Boolean = false,
+    @SerializedName("noDamageAtLevel1") val noDamageAtLevel1: Boolean = false,
+    @SerializedName("noScaling") val noScaling: Boolean = false,
     @SerializedName("damageFormula") val damageFormula: String = "",
+    @SerializedName("upcastDamageFormula") val upcastDamageFormula: String = "",
     @SerializedName("damageType") val damageType: String = "",
     @SerializedName("damageTypes") val damageTypes: List<DamageType> = emptyList(),
     @SerializedName("additionalDamageFormulas") val additionalDamageFormulas: List<String> = emptyList(),
@@ -376,6 +380,26 @@ data class SpellFilterState(
     val attackOrSave: MagicAttackType? = null
 )
 
+data class SpecialSlotSettings(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val level: Float = 1f,
+    val count: Int = 0,
+    val restoreOnShortRest: Boolean = false,
+    val restoreOnDawn: Boolean = false
+)
+
+data class SpellLevelDivider(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String = "",
+    val ability: Attribute = Attribute.NONE
+)
+
+data class SpellLevelItem(
+    val spellId: String? = null,
+    val divider: SpellLevelDivider? = null
+)
+
 data class SpellSettings(
     val isMagicEnabled: Boolean = true,
     val spellAttackBonus: String = "",
@@ -399,18 +423,10 @@ data class SpellSettings(
     val usedSlotsDawn: Map<Float, Int> = emptyMap(),
     val selectedSpellIds: List<String> = emptyList(),
     val preparedSpellIds: List<String> = emptyList(),
-    val isSpellbookEnabled: Boolean = false
+    val isSpellbookEnabled: Boolean = false,
+    val levelContent: Map<String, List<SpellLevelItem>> = emptyMap(),
+    val spellAbilityOverrides: Map<String, Attribute> = emptyMap()
 )
-
-data class SpecialSlotSettings(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String = "",
-    val level: Float = 1f,
-    val count: Int = 0,
-    val restoreOnShortRest: Boolean = false,
-    val restoreOnDawn: Boolean = false
-)
-
 
 data class Wallet(
     val platinum: Double = 0.0,
@@ -452,10 +468,10 @@ data class HPLevelEntry(
 
 data class Character(
 
-    val id: Int,
-    val name: String,
-    val characterClass: String,
-    val order: String,
+    val id: Int = 0,
+    val name: String = "",
+    val characterClass: String = "",
+    val order: String = "",
     val imageData: String? = null,
     val avatarUrl: String? = null,
     val level: String = "1",

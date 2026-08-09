@@ -9,7 +9,8 @@ import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.IBonus
 import ru.quasaris.characters.master.BonusOperation
 import ru.quasaris.characters.master.AdvantagePreference
-import ru.quasaris.characters.master.backend.parseFormulaParts
+import ru.quasaris.characters.master.backend.parseFormulaOrdered
+import ru.quasaris.characters.master.backend.FormulaPart
 import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.backend.getProficiencyBonus
 import java.util.UUID
@@ -20,6 +21,11 @@ data class DieRoll(
     val sides: Int,
     val discardedValue: Int? = null
 )
+
+sealed class RollPart {
+    data class Dice(val roll: DieRoll) : RollPart()
+    data class Flat(val value: Int) : RollPart()
+}
 
 enum class AdvantageType {
     NONE,
@@ -50,6 +56,7 @@ data class RollResult(
     val isCriticalSuccess: Boolean = false,
     val isCriticalFailure: Boolean = false,
     val isDamage: Boolean = false,
+    val isHealing: Boolean = false,
     val mainD20: Int? = null,
     val alternativeD20: Int? = null,
     val bonusDice: List<DieRoll> = emptyList(),
@@ -58,7 +65,9 @@ data class RollResult(
     val alternativeFlatBonuses: List<Int>? = null,
     val sourceType: RollSourceType = RollSourceType.OTHER,
     val advantageType: AdvantageType = AdvantageType.NONE,
-    val unusedTotal: Int? = null
+    val unusedTotal: Int? = null,
+    val orderedParts: List<RollPart> = emptyList(),
+    val altOrderedParts: List<RollPart>? = null
 )
 
 data class SimpleBonus(
@@ -77,6 +86,7 @@ object DiceRoller {
         baseModifier: Int,
         bonuses: List<IBonus> = emptyList(),
         isDamage: Boolean = false,
+        isHealing: Boolean = false,
         stats: Map<String, String> = emptyMap(),
         exhaustion: Int = 0,
         sourceType: RollSourceType = RollSourceType.OTHER,
@@ -95,10 +105,10 @@ object DiceRoller {
         val activeBonuses = bonuses.filter { it.isActive }
 
         return when (advantageLogic) {
-            AdvantageLogic.TOTAL -> rollTotal(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, stats)
-            AdvantageLogic.INDIVIDUAL -> rollIndividual(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
-            AdvantageLogic.SOURCE -> rollSource(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
-            AdvantageLogic.POOL -> rollPool(title, baseModifier, activeBonuses, isDamage, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
+            AdvantageLogic.TOTAL -> rollTotal(title, baseModifier, activeBonuses, isDamage, isHealing, exhaustion, sourceType, advantageType, stats)
+            AdvantageLogic.INDIVIDUAL -> rollIndividual(title, baseModifier, activeBonuses, isDamage, isHealing, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
+            AdvantageLogic.SOURCE -> rollSource(title, baseModifier, activeBonuses, isDamage, isHealing, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
+            AdvantageLogic.POOL -> rollPool(title, baseModifier, activeBonuses, isDamage, isHealing, exhaustion, sourceType, advantageType, attrModifiers, pb, stats)
         }
     }
 
@@ -130,7 +140,7 @@ object DiceRoller {
     }
 
     private fun rollTotal(
-        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean, isHealing: Boolean,
         exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
         stats: Map<String, String>
     ): RollResult {
@@ -143,89 +153,119 @@ object DiceRoller {
         data class ComponentRoll(
             val sum1: Int, val dice1: List<DieRoll>, val sum2: Int, val dice2: List<DieRoll>,
             val d20Main: Int? = null, val d20Alt: Int? = null, val isOverride: Boolean = false,
-            val flat1: Int = 0, val flat2: Int = 0
+            val ordered1: List<RollPart> = emptyList(), val ordered2: List<RollPart> = emptyList()
         )
 
         val components = mutableListOf<ComponentRoll>()
 
-        if (!isDamage) {
+        if (!isDamage && !isHealing) {
             val r1 = Random.nextInt(1, 21)
             val r2 = if (advantageType != AdvantageType.NONE) Random.nextInt(1, 21) else r1
             val baseModSum = baseModifier + (if (exhaustion > 0) -2 * exhaustion else 0)
-            components.add(ComponentRoll(r1 + baseModSum, emptyList(), r2 + baseModSum, emptyList(), r1, r2, flat1 = baseModSum, flat2 = baseModSum))
-        } else {
-            components.add(ComponentRoll(baseModifier, emptyList(), baseModifier, emptyList(), flat1 = baseModifier, flat2 = baseModifier))
-        }
-
-        bonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
-            val bonusAdv = resolveAdvantage(advantageType, bonus.advantagePreference)
-            
-            var bSum1 = fFlat; var bSum2 = fFlat
-            val bDice1 = mutableListOf<DieRoll>(); val bDice2 = mutableListOf<DieRoll>()
-
-            fDice.forEach { ds ->
-                val count = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(ds.count) * 2 else kotlin.math.abs(ds.count)
-                repeat(count) {
-                    val sign = if (ds.count > 0) 1 else -1
-                    val r1 = Random.nextInt(1, ds.sides + 1)
-                    val r2 = if (bonusAdv == AdvantageType.ADVANTAGE || bonusAdv == AdvantageType.DISADVANTAGE) Random.nextInt(1, ds.sides + 1) else r1
-                    
-                    val val1 = r1 * sign
-                    val val2 = r2 * sign
-                    
-                    bSum1 += val1; bSum2 += val2
-                    
-                    val disp1 = if (bonus.operation == BonusOperation.SUBTRACT) -val1 else val1
-                    val disp2 = if (bonus.operation == BonusOperation.SUBTRACT) -val2 else val2
-                    
-                    bDice1.add(DieRoll(disp1, ds.sides))
-                    bDice2.add(DieRoll(disp2, ds.sides))
-                }
-            }
             components.add(ComponentRoll(
-                bSum1, bDice1, bSum2, bDice2, 
-                isOverride = bonus.operation == BonusOperation.OVERRIDE,
-                flat1 = if (bonus.operation == BonusOperation.SUBTRACT) -fFlat else fFlat,
-                flat2 = if (bonus.operation == BonusOperation.SUBTRACT) -fFlat else fFlat
+                sum1 = r1 + baseModSum, dice1 = emptyList(), 
+                sum2 = r2 + baseModSum, dice2 = emptyList(), 
+                d20Main = r1, d20Alt = r2, 
+                ordered1 = listOf(RollPart.Flat(baseModSum)), 
+                ordered2 = listOf(RollPart.Flat(baseModSum))
+            ))
+        } else {
+            components.add(ComponentRoll(
+                sum1 = baseModifier, dice1 = emptyList(), 
+                sum2 = baseModifier, dice2 = emptyList(), 
+                ordered1 = listOf(RollPart.Flat(baseModifier)), 
+                ordered2 = listOf(RollPart.Flat(baseModifier))
             ))
         }
 
-        fun assemble(variant: Int): Triple<Int, List<DieRoll>, Pair<List<Int>, Int?>> {
+        bonuses.forEach { bonus ->
+            val fParts = parseFormulaOrdered(bonus.formula, stats)
+            val bonusAdv = resolveAdvantage(advantageType, bonus.advantagePreference)
+            
+            var bSum1 = 0; var bSum2 = 0
+            val bDice1 = mutableListOf<DieRoll>(); val bDice2 = mutableListOf<DieRoll>()
+            val bOrdered1 = mutableListOf<RollPart>(); val bOrdered2 = mutableListOf<RollPart>()
+
+            fParts.forEach { part ->
+                when (part) {
+                    is FormulaPart.Dice -> {
+                        val count = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(part.count) * 2 else kotlin.math.abs(part.count)
+                        repeat(count) {
+                            val sign = if (part.count > 0) 1 else -1
+                            val r1 = Random.nextInt(1, part.sides + 1)
+                            val r2 = if (bonusAdv == AdvantageType.ADVANTAGE || bonusAdv == AdvantageType.DISADVANTAGE) Random.nextInt(1, part.sides + 1) else r1
+                            
+                            val val1 = r1 * sign
+                            val val2 = r2 * sign
+                            
+                            bSum1 += val1; bSum2 += val2
+                            
+                            val disp1 = if (bonus.operation == BonusOperation.SUBTRACT) -val1 else val1
+                            val disp2 = if (bonus.operation == BonusOperation.SUBTRACT) -val2 else val2
+                            
+                            val dr1 = DieRoll(disp1, part.sides)
+                            val dr2 = DieRoll(disp2, part.sides)
+                            bDice1.add(dr1)
+                            bDice2.add(dr2)
+                            bOrdered1.add(RollPart.Dice(dr1))
+                            bOrdered2.add(RollPart.Dice(dr2))
+                        }
+                    }
+                    is FormulaPart.Flat -> {
+                        val val1 = if (bonus.operation == BonusOperation.SUBTRACT) -part.value else part.value
+                        bSum1 += val1; bSum2 += val1
+                        bOrdered1.add(RollPart.Flat(val1))
+                        bOrdered2.add(RollPart.Flat(val1))
+                    }
+                }
+            }
+            components.add(ComponentRoll(
+                sum1 = bSum1, dice1 = bDice1, 
+                sum2 = bSum2, dice2 = bDice2, 
+                isOverride = bonus.operation == BonusOperation.OVERRIDE,
+                ordered1 = bOrdered1,
+                ordered2 = bOrdered2
+            ))
+        }
+
+        fun assemble(variant: Int): Quadruple<Int, List<DieRoll>, Pair<List<Int>, Int?>, List<RollPart>> {
             var sum = 0
             val allDice = mutableListOf<DieRoll>()
             val flats = mutableListOf<Int>()
             var d20Res: Int? = null
+            val allOrdered = mutableListOf<RollPart>()
 
             components.forEach { comp ->
                 val cSum = if (variant == 1) comp.sum1 else comp.sum2
                 val cDice = if (variant == 1) comp.dice1 else comp.dice2
                 val cd20 = if (variant == 1) comp.d20Main else comp.d20Alt
-                val cFlat = if (variant == 1) comp.flat1 else comp.flat2
+                val cOrdered = if (variant == 1) comp.ordered1 else comp.ordered2
 
                 if (comp.isOverride) {
                     sum = cSum
-                    allDice.clear(); flats.clear(); d20Res = null
+                    allDice.clear(); flats.clear(); d20Res = null; allOrdered.clear()
                 } else {
                     sum += cSum
                 }
                 allDice.addAll(cDice)
-                if (cFlat != 0) flats.add(cFlat)
+                cOrdered.forEach { if (it is RollPart.Flat && it.value != 0) flats.add(it.value) }
                 if (cd20 != null) d20Res = cd20
+                allOrdered.addAll(cOrdered)
             }
             
-            return Triple(sum, allDice, flats to d20Res)
+            return Quadruple(sum, allDice, flats to d20Res, allOrdered)
         }
 
         val res1 = assemble(1)
         if (!rollHasAdvantage) {
             return RollResult(
                 title = title, total = res1.first, breakdown = "",
-                isCriticalSuccess = !isDamage && res1.third.second == 20,
-                isCriticalFailure = !isDamage && res1.third.second == 1,
-                isDamage = isDamage, mainD20 = res1.third.second,
+                isCriticalSuccess = !isDamage && !isHealing && res1.third.second == 20,
+                isCriticalFailure = !isDamage && !isHealing && res1.third.second == 1,
+                isDamage = isDamage, isHealing = isHealing, mainD20 = res1.third.second,
                 bonusDice = res1.second, flatBonuses = res1.third.first,
-                sourceType = sourceType, advantageType = advantageType
+                sourceType = sourceType, advantageType = advantageType,
+                orderedParts = res1.fourth
             )
         }
 
@@ -239,17 +279,20 @@ object DiceRoller {
         val (main, alt) = if (useFirst) res1 to res2 else res2 to res1
         return RollResult(
             title = title, total = main.first, breakdown = "",
-            isCriticalSuccess = !isDamage && main.third.second == 20,
-            isCriticalFailure = !isDamage && main.third.second == 1,
-            isDamage = isDamage, mainD20 = main.third.second, alternativeD20 = alt.third.second,
+            isCriticalSuccess = !isDamage && !isHealing && main.third.second == 20,
+            isCriticalFailure = !isDamage && !isHealing && main.third.second == 1,
+            isDamage = isDamage, isHealing = isHealing, mainD20 = main.third.second, alternativeD20 = alt.third.second,
             bonusDice = main.second, flatBonuses = main.third.first,
             alternativeDice = alt.second, alternativeFlatBonuses = alt.third.first,
-            sourceType = sourceType, advantageType = advantageType, unusedTotal = alt.first
+            sourceType = sourceType, advantageType = advantageType, unusedTotal = alt.first,
+            orderedParts = main.fourth, altOrderedParts = alt.fourth
         )
     }
 
+    data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
     private fun rollIndividual(
-        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean, isHealing: Boolean,
         exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
         attrModifiers: Map<Attribute, Int>, pb: Int, stats: Map<String, String>
     ): RollResult {
@@ -257,13 +300,15 @@ object DiceRoller {
         val altBonusDiceValues = mutableListOf<DieRoll>()
         val flatBonusValues = mutableListOf<Int>()
         val altFlatBonusValues = mutableListOf<Int>()
+        val orderedParts = mutableListOf<RollPart>()
+        val altOrderedParts = mutableListOf<RollPart>()
         
         var total = 0
         var total2 = 0
         var mainD20: Int? = null
         var altD20: Int? = null
 
-        if (!isDamage) {
+        if (!isDamage && !isHealing) {
             val d20_1 = Random.nextInt(1, 21)
             val d20_2 = Random.nextInt(1, 21)
             val (chosen, discarded) = when (advantageType) {
@@ -273,75 +318,94 @@ object DiceRoller {
             }
             total = chosen; total2 = discarded
             mainD20 = chosen; altD20 = if (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE) discarded else null
-            if (baseModifier != 0) { total += baseModifier; total2 += baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier) }
-            if (exhaustion > 0) { val penalty = -2 * exhaustion; total += penalty; total2 += penalty; flatBonusValues.add(penalty); altFlatBonusValues.add(penalty) }
+            
+            val baseModSum = baseModifier + (if (exhaustion > 0) -2 * exhaustion else 0)
+            if (baseModSum != 0) {
+                total += baseModSum; total2 += baseModSum
+                flatBonusValues.add(baseModSum); altFlatBonusValues.add(baseModSum)
+                orderedParts.add(RollPart.Flat(baseModSum)); altOrderedParts.add(RollPart.Flat(baseModSum))
+            }
         } else {
-            total = baseModifier; total2 = baseModifier; flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier)
+            total = baseModifier; total2 = baseModifier
+            if (baseModifier != 0) {
+                flatBonusValues.add(baseModifier); altFlatBonusValues.add(baseModifier)
+                orderedParts.add(RollPart.Flat(baseModifier)); altOrderedParts.add(RollPart.Flat(baseModifier))
+            }
         }
         
         bonuses.forEach { bonus ->
-            val (fFlat, fDice) = parseFormulaParts(bonus.formula, stats)
+            val fParts = parseFormulaOrdered(bonus.formula, stats)
             val adv = resolveAdvantage(advantageType, bonus.advantagePreference)
             var bonusSum1 = 0
             var bonusSum2 = 0
             
             val currentDice1 = mutableListOf<DieRoll>()
             val currentDice2 = mutableListOf<DieRoll>()
+            val currentOrdered1 = mutableListOf<RollPart>()
+            val currentOrdered2 = mutableListOf<RollPart>()
             
-            fDice.forEach { diceSpec ->
-                val rollCount = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(diceSpec.count) * 2 else kotlin.math.abs(diceSpec.count)
-                repeat(rollCount) {
-                    val sign = if (diceSpec.count > 0) 1 else -1
-                    val r1 = Random.nextInt(1, diceSpec.sides + 1)
-                    val r2 = Random.nextInt(1, diceSpec.sides + 1)
-                    val (chosen, discarded) = when (adv) {
-                        AdvantageType.ADVANTAGE -> if (r1 >= r2) r1 to r2 else r2 to r1
-                        AdvantageType.DISADVANTAGE -> if (r1 <= r2) r1 to r2 else r2 to r1
-                        else -> r1 to r1
+            fParts.forEach { part ->
+                when (part) {
+                    is FormulaPart.Dice -> {
+                        val rollCount = if (isDamage && advantageType == AdvantageType.CRITICAL) kotlin.math.abs(part.count) * 2 else kotlin.math.abs(part.count)
+                        repeat(rollCount) {
+                            val sign = if (part.count > 0) 1 else -1
+                            val r1 = Random.nextInt(1, part.sides + 1)
+                            val r2 = Random.nextInt(1, part.sides + 1)
+                            val (chosen, discarded) = when (adv) {
+                                AdvantageType.ADVANTAGE -> if (r1 >= r2) r1 to r2 else r2 to r1
+                                AdvantageType.DISADVANTAGE -> if (r1 <= r2) r1 to r2 else r2 to r1
+                                else -> r1 to r1
+                            }
+                            val val1 = chosen * sign
+                            val val2 = discarded * sign
+                            bonusSum1 += val1
+                            bonusSum2 += val2
+                            
+                            val dispVal1 = if (bonus.operation == BonusOperation.SUBTRACT) -val1 else val1
+                            val dispVal2 = if (bonus.operation == BonusOperation.SUBTRACT) -val2 else val2
+                            
+                            val isComp = adv == AdvantageType.ADVANTAGE || adv == AdvantageType.DISADVANTAGE
+                            val dr1 = DieRoll(dispVal1, part.sides, discardedValue = if (isComp) dispVal2 else null)
+                            val dr2 = DieRoll(dispVal2, part.sides)
+                            currentDice1.add(dr1)
+                            currentDice2.add(dr2)
+                            currentOrdered1.add(RollPart.Dice(dr1))
+                            currentOrdered2.add(RollPart.Dice(dr2))
+                        }
                     }
-                    val val1 = chosen * sign
-                    val val2 = discarded * sign
-                    bonusSum1 += val1
-                    bonusSum2 += val2
-                    
-                    val dispVal1 = if (bonus.operation == BonusOperation.SUBTRACT) -val1 else val1
-                    val dispVal2 = if (bonus.operation == BonusOperation.SUBTRACT) -val2 else val2
-                    
-                    val isComp = adv == AdvantageType.ADVANTAGE || adv == AdvantageType.DISADVANTAGE
-                    currentDice1.add(DieRoll(dispVal1, diceSpec.sides, discardedValue = if (isComp) dispVal2 else null))
-                    if (isComp || (advantageType == AdvantageType.ADVANTAGE || advantageType == AdvantageType.DISADVANTAGE)) {
-                         currentDice2.add(DieRoll(dispVal2, diceSpec.sides))
+                    is FormulaPart.Flat -> {
+                        val val1 = if (bonus.operation == BonusOperation.SUBTRACT) -part.value else part.value
+                        bonusSum1 += val1; bonusSum2 += val1
+                        currentOrdered1.add(RollPart.Flat(val1))
+                        currentOrdered2.add(RollPart.Flat(val1))
                     }
                 }
             }
             
             when (bonus.operation) {
-                BonusOperation.ADD -> {
-                    total += (bonusSum1 + fFlat)
-                    total2 += (bonusSum2 + fFlat)
+                BonusOperation.ADD, BonusOperation.SUBTRACT -> {
+                    total += bonusSum1
+                    total2 += bonusSum2
                     bonusDiceValues.addAll(currentDice1)
                     altBonusDiceValues.addAll(currentDice2)
-                    if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
-                }
-                BonusOperation.SUBTRACT -> {
-                    total -= (bonusSum1 + fFlat)
-                    total2 -= (bonusSum2 + fFlat)
-                    bonusDiceValues.addAll(currentDice1)
-                    altBonusDiceValues.addAll(currentDice2)
-                    if (fFlat != 0) { flatBonusValues.add(-fFlat); altFlatBonusValues.add(-fFlat) }
+                    orderedParts.addAll(currentOrdered1)
+                    altOrderedParts.addAll(currentOrdered2)
+                    currentOrdered1.filterIsInstance<RollPart.Flat>().forEach { flatBonusValues.add(it.value) }
+                    currentOrdered2.filterIsInstance<RollPart.Flat>().forEach { altFlatBonusValues.add(it.value) }
                 }
                 BonusOperation.OVERRIDE -> {
-                    total = bonusSum1 + fFlat
-                    total2 = bonusSum2 + fFlat
-                    bonusDiceValues.clear()
-                    altBonusDiceValues.clear()
-                    flatBonusValues.clear()
-                    altFlatBonusValues.clear()
-                    mainD20 = null
-                    altD20 = null
+                    total = bonusSum1; total2 = bonusSum2
+                    bonusDiceValues.clear(); altBonusDiceValues.clear()
+                    flatBonusValues.clear(); altFlatBonusValues.clear()
+                    orderedParts.clear(); altOrderedParts.clear()
+                    mainD20 = null; altD20 = null
                     bonusDiceValues.addAll(currentDice1)
                     altBonusDiceValues.addAll(currentDice2)
-                    if (fFlat != 0) { flatBonusValues.add(fFlat); altFlatBonusValues.add(fFlat) }
+                    orderedParts.addAll(currentOrdered1)
+                    altOrderedParts.addAll(currentOrdered2)
+                    currentOrdered1.filterIsInstance<RollPart.Flat>().forEach { flatBonusValues.add(it.value) }
+                    currentOrdered2.filterIsInstance<RollPart.Flat>().forEach { altFlatBonusValues.add(it.value) }
                 }
             }
         }
@@ -354,17 +418,19 @@ object DiceRoller {
 
         return RollResult(
             title = title, total = total, breakdown = "",
-            isCriticalSuccess = !isDamage && mainD20 == 20, isCriticalFailure = !isDamage && mainD20 == 1,
-            isDamage = isDamage, mainD20 = mainD20, alternativeD20 = altD20,
+            isCriticalSuccess = !isDamage && !isHealing && mainD20 == 20, 
+            isCriticalFailure = !isDamage && !isHealing && mainD20 == 1,
+            isDamage = isDamage, isHealing = isHealing, mainD20 = mainD20, alternativeD20 = altD20,
             bonusDice = bonusDiceValues, flatBonuses = flatBonusValues,
             alternativeDice = if (hasAlt) altBonusDiceValues else null, 
             alternativeFlatBonuses = if (hasAlt) altFlatBonusValues else null,
-            sourceType = sourceType, advantageType = advantageType, unusedTotal = if (hasAlt) total2 else null
+            sourceType = sourceType, advantageType = advantageType, unusedTotal = if (hasAlt) total2 else null,
+            orderedParts = orderedParts, altOrderedParts = if (hasAlt) altOrderedParts else null
         )
     }
 
     private fun rollSource(
-        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean, isHealing: Boolean,
         exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
         attrModifiers: Map<Attribute, Int>, pb: Int, stats: Map<String, String>
     ): RollResult {
@@ -489,7 +555,7 @@ object DiceRoller {
         return RollResult(
             title = title, total = total, breakdown = "",
             isCriticalSuccess = !isDamage && mainD20 == 20, isCriticalFailure = !isDamage && mainD20 == 1,
-            isDamage = isDamage, mainD20 = mainD20, alternativeD20 = altD20,
+            isDamage = isDamage, isHealing = isHealing, mainD20 = mainD20, alternativeD20 = altD20,
             bonusDice = bonusDiceValues, flatBonuses = flatBonusValues,
             alternativeDice = if (hasAlt) altBonusDiceValues else null,
             alternativeFlatBonuses = if (hasAlt) altFlatBonusValues else null,
@@ -498,7 +564,7 @@ object DiceRoller {
     }
 
     private fun rollPool(
-        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean,
+        title: String, baseModifier: Int, bonuses: List<IBonus>, isDamage: Boolean, isHealing: Boolean,
         exhaustion: Int, sourceType: RollSourceType, advantageType: AdvantageType,
         attrModifiers: Map<Attribute, Int>, pb: Int, stats: Map<String, String>
     ): RollResult {
@@ -601,7 +667,7 @@ object DiceRoller {
         return RollResult(
             title = title, total = total, breakdown = "",
             isCriticalSuccess = !isDamage && mainD20 == 20, isCriticalFailure = !isDamage && mainD20 == 1,
-            isDamage = isDamage, mainD20 = mainD20, alternativeD20 = altD20,
+            isDamage = isDamage, isHealing = isHealing, mainD20 = mainD20, alternativeD20 = altD20,
             bonusDice = bonusDiceValues, flatBonuses = flatBonusValues,
             alternativeDice = if (hasAlt) altBonusDiceValues else null, 
             alternativeFlatBonuses = if (hasAlt) altFlatBonusValues else null,

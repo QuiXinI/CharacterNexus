@@ -39,6 +39,7 @@ fun SpellbookWindow(
     glossaryImporter: ru.quasaris.characters.master.backend.GlossaryImporter,
     onOpenDrawer: () -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     settingsViewModel: ru.quasaris.characters.master.backend.SettingsViewModel? = null,
 ) {

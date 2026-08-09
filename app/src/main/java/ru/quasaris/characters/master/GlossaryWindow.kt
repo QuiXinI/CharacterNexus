@@ -53,6 +53,7 @@ fun GlossaryWindow(
     onOpenDrawer: () -> Unit,
     onNavigateToSpells: () -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
 ) {

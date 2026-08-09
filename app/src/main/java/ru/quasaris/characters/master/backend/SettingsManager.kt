@@ -59,12 +59,20 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit { putBoolean("blur_rolls", value) }
 
     var blurFullscreen: Boolean
-        get() = prefs.getBoolean("blur_fullscreen", false)
+        get() = prefs.getBoolean("blur_fullscreen", true)
         set(value) = prefs.edit { putBoolean("blur_fullscreen", value) }
 
     var blurPopups: Boolean
         get() = prefs.getBoolean("blur_popups", true)
         set(value) = prefs.edit { putBoolean("blur_popups", value) }
+
+    var blurCards: Boolean
+        get() = prefs.getBoolean("blur_cards", true)
+        set(value) = prefs.edit { putBoolean("blur_cards", value) }
+
+    var blurDynamicFields: Boolean
+        get() = prefs.getBoolean("blur_dynamic_fields", true)
+        set(value) = prefs.edit { putBoolean("blur_dynamic_fields", value) }
 
     var rollPassThrough: Boolean
         get() = prefs.getBoolean("roll_pass_through", true)
@@ -189,12 +197,24 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit { putFloat("dice_fab_offset_y", value) }
 
     var diceFabAlpha: Float
-        get() = prefs.getFloat("dice_fab_alpha", 0.0f)
+        get() = prefs.getFloat("dice_fab_alpha", 1.0f)
         set(value) = prefs.edit { putFloat("dice_fab_alpha", value) }
 
     var diceFabBlurEnabled: Boolean
         get() = prefs.getBoolean("dice_fab_blur_enabled", true)
         set(value) = prefs.edit { putBoolean("dice_fab_blur_enabled", value) }
+
+    var diceFabEnabled: Boolean
+        get() = prefs.getBoolean("dice_fab_enabled", true)
+        set(value) = prefs.edit { putBoolean("dice_fab_enabled", value) }
+
+    var renderDiceInOrder: Boolean
+        get() = prefs.getBoolean("render_dice_in_order", true)
+        set(value) = prefs.edit { putBoolean("render_dice_in_order", value) }
+
+    var collapseActionsOnEdit: Boolean
+        get() = prefs.getBoolean("collapse_actions_on_edit", true)
+        set(value) = prefs.edit { putBoolean("collapse_actions_on_edit", value) }
 
     fun resetToDefaults() {
         prefs.edit { clear() }

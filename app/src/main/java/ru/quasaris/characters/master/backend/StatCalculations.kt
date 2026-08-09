@@ -118,18 +118,61 @@ fun calculateLevelFromExperience(expStr: String): Int {
 }
 
 /**
+ * Представление части формулы.
+ */
+sealed class FormulaPart {
+    data class Dice(val count: Int, val sides: Int) : FormulaPart()
+    data class Flat(val value: Int) : FormulaPart()
+}
+
+/**
  * Разбор формулы на плоский бонус и список кубов.
  */
 fun parseFormulaParts(
     formula: String,
     stats: Map<String, String> = emptyMap()
 ): Pair<Int, List<DicePart>> {
-    val processed = preprocessFormula(formula, stats)
-    
+    val ordered = parseFormulaOrdered(formula, stats)
+    var flat = 0
     val dice = mutableListOf<DicePart>()
+    
+    ordered.forEach { part ->
+        when (part) {
+            is FormulaPart.Dice -> dice.add(DicePart(part.count, part.sides))
+            is FormulaPart.Flat -> flat += part.value
+        }
+    }
+    
+    return flat to dice
+}
 
+/**
+ * Разбор формулы с сохранением порядка следования элементов.
+ */
+fun parseFormulaOrdered(
+    formula: String,
+    stats: Map<String, String> = emptyMap()
+): List<FormulaPart> {
+    val processed = preprocessFormula(formula, stats)
+    val result = mutableListOf<FormulaPart>()
+    
+    // Регулярное выражение для поиска кубов (например, 1d6, +2d8, -d4)
     val diceRegex = Regex("([+-]?\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
-    val remainingFormula = diceRegex.replace(processed) { match ->
+    
+    // Ищем все вхождения кубов и их позиции
+    val matches = diceRegex.findAll(processed).toList()
+    var lastIndex = 0
+    
+    matches.forEach { match ->
+        // Все, что между предыдущим кубом и текущим - это потенциально плоский бонус
+        val gap = processed.substring(lastIndex, match.range.first).trim()
+        if (gap.isNotEmpty() && gap != "+" && gap != "-") {
+            val flatVal = evaluateFormulaDouble(gap, stats).toInt()
+            if (flatVal != 0) {
+                result.add(FormulaPart.Flat(flatVal))
+            }
+        }
+
         val countStr = match.groupValues[1]
         val count = when (countStr) {
             "", "+" -> 1
@@ -138,14 +181,22 @@ fun parseFormulaParts(
         }
         val sides = match.groupValues[2].toInt()
         if (sides > 0) {
-            dice.add(DicePart(count, sides))
+            result.add(FormulaPart.Dice(count, sides))
         }
-        ""
+        
+        lastIndex = match.range.last + 1
     }
-
-    val flat = evaluateFormulaDouble(remainingFormula, stats)
     
-    return flat.toInt() to dice
+    // Обработка остатка формулы после последнего куба
+    val remaining = processed.substring(lastIndex).trim()
+    if (remaining.isNotEmpty()) {
+        val flatVal = evaluateFormulaDouble(remaining, stats).toInt()
+        if (flatVal != 0) {
+            result.add(FormulaPart.Flat(flatVal))
+        }
+    }
+    
+    return result
 }
 
 /**
@@ -386,5 +437,26 @@ fun parseConditions(content: String): List<Condition> {
     return content.split("##").filter { it.isNotBlank() }.map { s ->
         val lines = s.trim().lines()
         Condition(lines.firstOrNull()?.trim() ?: "", lines.drop(1).joinToString("\n").trim())
+    }
+}
+
+fun scaleCantripFormula(formula: String, level: Int, noDamageAtLevel1: Boolean): String {
+    val scaleFactor = when {
+        level >= 17 -> 4
+        level >= 11 -> 3
+        level >= 5 -> 2
+        else -> 1
+    }
+    
+    val actualScale = if (noDamageAtLevel1) scaleFactor - 1 else scaleFactor
+    if (actualScale <= 0) return "0"
+    
+    // Find all dice and multiply them
+    val diceRegex = Regex("(\\d+)([dkк])(\\d+)", RegexOption.IGNORE_CASE)
+    return diceRegex.replace(formula) { match ->
+        val count = match.groupValues[1].toInt()
+        val type = match.groupValues[2]
+        val sides = match.groupValues[3]
+        "${count * actualScale}$type$sides"
     }
 }

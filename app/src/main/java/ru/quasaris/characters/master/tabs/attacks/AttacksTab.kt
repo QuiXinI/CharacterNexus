@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -52,6 +54,7 @@ import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.HazeStyle
 
 import androidx.compose.ui.draw.clip
@@ -59,8 +62,10 @@ import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.LocalHazeStyle
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.zIndex
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
+import sh.calvin.reorderable.*
 import kotlin.math.roundToInt
 
 /**
@@ -81,6 +86,7 @@ fun AttacksTab(
     stats: Map<String, String> = emptyMap(),
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
@@ -89,14 +95,25 @@ fun AttacksTab(
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     header: @Composable () -> Unit = {}
 ) {
+    val currentHazeState = hazeState ?: remember { HazeState() }
+
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
     var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
 
     val listState = rememberLazyListState()
     val items = remember(attacks) { mutableStateListOf<AttackEntry>().apply { addAll(attacks) } }
-    var draggedItemIndex by remember { mutableStateOf<Int?>(null) }
-    var draggingOffset by remember { mutableStateOf(0f) }
     
+    val collapseActionsOnEdit by settingsViewModel?.collapseActionsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
+
+    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+        val fromIdx = from.index - 1
+        val toIdx = to.index - 1
+        if (fromIdx in items.indices && toIdx in items.indices) {
+            items.add(toIdx, items.removeAt(fromIdx))
+            onUpdateAttacks(items.toList())
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -124,73 +141,35 @@ fun AttacksTab(
                 }
             } else {
                 itemsIndexed(items, key = { _, attack -> attack.id }) { index, attack ->
-                    val isDragging = draggedItemIndex == index
-                    
-                    val dragModifier = if (isEditMode) {
-                        Modifier.pointerInput(index) {
-                            detectDragGestures(
-                                onDragStart = { 
-                                    draggedItemIndex = index
-                                    draggingOffset = 0f
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    draggingOffset += dragAmount.y
-                                    
-                                    val layoutInfo = listState.layoutInfo
-                                    val draggedItemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
-                                    
-                                    if (draggedItemInfo != null) {
-                                        val currentCenter = draggedItemInfo.offset + (draggedItemInfo.size / 2) + draggingOffset.toInt()
-                                        
-                                        val targetItem = layoutInfo.visibleItemsInfo.find { item ->
-                                            item.index != index && currentCenter in item.offset..(item.offset + item.size)
-                                        }
+                    ReorderableItem(reorderableState, key = attack.id) { isDragging ->
+                        val dragModifier = if (isEditMode) {
+                            Modifier.draggableHandle()
+                        } else Modifier
 
-                                        if (targetItem != null) {
-                                            val targetIndex = targetItem.index
-                                            if (targetIndex in items.indices) {
-                                                items.add(targetIndex, items.removeAt(index))
-                                                draggingOffset += (draggedItemInfo.offset - targetItem.offset)
-                                                draggedItemIndex = targetIndex
-                                                onUpdateAttacks(items.toList())
-                                            }
-                                        }
-                                    }
-                                },
-                                onDragEnd = {
-                                    draggedItemIndex = null
-                                    draggingOffset = 0f
-                                },
-                                onDragCancel = {
-                                    draggedItemIndex = null
-                                    draggingOffset = 0f
-                                }
+                        AttackItem(
+                            attack = attack,
+                            isEditMode = isEditMode,
+                            isDragging = isDragging,
+                            isAnyItemDragging = reorderableState.isAnyItemDragging, // Передаем состояние перетягивания                            proficiencyBonus = proficiencyBonus,
+                            proficiencyBonus = proficiencyBonus,
+                            attributeModifiers = attributeModifiers,
+                            onClick = { if (!isEditMode) editingAttack = attack },
+                            onDelete = { attackToDeleteIndex = index },
+                            onRoll = onRoll,
+                            stats = stats,
+                            exhaustion = exhaustion,
+                            hazeState = currentHazeState, // Используем общую HazeState
+                            popupHazeState = popupHazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            dragModifier = dragModifier,
+                            modifier = Modifier.animateItem(),
+                            spellSettings = spellSettings,
+                            advantageLogic = advantageLogic,
+                            settingsViewModel = settingsViewModel,
+                            collapseActionsOnEdit = collapseActionsOnEdit,
                             )
-                        }
-                    } else Modifier
-
-                    AttackItem(
-                        attack = attack,
-                        isEditMode = isEditMode,
-                        isDragging = isDragging,
-                        proficiencyBonus = proficiencyBonus,
-                        attributeModifiers = attributeModifiers,
-                        onClick = { if (!isEditMode) editingAttack = attack },
-                        onDelete = {
-                            attackToDeleteIndex = index
-                        },
-                        onRoll = onRoll,
-                        stats = stats,
-                        exhaustion = exhaustion,
-                        hazeState = hazeState,
-                        forceBlurEnabled = forceBlurEnabled,
-                        blurPopups = blurPopups,
-                        dragModifier = dragModifier,
-                        modifier = Modifier.animateItem(),
-                        spellSettings = spellSettings,
-                        advantageLogic = advantageLogic
-                    )
+                    }
                 }
             }
         }
@@ -257,6 +236,7 @@ fun AttackItem(
     attack: AttackEntry,
     isEditMode: Boolean = false,
     isDragging: Boolean = false,
+    isAnyItemDragging: Boolean = false,
     proficiencyBonus: Int,
     attributeModifiers: Map<Attribute, Int>,
     onClick: () -> Unit,
@@ -265,17 +245,40 @@ fun AttackItem(
     stats: Map<String, String> = emptyMap(),
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     dragModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
     spellSettings: ru.quasaris.characters.master.SpellSettings = ru.quasaris.characters.master.SpellSettings(),
-    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
+    settingsViewModel: SettingsViewModel? = null,
+    collapseActionsOnEdit: Boolean = true
 ) {
-    val scale by animateFloatAsState(targetValue = if (isEditMode) 0.95f else 1f)
-    val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
+    val colorScheme = MaterialTheme.colorScheme
+    val internalHazeState = remember { HazeState() }
+    val blurCards by settingsViewModel?.blurCards?.collectAsState() ?: remember { mutableStateOf(true) }
+
+    // Анимация масштаба: при зажатии/перетягивании увеличиваем элемент (например, 1.08f)
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isDragging -> 1.05f
+            isEditMode -> 0.95f
+            else -> 1f
+        },
+        label = "dragScale"
+    )
+
+    val backgroundBlur by animateDpAsState(
+        targetValue = if (isAnyItemDragging && !isDragging) 6.dp else 0.dp,
+        label = "backgroundBlur"
+    )
+
+    val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp, label = "padding")
+
+    val renderDiceInOrder by settingsViewModel?.renderDiceInOrder?.collectAsState() ?: remember { mutableStateOf(true) }
     
-    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion, stats, spellSettings) {
+    val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion, stats, spellSettings, renderDiceInOrder) {
         if (attack.isMagic) {
             val bonuses = if (attack.magicType == MagicAttackType.ATTACK) spellSettings.spellAttackBonuses else spellSettings.spellSaveDcBonuses
             
@@ -286,15 +289,18 @@ fun AttackItem(
             val baseFlat = (if (attack.magicType == MagicAttackType.SAVE) 8 else 0) + proficiencyBonus + abilityModifier
             val totalFlat = calculateTotalBonus(bonuses, stats, initialValue = baseFlat)
             
-            val allDice = mutableMapOf<Int, Int>()
+            val allDiceList = mutableListOf<DicePart>()
             bonuses.filter { it.isActive }.forEach { bonus ->
                 val (_, fDice) = parseFormulaParts(bonus.formula, stats)
                 fDice.forEach {
                     val sign = if (bonus.operation == BonusOperation.SUBTRACT) -1 else 1
-                    allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
+                    allDiceList.add(DicePart(it.count * sign, it.sides))
                 }
             }
-            return@remember Triple(totalFlat, baseFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+            val finalDice = if (renderDiceInOrder) allDiceList else {
+                allDiceList.groupBy { it.sides }.map { (sides, parts) -> DicePart(parts.sumOf { it.count }, sides) }.sortedBy { it.sides }
+            }
+            return@remember Triple(totalFlat, baseFlat, finalDice)
         }
 
         if (attack.attribute == Attribute.NONE) {
@@ -305,31 +311,37 @@ fun AttackItem(
         val baseFlat = attrMod + prof + attack.attackBonus
         val totalFlat = calculateTotalBonus(attack.attackBonuses, stats, initialValue = baseFlat)
         
-        val allDice = mutableMapOf<Int, Int>()
+        val allDiceList = mutableListOf<DicePart>()
         attack.attackBonuses.filter { it.isActive }.forEach { bonus ->
             val (_, fDice) = parseFormulaParts(bonus.formula, stats)
             fDice.forEach {
                 val sign = if (bonus.operation == BonusOperation.SUBTRACT) -1 else 1
-                allDice[it.sides] = (allDice[it.sides] ?: 0) + (it.count * sign)
+                allDiceList.add(DicePart(it.count * sign, it.sides))
             }
         }
-        Triple(totalFlat, baseFlat, allDice.map { DicePart(it.value, it.key) }.sortedBy { it.sides })
+        val finalDice = if (renderDiceInOrder) allDiceList else {
+            allDiceList.groupBy { it.sides }.map { (sides, parts) -> DicePart(parts.sumOf { it.count }, sides) }.sortedBy { it.sides }
+        }
+        Triple(totalFlat, baseFlat, finalDice)
     }
 
     val totalAttackBonus = attackCalculation.first
     val baseAttackBonus = attackCalculation.second
     val attackDice = attackCalculation.third
-    
-    // Для отображения вычитаем истощение, если это не спасбросок (хотя в 5е 2024 истощение влияет и на DC)
-    // Но пока придерживаемся логики: броски d20 штрафуются в DiceRoller.
+
     val displayAttackBonus = if (attack.isMagic && attack.magicType == MagicAttackType.SAVE) totalAttackBonus else totalAttackBonus - (exhaustion * 2)
+
+    val isHealing = attack.damageType.lowercase().contains("лечение") || attack.damageType.lowercase().contains("healing")
 
     val fullDamageText = formatFullDamage(
         baseFormula = attack.damageFormula,
         baseDamageBonus = attack.damageBonus,
         bonuses = attack.damageBonuses,
-        stats = stats
+        stats = stats,
+        renderInOrder = renderDiceInOrder
     )
+
+    val useHaze = hazeState != null && blurCards
 
     var showInfo by remember { mutableStateOf(false) }
     var iconPosition by remember { mutableStateOf(Offset.Zero) }
@@ -344,16 +356,32 @@ fun AttackItem(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
+            .then(if (backgroundBlur > 0.dp) Modifier.blur(backgroundBlur) else Modifier)
             .padding(padding)
-            .clickable(enabled = !isEditMode, onClick = onClick),
+            .run {
+                if (useHaze) {
+                    val targetState = if (isDragging) (popupHazeState ?: hazeState!!) else hazeState!!
+                    this.clip(RoundedCornerShape(12.dp))
+                        .hazeEffect(
+                            state = targetState,
+                            style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f))))
+                        )
+                } else this
+            }
+            .clickable(enabled = !isEditMode, onClick = onClick)
+            .border(
+                width = 1.dp,
+                color = colorScheme.outlineVariant.copy(alpha = if (useHaze) 0.3f else 0.5f),
+                shape = RoundedCornerShape(12.dp)
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isEditMode) 0.6f else 0.5f)
+            containerColor = if (useHaze) Color.Transparent else colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 8.dp else 0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 12.dp else 2.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().hazeSource(state = internalHazeState),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isEditMode) {
@@ -494,7 +522,7 @@ fun AttackItem(
                     }
                 }
                 
-                if (!isEditMode) {
+                if (!isEditMode || !collapseActionsOnEdit) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -510,10 +538,11 @@ fun AttackItem(
                                 .combinedClickable(
                                     onClick = {
                                         onRoll(DiceRoller.roll(
-                                            title = "Урон: ${attack.name}",
+                                            title = (if (isHealing) "Лечение: " else "Урон: ") + attack.name,
                                             baseModifier = attack.damageBonus,
                                             bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
-                                            isDamage = true,
+                                            isDamage = !isHealing,
+                                            isHealing = isHealing,
                                             stats = stats,
                                             sourceType = RollSourceType.ATTACK,
                                             advantageType = AdvantageType.NONE,
@@ -522,12 +551,12 @@ fun AttackItem(
                                     },
                                     onLongClick = { showDamagePopup = true }
                                 ),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            color = if (isHealing) Color(0xFF00C46F).copy(alpha = 0.08f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "$fullDamageText ${attack.damageType}".trim(),
+                                    text = (if (isHealing) "Лечение: " else "") + "$fullDamageText ${attack.damageType}".trim(),
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
@@ -540,10 +569,11 @@ fun AttackItem(
                                     DiceRollAdvantagePopup(
                                         onAdvantage = {
                                             onRoll(DiceRoller.roll(
-                                                title = "Урон: ${attack.name}",
+                                                title = (if (isHealing) "Лечение: " else "Урон: ") + attack.name,
                                                 baseModifier = attack.damageBonus,
                                                 bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
-                                                isDamage = true,
+                                                isDamage = !isHealing,
+                                                isHealing = isHealing,
                                                 stats = stats,
                                                 sourceType = RollSourceType.ATTACK,
                                                 advantageType = AdvantageType.ADVANTAGE,
@@ -552,10 +582,11 @@ fun AttackItem(
                                         },
                                         onDisadvantage = {
                                             onRoll(DiceRoller.roll(
-                                                title = "Урон: ${attack.name}",
+                                                title = (if (isHealing) "Лечение: " else "Урон: ") + attack.name,
                                                 baseModifier = attack.damageBonus,
                                                 bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
-                                                isDamage = true,
+                                                isDamage = !isHealing,
+                                                isHealing = isHealing,
                                                 stats = stats,
                                                 sourceType = RollSourceType.ATTACK,
                                                 advantageType = AdvantageType.DISADVANTAGE,
@@ -564,10 +595,11 @@ fun AttackItem(
                                         },
                                         onCritical = {
                                             onRoll(DiceRoller.roll(
-                                                title = "Критический Урон: ${attack.name}",
+                                                title = (if (isHealing) "Критическое Лечение: " else "Критический Урон: ") + attack.name,
                                                 baseModifier = attack.damageBonus,
                                                 bonuses = (attack.damageBonuses + SimpleBonus(formula = attack.damageFormula, name = "Базовый урон")),
-                                                isDamage = true,
+                                                isDamage = !isHealing,
+                                                isHealing = isHealing,
                                                 stats = stats,
                                                 sourceType = RollSourceType.ATTACK,
                                                 advantageType = AdvantageType.CRITICAL,
@@ -575,7 +607,7 @@ fun AttackItem(
                                             ))
                                         },
                                         onDismiss = { showDamagePopup = false },
-                                        hazeState = hazeState,
+                                        hazeState = internalHazeState,
                                         isOled = MaterialTheme.colorScheme.background == Color.Black,
                                         modifier = Modifier.size(sizeDp)
                                     )
@@ -691,7 +723,7 @@ fun AttackItem(
                                                 ))
                                             },
                                             onDismiss = { showAttackPopup = false },
-                                            hazeState = hazeState,
+                                            hazeState = internalHazeState,
                                             isOled = MaterialTheme.colorScheme.background == Color.Black,
                                             modifier = Modifier.size(sizeDp)
                                         )

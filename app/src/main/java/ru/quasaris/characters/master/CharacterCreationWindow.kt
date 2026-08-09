@@ -48,6 +48,7 @@ fun CharacterCreationWindow(
     onNavigateBack: () -> Unit,
     onCharacterCreate: (Character) -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false
 ) {
@@ -244,7 +245,7 @@ fun CharacterCreationWindow(
         if (bitmapToCrop != null) {
             AvatarCropperWindow(
                 imageToCrop = bitmapToCrop!!,
-                hazeState = hazeState,
+                hazeState = popupHazeState ?: hazeState,
                 forceBlurEnabled = blurPopups,
                 onCropSuccess = { cropped ->
                     scope.launch {

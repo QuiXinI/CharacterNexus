@@ -27,11 +27,17 @@ class SettingsViewModel(
     private val _blurRolls = MutableStateFlow(settingsManager?.blurRolls ?: true)
     val blurRolls = _blurRolls.asStateFlow()
 
-    private val _blurFullscreen = MutableStateFlow(settingsManager?.blurFullscreen ?: false)
+    private val _blurFullscreen = MutableStateFlow(settingsManager?.blurFullscreen ?: true)
     val blurFullscreen = _blurFullscreen.asStateFlow()
 
     private val _blurPopups = MutableStateFlow(settingsManager?.blurPopups ?: true)
     val blurPopups = _blurPopups.asStateFlow()
+
+    private val _blurCards = MutableStateFlow(settingsManager?.blurCards ?: true)
+    val blurCards = _blurCards.asStateFlow()
+
+    private val _blurDynamicFields = MutableStateFlow(settingsManager?.blurDynamicFields ?: true)
+    val blurDynamicFields = _blurDynamicFields.asStateFlow()
 
     private val _masterBlurEnabled = MutableStateFlow(settingsManager?.masterBlurEnabled ?: true)
     val masterBlurEnabled = _masterBlurEnabled.asStateFlow()
@@ -114,11 +120,20 @@ class SettingsViewModel(
     private val _diceFabOffsetY = MutableStateFlow(settingsManager?.diceFabOffsetY ?: -40f)
     val diceFabOffsetY = _diceFabOffsetY.asStateFlow()
 
-    private val _diceFabAlpha = MutableStateFlow(settingsManager?.diceFabAlpha ?: 0.0f)
+    private val _diceFabAlpha = MutableStateFlow(settingsManager?.diceFabAlpha ?: 1.0f)
     val diceFabAlpha = _diceFabAlpha.asStateFlow()
 
     private val _diceFabBlurEnabled = MutableStateFlow(settingsManager?.diceFabBlurEnabled ?: true)
     val diceFabBlurEnabled = _diceFabBlurEnabled.asStateFlow()
+
+    private val _diceFabEnabled = MutableStateFlow(settingsManager?.diceFabEnabled ?: true)
+    val diceFabEnabled = _diceFabEnabled.asStateFlow()
+
+    private val _renderDiceInOrder = MutableStateFlow(settingsManager?.renderDiceInOrder ?: true)
+    val renderDiceInOrder = _renderDiceInOrder.asStateFlow()
+
+    private val _collapseActionsOnEdit = MutableStateFlow(settingsManager?.collapseActionsOnEdit ?: true)
+    val collapseActionsOnEdit = _collapseActionsOnEdit.asStateFlow()
 
     private val _lastModuleExportName = MutableStateFlow(settingsManager?.lastModuleExportName ?: "")
     val lastModuleExportName = _lastModuleExportName.asStateFlow()
@@ -168,6 +183,16 @@ class SettingsViewModel(
         settingsManager?.blurPopups = enabled
     }
 
+    fun updateBlurCards(enabled: Boolean) {
+        _blurCards.value = enabled
+        settingsManager?.blurCards = enabled
+    }
+
+    fun updateBlurDynamicFields(enabled: Boolean) {
+        _blurDynamicFields.value = enabled
+        settingsManager?.blurDynamicFields = enabled
+    }
+
     fun updateMasterBlurEnabled(enabled: Boolean) {
         _masterBlurEnabled.value = enabled
         settingsManager?.masterBlurEnabled = enabled
@@ -198,6 +223,8 @@ class SettingsViewModel(
         updateBlurRolls(enabled)
         updateBlurFullscreen(enabled)
         updateBlurPopups(enabled)
+        updateBlurCards(enabled)
+        updateBlurDynamicFields(enabled)
         settingsManager?.forceBlurEnabled = enabled
     }
 
@@ -318,6 +345,21 @@ class SettingsViewModel(
         settingsManager?.diceFabBlurEnabled = enabled
     }
 
+    fun updateDiceFabEnabled(enabled: Boolean) {
+        _diceFabEnabled.value = enabled
+        settingsManager?.diceFabEnabled = enabled
+    }
+
+    fun updateRenderDiceInOrder(enabled: Boolean) {
+        _renderDiceInOrder.value = enabled
+        settingsManager?.renderDiceInOrder = enabled
+    }
+
+    fun updateCollapseActionsOnEdit(enabled: Boolean) {
+        _collapseActionsOnEdit.value = enabled
+        settingsManager?.collapseActionsOnEdit = enabled
+    }
+
     val performanceClass: Int
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Build.VERSION.MEDIA_PERFORMANCE_CLASS
@@ -350,8 +392,10 @@ class SettingsViewModel(
         _rollHistorySize.value = settingsManager?.rollHistorySize ?: 5
         _customRollHistorySize.value = settingsManager?.customRollHistorySize ?: 10
         _blurRolls.value = settingsManager?.blurRolls ?: true
-        _blurFullscreen.value = settingsManager?.blurFullscreen ?: false
+        _blurFullscreen.value = settingsManager?.blurFullscreen ?: true
         _blurPopups.value = settingsManager?.blurPopups ?: true
+        _blurCards.value = settingsManager?.blurCards ?: true
+        _blurDynamicFields.value = settingsManager?.blurDynamicFields ?: true
         _masterBlurEnabled.value = settingsManager?.masterBlurEnabled ?: true
         _rollInterfaceAlpha.value = settingsManager?.rollInterfaceAlpha ?: 1.0f
         _rollPassThrough.value = settingsManager?.rollPassThrough ?: true
@@ -380,7 +424,10 @@ class SettingsViewModel(
         
         _diceFabOffsetX.value = settingsManager?.diceFabOffsetX ?: -40f
         _diceFabOffsetY.value = settingsManager?.diceFabOffsetY ?: -40f
-        _diceFabAlpha.value = settingsManager?.diceFabAlpha ?: 0.0f
+        _diceFabAlpha.value = settingsManager?.diceFabAlpha ?: 1.0f
         _diceFabBlurEnabled.value = settingsManager?.diceFabBlurEnabled ?: true
+        _diceFabEnabled.value = settingsManager?.diceFabEnabled ?: true
+        _renderDiceInOrder.value = settingsManager?.renderDiceInOrder ?: true
+        _collapseActionsOnEdit.value = settingsManager?.collapseActionsOnEdit ?: true
     }
 }

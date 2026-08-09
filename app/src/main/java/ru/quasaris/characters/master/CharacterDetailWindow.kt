@@ -37,6 +37,7 @@ import ru.quasaris.characters.master.backend.*
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeSource
 import ru.quasaris.characters.master.tabs.spells.SpellsTab
 import ru.quasaris.characters.master.backend.SpellbookManager
 import ru.quasaris.characters.master.ui.DiceRollingFab
@@ -60,6 +61,7 @@ fun CharacterDetailWindow(
     onOpenDrawer: () -> Unit = {},
     onRoll: (RollResult) -> Unit = {},
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
@@ -87,6 +89,7 @@ fun CharacterDetailWindow(
 
     val effectiveDiceFabBlur = masterBlurEnabled && diceFabBlurEnabled
     val effectiveDiceFabAlpha = diceFabAlphaSetting
+    val diceFabEnabled by settingsViewModel?.diceFabEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val advantageLogic by settingsViewModel?.advantageLogic?.collectAsState() ?: remember { mutableStateOf(AdvantageLogic.TOTAL) }
 
@@ -597,8 +600,8 @@ fun CharacterDetailWindow(
         Box(modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .background(colorScheme.background)) {
-
+            .background(Color.Transparent)
+        ) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
@@ -615,6 +618,7 @@ fun CharacterDetailWindow(
                             onStatsStateChange = { state.statsState = it },
                             onRoll = onRoll,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isAdvancedMode = state.isAdvancedMode,
@@ -633,6 +637,7 @@ fun CharacterDetailWindow(
                             stats = statsMap,
                             exhaustion = state.exhaustion,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
@@ -657,6 +662,7 @@ fun CharacterDetailWindow(
                                 imagePickerLauncher.launch("image/*")
                             },
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
@@ -669,6 +675,7 @@ fun CharacterDetailWindow(
                             skillsAndTraits = state.skillsAndTraits,
                             onSkillsAndTraitsChange = { state.skillsAndTraits = it },
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
@@ -683,6 +690,7 @@ fun CharacterDetailWindow(
                             wallet = state.wallet,
                             onWalletChange = { state.wallet = it },
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
@@ -698,6 +706,7 @@ fun CharacterDetailWindow(
                             spellSettings = state.spellSettings,
                             onSpellSettingsChange = { state.spellSettings = it },
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
@@ -714,6 +723,7 @@ fun CharacterDetailWindow(
                             notes = state.notes,
                             onNotesChange = { state.notes = it },
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
@@ -726,7 +736,7 @@ fun CharacterDetailWindow(
 
             val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
-            if (!isKeyboardVisible) {
+            if (!isKeyboardVisible && diceFabEnabled) {
                 DiceRollingFab(
                     onRoll = { pool ->
                         val res = DiceRoller.rollPool(pool)
@@ -734,7 +744,7 @@ fun CharacterDetailWindow(
                     },
                     offsetX = diceFabOffsetX,
                     offsetY = diceFabOffsetY,
-                    hazeState = hazeState,
+                    hazeState = popupHazeState ?: hazeState,
                     isOled = colorScheme.background == Color.Black,
                     alpha = effectiveDiceFabAlpha,
                     forceBlurEnabled = effectiveDiceFabBlur,
@@ -752,7 +762,7 @@ fun CharacterDetailWindow(
             CharacterDetailDialogs(
                 state = state,
                 statsMap = statsMap,
-                hazeState = hazeState,
+                hazeState = popupHazeState ?: hazeState,
                 forceBlurEnabled = forceBlurEnabled,
                 blurPopups = blurPopups,
                 allConditions = allConditions
@@ -763,7 +773,7 @@ fun CharacterDetailWindow(
                     state = state,
                     statsMap = statsMap,
                     onDismiss = { state.showCharacterSettings = false },
-                    hazeState = hazeState,
+                    hazeState = popupHazeState ?: hazeState,
                     forceBlurEnabled = blurPopups
                 )
             }
@@ -778,14 +788,14 @@ fun CharacterDetailWindow(
         tabs = tabs,
         pagerState = pagerState,
         scope = scope,
-        hazeState = hazeState,
+        hazeState = popupHazeState ?: hazeState,
         blurPopups = blurPopups
     )
 
     if (state.bitmapToCrop != null) {
         AvatarCropperWindow(
             imageToCrop = state.bitmapToCrop!!,
-            hazeState = hazeState,
+            hazeState = popupHazeState ?: hazeState,
             forceBlurEnabled = blurPopups,
             onCropSuccess = { cropped ->
                 scope.launch {
