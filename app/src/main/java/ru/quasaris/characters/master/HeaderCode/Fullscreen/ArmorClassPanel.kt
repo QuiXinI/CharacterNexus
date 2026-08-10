@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -30,7 +32,7 @@ import ru.quasaris.characters.master.ShieldEntry
 import ru.quasaris.characters.master.tabs.attacks.SectionHeader
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
 @Composable
 fun ArmorClassDialog(
     activeEntry: FormulaEntry?,
@@ -41,6 +43,7 @@ fun ArmorClassDialog(
     hazeState: HazeState?,
     forceBlurEnabled: Boolean,
     onDismiss: () -> Unit,
+    onSubDialogOpenChange: (Boolean) -> Unit = {},
     isShieldActive: Boolean,
     onShieldActiveChange: (Boolean) -> Unit,
     activeShield: ShieldEntry?,
@@ -51,6 +54,11 @@ fun ArmorClassDialog(
 ) {
     var editingEntry by remember { mutableStateOf<FormulaEntry?>(null) }
     var editingShield by remember { mutableStateOf<ShieldEntry?>(null) }
+
+    val isSubDialogOpen = editingEntry != null || editingShield != null
+    LaunchedEffect(isSubDialogOpen) {
+        onSubDialogOpenChange(isSubDialogOpen)
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -64,6 +72,27 @@ fun ArmorClassDialog(
         val isOled = colorScheme.background == Color.Black
 
         Scaffold(
+            modifier = Modifier
+                .blur(if (isSubDialogOpen && forceBlurEnabled) 24.dp else 0.dp)
+                .run {
+                    if (isSubDialogOpen && forceBlurEnabled && !isOled) {
+                        this.drawWithContent {
+                            drawContent()
+                            drawRect(colorScheme.surface.copy(alpha = 0.2f))
+                        }
+                    } else this
+                }
+                .run {
+                    if (isSubDialogOpen && forceBlurEnabled && hazeState != null && !isOled) {
+                        this.hazeEffect(state = hazeState) {
+                            style = HazeStyle(
+                                blurRadius = 24.dp,
+                                tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f)))
+                            )
+                            inputScale = HazeInputScale.Fixed(0.6f)
+                        }
+                    } else this
+                },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text("Класс Доспеха", fontWeight = FontWeight.Black) },

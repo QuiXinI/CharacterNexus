@@ -63,6 +63,8 @@ fun SpellsTab(
     spellbookManager: SpellbookManager? = null,
     onSpellEditorOpenChange: (Boolean) -> Unit = {},
     onMagicBonusSettingsOpenChange: (Boolean) -> Unit = {},
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onSpellbookSelectionOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
@@ -80,6 +82,10 @@ fun SpellsTab(
 
     var showSelectionDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(showSelectionDialog) {
+        onSpellbookSelectionOpenChange(showSelectionDialog)
+    }
 
     var levelInEditMode by remember { mutableStateOf<Float?>(null) }
     var showDividerEditor by remember { mutableStateOf<Pair<Float, SpellLevelDivider?>?>(null) }
@@ -366,6 +372,7 @@ fun SpellsTab(
                 isAddButtonVisible = false,
                 isReorderButtonVisible = true,
                 isContentVisible = spellSettings.spellMode != SpellMode.CARDS,
+                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 header = header,
                 footer = {
                     if (spellSettings.isMagicEnabled) {

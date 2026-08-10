@@ -316,7 +316,8 @@ fun CharacterDetailWindow(
             state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings || 
             state.showSpellSettings || state.bitmapToCrop != null || state.isBonusConfigOpen || 
             state.isAttackConfigOpen || state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
-            state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen
+            state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen || state.isSpellbookSelectionOpen ||
+            state.isArmorClassSubDialogOpen || state.isInitiativeSubDialogOpen || state.isSpeedSubDialogOpen
 
     LaunchedEffect(isAnyFullscreenDialogOpen) {
         onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
@@ -745,7 +746,9 @@ fun CharacterDetailWindow(
                             advantageLogic = advantageLogic,
                             spellbookManager = spellbookManager,
                             onSpellEditorOpenChange = { state.isSpellEditorOpen = it },
-                            onMagicBonusSettingsOpenChange = { state.isMagicBonusSettingsOpen = it }
+                            onMagicBonusSettingsOpenChange = { state.isMagicBonusSettingsOpen = it },
+                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it },
+                            onSpellbookSelectionOpenChange = { state.isSpellbookSelectionOpen = it }
                         )
                     }
                     CharacterTab.NOTES -> {
@@ -758,7 +761,8 @@ fun CharacterDetailWindow(
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
+                            statsMap = statsMap,
+                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it }
                         )
                     }
                 }

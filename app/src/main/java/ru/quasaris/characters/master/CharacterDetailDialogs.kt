@@ -45,6 +45,7 @@ fun CharacterDetailDialogs(
             hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
             onDismiss = { state.showEnhancedAC = false },
+            onSubDialogOpenChange = { state.isArmorClassSubDialogOpen = it },
             isShieldActive = state.isShieldActive,
             onShieldActiveChange = { state.isShieldActive = it },
             activeShield = activeShieldObj,
@@ -72,7 +73,8 @@ fun CharacterDetailDialogs(
             statsMap = statsMap,
             hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
-            onDismiss = { state.showEnhancedInit = false }
+            onDismiss = { state.showEnhancedInit = false },
+            onSubDialogOpenChange = { state.isInitiativeSubDialogOpen = it }
         )
     }
 
@@ -86,7 +88,8 @@ fun CharacterDetailDialogs(
             statsMap = statsMap,
             hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
-            onDismiss = { state.showEnhancedSpeed = false }
+            onDismiss = { state.showEnhancedSpeed = false },
+            onSubDialogOpenChange = { state.isSpeedSubDialogOpen = it }
         )
     }
 

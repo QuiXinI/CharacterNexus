@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalView
@@ -19,6 +21,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
@@ -27,7 +30,7 @@ import ru.quasaris.characters.master.InitiativeEntry
 import ru.quasaris.characters.master.tabs.attacks.SectionHeader
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
 @Composable
 fun InitiativeDialog(
     activeEntry: FormulaEntry?,
@@ -37,9 +40,15 @@ fun InitiativeDialog(
     statsMap: Map<String, String>,
     hazeState: HazeState?,
     forceBlurEnabled: Boolean,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSubDialogOpenChange: (Boolean) -> Unit = {}
 ) {
     var editingEntry by remember { mutableStateOf<FormulaEntry?>(null) }
+
+    val isSubDialogOpen = editingEntry != null
+    LaunchedEffect(isSubDialogOpen) {
+        onSubDialogOpenChange(isSubDialogOpen)
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -53,6 +62,27 @@ fun InitiativeDialog(
         val isOled = colorScheme.background == Color.Black
 
         Scaffold(
+            modifier = Modifier
+                .blur(if (isSubDialogOpen && forceBlurEnabled) 24.dp else 0.dp)
+                .run {
+                    if (isSubDialogOpen && forceBlurEnabled && !isOled) {
+                        this.drawWithContent {
+                            drawContent()
+                            drawRect(colorScheme.surface.copy(alpha = 0.2f))
+                        }
+                    } else this
+                }
+                .run {
+                    if (isSubDialogOpen && forceBlurEnabled && hazeState != null && !isOled) {
+                        this.hazeEffect(state = hazeState) {
+                            style = HazeStyle(
+                                blurRadius = 24.dp,
+                                tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f)))
+                            )
+                            inputScale = HazeInputScale.Fixed(0.6f)
+                        }
+                    } else this
+                },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text("Инициатива", fontWeight = FontWeight.Black) },

@@ -98,7 +98,7 @@ fun StatVariantItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
 @Composable
 fun EditVariantDialog(
     title: String,
@@ -121,6 +121,17 @@ fun EditVariantDialog(
         val isOled = colorScheme.background == Color.Black
 
         Scaffold(
+            modifier = Modifier.run {
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    this.hazeEffect(state = hazeState) {
+                        style = HazeStyle(
+                            blurRadius = 24.dp,
+                            tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f)))
+                        )
+                        inputScale = HazeInputScale.Fixed(0.6f)
+                    }
+                } else this
+            },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(title, fontWeight = FontWeight.Bold) },

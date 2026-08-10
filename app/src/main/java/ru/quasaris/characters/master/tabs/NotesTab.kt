@@ -16,6 +16,7 @@ fun NotesTab(
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     DynamicFieldsTab(
@@ -32,6 +33,7 @@ fun NotesTab(
         contentPlaceholder = "Текст заметки...",
         settingsViewModel = settingsViewModel,
         statsMap = statsMap,
+        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         header = header
     )
 }

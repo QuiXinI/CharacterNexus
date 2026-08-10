@@ -177,6 +177,11 @@ class CharacterDetailState(
     var isMagicBonusSettingsOpen by mutableStateOf(false)
     var isFullscreenDynamicFieldOpen by mutableStateOf(false)
     var isWalletDialogOpen by mutableStateOf(false)
+    var isSpellbookSelectionOpen by mutableStateOf(false)
+
+    var isArmorClassSubDialogOpen by mutableStateOf(false)
+    var isInitiativeSubDialogOpen by mutableStateOf(false)
+    var isSpeedSubDialogOpen by mutableStateOf(false)
 
     // HP Dialog
     var hpDialogType by mutableStateOf("")
