@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import ru.quasaris.characters.master.ui.outerShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextStyle
@@ -85,7 +86,7 @@ fun AttributesSection(
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
 ) {
     val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
-    val pb = pbVal
+    val colorScheme = MaterialTheme.colorScheme
 
     // Эффективные значения для отображения в карточках (из statsMap или параметров)
     val effStrength = statsMap["strength"] ?: strength
@@ -119,7 +120,7 @@ fun AttributesSection(
                         hasValueBonus = statBonuses.any { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.CHARACTERISTIC_VALUE && it.isActive }),
                     StatInfo(Attribute.DEXTERITY, "Ловкость", effDexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность"),
                         hasValueBonus = statBonuses.any { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.CHARACTERISTIC_VALUE && it.isActive }),
-                    StatInfo(Attribute.CONSTITUTION, "Телосложение", effConstitution, conProf, onConstitutionChange, onConProfChange, emptyList(),
+                    StatInfo(Attribute.CONSTITUTION, "Тело.", effConstitution, conProf, onConstitutionChange, onConProfChange, emptyList(),
                         hasValueBonus = statBonuses.any { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.CHARACTERISTIC_VALUE && it.isActive }),
                     StatInfo(Attribute.INTELLIGENCE, "Интеллект", effIntelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия"),
                         hasValueBonus = statBonuses.any { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.CHARACTERISTIC_VALUE && it.isActive }),
@@ -131,7 +132,7 @@ fun AttributesSection(
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     stats.forEach { stat ->
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { onStatClick(stat.attribute) },
                                 saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW }, statsMap),
                                 checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }, statsMap),
@@ -283,15 +284,19 @@ fun AttributesSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                .outerShadow(
+                    shape = RoundedCornerShape(16.dp),
+                    blur = 6.dp,
+                    offsetY = 3.dp
+                )
+                .clip(RoundedCornerShape(16.dp))
+                .background(colorScheme.surfaceContainerLow)
         ) {
             Text(
                 "Пассивные проверки",
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = colorScheme.onSurface,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -300,12 +305,12 @@ fun AttributesSection(
             androidx.compose.material3.HorizontalDivider(
                 modifier = Modifier.padding(horizontal = 12.dp),
                 thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                color = colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
             PassiveCheckRow("Пассивный Анализ", Attribute.INTELLIGENCE, evalPB, attributeModifiers, skilledProficiencies.contains("Анализ"), skilledExpertise.contains("Анализ"), exhaustion = exhaustion)
-            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = colorScheme.outlineVariant.copy(alpha = 0.2f))
             PassiveCheckRow("Пассивная Внимательность", Attribute.WISDOM, evalPB, attributeModifiers, skilledProficiencies.contains("Внимательность"), skilledExpertise.contains("Внимательность"), exhaustion = exhaustion)
-            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = colorScheme.outlineVariant.copy(alpha = 0.2f))
             PassiveCheckRow("Пассивная Проницательность", Attribute.WISDOM, evalPB, attributeModifiers, skilledProficiencies.contains("Проницательность"), skilledExpertise.contains("Проницательность"), exhaustion = exhaustion)
         }
     }
@@ -350,9 +355,13 @@ fun StatCard(
     
     Box(modifier = modifier
         .heightIn(min = 100.dp)
-        .clip(RoundedCornerShape(12.dp))
-        .background(colorScheme.surfaceVariant.copy(alpha = 0.4f))
-        .border(1.dp, colorScheme.outline.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+        .outerShadow(
+            shape = RoundedCornerShape(16.dp),
+            blur = 6.dp,
+            offsetY = 3.dp
+        )
+        .clip(RoundedCornerShape(16.dp))
+        .background(colorScheme.surfaceContainer)
         .clickable { onClick() }
         .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
@@ -377,7 +386,12 @@ fun StatCard(
                         .size(40.dp)
                         .run {
                             if (isEditable) {
-                                this.clip(RoundedCornerShape(10.dp))
+                                this.outerShadow(
+                                        shape = RoundedCornerShape(10.dp),
+                                        blur = 6.dp,
+                                        offsetY = 3.dp
+                                    )
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(colorScheme.onSurface.copy(alpha = 0.05f))
                             } else this
                         },
@@ -422,7 +436,12 @@ fun StatCard(
             ) {
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .outerShadow(
+                            shape = RoundedCornerShape(12.dp),
+                            blur = 6.dp,
+                            offsetY = 3.dp
+                        )
+                        .clip(RoundedCornerShape(12.dp))
                         .clickable { onPToggle(!isP) }
                         .background(if (isP) colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent)
                         .padding(horizontal = 6.dp, vertical = 4.dp),
@@ -431,8 +450,13 @@ fun StatCard(
                     Box(
                         modifier = Modifier
                             .size(12.dp)
+                            .outerShadow(
+                                shape = CircleShape,
+                                blur = 6.dp,
+                                offsetY = 3.dp
+                            )
                             .clip(CircleShape)
-                            .background(if (isP) colorScheme.primary else colorScheme.outline.copy(alpha = 0.3f))
+                            .background(if (isP) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.4f)),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -475,6 +499,7 @@ fun ModifierBubble(
 ) {
     var showPopup by remember { mutableStateOf(false) }
     var bubbleSize by remember { mutableStateOf(IntSize.Zero) }
+    val colorScheme = MaterialTheme.colorScheme
 
     Box(
         modifier = Modifier
@@ -486,6 +511,11 @@ fun ModifierBubble(
         Box(
             modifier = Modifier
                 .size(40.dp)
+                .outerShadow(
+                    shape = RoundedCornerShape(10.dp),
+                    blur = 6.dp,
+                    offsetY = 3.dp
+                )
                 .clip(RoundedCornerShape(10.dp))
                 .background(color.copy(alpha = 0.12f))
                 .then(if (clickable) {
@@ -548,11 +578,16 @@ fun SkillSubPlate(
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .padding(start = 8.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .outerShadow(
+                shape = RoundedCornerShape(10.dp),
+                blur = 6.dp,
+                offsetY = 3.dp
+            )
+            .clip(RoundedCornerShape(10.dp))
             .background(
-                if (isExpert) colorScheme.primary.copy(alpha = 0.18f)
-                else if (isProficient) colorScheme.primary.copy(alpha = 0.1f)
-                else colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                if (isExpert) colorScheme.primaryContainer.copy(alpha = 0.6f)
+                else if (isProficient) colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else colorScheme.surfaceContainerHigh.copy(alpha = 0.4f)
             )
             .combinedClickable(
                 onClick = { onClick(name) },
@@ -565,13 +600,13 @@ fun SkillSubPlate(
             Box(modifier = Modifier
                 .size(10.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(if (isProficient || isExpert) colorScheme.primary else colorScheme.outline.copy(alpha = 0.2f))
+                .background(if (isProficient || isExpert) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.4f))
             )
             Box(modifier = Modifier
                 .size(10.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(if (isExpert) colorScheme.primary else Color.Transparent)
-                .border(0.8.dp, if (isExpert) Color.Transparent else colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(2.dp))
+                .border(1.dp, if (isExpert) Color.Transparent else colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp))
             )
         }
         

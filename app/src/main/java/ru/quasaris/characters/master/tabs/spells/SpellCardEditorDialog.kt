@@ -1,6 +1,5 @@
 package ru.quasaris.characters.master.tabs.spells
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,10 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.draw.alpha
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.SpellCard
@@ -32,12 +33,12 @@ import ru.quasaris.characters.master.SpellVersion
 import ru.quasaris.characters.master.CharacterClass
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.hazeEffect
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
 @Composable
 fun SpellCardEditorDialog(
     spell: SpellCard,
@@ -58,10 +59,25 @@ fun SpellCardEditorDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
+        }
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
         Scaffold(
+            modifier = Modifier.run {
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    this.hazeEffect(state = hazeState) {
+                        style = HazeStyle(
+                            blurRadius = 24.dp,
+                            tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f)))
+                        )
+                        inputScale = HazeInputScale.Fixed(0.6f)
+                    }
+                } else this
+            },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(if (spell.name.isBlank()) "Новое заклинание" else "Редактировать", fontWeight = FontWeight.Black) },
@@ -82,15 +98,7 @@ fun SpellCardEditorDialog(
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
-            modifier = Modifier.run {
-                if (forceBlurEnabled && hazeState != null && !isOled) {
-                    hazeEffect(state = hazeState) {
-                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
-                        inputScale = HazeInputScale.Fixed(0.7f)
-                    }
-                } else this
-            }
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 Column(
@@ -401,14 +409,20 @@ fun SpellCardEditorDialog(
                     )
 
                     if (state.level == "0") {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             SpellCardSectionTitle("НАСТРОЙКИ ЗАГОВОРА")
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Нет урона на 1 уровне", modifier = Modifier.weight(1f))
+                                Text("Нет урона на 1 уровне", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                                 Switch(checked = state.noDamageAtLevel1, onCheckedChange = { state = state.copy(noDamageAtLevel1 = it) })
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Урон не увеличивается с уровнем", modifier = Modifier.weight(1f))
+                                Text("Урон не увеличивается с уровнем", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                                 Switch(checked = state.noScaling, onCheckedChange = { state = state.copy(noScaling = it) })
                             }
                         }

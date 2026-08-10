@@ -4,7 +4,6 @@ import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,6 +47,7 @@ fun BioTab(
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -99,6 +99,7 @@ fun BioTab(
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,
+        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Список разделов пуст",
         titlePlaceholder = "Название раздела",
@@ -163,8 +164,7 @@ fun BioTab(
                                 .fillMaxWidth()
                                 .padding(top = 4.dp),
                             shape = RoundedCornerShape(12.dp),
-                            color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.3f))
+                            color = colorScheme.surfaceVariant.copy(alpha = 0.5f)
                         ) {
                             Column(
                                 modifier = Modifier.padding(4.dp),

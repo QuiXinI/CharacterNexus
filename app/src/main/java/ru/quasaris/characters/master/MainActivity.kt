@@ -196,6 +196,8 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    var isFullscreenDialogOpen by remember { mutableStateOf(false) }
+
                     CompositionLocalProvider(
                         androidx.compose.ui.platform.LocalTextToolbar provides safeToolbar
                     ) {
@@ -397,6 +399,7 @@ class MainActivity : ComponentActivity() {
                                                     spellbookManager = spellbookManager,
                                                     glossaryImporter = glossaryImporter,
                                                     onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                    onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
                                                     hazeState = hazeState,
                                                     popupHazeState = overlayHazeState,
                                                     forceBlurEnabled = effectiveBlurFullscreen,
@@ -486,6 +489,7 @@ class MainActivity : ComponentActivity() {
                                                         DiceRoller.performHapticFeedback(this@MainActivity, res)
                                                         rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
                                                     },
+                                                    onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
                                                     hazeState = hazeState,
                                                     popupHazeState = overlayHazeState,
                                                     forceBlurEnabled = effectiveBlurFullscreen,
@@ -506,7 +510,7 @@ class MainActivity : ComponentActivity() {
 
                             val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
                             val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true
-                            if (rollHistory.isNotEmpty() && isOnCharacterScreen && !isKeyboardVisible) {
+                            if (rollHistory.isNotEmpty() && isOnCharacterScreen && !isKeyboardVisible && !isFullscreenDialogOpen) {
                                 DiceRollOverlay(
                                     history = rollHistory,
                                     onClose = { rollHistory = emptyList() },

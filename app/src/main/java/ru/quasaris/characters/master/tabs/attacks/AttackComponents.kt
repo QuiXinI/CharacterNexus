@@ -24,9 +24,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import ru.quasaris.characters.master.ui.outerShadow
 import ru.quasaris.characters.master.R
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.AttackBonus
@@ -73,6 +75,11 @@ fun AttackBonusIndicator(
             Box(
                 modifier = Modifier
                     .size(size)
+                    .outerShadow(
+                        shape = CircleShape,
+                        blur = 2.dp,
+                        offsetY = 1.dp
+                    )
                     .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
@@ -218,7 +225,13 @@ fun ProficiencyToggle(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .background(if (!isProficient) activeColor else inactiveColor, RoundedCornerShape(6.dp))
+                    .outerShadow(
+                        shape = RoundedCornerShape(6.dp),
+                        blur = 2.dp,
+                        offsetY = 1.dp
+                    )
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (!isProficient) activeColor else inactiveColor)
                     .clickable { onToggle(false) },
                 contentAlignment = Alignment.Center
             ) {
@@ -228,7 +241,13 @@ fun ProficiencyToggle(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .background(if (isProficient) activeColor else inactiveColor, RoundedCornerShape(6.dp))
+                    .outerShadow(
+                        shape = RoundedCornerShape(6.dp),
+                        blur = 2.dp,
+                        offsetY = 1.dp
+                    )
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isProficient) activeColor else inactiveColor)
                     .clickable { onToggle(true) },
                 contentAlignment = Alignment.Center
             ) {

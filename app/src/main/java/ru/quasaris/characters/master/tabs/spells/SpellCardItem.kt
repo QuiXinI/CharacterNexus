@@ -3,6 +3,7 @@ package ru.quasaris.characters.master.tabs.spells
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -22,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
-import androidx.compose.ui.draw.shadow
+import ru.quasaris.characters.master.ui.outerShadow
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -76,7 +77,8 @@ fun SpellCardItem(
     blurCards: Boolean = true,
     highlightRitual: Boolean = false,
     isEditMode: Boolean = false,
-    isDragging: Boolean = false
+    isDragging: Boolean = false,
+    isAnyItemDragging: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val internalHazeState = remember { HazeState() }
@@ -89,6 +91,11 @@ fun SpellCardItem(
         isEditMode -> 0.95f
         else -> 1f
     })
+
+    val backgroundBlur by animateDpAsState(
+        targetValue = if (isAnyItemDragging && !isDragging) 6.dp else 0.dp,
+        label = "backgroundBlur"
+    )
     
     val useHaze = hazeState != null && blurCards
 
@@ -101,27 +108,31 @@ fun SpellCardItem(
                 )
             }
             .scale(scale)
+            .then(if (backgroundBlur > 0.dp) Modifier.blur(backgroundBlur) else Modifier)
+            .outerShadow(
+                shape = RoundedCornerShape(16.dp),
+                blur = 2.dp,
+                offsetY = 1.dp
+            )
             .run {
                 if (useHaze) {
                     val targetState = if (isDragging) (popupHazeState ?: hazeState!!) else hazeState!!
-                    this.clip(RoundedCornerShape(12.dp))
-                        .hazeEffect(state = targetState, style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f)))))
+                    this.clip(RoundedCornerShape(16.dp))
+                        .hazeEffect(
+                            state = targetState, 
+                            style = HazeStyle(
+                                blurRadius = 24.dp, 
+                                tints = listOf(HazeTint(colorScheme.surfaceContainer.copy(alpha = 0.6f)))
+                            )
+                        )
                 } else this
-            }
-            .border(
-                width = if (isSelected) 2.dp else 1.dp, 
-                color = if (isSelected) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.1f), 
-                shape = RoundedCornerShape(12.dp)
-            ),
+            },
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                useHaze -> Color.Transparent
-                isSelected -> colorScheme.primary.copy(alpha = if (forceBlurEnabled) 0.15f else 0.1f)
-                forceBlurEnabled -> colorScheme.surfaceVariant.copy(alpha = 0.15f)
-                else -> colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            }
+            containerColor = if (useHaze) Color.Transparent
+                            else if (isSelected) colorScheme.primaryContainer
+                            else colorScheme.surfaceContainer
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.hazeSource(state = internalHazeState).padding(12.dp)) {
             Row(
@@ -140,7 +151,8 @@ fun SpellCardItem(
                             }
                         },
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface
                     )
                     if (spell.showEnglishName && spell.englishName.isNotBlank()) {
                         Text(
@@ -166,7 +178,12 @@ fun SpellCardItem(
                     
                     if (isEditable) {
                         IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(22.dp))
+                            Icon(
+                                Icons.Default.Edit, 
+                                contentDescription = null, 
+                                modifier = Modifier.size(22.dp),
+                                tint = colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
@@ -189,8 +206,9 @@ fun SpellCardItem(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
                         Text(
-                            text = "Время наложения: $castingTimeText",
-                            style = MaterialTheme.typography.bodySmall
+                            text = "Время: $castingTimeText",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -206,15 +224,16 @@ fun SpellCardItem(
                         Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
                         Text(
                             text = "Длительность: ${spell.duration}",
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
                 }
                 
                 if (spell.hasConcentration) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Default.SelfImprovement, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFFE57373))
-                        Text("Концентрация", style = MaterialTheme.typography.bodySmall, color = Color(0xFFE57373))
+                        Icon(Icons.Default.SelfImprovement, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.error)
+                        Text("Конц.", style = MaterialTheme.typography.bodySmall, color = colorScheme.error)
                     }
                 }
             }
@@ -228,7 +247,6 @@ fun SpellCardItem(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Left column: Damage buttons
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -240,7 +258,8 @@ fun SpellCardItem(
                                 statsMap = statsMap,
                                 title = "Урон: ${spell.name}",
                                 onRoll = onRollDamage,
-                                hazeState = internalHazeState,
+                                hazeState = hazeState,
+                                popupHazeState = popupHazeState,
                                 isOled = isOled,
                                 baseLevel = spell.level.toIntOrNull() ?: 1,
                                 upcastFormula = spell.upcastDamageFormula
@@ -254,14 +273,14 @@ fun SpellCardItem(
                                     statsMap = statsMap,
                                     title = "Доп. урон: ${spell.name}",
                                     onRoll = onRollDamage,
-                                    hazeState = internalHazeState,
+                                    hazeState = hazeState,
+                                    popupHazeState = popupHazeState,
                                     isOled = isOled
                                 )
                             }
                         }
                     }
 
-                    // Right column: Attack/Save
                     if (spell.attackTypes.isNotEmpty()) {
                         val actionSize = 64.dp
                         Column(
@@ -273,12 +292,18 @@ fun SpellCardItem(
                                     modifier = Modifier
                                         .size(actionSize)
                                         .onGloballyPositioned { coords -> attackBtnSize = coords.size }
+                                        .outerShadow(
+                                            shape = RoundedCornerShape(8.dp),
+                                            blur = 2.dp,
+                                            offsetY = 1.dp
+                                        )
                                         .combinedClickable(
                                             onClick = { onRollAttack(AdvantageType.NONE) },
                                             onLongClick = { showAttackPopup = true }
                                         ),
                                     color = colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = RoundedCornerShape(8.dp),
+                                    shadowElevation = 0.dp
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         AttackBonusIndicator(
@@ -298,7 +323,7 @@ fun SpellCardItem(
                                                 onAdvantage = { onRollAttack(AdvantageType.ADVANTAGE) },
                                                 onDisadvantage = { onRollAttack(AdvantageType.DISADVANTAGE) },
                                                 onDismiss = { showAttackPopup = false },
-                                                hazeState = internalHazeState,
+                                                hazeState = popupHazeState ?: hazeState,
                                                 isOled = isOled,
                                                 modifier = Modifier.size(sizeDp)
                                             )
@@ -309,9 +334,16 @@ fun SpellCardItem(
                             
                             if (spell.attackTypes.contains(MagicAttackType.SAVE)) {
                                 Surface(
-                                    modifier = Modifier.size(actionSize),
-                                    color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                    shape = RoundedCornerShape(8.dp)
+                                    modifier = Modifier
+                                        .size(actionSize)
+                                        .outerShadow(
+                                            shape = RoundedCornerShape(8.dp),
+                                            blur = 2.dp,
+                                            offsetY = 1.dp
+                                        ),
+                                    color = colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    shadowElevation = 0.dp
                                 ) {
                                     Column(
                                         modifier = Modifier.fillMaxSize().padding(2.dp),
@@ -330,7 +362,8 @@ fun SpellCardItem(
                                             text = if (spellSaveDc > 0) spellSaveDc.toString() else "X",
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Black,
-                                            fontSize = 18.sp
+                                            fontSize = 18.sp,
+                                            color = colorScheme.onSurface
                                         )
 
                                         val attrText = spell.savingThrowAttributes.joinToString("/") { it.shortName }
@@ -351,7 +384,7 @@ fun SpellCardItem(
 
             AnimatedVisibility(visible = isExpanded) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
-                    HorizontalDivider(color = colorScheme.onSurface.copy(alpha = 0.1f))
+                    HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     if (spell.materialComponentType != MaterialComponentType.NONE && spell.materialComponents.isNotBlank()) {
@@ -364,7 +397,8 @@ fun SpellCardItem(
                             text = "$mPrefix${spell.materialComponents}",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            color = colorScheme.onSurface
                         )
                     }
                     
@@ -373,7 +407,8 @@ fun SpellCardItem(
                             text = "Дистанция: ${spell.distance}",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 4.dp)
+                            modifier = Modifier.padding(bottom = 4.dp),
+                            color = colorScheme.onSurface
                         )
                     }
 
@@ -391,27 +426,30 @@ fun SpellCardItem(
                             text = combinedText,
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            color = colorScheme.onSurface
                         )
                     }
                     
                     Text(
                         text = spell.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 20.sp
+                        lineHeight = 20.sp,
+                        color = colorScheme.onSurface
                     )
                     
                     if (spell.notes.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = colorScheme.primary.copy(alpha = 0.05f)),
+                            colors = CardDefaults.cardColors(containerColor = colorScheme.primaryContainer.copy(alpha = 0.3f)),
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
                                 text = spell.notes,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(8.dp)
-                                    .fillMaxWidth()
+                                    .fillMaxWidth(),
+                                color = colorScheme.onPrimaryContainer
                             )
                         }
                     }
@@ -439,6 +477,7 @@ fun SpellDamageButton(
     title: String,
     onRoll: (String, String, AdvantageType) -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     isOled: Boolean = false,
     baseLevel: Int = 0,
     upcastFormula: String = ""
@@ -485,12 +524,18 @@ fun SpellDamageButton(
         modifier = Modifier
             .fillMaxWidth()
             .onGloballyPositioned { coords -> btnSize = coords.size }
+            .outerShadow(
+                shape = RoundedCornerShape(8.dp),
+                blur = 2.dp,
+                offsetY = 1.dp
+            )
             .combinedClickable(
                 onClick = { onRoll(currentFormula, currentTitle, AdvantageType.NONE) },
                 onLongClick = { showPopup = true }
             ),
-        color = colorScheme.primary.copy(alpha = 0.08f),
-        shape = RoundedCornerShape(8.dp)
+        color = if (damageTypes.contains(DamageType.HEALING)) colorScheme.primary.copy(alpha = 0.08f) else colorScheme.primaryContainer.copy(alpha = 0.5f),
+        shape = RoundedCornerShape(8.dp),
+        shadowElevation = 0.dp
     ) {
         Box(contentAlignment = Alignment.Center) {
             Row(
@@ -517,14 +562,16 @@ fun SpellDamageButton(
                 val sizeDp = with(density) { btnSize.toSize().let { DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
                 
                 if (upcastFormula.isNotBlank() && baseLevel in 1..8) {
-                    // Upcast selection popup (can be integrated into DiceRollAdvantagePopup or separate)
-                    // For now, let's just use a Column with Level selector and then the Advantage row
                     Popup(onDismissRequest = { showPopup = false }) {
                         Surface(
-                            modifier = Modifier.width(sizeDp.width).shadow(8.dp, RoundedCornerShape(12.dp)),
+                            modifier = Modifier.width(sizeDp.width).outerShadow(
+                                shape = RoundedCornerShape(12.dp),
+                                blur = 16.dp,
+                                offsetY = 8.dp
+                            ),
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isOled) Color.Black else colorScheme.surface,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.2f))
+                            color = if (isOled) Color.Black else colorScheme.surfaceContainerHigh,
+                            tonalElevation = 2.dp
                         ) {
                             Column {
                                 Text(
@@ -548,13 +595,13 @@ fun SpellDamageButton(
                                         )
                                     }
                                 }
-                                HorizontalDivider(color = colorScheme.outline.copy(alpha = 0.1f))
+                                HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.2f))
                                 DiceRollAdvantagePopup(
                                     onAdvantage = { onRoll(currentFormula, currentTitle, AdvantageType.ADVANTAGE) },
                                     onDisadvantage = { onRoll(currentFormula, currentTitle, AdvantageType.DISADVANTAGE) },
                                     onCritical = { onRoll(currentFormula, currentTitle, AdvantageType.CRITICAL) },
                                     onDismiss = { showPopup = false },
-                                    hazeState = hazeState,
+                                    hazeState = popupHazeState ?: hazeState,
                                     isOled = isOled,
                                     modifier = Modifier.fillMaxWidth()
                                 )
@@ -567,7 +614,7 @@ fun SpellDamageButton(
                         onDisadvantage = { onRoll(currentFormula, currentTitle, AdvantageType.DISADVANTAGE) },
                         onCritical = { onRoll(currentFormula, currentTitle, AdvantageType.CRITICAL) },
                         onDismiss = { showPopup = false },
-                        hazeState = hazeState,
+                        hazeState = popupHazeState ?: hazeState,
                         isOled = isOled,
                         modifier = Modifier.size(sizeDp)
                     )
@@ -580,6 +627,7 @@ fun SpellDamageButton(
 @Composable
 fun SpellLinkItem(name: String, url: String) {
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
     TextButton(
         onClick = {
             try {
@@ -588,7 +636,8 @@ fun SpellLinkItem(name: String, url: String) {
             } catch (e: Exception) {}
         },
         modifier = Modifier.height(32.dp),
-        contentPadding = PaddingValues(0.dp)
+        contentPadding = PaddingValues(0.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
     ) {
         Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
         Spacer(modifier = Modifier.width(4.dp))
@@ -599,15 +648,13 @@ fun SpellLinkItem(name: String, url: String) {
 @Composable
 fun ComponentMarker(text: String, isHighlighted: Boolean = false) {
     val colorScheme = MaterialTheme.colorScheme
-    val containerColor = if (isHighlighted) colorScheme.primary else colorScheme.primary.copy(alpha = 0.1f)
-    val contentColor = if (isHighlighted) colorScheme.onPrimary else colorScheme.primary
+    val containerColor = if (isHighlighted) colorScheme.primary else colorScheme.surfaceContainerHighest
+    val contentColor = if (isHighlighted) colorScheme.onPrimary else colorScheme.onSurfaceVariant
 
     Surface(
         color = containerColor,
         shape = RoundedCornerShape(4.dp),
-        modifier = Modifier.height(24.dp).widthIn(min = 24.dp).run {
-            if (isHighlighted) border(1.dp, colorScheme.primaryContainer, RoundedCornerShape(4.dp)) else this
-        }
+        modifier = Modifier.height(24.dp).widthIn(min = 24.dp)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
             Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = contentColor)

@@ -21,10 +21,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
+import ru.quasaris.characters.master.ui.outerShadow
 
 @Composable
 fun FormattingToolbar(
@@ -34,8 +31,7 @@ fun FormattingToolbar(
     isSelectionActive: Boolean,
     onLinkRequest: () -> Unit,
     onSave: () -> Unit = {},
-    modifier: Modifier = Modifier,
-    hazeState: HazeState? = null
+    modifier: Modifier = Modifier
 ) {
     if (!isFocused) return
 
@@ -61,19 +57,19 @@ fun FormattingToolbar(
             .graphicsLayer { 
                 translationY = yOffset 
             }
-            .run {
-                if (hazeState != null) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(blurRadius = 15.dp, tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f))))
-                    }
-                } else this
-            }
+            .outerShadow(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Black.copy(alpha = 0.3f),
+                blur = 4.dp,
+                offsetY = 4.dp
+            )
             .then(if (hasPhysicalKeyboard) Modifier.graphicsLayer { alpha = 0.5f } else Modifier),
-        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-        color = Color.Transparent,
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp
-    ) {
+    )
+{
         Box(
             modifier = Modifier
                 .fillMaxWidth()

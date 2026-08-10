@@ -171,6 +171,13 @@ class CharacterDetailState(
     var showSpellSettings by mutableStateOf(false)
     var showAvatarMenu by mutableStateOf(false)
 
+    var isBonusConfigOpen by mutableStateOf(false)
+    var isAttackConfigOpen by mutableStateOf(false)
+    var isSpellEditorOpen by mutableStateOf(false)
+    var isMagicBonusSettingsOpen by mutableStateOf(false)
+    var isFullscreenDynamicFieldOpen by mutableStateOf(false)
+    var isWalletDialogOpen by mutableStateOf(false)
+
     // HP Dialog
     var hpDialogType by mutableStateOf("")
     var hpDialogValue by mutableStateOf("")

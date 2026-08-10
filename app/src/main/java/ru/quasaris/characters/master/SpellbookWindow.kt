@@ -15,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,6 +40,7 @@ fun SpellbookWindow(
     spellbookManager: SpellbookManager,
     glossaryImporter: ru.quasaris.characters.master.backend.GlossaryImporter,
     onOpenDrawer: () -> Unit,
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
@@ -148,6 +151,12 @@ fun SpellbookWindow(
 
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
+    
+    val isAnyFullscreenDialogOpen = editingSpell != null || showExportModuleDialog
+
+    LaunchedEffect(isAnyFullscreenDialogOpen) {
+        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -207,21 +216,23 @@ fun SpellbookWindow(
                 )
             },
             floatingActionButton = {
-                if (!isSelectionMode) {
+                if (!isSelectionMode && !isAnyFullscreenDialogOpen) {
                     FloatingActionButton(onClick = { editingSpell = SpellCard() }) {
                         Icon(Icons.Default.Add, contentDescription = "Добавить")
                     }
                 }
             },
             containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
-            modifier = Modifier.run {
-                if (forceBlurEnabled && hazeState != null && !isOled) {
-                    hazeEffect(state = hazeState) {
-                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
-                        inputScale = HazeInputScale.Fixed(0.7f)
-                    }
-                } else this
-            }
+            modifier = Modifier
+                .blur(if (isAnyFullscreenDialogOpen && forceBlurEnabled) 24.dp else 0.dp)
+                .run {
+                    if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) {
+                        this.drawWithContent {
+                            drawContent()
+                            drawRect(colorScheme.surface.copy(alpha = 0.2f))
+                        }
+                    } else this
+                }
         ) { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                 SpellFiltersArea(

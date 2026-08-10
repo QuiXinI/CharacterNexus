@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import ru.quasaris.characters.master.tabs.*
@@ -60,6 +61,7 @@ fun CharacterDetailWindow(
     onSaveChanges: (Character) -> Unit,
     onOpenDrawer: () -> Unit = {},
     onRoll: (RollResult) -> Unit = {},
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
@@ -304,16 +306,26 @@ fun CharacterDetailWindow(
 
     val currentTab = tabs[pagerState.currentPage % tabs.size]
     var showTabSheet by remember { mutableStateOf(false) }
+    val isOled = colorScheme.background == Color.Black
 
     val handleRestoration = { restType: String ->
         state.handleRestoration(restType, statsMap)
+    }
+
+    val isAnyFullscreenDialogOpen = state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed || 
+            state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings || 
+            state.showSpellSettings || state.bitmapToCrop != null || state.isBonusConfigOpen || 
+            state.isAttackConfigOpen || state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
+            state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen
+
+    LaunchedEffect(isAnyFullscreenDialogOpen) {
+        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
     }
 
     @Composable
     fun ExpandingPanelsWrapper() {
         val panelScrollState = rememberScrollState()
         val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-        val isOled = colorScheme.background == Color.Black
         val innerShadowColor = colorScheme.surface
 
         Box(
@@ -453,6 +465,16 @@ fun CharacterDetailWindow(
 
     Scaffold(
         containerColor = colorScheme.background,
+        modifier = Modifier
+            .blur(if (isAnyFullscreenDialogOpen && forceBlurEnabled) 24.dp else 0.dp)
+            .run {
+                if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) {
+                    this.drawWithContent {
+                        drawContent()
+                        drawRect(colorScheme.surface.copy(alpha = 0.2f))
+                    }
+                } else this
+            },
         topBar = {
             // Единый Surface обёртывает Хедер, Табы и Выпадающие Панели!
             Surface(
@@ -533,7 +555,7 @@ fun CharacterDetailWindow(
                         },
                         onLongRest = { handleRestoration("long") },
                         onDawn = { handleRestoration("dawn") },
-                        hazeState = hazeState,
+                        hazeState = popupHazeState ?: hazeState,
                         blurPopups = blurPopups
                     )
 
@@ -617,14 +639,15 @@ fun CharacterDetailWindow(
                             statsState = state.statsState,
                             onStatsStateChange = { state.statsState = it },
                             onRoll = onRoll,
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isAdvancedMode = state.isAdvancedMode,
                             advantageLogic = advantageLogic,
                             attributeModifiers = attributeModifiers,
-                            statsMap = statsMap
+                            statsMap = statsMap,
+                            onBonusConfigOpenChange = { state.isBonusConfigOpen = it }
                         )
                     }
                     CharacterTab.ATTACKS -> {
@@ -636,14 +659,15 @@ fun CharacterDetailWindow(
                             onRoll = onRoll,
                             stats = statsMap,
                             exhaustion = state.exhaustion,
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
                             spellSettings = state.spellSettings,
-                            advantageLogic = advantageLogic
+                            advantageLogic = advantageLogic,
+                            onAttackConfigOpenChange = { state.isAttackConfigOpen = it }
                         )
                     }
                     CharacterTab.BIO -> {
@@ -661,26 +685,28 @@ fun CharacterDetailWindow(
                             onAvatarEditRequest = {
                                 imagePickerLauncher.launch("image/*")
                             },
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
+                            statsMap = statsMap,
+                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it }
                         )
                     }
                     CharacterTab.SKILLS_FEATS -> {
                         SkillsFeatsTab(
                             skillsAndTraits = state.skillsAndTraits,
                             onSkillsAndTraitsChange = { state.skillsAndTraits = it },
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
+                            statsMap = statsMap,
+                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it }
                         )
                     }
                     CharacterTab.INVENTORY -> {
@@ -689,13 +715,15 @@ fun CharacterDetailWindow(
                             onInventoryChange = { state.inventory = it },
                             wallet = state.wallet,
                             onWalletChange = { state.wallet = it },
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
-                            statsMap = statsMap
+                            statsMap = statsMap,
+                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it },
+                            onWalletDialogOpenChange = { state.isWalletDialogOpen = it }
                         )
                     }
                     CharacterTab.SPELLS -> {
@@ -705,7 +733,7 @@ fun CharacterDetailWindow(
                             characterLevel = state.level.toIntOrNull() ?: 1,
                             spellSettings = state.spellSettings,
                             onSpellSettingsChange = { state.spellSettings = it },
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
@@ -715,14 +743,16 @@ fun CharacterDetailWindow(
                             statsMap = statsMap,
                             exhaustion = state.exhaustion,
                             advantageLogic = advantageLogic,
-                            spellbookManager = spellbookManager
+                            spellbookManager = spellbookManager,
+                            onSpellEditorOpenChange = { state.isSpellEditorOpen = it },
+                            onMagicBonusSettingsOpenChange = { state.isMagicBonusSettingsOpen = it }
                         )
                     }
                     CharacterTab.NOTES -> {
                         NotesTab(
                             notes = state.notes,
                             onNotesChange = { state.notes = it },
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             popupHazeState = popupHazeState,
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
@@ -736,7 +766,7 @@ fun CharacterDetailWindow(
 
             val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
-            if (!isKeyboardVisible && diceFabEnabled) {
+            if (!isKeyboardVisible && diceFabEnabled && !isAnyFullscreenDialogOpen) {
                 DiceRollingFab(
                     onRoll = { pool ->
                         val res = DiceRoller.rollPool(pool)

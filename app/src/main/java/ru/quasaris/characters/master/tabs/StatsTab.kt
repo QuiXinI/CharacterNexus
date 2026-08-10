@@ -22,7 +22,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
+import ru.quasaris.characters.master.ui.outerShadow
 import androidx.compose.foundation.border
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -91,12 +91,17 @@ fun StatsTab(
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     attributeModifiers: Map<Attribute, Int> = emptyMap(),
     statsMap: Map<String, String> = emptyMap(),
+    onBonusConfigOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
     var showBonusDialogForAttribute by remember { mutableStateOf<Attribute?>(null) }
     var showBonusDialogForSkill by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(showBonusDialogForAttribute, showBonusDialogForSkill) {
+        onBonusConfigOpenChange(showBonusDialogForAttribute != null || showBonusDialogForSkill != null)
+    }
 
     Column(
         modifier = Modifier
@@ -301,9 +306,12 @@ fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, 
     val modStr = if (mod >= 0) "+$mod" else mod.toString()
     Box(modifier = modifier
         .height(104.dp)
-        .shadow(2.dp, RoundedCornerShape(8.dp))
-        .background(colorScheme.surface, RoundedCornerShape(8.dp))
-        .border(1.dp, colorScheme.outline.copy(0.5f), RoundedCornerShape(8.dp))
+        .outerShadow(
+            shape = RoundedCornerShape(12.dp),
+            blur = 2.dp,
+            offsetY = 1.dp
+        )
+        .background(colorScheme.surfaceContainer, RoundedCornerShape(12.dp))
         .padding(8.dp)) {
         Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colorScheme.onSurface)
         Box(modifier = Modifier
@@ -311,25 +319,48 @@ fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, 
             .padding(start = 25.dp, bottom = 5.dp)
             .size(40.dp)
             .rotate(-45f)
+            .outerShadow(
+                shape = RoundedCornerShape(12.dp),
+                blur = 2.dp,
+                offsetY = 1.dp
+            )
             .clip(RoundedCornerShape(12.dp))
             .background(colorScheme.primaryContainer)
-            .clickable { /* TODO: Implement action */ }, contentAlignment = Alignment.Center) {
+            .clickable {}, contentAlignment = Alignment.Center) {
             Text(modStr, modifier = Modifier.rotate(45f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onPrimaryContainer)
         }
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Box(modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(colorScheme.surfaceVariant)
-                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                BasicTextField(value = value, onValueChange = { val num = it.filter { it.isDigit() }.toIntOrNull(); if (it.isEmpty()) onValueChange(""); else if (num != null && num in 1..30) onValueChange(it.filter { it.isDigit() }) }, textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.width(36.dp))
+                .outerShadow(
+                    shape = RoundedCornerShape(12.dp),
+                    blur = 2.dp,
+                    offsetY = 1.dp
+                )
+                .clip(RoundedCornerShape(12.dp))
+                .background(colorScheme.surfaceContainerHigh), contentAlignment = Alignment.Center) {
+                BasicTextField(
+                    value = value, 
+                    onValueChange = { 
+                        val num = it.filter { it.isDigit() }.toIntOrNull()
+                        if (it.isEmpty()) onValueChange("")
+                        else if (num != null && num in 1..30) onValueChange(it.filter { it.isDigit() }) 
+                    }, 
+                    textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface), 
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
+                    modifier = Modifier.width(36.dp)
+                )
             }
             Box(modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(colorScheme.surface)
-                .border(1.dp, colorScheme.outline.copy(0.05f), RoundedCornerShape(8.dp))
-                .clickable { /* TODO: Implement action */ }, contentAlignment = Alignment.Center) {
+                .outerShadow(
+                    shape = RoundedCornerShape(12.dp),
+                    blur = 2.dp,
+                    offsetY = 1.dp
+                )
+                .clip(RoundedCornerShape(12.dp))
+                .background(colorScheme.surfaceContainerLow)
+                .clickable { /* Action implemented by parent */ }, contentAlignment = Alignment.Center) {
                 Text(modStr, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface)
             }
         }

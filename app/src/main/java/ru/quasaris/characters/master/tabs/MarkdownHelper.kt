@@ -231,7 +231,11 @@ object MarkdownHelper {
             append(result.toString())
             
             // Apply 50% opacity to markers
-            val markerStyle = if (onSurface != Color.Unspecified) SpanStyle(color = onSurface.copy(alpha = 0.5f)) else SpanStyle(color = Color.Unspecified.copy(alpha = 0.5f))
+            val markerStyle = if (onSurface != Color.Unspecified) {
+                SpanStyle(color = onSurface.copy(alpha = 0.5f))
+            } else {
+                SpanStyle()
+            }
             markerRanges.forEach { range ->
                 addStyle(markerStyle, range.first, range.last + 1)
             }

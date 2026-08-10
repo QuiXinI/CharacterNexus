@@ -25,6 +25,7 @@ fun CharacterDetailDialogs(
             characterLevel = state.level.toIntOrNull() ?: 1,
             onSettingsChange = { state.spellSettings = it },
             onDismiss = { state.showSpellSettings = false },
+            onSubDialogOpenChange = { state.isMagicBonusSettingsOpen = it },
             hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
             statsMap = statsMap

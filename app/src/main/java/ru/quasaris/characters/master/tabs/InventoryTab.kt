@@ -3,11 +3,7 @@ package ru.quasaris.characters.master.tabs
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ru.quasaris.characters.master.DynamicNoteState
@@ -31,9 +27,15 @@ fun InventoryTab(
     isEditMode: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onWalletDialogOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     var editingCurrency by remember { mutableStateOf<Currency?>(null) }
+    
+    LaunchedEffect(editingCurrency) {
+        onWalletDialogOpenChange(editingCurrency != null)
+    }
 
     DynamicFieldsTab(
         fields = inventory,
@@ -43,6 +45,7 @@ fun InventoryTab(
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,
+        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Инвентарь пуст",
         titlePlaceholder = "Название раздела",

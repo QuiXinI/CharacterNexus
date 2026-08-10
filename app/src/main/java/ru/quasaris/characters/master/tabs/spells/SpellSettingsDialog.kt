@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -28,10 +29,12 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.CasterType
 import ru.quasaris.characters.master.SpellMode
@@ -42,7 +45,6 @@ import ru.quasaris.characters.master.tabs.attacks.DiceIcon
 import ru.quasaris.characters.master.backend.DicePart
 import ru.quasaris.characters.master.backend.parseFormulaParts
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import ru.quasaris.characters.master.backend.calculateModifier
 import ru.quasaris.characters.master.backend.getProficiencyBonus
@@ -61,6 +63,7 @@ fun SpellSettingsDialog(
     characterLevel: Int,
     onSettingsChange: (SpellSettings) -> Unit,
     onDismiss: () -> Unit,
+    onSubDialogOpenChange: (Boolean) -> Unit = {},
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     statsMap: Map<String, String> = emptyMap()
@@ -75,6 +78,11 @@ fun SpellSettingsDialog(
 
     var showAttackBonusDialog by remember { mutableStateOf(false) }
     var showSaveDcBonusDialog by remember { mutableStateOf(false) }
+    val isSubDialogOpen = showAttackBonusDialog || showSaveDcBonusDialog
+    
+    LaunchedEffect(isSubDialogOpen) {
+        onSubDialogOpenChange(isSubDialogOpen)
+    }
 
     val pb = getProficiencyBonus(characterLevel.toString())
     val currentAbilityModifier = remember(spellcastingAbility, statsMap) {
@@ -143,6 +151,10 @@ fun SpellSettingsDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
+        }
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
@@ -165,6 +177,7 @@ fun SpellSettingsDialog(
             },
             containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
             modifier = Modifier
+                .blur(if (isSubDialogOpen && forceBlurEnabled) 16.dp else 0.dp)
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDrag = { change, _ ->
@@ -177,14 +190,6 @@ fun SpellSettingsDialog(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { focusManager.clearFocus() }
-                .run {
-                    if (forceBlurEnabled && hazeState != null && !isOled) {
-                        hazeEffect(state = hazeState) {
-                            style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
-                            inputScale = HazeInputScale.Fixed(0.7f)
-                        }
-                    } else this
-                }
         ) { paddingValues ->
             Column(
                 modifier = Modifier

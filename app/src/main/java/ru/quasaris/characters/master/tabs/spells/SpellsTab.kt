@@ -1,27 +1,26 @@
 package ru.quasaris.characters.master.tabs.spells
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.*
-import ru.quasaris.characters.master.*
-import ru.quasaris.characters.master.backend.*
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.scale
+import ru.quasaris.characters.master.ui.outerShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -31,19 +30,17 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
-import androidx.compose.animation.core.animateFloatAsState
-import sh.calvin.reorderable.*
+import dev.chrisbanes.haze.HazeState
+import ru.quasaris.characters.master.*
+import ru.quasaris.characters.master.backend.*
 import ru.quasaris.characters.master.tabs.DynamicFieldsTab
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
 import ru.quasaris.characters.master.tabs.attacks.calculateTotalBonus
 import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
-import dev.chrisbanes.haze.HazeState
+import sh.calvin.reorderable.*
 import java.util.Locale
 import kotlin.math.floor
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -64,24 +61,33 @@ fun SpellsTab(
     exhaustion: Int = 0,
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     spellbookManager: SpellbookManager? = null,
+    onSpellEditorOpenChange: (Boolean) -> Unit = {},
+    onMagicBonusSettingsOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
-    
+
     var showSpellAtkPopup by remember { mutableStateOf(false) }
     var spellAtkBtnSize by remember { mutableStateOf(IntSize.Zero) }
-    
+
     var editingSpell by remember { mutableStateOf<SpellCard?>(null) }
+    var showMagicBonusSettings by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(editingSpell, showMagicBonusSettings) {
+        onSpellEditorOpenChange(editingSpell != null)
+        onMagicBonusSettingsOpenChange(showMagicBonusSettings)
+    }
+
     var showSelectionDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
-    
+
     var levelInEditMode by remember { mutableStateOf<Float?>(null) }
     var showDividerEditor by remember { mutableStateOf<Pair<Float, SpellLevelDivider?>?>(null) }
 
     val characterSpells = remember(spellSettings.selectedSpellIds, spellSettings.preparedSpellIds, spellSettings.isSpellbookEnabled, refreshTrigger) {
         val all = spellbookManager?.loadSpells() ?: emptyList()
         if (spellSettings.isSpellbookEnabled) {
-            all.filter { 
+            all.filter {
                 it.id in spellSettings.preparedSpellIds || (it.id in spellSettings.selectedSpellIds && it.isRitual)
             }
         } else {
@@ -114,18 +120,12 @@ fun SpellsTab(
     }
 
     val pb = getProficiencyBonus(characterLevel.toString())
-    val abilityModifier = if (spellSettings.spellcastingAbility != Attribute.NONE) {
-        val statKey = when (spellSettings.spellcastingAbility) {
-            Attribute.STRENGTH -> "strength"
-            Attribute.DEXTERITY -> "dexterity"
-            Attribute.CONSTITUTION -> "constitution"
-            Attribute.INTELLIGENCE -> "intelligence"
-            Attribute.WISDOM -> "wisdom"
-            Attribute.CHARISMA -> "charisma"
-            else -> ""
-        }
-        ru.quasaris.characters.master.backend.calculateModifier(statsMap[statKey] ?: "10")
-    } else 0
+    val abilityModifier = remember(spellSettings.spellcastingAbility, statsMap) {
+        if (spellSettings.spellcastingAbility != Attribute.NONE) {
+            val statKey = spellSettings.spellcastingAbility.name.lowercase(Locale.ROOT)
+            calculateModifier(statsMap[statKey] ?: "10")
+        } else 0
+    }
 
     val renderDiceInOrder by settingsViewModel?.renderDiceInOrder?.collectAsState() ?: remember { mutableStateOf(true) }
     val collapseActionsOnEdit by settingsViewModel?.collapseActionsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
@@ -133,9 +133,9 @@ fun SpellsTab(
     val magicAtkCalculation = remember(spellSettings.spellAttackBonuses, pb, abilityModifier, statsMap, exhaustion, renderDiceInOrder) {
         val baseFlat = pb + abilityModifier
         var totalFlat = baseFlat - (exhaustion * 2)
-        
+
         totalFlat = calculateTotalBonus(spellSettings.spellAttackBonuses, statsMap, initialValue = totalFlat)
-        
+
         val allDiceList = mutableListOf<DicePart>()
         spellSettings.spellAttackBonuses.filter { it.isActive }.forEach { bonus ->
             val (_, fDice) = parseFormulaParts(bonus.formula, statsMap)
@@ -152,9 +152,7 @@ fun SpellsTab(
 
     val magicSaveCalculation = remember(spellSettings.spellSaveDcBonuses, pb, abilityModifier, statsMap, renderDiceInOrder) {
         val baseFlat = 8 + pb + abilityModifier
-        var totalFlat = baseFlat
-        
-        totalFlat = calculateTotalBonus(spellSettings.spellSaveDcBonuses, statsMap, initialValue = totalFlat)
+        var totalFlat = calculateTotalBonus(spellSettings.spellSaveDcBonuses, statsMap, initialValue = baseFlat)
 
         val allDiceList = mutableListOf<DicePart>()
         spellSettings.spellSaveDcBonuses.filter { it.isActive }.forEach { bonus ->
@@ -174,7 +172,6 @@ fun SpellsTab(
     val spellAttackBase = magicAtkCalculation.second
     val spellAttackDice = magicAtkCalculation.third
     val spellSaveDc = magicSaveCalculation.first
-    val spellSaveBase = magicSaveCalculation.second
     val spellSaveDice = magicSaveCalculation.third
 
     val longRestAlignment by settingsViewModel?.longRestAlignment?.collectAsState() ?: remember { mutableStateOf(SlotAlignment.RIGHT) }
@@ -188,22 +185,20 @@ fun SpellsTab(
     val processedSpells = remember(spells, spellSettings.selectedSpellIds, spellSettings.specialSlots, spellSettings.pactSlotLevel, spellSettings.isPactEnabled, spellSettings.casterType, spellSettings.isMulticlass, characterSpells) {
         val specialLevels = spellSettings.specialSlots.map { it.level }.toMutableSet()
         if (spellSettings.isPactEnabled) specialLevels.add(spellSettings.pactSlotLevel)
-        
-        if (spellSettings.casterType != ru.quasaris.characters.master.CasterType.NONE || spellSettings.isMulticlass) {
+
+        if (spellSettings.casterType != CasterType.NONE || spellSettings.isMulticlass) {
             for (i in 1..9) specialLevels.add(i.toFloat())
         }
         specialLevels.add(0f)
-        
-        // Add "Other" (-1f) if there are spells with non-numeric levels
+
         if (characterSpells.any { it.level.trim() != "0" && it.level.trim().toIntOrNull() == null }) {
             specialLevels.add(-1f)
         }
 
         val currentList = spells.toMutableList()
         val existingLevels = currentList.map { parseLevelFromTitle(it.title) }
-        
         val missingLevels = specialLevels.filter { it !in existingLevels }.sorted()
-        
+
         missingLevels.forEach { level ->
             currentList.add(DynamicNoteState(
                 title = formatLevelTitle(level),
@@ -214,11 +209,7 @@ fun SpellsTab(
         currentList.sortedBy { parseLevelFromTitle(it.title) }
     }
 
-    LaunchedEffect(processedSpells) {
-        if (processedSpells != spells) {
-            onSpellsChange(processedSpells)
-        }
-    }
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (spellSettings.isMagicEnabled) {
@@ -230,17 +221,23 @@ fun SpellsTab(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.outerShadow(
+                        shape = RoundedCornerShape(12.dp),
+                        blur = 6.dp,
+                        offsetY = 3.dp
+                    ),
+                    color = colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 0.dp
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Сложность спасброска",
+                            text = "Спасбросок",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = colorScheme.primary,
                             fontSize = 10.sp
                         )
                         Row(
@@ -250,7 +247,8 @@ fun SpellsTab(
                             Text(
                                 text = spellSaveDc.toString(),
                                 style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface
                             )
                             if (spellSaveDice.isNotEmpty()) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -263,26 +261,30 @@ fun SpellsTab(
 
                 Surface(
                     modifier = Modifier
-                        .onGloballyPositioned { coords ->
-                            spellAtkBtnSize = coords.size
-                        }
+                        .onGloballyPositioned { coords -> spellAtkBtnSize = coords.size }
+                        .outerShadow(
+                            shape = RoundedCornerShape(12.dp),
+                            blur = 6.dp,
+                            offsetY = 3.dp
+                        )
                         .combinedClickable(
-                            onClick = { 
+                            onClick = {
                                 onRoll(DiceRoller.roll(
-                                    title = "Атака заклинанием", 
-                                    baseModifier = spellAttackBase, 
+                                    title = "Атака заклинанием",
+                                    baseModifier = spellAttackBase,
                                     bonuses = spellSettings.spellAttackBonuses,
-                                    stats = statsMap, 
-                                    exhaustion = exhaustion, 
+                                    stats = statsMap,
+                                    exhaustion = exhaustion,
                                     sourceType = RollSourceType.ATTACK,
                                     advantageType = AdvantageType.NONE,
                                     advantageLogic = advantageLogic
-                                )) 
+                                ))
                             },
                             onLongClick = { showSpellAtkPopup = true }
                         ),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(12.dp)
+                    color = colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(12.dp),
+                    shadowElevation = 0.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Column(
@@ -290,9 +292,9 @@ fun SpellsTab(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Атака заклинанием",
+                                text = "Атака",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = colorScheme.primary,
                                 fontSize = 10.sp
                             )
                             AttackBonusIndicator(
@@ -306,18 +308,18 @@ fun SpellsTab(
                                 useXForZero = true
                             )
                         }
-                        
+
                         if (showSpellAtkPopup) {
                             val density = LocalDensity.current
                             val sizeDp = with(density) { spellAtkBtnSize.toSize().let { androidx.compose.ui.unit.DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
                             DiceRollAdvantagePopup(
                                 onAdvantage = {
                                     onRoll(DiceRoller.roll(
-                                        title = "Атака заклинанием", 
-                                        baseModifier = spellAttackBase, 
+                                        title = "Атака заклинанием",
+                                        baseModifier = spellAttackBase,
                                         bonuses = spellSettings.spellAttackBonuses,
-                                        stats = statsMap, 
-                                        exhaustion = exhaustion, 
+                                        stats = statsMap,
+                                        exhaustion = exhaustion,
                                         sourceType = RollSourceType.ATTACK,
                                         advantageType = AdvantageType.ADVANTAGE,
                                         advantageLogic = advantageLogic
@@ -325,11 +327,11 @@ fun SpellsTab(
                                 },
                                 onDisadvantage = {
                                     onRoll(DiceRoller.roll(
-                                        title = "Атака заклинанием", 
-                                        baseModifier = spellAttackBase, 
+                                        title = "Атака заклинанием",
+                                        baseModifier = spellAttackBase,
                                         bonuses = spellSettings.spellAttackBonuses,
-                                        stats = statsMap, 
-                                        exhaustion = exhaustion, 
+                                        stats = statsMap,
+                                        exhaustion = exhaustion,
                                         sourceType = RollSourceType.ATTACK,
                                         advantageType = AdvantageType.DISADVANTAGE,
                                         advantageLogic = advantageLogic
@@ -337,7 +339,7 @@ fun SpellsTab(
                                 },
                                 onDismiss = { showSpellAtkPopup = false },
                                 hazeState = hazeState,
-                                isOled = MaterialTheme.colorScheme.background == Color.Black,
+                                isOled = colorScheme.background == Color.Black,
                                 modifier = Modifier.size(sizeDp)
                             )
                         }
@@ -387,7 +389,7 @@ fun SpellsTab(
                 },
                 extraContent = { spell ->
                     val level = parseLevelFromTitle(spell.title)
-                    
+
                     if (level > 0) {
                         val baseSlots = if (level >= 1f && level <= 9f && level == floor(level)) (spellSettings.overrideSlots[level] ?: autoSlots[level.toInt() - 1]) else (spellSettings.overrideSlots[level] ?: 0)
                         val specialLong = spellSettings.specialSlots.filter { it.level == level && !it.restoreOnShortRest && !it.restoreOnDawn }.sumOf { it.count }
@@ -500,238 +502,264 @@ fun SpellsTab(
                             currentSpellIds.filter { it !in handledSpellIds }.forEach {
                                 result.add(SpellLevelItem(spellId = it))
                             }
-                            mutableStateListOf<SpellLevelItem>().apply { addAll(result) }
+                            result
                         }
 
                         val isListEditMode = levelInEditMode == level
+                        var draggingIndex by remember { mutableStateOf<Int?>(null) }
 
-                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = if (isListEditMode) "Редактирование порядка" else "Список заклинаний",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                                )
-                                IconButton(
-                                    onClick = { levelInEditMode = if (isListEditMode) null else level },
-                                    modifier = Modifier.size(24.dp)
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 8.dp)
+                                .outerShadow(
+                                    shape = RoundedCornerShape(12.dp),
+                                    blur = 2.dp,
+                                    offsetY = 1.dp
+                                ),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (blurCards && hazeState != null) colorScheme.surfaceContainerLow.copy(alpha = 0.5f)
+                            else colorScheme.surfaceContainerLow,
+                            tonalElevation = 1.dp,
+                            shadowElevation = 0.dp
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = if (isListEditMode) Icons.Default.Done else Icons.Default.Edit,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp),
-                                        tint = if (isListEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    Text(
+                                        text = if (isListEditMode) "Редактирование порядка" else "Список заклинаний",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = colorScheme.primary.copy(alpha = 0.7f)
                                     )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            ReorderableColumn(
-                                list = levelItems,
-                                onSettle = { from, to ->
-                                    levelItems.add(to, levelItems.removeAt(from))
-                                    onSpellSettingsChange(spellSettings.copy(
-                                        levelContent = spellSettings.levelContent.toMutableMap().apply { put(levelStr, levelItems.toList()) }
-                                    ))
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) { idx, item, isDragging ->
-                                val abilityForThisItem = remember(levelItems.toList(), idx, spellSettings.spellcastingAbility) {
-                                    var current = spellSettings.spellcastingAbility
-                                    for (i in 0..idx) {
-                                        val itm = if (i < levelItems.size) levelItems[i] else null
-                                        if (itm?.divider != null) {
-                                            current = if (itm.divider.ability != Attribute.NONE) itm.divider.ability else spellSettings.spellcastingAbility
-                                        }
-                                    }
-                                    current
-                                }
-
-                                ReorderableItem {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    IconButton(
+                                        onClick = { levelInEditMode = if (isListEditMode) null else level },
+                                        modifier = Modifier.size(24.dp)
                                     ) {
-                                        if (isListEditMode) {
-                                            Icon(
-                                                imageVector = Icons.Default.DragHandle,
-                                                contentDescription = "Перетащить",
-                                                modifier = Modifier
-                                                    .padding(end = 8.dp)
-                                                    .size(32.dp)
-                                                    .draggableHandle(),
-                                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                            )
+                                        Icon(
+                                            imageVector = if (isListEditMode) Icons.Default.Done else Icons.Default.Edit,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = if (isListEditMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                ReorderableColumn(
+                                    list = levelItems,
+                                    onSettle = { from, to ->
+                                        val updatedList = levelItems.toMutableList().apply { add(to, removeAt(from)) }
+                                        onSpellSettingsChange(spellSettings.copy(
+                                            levelContent = spellSettings.levelContent.toMutableMap().apply { put(levelStr, updatedList) }
+                                        ))
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) { idx, item, isDragging ->
+                                    LaunchedEffect(isDragging) {
+                                        if (isDragging) draggingIndex = idx
+                                        else if (draggingIndex == idx) draggingIndex = null
+                                    }
+
+                                    val abilityForThisItem = remember(levelItems, idx, spellSettings.spellcastingAbility) {
+                                        var current = spellSettings.spellcastingAbility
+                                        for (i in 0..idx) {
+                                            val itm = if (i < levelItems.size) levelItems[i] else null
+                                            if (itm?.divider != null) {
+                                                current = if (itm.divider.ability != Attribute.NONE) itm.divider.ability else spellSettings.spellcastingAbility
+                                            }
                                         }
+                                        current
+                                    }
 
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            if (item.divider != null) {
-                                                val dividerScale by animateFloatAsState(targetValue = if (isDragging) 1.05f else 1f)
-                                                Surface(
+                                    ReorderableItem {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (isListEditMode) {
+                                                Icon(
+                                                    imageVector = Icons.Default.DragHandle,
+                                                    contentDescription = "Перетащить",
                                                     modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .scale(dividerScale),
-                                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f),
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    shadowElevation = if (isDragging) 8.dp else 0.dp
-                                                ) {
-                                                    Row(
-                                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                        .padding(end = 8.dp)
+                                                        .size(32.dp)
+                                                        .draggableHandle(),
+                                                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                                )
+                                            }
+
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                if (item.divider != null) {
+                                                    val dividerScale by animateFloatAsState(targetValue = if (isDragging) 1.05f else 1f)
+                                                    val dividerBlur by animateDpAsState(targetValue = if (draggingIndex != null && !isDragging) 6.dp else 0.dp)
+                                                    Surface(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .scale(dividerScale)
+                                                            .then(if (dividerBlur > 0.dp) Modifier.blur(dividerBlur) else Modifier)
+                                                            .then(if (isDragging) Modifier.outerShadow(RoundedCornerShape(8.dp), blur = 16.dp, offsetY = 8.dp) else Modifier),
+                                                        color = colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        shadowElevation = 0.dp
                                                     ) {
-                                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                            Text(item.divider.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                                            if (item.divider.ability != Attribute.NONE) {
-                                                                Spacer(Modifier.width(8.dp))
-                                                                Surface(
-                                                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                                                    shape = RoundedCornerShape(4.dp)
-                                                                ) {
-                                                                    Text(
-                                                                        item.divider.ability.shortName,
-                                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                                                                        fontSize = 10.sp,
-                                                                        color = MaterialTheme.colorScheme.primary
-                                                                    )
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.SpaceBetween
+                                                        ) {
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                Text(item.divider.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = colorScheme.onSurface)
+                                                                if (item.divider.ability != Attribute.NONE) {
+                                                                    Spacer(Modifier.width(8.dp))
+                                                                    Surface(
+                                                                        color = colorScheme.primary.copy(alpha = 0.1f),
+                                                                        shape = RoundedCornerShape(4.dp)
+                                                                    ) {
+                                                                        Text(
+                                                                            item.divider.ability.shortName,
+                                                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                                            fontSize = 10.sp,
+                                                                            color = colorScheme.primary
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
-                                                        }
-                                                        if (isListEditMode) {
-                                                            Row {
-                                                                IconButton(onClick = { showDividerEditor = level to item.divider }, modifier = Modifier.size(24.dp)) {
-                                                                    Icon(Icons.Default.Settings, null, modifier = Modifier.size(16.dp))
-                                                                }
-                                                                IconButton(onClick = {
-                                                                    levelItems.removeAt(idx)
-                                                                    onSpellSettingsChange(spellSettings.copy(
-                                                                        levelContent = spellSettings.levelContent.toMutableMap().apply { put(levelStr, levelItems.toList()) }
-                                                                    ))
-                                                                }, modifier = Modifier.size(24.dp)) {
-                                                                    Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp), tint = Color.Red.copy(alpha = 0.7f))
+                                                            if (isListEditMode) {
+                                                                Row {
+                                                                    IconButton(onClick = { showDividerEditor = level to item.divider }, modifier = Modifier.size(24.dp)) {
+                                                                        Icon(Icons.Default.Settings, null, modifier = Modifier.size(16.dp), tint = colorScheme.onSurfaceVariant)
+                                                                    }
+                                                                    IconButton(onClick = {
+                                                                        val updated = levelItems.toMutableList().apply { removeAt(idx) }
+                                                                        onSpellSettingsChange(spellSettings.copy(
+                                                                            levelContent = spellSettings.levelContent.toMutableMap().apply { put(levelStr, updated) }
+                                                                        ))
+                                                                    }, modifier = Modifier.size(24.dp)) {
+                                                                        Icon(Icons.Default.Delete, null, modifier = Modifier.size(16.dp), tint = colorScheme.error.copy(alpha = 0.7f))
+                                                                    }
                                                                 }
                                                             }
                                                         }
                                                     }
-                                                }
-                                            } else if (item.spellId != null) {
-                                                val card = characterSpells.find { it.id == item.spellId }
-                                                if (card != null) {
-                                                    val spellAbility = spellSettings.spellAbilityOverrides[card.id] ?: abilityForThisItem
-                                                    val spellMod = if (spellAbility != Attribute.NONE) {
-                                                        calculateModifier(statsMap[spellAbility.name.lowercase()] ?: "10")
-                                                    } else abilityModifier
+                                                } else if (item.spellId != null) {
+                                                    val card = characterSpells.find { it.id == item.spellId }
+                                                    if (card != null) {
+                                                        val spellAbility = spellSettings.spellAbilityOverrides[card.id] ?: abilityForThisItem
+                                                        val spellMod = if (spellAbility != Attribute.NONE) {
+                                                            calculateModifier(statsMap[spellAbility.name.lowercase(Locale.ROOT)] ?: "10")
+                                                        } else abilityModifier
 
-                                                    val spellAtk = pb + spellMod + calculateTotalBonus(spellSettings.spellAttackBonuses, statsMap)
-                                                    val spellDc = 8 + pb + spellMod + calculateTotalBonus(spellSettings.spellSaveDcBonuses, statsMap)
+                                                        val spellAtk = pb + spellMod + calculateTotalBonus(spellSettings.spellAttackBonuses, statsMap)
+                                                        val spellDc = 8 + pb + spellMod + calculateTotalBonus(spellSettings.spellSaveDcBonuses, statsMap)
 
-                                                    var expanded by remember { mutableStateOf(false) }
-                                                    LaunchedEffect(isListEditMode) {
-                                                        if (isListEditMode && collapseActionsOnEdit) {
-                                                            expanded = false
+                                                        var expanded by remember { mutableStateOf(false) }
+                                                        LaunchedEffect(isListEditMode) {
+                                                            if (isListEditMode && collapseActionsOnEdit) {
+                                                                expanded = false
+                                                            }
                                                         }
-                                                    }
 
-                                                    SpellCardItem(
-                                                        spell = card,
-                                                        isExpanded = expanded,
-                                                        onToggleExpand = { expanded = !expanded },
-                                                        onEdit = { editingSpell = card },
-                                                        onRollDamage = { formula, title, advantage ->
-                                                            val finalFormula = if (card.level == "0") {
-                                                                if (card.noScaling) formula
-                                                                else scaleCantripFormula(formula, characterLevel, card.noDamageAtLevel1)
-                                                            } else formula
-                                                            val isHealing = card.damageTypes.contains(DamageType.HEALING)
-                                                            val finalTitle = if (isHealing) title.replace("Урон:", "Лечение:").replace("Доп. урон:", "Доп. лечение:") else title
-                                                            onRoll(DiceRoller.roll(
-                                                                title = finalTitle,
-                                                                baseModifier = 0,
-                                                                bonuses = listOf(SimpleBonus(formula = finalFormula, name = if (isHealing) "Лечение" else "Урон")),
-                                                                isDamage = !isHealing,
-                                                                isHealing = isHealing,
-                                                                stats = statsMap,
-                                                                exhaustion = 0,
-                                                                sourceType = RollSourceType.OTHER,
-                                                                advantageType = advantage,
-                                                                advantageLogic = advantageLogic
-                                                            ))
-                                                        },
-                                                        onRollAttack = { advantage ->
-                                                            if (card.attackTypes.contains(MagicAttackType.ATTACK)) {
+                                                        SpellCardItem(
+                                                            spell = card,
+                                                            isExpanded = expanded,
+                                                            onToggleExpand = { expanded = !expanded },
+                                                            onEdit = { editingSpell = card },
+                                                            onRollDamage = { formula, title, advantage ->
+                                                                val finalFormula = if (card.level == "0") {
+                                                                    if (card.noScaling) formula
+                                                                    else scaleCantripFormula(formula, characterLevel, card.noDamageAtLevel1)
+                                                                } else formula
+                                                                val isHealing = card.damageTypes.contains(DamageType.HEALING)
+                                                                val finalTitle = if (isHealing) title.replace("Урон:", "Лечение:").replace("Доп. урон:", "Доп. лечение:") else title
                                                                 onRoll(DiceRoller.roll(
-                                                                    title = "${card.name} (Атака)",
-                                                                    baseModifier = pb + spellMod,
-                                                                    bonuses = spellSettings.spellAttackBonuses,
+                                                                    title = finalTitle,
+                                                                    baseModifier = 0,
+                                                                    bonuses = listOf(SimpleBonus(formula = finalFormula, name = if (isHealing) "Лечение" else "Урон")),
+                                                                    isDamage = !isHealing,
+                                                                    isHealing = isHealing,
                                                                     stats = statsMap,
-                                                                    exhaustion = exhaustion,
-                                                                    sourceType = RollSourceType.ATTACK,
+                                                                    exhaustion = 0,
+                                                                    sourceType = RollSourceType.OTHER,
                                                                     advantageType = advantage,
                                                                     advantageLogic = advantageLogic
                                                                 ))
-                                                            }
-                                                        },
-                                                        isEditable = true,
-                                                        statsMap = statsMap,
-                                                        spellAttackBonus = spellAtk,
-                                                        spellAttackDice = spellAttackDice,
-                                                        spellSaveDc = spellDc,
-                                                        spellSaveDice = spellSaveDice,
-                                                        hazeState = hazeState,
-                                                        popupHazeState = popupHazeState,
-                                                        forceBlurEnabled = forceBlurEnabled,
-                                                        blurCards = blurCards,
-                                                        highlightRitual = spellSettings.isSpellbookEnabled && card.id !in spellSettings.preparedSpellIds && card.isRitual,
-                                                        isEditMode = isListEditMode,
-                                                        isDragging = isDragging
-                                                    )
+                                                            },
+                                                            onRollAttack = { advantage ->
+                                                                if (card.attackTypes.contains(MagicAttackType.ATTACK)) {
+                                                                    onRoll(DiceRoller.roll(
+                                                                        title = "${card.name} (Атака)",
+                                                                        baseModifier = pb + spellMod,
+                                                                        bonuses = spellSettings.spellAttackBonuses,
+                                                                        stats = statsMap,
+                                                                        exhaustion = exhaustion,
+                                                                        sourceType = RollSourceType.ATTACK,
+                                                                        advantageType = advantage,
+                                                                        advantageLogic = advantageLogic
+                                                                    ))
+                                                                }
+                                                            },
+                                                            isEditable = true,
+                                                            statsMap = statsMap,
+                                                            spellAttackBonus = spellAtk,
+                                                            spellAttackDice = spellAttackDice,
+                                                            spellSaveDc = spellDc,
+                                                            spellSaveDice = spellSaveDice,
+                                                            hazeState = hazeState,
+                                                            popupHazeState = popupHazeState,
+                                                            forceBlurEnabled = forceBlurEnabled,
+                                                            blurCards = blurCards,
+                                                            highlightRitual = spellSettings.isSpellbookEnabled && card.id !in spellSettings.preparedSpellIds && card.isRitual,
+                                                            isEditMode = isListEditMode,
+                                                            isDragging = isDragging,
+                                                            isAnyItemDragging = draggingIndex != null
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
-                            }
 
-                            if (isListEditMode) {
-                                TextButton(
-                                    onClick = { showDividerEditor = level to null },
-                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Добавить разделитель")
+                                if (isListEditMode) {
+                                    TextButton(
+                                        onClick = { showDividerEditor = level to null },
+                                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Добавить разделитель")
+                                    }
                                 }
-                            }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = {
-                                        val initialLevel = if (level == 0f) "0" else if (level == -1f) "" else level.toInt().toString()
-                                        editingSpell = SpellCard(level = initialLevel)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Добавить", fontSize = 12.sp)
-                                }
-                                OutlinedButton(
-                                    onClick = { showSelectionDialog = true },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Выбрать", fontSize = 12.sp)
+                                    OutlinedButton(
+                                        onClick = {
+                                            val initialLevel = if (level == 0f) "0" else if (level == -1f) "" else level.toInt().toString()
+                                            editingSpell = SpellCard(level = initialLevel)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Добавить", fontSize = 12.sp)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { showSelectionDialog = true },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Выбрать", fontSize = 12.sp)
+                                    }
                                 }
                             }
                         }
@@ -746,7 +774,7 @@ fun SpellsTab(
         val existing = showDividerEditor!!.second
         var title by remember { mutableStateOf(existing?.title ?: "") }
         var ability by remember { mutableStateOf(existing?.ability ?: Attribute.NONE) }
-        
+
         AlertDialog(
             onDismissRequest = { showDividerEditor = null },
             title = { Text(if (existing == null) "Новый разделитель" else "Настройка разделителя") },
@@ -758,15 +786,41 @@ fun SpellsTab(
                         label = { Text("Заголовок") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    
+
                     Text("Характеристика для заклинаний под разделителем:", style = MaterialTheme.typography.labelSmall)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Attribute.entries.filter { it != Attribute.NONE }.forEach { attr ->
-                            FilterChip(
-                                selected = ability == attr,
-                                onClick = { ability = if (ability == attr) Attribute.NONE else attr },
-                                label = { Text(attr.shortName, fontSize = 10.sp) }
-                            )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        val row1 = listOf(Attribute.STRENGTH, Attribute.DEXTERITY, Attribute.CONSTITUTION)
+                        val row2 = listOf(Attribute.INTELLIGENCE, Attribute.WISDOM, Attribute.CHARISMA)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            row1.forEach { attr ->
+                                FilterChip(
+                                    selected = ability == attr,
+                                    onClick = { ability = if (ability == attr) Attribute.NONE else attr },
+                                    label = { Text(attr.shortName, fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp)) },
+                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                )
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            row2.forEach { attr ->
+                                FilterChip(
+                                    selected = ability == attr,
+                                    onClick = { ability = if (ability == attr) Attribute.NONE else attr },
+                                    label = { Text(attr.shortName, fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp)) },
+                                    modifier = Modifier.padding(horizontal = 2.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -775,7 +829,7 @@ fun SpellsTab(
                 TextButton(onClick = {
                     val levelStr = if (level == 0f) "0" else if (level == -1f) "" else level.toInt().toString()
                     val currentList = spellSettings.levelContent[levelStr]?.toMutableList() ?: mutableListOf()
-                    
+
                     if (existing == null) {
                         currentList.add(SpellLevelItem(divider = SpellLevelDivider(title = title, ability = ability)))
                     } else {
@@ -784,7 +838,7 @@ fun SpellsTab(
                             currentList[idx] = currentList[idx].copy(divider = existing.copy(title = title, ability = ability))
                         }
                     }
-                    
+
                     onSpellSettingsChange(spellSettings.copy(
                         levelContent = spellSettings.levelContent.toMutableMap().apply { put(levelStr, currentList) }
                     ))

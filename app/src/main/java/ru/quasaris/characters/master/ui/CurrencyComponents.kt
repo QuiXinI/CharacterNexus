@@ -15,12 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.BorderStroke
 import dev.chrisbanes.haze.HazeState
@@ -102,6 +104,10 @@ fun CurrencyEditDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val view = LocalView.current
+        SideEffect {
+            (view.parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
+        }
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
@@ -122,16 +128,6 @@ fun CurrencyEditDialog(
             containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
             modifier = Modifier
                 .fillMaxSize()
-                .run {
-                    if (forceBlurEnabled && hazeState != null && !isOled) {
-                        hazeEffect(state = hazeState) {
-                            style = HazeStyle(
-                                blurRadius = 24.dp,
-                                tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f)))
-                            )
-                        }
-                    } else this
-                }
         ) { padding ->
             Column(
                 modifier = Modifier

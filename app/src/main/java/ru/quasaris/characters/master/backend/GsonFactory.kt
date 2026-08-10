@@ -50,6 +50,8 @@ class SpellCardSerializer : JsonSerializer<SpellCard> {
         json.add("durationUnit", context.serialize(src.durationUnit))
         json.addProperty("description", src.description)
         json.addProperty("hasDamage", src.hasDamage)
+        json.addProperty("noDamageAtLevel1", src.noDamageAtLevel1)
+        json.addProperty("noScaling", src.noScaling)
         json.addProperty("damageFormula", src.damageFormula)
         json.addProperty("damageType", src.damageType)
         json.add("damageTypes", context.serialize(src.damageTypes))

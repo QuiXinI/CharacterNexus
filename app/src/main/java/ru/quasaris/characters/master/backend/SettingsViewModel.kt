@@ -135,6 +135,12 @@ class SettingsViewModel(
     private val _collapseActionsOnEdit = MutableStateFlow(settingsManager?.collapseActionsOnEdit ?: true)
     val collapseActionsOnEdit = _collapseActionsOnEdit.asStateFlow()
 
+    private val _collapseSpellsOnEdit = MutableStateFlow(settingsManager?.collapseSpellsOnEdit ?: true)
+    val collapseSpellsOnEdit = _collapseSpellsOnEdit.asStateFlow()
+
+    private val _collapseDynamicFieldsOnEdit = MutableStateFlow(settingsManager?.collapseDynamicFieldsOnEdit ?: true)
+    val collapseDynamicFieldsOnEdit = _collapseDynamicFieldsOnEdit.asStateFlow()
+
     private val _lastModuleExportName = MutableStateFlow(settingsManager?.lastModuleExportName ?: "")
     val lastModuleExportName = _lastModuleExportName.asStateFlow()
 
@@ -360,6 +366,16 @@ class SettingsViewModel(
         settingsManager?.collapseActionsOnEdit = enabled
     }
 
+    fun updateCollapseSpellsOnEdit(enabled: Boolean) {
+        _collapseSpellsOnEdit.value = enabled
+        settingsManager?.collapseSpellsOnEdit = enabled
+    }
+
+    fun updateCollapseDynamicFieldsOnEdit(enabled: Boolean) {
+        _collapseDynamicFieldsOnEdit.value = enabled
+        settingsManager?.collapseDynamicFieldsOnEdit = enabled
+    }
+
     val performanceClass: Int
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Build.VERSION.MEDIA_PERFORMANCE_CLASS
@@ -429,5 +445,7 @@ class SettingsViewModel(
         _diceFabEnabled.value = settingsManager?.diceFabEnabled ?: true
         _renderDiceInOrder.value = settingsManager?.renderDiceInOrder ?: true
         _collapseActionsOnEdit.value = settingsManager?.collapseActionsOnEdit ?: true
+        _collapseSpellsOnEdit.value = settingsManager?.collapseSpellsOnEdit ?: true
+        _collapseDynamicFieldsOnEdit.value = settingsManager?.collapseDynamicFieldsOnEdit ?: true
     }
 }

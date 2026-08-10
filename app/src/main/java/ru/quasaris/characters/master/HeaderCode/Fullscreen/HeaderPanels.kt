@@ -139,15 +139,7 @@ fun EditVariantDialog(
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
-            modifier = Modifier.run {
-                if (forceBlurEnabled && hazeState != null && !isOled) {
-                    hazeEffect(state = hazeState) {
-                        style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
-                        inputScale = HazeInputScale.Fixed(0.7f)
-                    }
-                } else this
-            }
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 Column(

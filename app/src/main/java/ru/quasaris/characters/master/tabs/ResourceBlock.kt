@@ -55,6 +55,7 @@ import ru.quasaris.characters.master.backend.getProficiencyBonus
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
 import ru.quasaris.characters.master.backend.parseFormulaParts
 import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.ui.outerShadow
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
 
 @Composable
@@ -89,14 +90,13 @@ fun ResourceBlock(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (useHaze) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            .run {
-                if (useHaze) {
-                    this.hazeEffect(state = hazeState, style = HazeStyle(blurRadius = 15.dp, tints = listOf(HazeTint(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)))))
-                } else this
-            }
-            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            .outerShadow(
+                shape = RoundedCornerShape(16.dp),
+                blur = 2.dp,
+                offsetY = 1.dp
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (useHaze) 0.6f else 0.4f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -221,8 +221,7 @@ fun ResourceBlock(
                     modifier = Modifier
                         .size(height = 42.dp, width = 64.dp) // Adjusted to be more "square-ish" but fit numbers
                         .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(10.dp)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

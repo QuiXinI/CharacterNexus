@@ -575,6 +575,8 @@ fun DiceRollSettingsSection(
     val diceFabEnabled by settingsViewModel.diceFabEnabled.collectAsState()
     val renderDiceInOrder by settingsViewModel.renderDiceInOrder.collectAsState()
     val collapseActionsOnEdit by settingsViewModel.collapseActionsOnEdit.collectAsState()
+    val collapseSpellsOnEdit by settingsViewModel.collapseSpellsOnEdit.collectAsState()
+    val collapseDynamicFieldsOnEdit by settingsViewModel.collapseDynamicFieldsOnEdit.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -599,7 +601,7 @@ fun DiceRollSettingsSection(
                     color = colorScheme.onSurface
                 )
                 Text(
-                    text = "Автоматически сворачивает карточки заклинаний и атак в режиме сортировки",
+                    text = "Автоматически сворачивает карточки атак в режиме сортировки",
                     fontSize = 12.sp,
                     color = colorScheme.onSurfaceVariant
                 )
@@ -607,6 +609,52 @@ fun DiceRollSettingsSection(
             Switch(
                 checked = collapseActionsOnEdit,
                 onCheckedChange = { settingsViewModel.updateCollapseActionsOnEdit(it) }
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Сворачивать заклинания при редактировании",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Автоматически сворачивает карточки заклинаний в режиме сортировки",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = collapseSpellsOnEdit,
+                onCheckedChange = { settingsViewModel.updateCollapseSpellsOnEdit(it) }
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Сворачивать поля при редактировании",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Автоматически сворачивает динамические поля в режиме сортировки",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = collapseDynamicFieldsOnEdit,
+                onCheckedChange = { settingsViewModel.updateCollapseDynamicFieldsOnEdit(it) }
             )
         }
 

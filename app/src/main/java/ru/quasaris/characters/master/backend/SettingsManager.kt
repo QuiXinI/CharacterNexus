@@ -216,6 +216,14 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("collapse_actions_on_edit", true)
         set(value) = prefs.edit { putBoolean("collapse_actions_on_edit", value) }
 
+    var collapseSpellsOnEdit: Boolean
+        get() = prefs.getBoolean("collapse_spells_on_edit", true)
+        set(value) = prefs.edit { putBoolean("collapse_spells_on_edit", value) }
+
+    var collapseDynamicFieldsOnEdit: Boolean
+        get() = prefs.getBoolean("collapse_dynamic_fields_on_edit", true)
+        set(value) = prefs.edit { putBoolean("collapse_dynamic_fields_on_edit", value) }
+
     fun resetToDefaults() {
         prefs.edit { clear() }
     }
