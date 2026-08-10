@@ -42,6 +42,7 @@ import androidx.compose.ui.text.SpanStyle
 import ru.quasaris.characters.master.SpellVersion
 import ru.quasaris.characters.master.backend.AdvantageType
 import ru.quasaris.characters.master.backend.DicePart
+import ru.quasaris.characters.master.backend.scaleCantripFormula
 import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
@@ -65,6 +66,7 @@ fun SpellCardItem(
     onRollAttack: (AdvantageType) -> Unit = {},
     isEditable: Boolean = false,
     statsMap: Map<String, String> = emptyMap(),
+    characterLevel: Int = 1,
     isSelected: Boolean = false,
     onLongClick: () -> Unit = {},
     spellAttackBonus: Int = 0,
@@ -252,8 +254,12 @@ fun SpellCardItem(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         if (spell.hasDamage && spell.damageFormula.isNotBlank()) {
+                            val displayFormula = if (spell.level == "0" && !spell.noScaling) {
+                                scaleCantripFormula(spell.damageFormula, characterLevel, spell.noDamageAtLevel1)
+                            } else spell.damageFormula
+
                             SpellDamageButton(
-                                formula = spell.damageFormula,
+                                formula = displayFormula,
                                 damageTypes = spell.damageTypes,
                                 statsMap = statsMap,
                                 title = "Урон: ${spell.name}",
@@ -267,8 +273,12 @@ fun SpellCardItem(
                         }
                         spell.additionalDamageFormulas.forEachIndexed { index, formula ->
                             if (formula.isNotBlank()) {
+                                val displayFormula = if (spell.level == "0" && !spell.noScaling) {
+                                    scaleCantripFormula(formula, characterLevel, spell.noDamageAtLevel1)
+                                } else formula
+
                                 SpellDamageButton(
-                                    formula = formula,
+                                    formula = displayFormula,
                                     damageTypes = spell.additionalDamageTypesList.getOrNull(index) ?: emptyList(),
                                     statsMap = statsMap,
                                     title = "Доп. урон: ${spell.name}",

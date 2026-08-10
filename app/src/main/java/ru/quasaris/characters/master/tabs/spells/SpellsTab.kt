@@ -676,16 +676,12 @@ fun SpellsTab(
                                                             onToggleExpand = { expanded = !expanded },
                                                             onEdit = { editingSpell = card },
                                                             onRollDamage = { formula, title, advantage ->
-                                                                val finalFormula = if (card.level == "0") {
-                                                                    if (card.noScaling) formula
-                                                                    else scaleCantripFormula(formula, characterLevel, card.noDamageAtLevel1)
-                                                                } else formula
                                                                 val isHealing = card.damageTypes.contains(DamageType.HEALING)
                                                                 val finalTitle = if (isHealing) title.replace("Урон:", "Лечение:").replace("Доп. урон:", "Доп. лечение:") else title
                                                                 onRoll(DiceRoller.roll(
                                                                     title = finalTitle,
                                                                     baseModifier = 0,
-                                                                    bonuses = listOf(SimpleBonus(formula = finalFormula, name = if (isHealing) "Лечение" else "Урон")),
+                                                                    bonuses = listOf(SimpleBonus(formula = formula, name = if (isHealing) "Лечение" else "Урон")),
                                                                     isDamage = !isHealing,
                                                                     isHealing = isHealing,
                                                                     stats = statsMap,
@@ -711,6 +707,7 @@ fun SpellsTab(
                                                             },
                                                             isEditable = true,
                                                             statsMap = statsMap,
+                                                            characterLevel = characterLevel,
                                                             spellAttackBonus = spellAtk,
                                                             spellAttackDice = spellAttackDice,
                                                             spellSaveDc = spellDc,
@@ -943,6 +940,7 @@ fun SpellsTab(
             forceBlurEnabled = forceBlurEnabled,
             blurCards = blurCards,
             statsMap = statsMap,
+            characterLevel = characterLevel,
             spellAttackBonus = spellAttackBonus,
             spellAttackDice = spellAttackDice,
             spellSaveDc = spellSaveDc,
