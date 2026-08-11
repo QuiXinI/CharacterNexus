@@ -286,8 +286,8 @@ fun AttributesSection(
                 .fillMaxWidth()
                 .outerShadow(
                     shape = RoundedCornerShape(16.dp),
-                    blur = 6.dp,
-                    offsetY = 3.dp
+                    blur = 4.dp,
+                    offsetY = 2.dp
                 )
                 .clip(RoundedCornerShape(16.dp))
                 .background(colorScheme.surfaceContainerLow)
@@ -357,8 +357,8 @@ fun StatCard(
         .heightIn(min = 100.dp)
         .outerShadow(
             shape = RoundedCornerShape(16.dp),
-            blur = 6.dp,
-            offsetY = 3.dp
+            blur = 4.dp,
+            offsetY = 2.dp
         )
         .clip(RoundedCornerShape(16.dp))
         .background(colorScheme.surfaceContainer)
@@ -387,10 +387,10 @@ fun StatCard(
                         .run {
                             if (isEditable) {
                                 this.outerShadow(
-                                        shape = RoundedCornerShape(10.dp),
-                                        blur = 6.dp,
-                                        offsetY = 3.dp
-                                    )
+                                    shape = RoundedCornerShape(10.dp),
+                                    blur = 2.dp,
+                                    offsetY = 1.dp
+                                )
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(colorScheme.onSurface.copy(alpha = 0.05f))
                             } else this
@@ -438,8 +438,8 @@ fun StatCard(
                     modifier = Modifier
                         .outerShadow(
                             shape = RoundedCornerShape(12.dp),
-                            blur = 6.dp,
-                            offsetY = 3.dp
+                            blur = 2.dp,
+                            offsetY = 1.dp
                         )
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { onPToggle(!isP) }
@@ -449,12 +449,12 @@ fun StatCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .size(12.dp)/*
                             .outerShadow(
                                 shape = CircleShape,
                                 blur = 6.dp,
                                 offsetY = 3.dp
-                            )
+                            )*/
                             .clip(CircleShape)
                             .background(if (isP) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.4f)),
                     )
@@ -513,8 +513,8 @@ fun ModifierBubble(
                 .size(40.dp)
                 .outerShadow(
                     shape = RoundedCornerShape(10.dp),
-                    blur = 6.dp,
-                    offsetY = 3.dp
+                    blur = 2.dp,
+                    offsetY = 1.dp
                 )
                 .clip(RoundedCornerShape(10.dp))
                 .background(color.copy(alpha = 0.12f))

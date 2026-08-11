@@ -26,6 +26,7 @@ import androidx.compose.ui.window.Popup
 import ru.quasaris.characters.master.ui.outerShadow
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.clip
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -79,17 +80,18 @@ fun SpellCardItem(
     blurCards: Boolean = true,
     highlightRitual: Boolean = false,
     isEditMode: Boolean = false,
+    collapseOnEdit: Boolean = true,
     isDragging: Boolean = false,
     isAnyItemDragging: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val internalHazeState = remember { HazeState() }
-    
+
     var showAttackPopup by remember { mutableStateOf(false) }
     var attackBtnSize by remember { mutableStateOf(IntSize.Zero) }
 
     val scale by animateFloatAsState(targetValue = when {
-        isDragging -> 1.05f
+        isDragging -> 1.02f
         isEditMode -> 0.95f
         else -> 1f
     })
@@ -104,13 +106,17 @@ fun SpellCardItem(
     Card(
         modifier = modifier
             .run {
-                if (isEditMode) this else combinedClickable(
+                if (isEditMode && collapseOnEdit) this else combinedClickable(
                     onClick = { onToggleExpand() },
                     onLongClick = onLongClick
                 )
             }
             .scale(scale)
-            .then(if (backgroundBlur > 0.dp) Modifier.blur(backgroundBlur) else Modifier)
+            .then(
+                if (backgroundBlur > 0.dp) 
+                    Modifier.blur(backgroundBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                else Modifier
+            )
             .outerShadow(
                 shape = RoundedCornerShape(16.dp),
                 blur = 2.dp,
@@ -121,9 +127,9 @@ fun SpellCardItem(
                     val targetState = if (isDragging) (popupHazeState ?: hazeState!!) else hazeState!!
                     this.clip(RoundedCornerShape(16.dp))
                         .hazeEffect(
-                            state = targetState, 
+                            state = targetState,
                             style = HazeStyle(
-                                blurRadius = 24.dp, 
+                                blurRadius = 24.dp,
                                 tints = listOf(HazeTint(colorScheme.surfaceContainer.copy(alpha = 0.6f)))
                             )
                         )
@@ -241,7 +247,7 @@ fun SpellCardItem(
             }
 
             val hasActionArea = spell.hasDamage || spell.attackTypes.isNotEmpty()
-            if (hasActionArea) {
+            if (hasActionArea && (!isEditMode || !collapseOnEdit)) {
                 val isOled = colorScheme.background == Color.Black
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -392,7 +398,7 @@ fun SpellCardItem(
                 }
             }
 
-            AnimatedVisibility(visible = isExpanded) {
+            AnimatedVisibility(visible = isExpanded && (!isEditMode || !collapseOnEdit)) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
                     HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(8.dp))

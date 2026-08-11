@@ -20,11 +20,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.blur
 import ru.quasaris.characters.master.ui.outerShadow
 import androidx.compose.ui.focus.FocusRequester
@@ -125,6 +127,7 @@ fun DynamicFieldsTab(
     isReorderButtonVisible: Boolean = true,
     isScrollEnabled: Boolean = true,
     isContentVisible: Boolean = true,
+    collapseOnEdit: Boolean? = null,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {},
     footer: @Composable () -> Unit = {},
@@ -167,16 +170,34 @@ fun DynamicFieldsTab(
     var fieldToDeleteIndex by remember { mutableStateOf<Int?>(null) }
 
     val fullscreenEditingOnly by settingsViewModel?.fullscreenEditingOnly?.collectAsState() ?: remember { mutableStateOf(false) }
-    val collapseActionsOnEdit by settingsViewModel?.collapseActionsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
+    val collapseDynamicFieldsOnEditSetting by settingsViewModel?.collapseDynamicFieldsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
+    val collapseOnEditActual = collapseOnEdit ?: collapseDynamicFieldsOnEditSetting
     val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
 
+    var savedExpansionStates by remember { mutableStateOf<Map<String, Boolean>?>(null) }
+
     LaunchedEffect(isEditMode) {
-        if (isEditMode && collapseActionsOnEdit) {
-            val collapsedList = items.map { it.copy(isExpanded = false) }
-            if (collapsedList != items.toList()) {
-                items.clear()
-                items.addAll(collapsedList)
-                onFieldsChange(collapsedList)
+        if (isEditMode) {
+            if (collapseOnEditActual) {
+                savedExpansionStates = items.associate { it.id to it.isExpanded }
+                val collapsedList = items.map { it.copy(isExpanded = false) }
+                if (collapsedList != items.toList()) {
+                    items.clear()
+                    items.addAll(collapsedList)
+                    onFieldsChange(collapsedList)
+                }
+            }
+        } else {
+            savedExpansionStates?.let { saved ->
+                if (collapseOnEditActual) {
+                    val restoredList = items.map { it.copy(isExpanded = saved[it.id] ?: it.isExpanded) }
+                    if (restoredList != items.toList()) {
+                        items.clear()
+                        items.addAll(restoredList)
+                        onFieldsChange(restoredList)
+                    }
+                }
+                savedExpansionStates = null
             }
         }
     }
@@ -194,15 +215,15 @@ fun DynamicFieldsTab(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxSize().clipToBounds(),
             userScrollEnabled = isScrollEnabled,
-            contentPadding = PaddingValues(top = 0.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                header()
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    header()
+                }
             }
 
             itemsIndexed(items, key = { _, field -> field.id }) { index, field ->
@@ -229,13 +250,16 @@ fun DynamicFieldsTab(
                         onDelete = { fieldToDeleteIndex = index },
                         onFullscreenRequest = { fullscreenFieldIndex = index },
                         dragModifier = dragModifier,
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .animateItem(),
                         extraContent = extraContent,
                         isCollapsible = isCollapsible,
                         isTitleReadOnly = isTitleReadOnly,
                         isReorderButtonVisible = isReorderButtonVisible,
                         isContentVisible = isContentVisible,
                         isLockedGlobal = fullscreenEditingOnly,
+                        collapseOnEdit = collapseOnEditActual,
                         hazeState = hazeState,
                         popupHazeState = popupHazeState,
                         forceBlurEnabled = forceBlurEnabled,
@@ -247,7 +271,9 @@ fun DynamicFieldsTab(
             }
 
             item {
-                footer()
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    footer()
+                }
             }
 
             if (isAddButtonVisible) {
@@ -258,7 +284,9 @@ fun DynamicFieldsTab(
                             val newFields = items.toList() + DynamicNoteState()
                             onFieldsChange(newFields)
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -342,6 +370,7 @@ fun DynamicFieldItem(
     isReorderButtonVisible: Boolean = true,
     isContentVisible: Boolean = true,
     isLockedGlobal: Boolean = false,
+    collapseOnEdit: Boolean = true,
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
@@ -356,7 +385,7 @@ fun DynamicFieldItem(
     val isExpanded = if (isCollapsible) field.isExpanded else true
     val rotation by animateFloatAsState(targetValue = if (isExpanded) 0f else 180f)
     val scale by animateFloatAsState(targetValue = when {
-        isDragging -> 1.05f
+        isDragging -> 1.02f
         isEditMode -> 0.95f
         else -> 1f
     })
@@ -438,12 +467,16 @@ fun DynamicFieldItem(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .then(if (backgroundBlur > 0.dp) Modifier.blur(backgroundBlur) else Modifier)
+            .then(
+                if (backgroundBlur > 0.dp) 
+                    Modifier.blur(backgroundBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                else Modifier
+            )
             .padding(padding)
             .outerShadow(
                 shape = RoundedCornerShape(16.dp),
-                blur = 2.dp,
-                offsetY = 1.dp
+                blur = 4.dp,
+                offsetY = 2.dp
             )
             .run {
                 if (useHaze) {
@@ -532,7 +565,7 @@ fun DynamicFieldItem(
                         }
                     )
 
-                    if (!isEditMode) {
+                    if (!isEditMode || !collapseOnEdit) {
                         if (isCollapsible) {
                             Box(
                                 modifier = Modifier
@@ -558,7 +591,7 @@ fun DynamicFieldItem(
                     }
                 }
 
-                AnimatedVisibility(visible = isExpanded && !isEditMode) {
+                AnimatedVisibility(visible = isExpanded && (!isEditMode || !collapseOnEdit)) {
                     Column {
                         if (isCollapsible) {
                             extraContent(field)

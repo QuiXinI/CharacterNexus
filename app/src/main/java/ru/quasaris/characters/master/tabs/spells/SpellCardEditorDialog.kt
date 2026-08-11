@@ -32,13 +32,8 @@ import ru.quasaris.characters.master.SpellSchool
 import ru.quasaris.characters.master.SpellVersion
 import ru.quasaris.characters.master.CharacterClass
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
-import dev.chrisbanes.haze.hazeEffect
 
-@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpellCardEditorDialog(
     spell: SpellCard,
@@ -46,7 +41,6 @@ fun SpellCardEditorDialog(
     onSave: (SpellCard) -> Unit,
     onDelete: (SpellCard) -> Unit,
     onExport: (SpellCard) -> Unit = {},
-    hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     settingsViewModel: ru.quasaris.characters.master.backend.SettingsViewModel? = null
 ) {
@@ -61,45 +55,57 @@ fun SpellCardEditorDialog(
     ) {
         val view = LocalView.current
         SideEffect {
-            (view.parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
+            val window = (view.parent as? DialogWindowProvider)?.window
+            window?.setDimAmount(0f)
+            window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         }
         val colorScheme = MaterialTheme.colorScheme
-        val isOled = colorScheme.background == Color.Black
+        val surfaceColor = if (forceBlurEnabled) {
+            colorScheme.surface.copy(alpha = 0.1f)
+        } else {
+            colorScheme.surface
+        }
+        val backgroundColor = if (forceBlurEnabled) {
+            colorScheme.background.copy(alpha = 0.1f)
+        } else {
+            colorScheme.background
+        }
 
-        Scaffold(
-            modifier = Modifier.run {
-                if (forceBlurEnabled && hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = 24.dp,
-                            tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f)))
-                        )
-                        inputScale = HazeInputScale.Fixed(0.6f)
-                    }
-                } else this
-            },
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text(if (spell.name.isBlank()) "Новое заклинание" else "Редактировать", fontWeight = FontWeight.Black) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Закрыть")
-                        }
-                    },
-                    actions = {
-                        if (state.name.isNotBlank()) {
-                            IconButton(onClick = { onExport(state) }) {
-                                Icon(Icons.Default.FileUpload, contentDescription = "Экспорт")
+        Surface(
+            color = backgroundColor,
+            contentColor = colorScheme.onSurface
+        ) {
+            Scaffold(
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = { 
+                            Text(
+                                if (spell.name.isBlank()) "Новое заклинание" else "Редактировать", 
+                                fontWeight = FontWeight.Black
+                            ) 
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onDismiss) {
+                                Icon(Icons.Default.Close, contentDescription = "Закрыть")
                             }
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        },
+                        actions = {
+                            if (state.name.isNotBlank()) {
+                                IconButton(onClick = { onExport(state) }) {
+                                    Icon(Icons.Default.FileUpload, contentDescription = "Экспорт")
+                                }
+                            }
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = surfaceColor,
+                            titleContentColor = colorScheme.onSurface,
+                            navigationIconContentColor = colorScheme.onSurface,
+                            actionIconContentColor = colorScheme.onSurface
+                        )
                     )
-                )
-            },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
-        ) { paddingValues ->
+                },
+                containerColor = Color.Transparent
+            ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 Column(
                     modifier = Modifier
@@ -113,11 +119,22 @@ fun SpellCardEditorDialog(
                         onValueChange = { state = state.copy(name = it) },
                         label = { Text("Название") },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            focusedTextColor = colorScheme.onSurface,
+                            unfocusedTextColor = colorScheme.onSurface
+                        )
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Английское название", modifier = Modifier.weight(1f))
+                        Text(
+                            "Английское название", 
+                            modifier = Modifier.weight(1f),
+                            color = colorScheme.onSurface
+                        )
                         Switch(checked = state.showEnglishName, onCheckedChange = { state = state.copy(showEnglishName = it) })
                     }
 
@@ -144,7 +161,7 @@ fun SpellCardEditorDialog(
                             errorLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             errorBorderColor = Color.Yellow.copy(alpha = 0.8f)
                         ),
-                        modifier = Modifier.fillMaxWidth().alpha(if (state.showEnglishName) 1f else 0.5f),
+                        modifier = Modifier.fillMaxWidth().alpha(if (state.showEnglishName) 1f else 0.7f),
                         shape = RoundedCornerShape(8.dp)
                     )
 
@@ -153,7 +170,7 @@ fun SpellCardEditorDialog(
                         value = state.level,
                         onValueChange = { state = state.copy(level = it) },
                         label = { Text("Уровень (0 - заговор)") },
-                        modifier = Modifier.fillMaxWidth().alpha(if (state.level.isBlank()) 0.5f else 1f),
+                        modifier = Modifier.fillMaxWidth().alpha(if (state.level.isBlank()) 0.7f else 1f),
                         shape = RoundedCornerShape(8.dp)
                     )
 
@@ -175,7 +192,7 @@ fun SpellCardEditorDialog(
 
                     // School
                     val schoolActive = state.school != SpellSchool.NONE
-                    Column(modifier = Modifier.alpha(if (schoolActive) 1f else 0.5f)) {
+                    Column(modifier = Modifier.alpha(if (schoolActive) 1f else 0.7f)) {
                         SpellCardSectionTitle("ШКОЛА")
                         var schoolExpanded by remember { mutableStateOf(false) }
                         Box(modifier = Modifier.fillMaxWidth()) {
@@ -207,7 +224,7 @@ fun SpellCardEditorDialog(
 
                     // Classes
                     val classesActive = state.classes.isNotEmpty()
-                    Column(modifier = Modifier.alpha(if (classesActive) 1f else 0.5f)) {
+                    Column(modifier = Modifier.alpha(if (classesActive) 1f else 0.7f)) {
                         SpellCardSectionTitle("КЛАССЫ")
                         var classesExpanded by remember { mutableStateOf(false) }
                         Box(modifier = Modifier.fillMaxWidth()) {
@@ -277,7 +294,7 @@ fun SpellCardEditorDialog(
                         value = state.materialComponents,
                         onValueChange = { state = state.copy(materialComponents = it) },
                         label = { Text("Материальные компоненты") },
-                        modifier = Modifier.fillMaxWidth().alpha(if (materialActive) 1f else 0.5f),
+                        modifier = Modifier.fillMaxWidth().alpha(if (materialActive) 1f else 0.7f),
                         shape = RoundedCornerShape(8.dp)
                     )
 
@@ -335,7 +352,7 @@ fun SpellCardEditorDialog(
                             value = state.castingTime,
                             onValueChange = { state = state.copy(castingTime = it) },
                             label = { Text("Описание времени наложения") },
-                            modifier = Modifier.fillMaxWidth().alpha(if (isCastingTimeActive) 1f else 0.5f),
+                            modifier = Modifier.fillMaxWidth().alpha(if (isCastingTimeActive) 1f else 0.7f),
                             enabled = isCastingTimeEnabled,
                             shape = RoundedCornerShape(8.dp)
                         )
@@ -360,7 +377,7 @@ fun SpellCardEditorDialog(
                                     state = state.copy(durationValue = onlyDigits)
                                 },
                                 label = { Text("Кол-во") },
-                                modifier = Modifier.width(90.dp).alpha(if (isValueDisabled) 0.5f else 1f),
+                                modifier = Modifier.width(90.dp).alpha(if (isValueDisabled) 0.7f else 1f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 shape = RoundedCornerShape(8.dp)
                             )
@@ -404,7 +421,7 @@ fun SpellCardEditorDialog(
                         value = state.description,
                         onValueChange = { state = state.copy(description = it) },
                         label = { Text("Описание") },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp).alpha(if (state.description.isBlank()) 0.5f else 1f),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp).alpha(if (state.description.isBlank()) 0.7f else 1f),
                         shape = RoundedCornerShape(8.dp)
                     )
 
@@ -418,11 +435,21 @@ fun SpellCardEditorDialog(
                         ) {
                             SpellCardSectionTitle("НАСТРОЙКИ ЗАГОВОРА")
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Нет урона на 1 уровне", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    "Нет урона на 1 уровне", 
+                                    modifier = Modifier.weight(1f), 
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurface
+                                )
                                 Switch(checked = state.noDamageAtLevel1, onCheckedChange = { state = state.copy(noDamageAtLevel1 = it) })
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Урон не увеличивается с уровнем", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    "Урон не увеличивается с уровнем", 
+                                    modifier = Modifier.weight(1f), 
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colorScheme.onSurface
+                                )
                                 Switch(checked = state.noScaling, onCheckedChange = { state = state.copy(noScaling = it) })
                             }
                         }
@@ -432,7 +459,11 @@ fun SpellCardEditorDialog(
                     Column {
                         SpellCardSectionTitle("УРОН")
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Наносимый урон", modifier = Modifier.weight(1f))
+                            Text(
+                                "Наносимый урон", 
+                                modifier = Modifier.weight(1f),
+                                color = colorScheme.onSurface
+                            )
                             Switch(checked = state.hasDamage, onCheckedChange = { state = state.copy(hasDamage = it) })
                         }
 
@@ -578,7 +609,7 @@ fun SpellCardEditorDialog(
                         
                         val isSave = state.attackTypes.contains(MagicAttackType.SAVE)
                         var attrExpanded by remember { mutableStateOf(false) }
-                        Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp).alpha(if (isSave) 1f else 0.5f)) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp).alpha(if (isSave) 1f else 0.7f)) {
                             val selectedAttrsText = if (state.savingThrowAttributes.isEmpty()) "Не выбрано" else state.savingThrowAttributes.joinToString { it.fullName }
                             OutlinedTextField(
                                 value = selectedAttrsText,
@@ -622,7 +653,7 @@ fun SpellCardEditorDialog(
                         value = state.distance,
                         onValueChange = { state = state.copy(distance = it) },
                         label = { Text("Дистанция") },
-                        modifier = Modifier.fillMaxWidth().alpha(if (state.distance.isBlank()) 0.5f else 1f),
+                        modifier = Modifier.fillMaxWidth().alpha(if (state.distance.isBlank()) 0.7f else 1f),
                         shape = RoundedCornerShape(8.dp)
                     )
 
@@ -631,7 +662,7 @@ fun SpellCardEditorDialog(
                         value = state.notes,
                         onValueChange = { state = state.copy(notes = it) },
                         label = { Text("Заметки") },
-                        modifier = Modifier.fillMaxWidth().alpha(if (state.notes.isBlank()) 0.5f else 1f),
+                        modifier = Modifier.fillMaxWidth().alpha(if (state.notes.isBlank()) 0.7f else 1f),
                         shape = RoundedCornerShape(8.dp)
                     )
 
@@ -639,13 +670,13 @@ fun SpellCardEditorDialog(
                         value = state.link ?: "",
                         onValueChange = { state = state.copy(link = it.ifBlank { null }) },
                         label = { Text("Ссылка") },
-                        modifier = Modifier.fillMaxWidth().alpha(if (state.link.isNullOrBlank()) 0.5f else 1f),
+                        modifier = Modifier.fillMaxWidth().alpha(if (state.link.isNullOrBlank()) 0.7f else 1f),
                         shape = RoundedCornerShape(8.dp)
                     )
 
                     // Additional Links
                     val linksActive = state.additionalLinks.isNotEmpty()
-                    Column(modifier = Modifier.alpha(if (linksActive) 1f else 0.5f)) {
+                    Column(modifier = Modifier.alpha(if (linksActive) 1f else 0.7f)) {
                         SpellCardSectionTitle("ДОПОЛНИТЕЛЬНЫЕ ССЫЛКИ")
                         state.additionalLinks.forEachIndexed { idx, link ->
                             Row(modifier = Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -702,6 +733,7 @@ fun SpellCardEditorDialog(
             }
         }
     }
+}
 
     DeleteConfirmationDialog(
         showDialog = showDeleteConfirm,
@@ -763,11 +795,11 @@ fun ComponentToggleButton(label: String, selected: Boolean, modifier: Modifier =
     Surface(
         onClick = { onToggle(!selected) },
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         modifier = modifier.widthIn(min = 48.dp).heightIn(min = 48.dp)
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Text(label, fontWeight = FontWeight.Bold, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(label, fontWeight = FontWeight.Bold, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -777,9 +809,9 @@ private fun SpellCardSectionTitle(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.primary,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = 1.sp,
-        modifier = Modifier.padding(top = 8.dp)
+        color = MaterialTheme.colorScheme.onSurface,
+        fontWeight = FontWeight.Black,
+        letterSpacing = 1.5.sp,
+        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
     )
 }

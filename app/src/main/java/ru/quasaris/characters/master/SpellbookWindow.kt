@@ -353,7 +353,6 @@ fun SpellbookWindow(
             onExport = {
                 singleExportLauncher.launch("${it.name.ifBlank { "spell" }}.json")
             },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
             settingsViewModel = settingsViewModel
         )

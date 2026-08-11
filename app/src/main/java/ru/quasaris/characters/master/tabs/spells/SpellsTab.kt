@@ -3,6 +3,7 @@ package ru.quasaris.characters.master.tabs.spells
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -16,9 +17,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
 import ru.quasaris.characters.master.ui.outerShadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.Layout
@@ -134,7 +139,7 @@ fun SpellsTab(
     }
 
     val renderDiceInOrder by settingsViewModel?.renderDiceInOrder?.collectAsState() ?: remember { mutableStateOf(true) }
-    val collapseActionsOnEdit by settingsViewModel?.collapseActionsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
+    val collapseSpellsOnEdit by settingsViewModel?.collapseSpellsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val magicAtkCalculation = remember(spellSettings.spellAttackBonuses, pb, abilityModifier, statsMap, exhaustion, renderDiceInOrder) {
         val baseFlat = pb + abilityModifier
@@ -222,15 +227,18 @@ fun SpellsTab(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 8.dp),
+                    .height(IntrinsicSize.Max)
+                    .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    modifier = Modifier.outerShadow(
-                        shape = RoundedCornerShape(12.dp),
-                        blur = 6.dp,
-                        offsetY = 3.dp
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .outerShadow(
+                            shape = RoundedCornerShape(12.dp),
+                            blur = 4.dp,
+                            offsetY = 2.dp
                     ),
                     color = colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(12.dp),
@@ -238,7 +246,8 @@ fun SpellsTab(
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = "Спасбросок",
@@ -267,11 +276,12 @@ fun SpellsTab(
 
                 Surface(
                     modifier = Modifier
+                        .fillMaxHeight()
                         .onGloballyPositioned { coords -> spellAtkBtnSize = coords.size }
                         .outerShadow(
                             shape = RoundedCornerShape(12.dp),
-                            blur = 6.dp,
-                            offsetY = 3.dp
+                            blur = 4.dp,
+                            offsetY = 2.dp
                         )
                         .combinedClickable(
                             onClick = {
@@ -372,6 +382,7 @@ fun SpellsTab(
                 isAddButtonVisible = false,
                 isReorderButtonVisible = true,
                 isContentVisible = spellSettings.spellMode != SpellMode.CARDS,
+                collapseOnEdit = collapseSpellsOnEdit,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 header = header,
                 footer = {
@@ -530,7 +541,11 @@ fun SpellsTab(
                             tonalElevation = 1.dp,
                             shadowElevation = 0.dp
                         ) {
-                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .clipToBounds()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -601,13 +616,17 @@ fun SpellsTab(
 
                                             Box(modifier = Modifier.weight(1f)) {
                                                 if (item.divider != null) {
-                                                    val dividerScale by animateFloatAsState(targetValue = if (isDragging) 1.05f else 1f)
+                                                    val dividerScale by animateFloatAsState(targetValue = if (isDragging) 1.02f else 1f)
                                                     val dividerBlur by animateDpAsState(targetValue = if (draggingIndex != null && !isDragging) 6.dp else 0.dp)
                                                     Surface(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .scale(dividerScale)
-                                                            .then(if (dividerBlur > 0.dp) Modifier.blur(dividerBlur) else Modifier)
+                                                            .then(
+                                                                if (dividerBlur > 0.dp) 
+                                                                    Modifier.blur(dividerBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                                                                else Modifier
+                                                            )
                                                             .then(if (isDragging) Modifier.outerShadow(RoundedCornerShape(8.dp), blur = 16.dp, offsetY = 8.dp) else Modifier),
                                                         color = colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
                                                         shape = RoundedCornerShape(8.dp),
@@ -664,9 +683,20 @@ fun SpellsTab(
                                                         val spellDc = 8 + pb + spellMod + calculateTotalBonus(spellSettings.spellSaveDcBonuses, statsMap)
 
                                                         var expanded by remember { mutableStateOf(false) }
+                                                        var savedExpanded by remember { mutableStateOf<Boolean?>(null) }
                                                         LaunchedEffect(isListEditMode) {
-                                                            if (isListEditMode && collapseActionsOnEdit) {
-                                                                expanded = false
+                                                            if (isListEditMode) {
+                                                                if (collapseSpellsOnEdit) {
+                                                                    savedExpanded = expanded
+                                                                    expanded = false
+                                                                }
+                                                            } else {
+                                                                savedExpanded?.let {
+                                                                    if (collapseSpellsOnEdit) {
+                                                                        expanded = it
+                                                                    }
+                                                                    savedExpanded = null
+                                                                }
                                                             }
                                                         }
 
@@ -718,6 +748,7 @@ fun SpellsTab(
                                                             blurCards = blurCards,
                                                             highlightRitual = spellSettings.isSpellbookEnabled && card.id !in spellSettings.preparedSpellIds && card.isRitual,
                                                             isEditMode = isListEditMode,
+                                                            collapseOnEdit = collapseSpellsOnEdit,
                                                             isDragging = isDragging,
                                                             isAnyItemDragging = draggingIndex != null
                                                         )
@@ -770,6 +801,22 @@ fun SpellsTab(
                     }
                 }
             )
+
+            if (spellSettings.isMagicEnabled) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.12f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+            }
         }
     }
 
@@ -916,7 +963,6 @@ fun SpellsTab(
                 editingSpell = null
                 refreshTrigger++
             },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
             settingsViewModel = settingsViewModel
         )

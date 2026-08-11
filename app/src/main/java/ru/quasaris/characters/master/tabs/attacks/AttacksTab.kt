@@ -17,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
 import ru.quasaris.characters.master.ui.outerShadow
 import androidx.compose.ui.geometry.Offset
@@ -108,11 +110,15 @@ fun AttacksTab(
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 80.dp),
+            modifier = Modifier.fillMaxSize().clipToBounds(),
+            contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item { header() }
+            item { 
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    header() 
+                }
+            }
 
             if (attacks.isEmpty()) {
                 item {
@@ -146,7 +152,9 @@ fun AttacksTab(
                             forceBlurEnabled = forceBlurEnabled,
                             blurPopups = blurPopups,
                             dragModifier = dragModifier,
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .animateItem(),
                             spellSettings = spellSettings,
                             advantageLogic = advantageLogic,
                             settingsViewModel = settingsViewModel,
@@ -244,7 +252,7 @@ fun AttackItem(
 
     val scale by animateFloatAsState(
         targetValue = when {
-            isDragging -> 1.05f
+            isDragging -> 1.02f
             isEditMode -> 0.95f
             else -> 1f
         },
@@ -336,7 +344,11 @@ fun AttackItem(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .then(if (backgroundBlur > 0.dp) Modifier.blur(backgroundBlur) else Modifier)
+            .then(
+                if (backgroundBlur > 0.dp) 
+                    Modifier.blur(backgroundBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                else Modifier
+            )
             .padding(padding)
             .outerShadow(
                 shape = RoundedCornerShape(16.dp),
