@@ -136,6 +136,7 @@ fun SpellSettingsDialog(
     var pactSlotLevel by remember { mutableStateOf(settings.pactSlotLevel) }
     var pactSlotsCount by remember { mutableIntStateOf(settings.pactSlotsCount) }
     var isPactEnabled by remember { mutableStateOf(settings.isPactEnabled) }
+    var allowCantripUpcast by remember { mutableStateOf(settings.allowCantripUpcast) }
     
     var isSpecialSlotsEditMode by remember { mutableStateOf(false) }
 
@@ -561,6 +562,30 @@ fun SpellSettingsDialog(
                     }
                 }
 
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Апкаст заговоров", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Позволить усиливать заклинания 0 уровня",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(checked = allowCantripUpcast, onCheckedChange = { allowCantripUpcast = it })
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
@@ -586,7 +611,8 @@ fun SpellSettingsDialog(
                                 isSpellbookEnabled = isSpellbookEnabled,
                                 usedSlots = settings.usedSlots.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
                                 usedSlotsShortRest = settings.usedSlotsShortRest.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
-                                usedSlotsDawn = settings.usedSlotsDawn.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } }
+                                usedSlotsDawn = settings.usedSlotsDawn.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
+                                allowCantripUpcast = allowCantripUpcast
                             )
                         )
                         onDismiss()

@@ -45,6 +45,7 @@ import ru.quasaris.characters.master.backend.AdvantageType
 import ru.quasaris.characters.master.backend.DicePart
 import ru.quasaris.characters.master.backend.scaleCantripFormula
 import ru.quasaris.characters.master.ui.DiceRollAdvantagePopup
+import ru.quasaris.characters.master.tabs.spells.UpcastDistributionDialog
 import ru.quasaris.characters.master.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characters.master.tabs.attacks.DiceIcon
 import ru.quasaris.characters.master.tabs.attacks.formatFullDamage
@@ -74,6 +75,9 @@ fun SpellCardItem(
     spellAttackDice: List<DicePart> = emptyList(),
     spellSaveDc: Int = 0,
     spellSaveDice: List<DicePart> = emptyList(),
+    availableSlotLevels: List<Int> = emptyList(),
+    remainingSlots: Map<Int, Int> = emptyMap(),
+    allowCantripUpcast: Boolean = false,
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
@@ -265,6 +269,7 @@ fun SpellCardItem(
                             } else spell.damageFormula
 
                             SpellDamageButton(
+                                spell = spell,
                                 formula = displayFormula,
                                 damageTypes = spell.damageTypes,
                                 statsMap = statsMap,
@@ -274,7 +279,11 @@ fun SpellCardItem(
                                 popupHazeState = popupHazeState,
                                 isOled = isOled,
                                 baseLevel = spell.level.toIntOrNull() ?: 1,
-                                upcastFormula = spell.upcastDamageFormula
+                                upcastFormula = spell.upcastDamageFormula,
+                                isMainDamage = true,
+                                availableSlotLevels = availableSlotLevels,
+                                remainingSlots = remainingSlots,
+                                allowCantripUpcast = allowCantripUpcast
                             )
                         }
                         spell.additionalDamageFormulas.forEachIndexed { index, formula ->
@@ -284,14 +293,22 @@ fun SpellCardItem(
                                 } else formula
 
                                 SpellDamageButton(
+                                    spell = spell,
                                     formula = displayFormula,
                                     damageTypes = spell.additionalDamageTypesList.getOrNull(index) ?: emptyList(),
                                     statsMap = statsMap,
-                                    title = "Доп. урон: ${spell.name}",
+                                    title = "Дополнительный урон: ${spell.name}",
                                     onRoll = onRollDamage,
                                     hazeState = hazeState,
                                     popupHazeState = popupHazeState,
-                                    isOled = isOled
+                                    isOled = isOled,
+                                    baseLevel = spell.level.toIntOrNull() ?: 1,
+                                    upcastFormula = spell.additionalUpcastDamageFormulas.getOrNull(index) ?: "",
+                                    isMainDamage = false,
+                                    additionalIndex = index,
+                                    availableSlotLevels = availableSlotLevels,
+                                    remainingSlots = remainingSlots,
+                                    allowCantripUpcast = allowCantripUpcast
                                 )
                             }
                         }
@@ -347,7 +364,7 @@ fun SpellCardItem(
                                     }
                                 }
                             }
-                            
+
                             if (spell.attackTypes.contains(MagicAttackType.SAVE)) {
                                 Surface(
                                     modifier = Modifier
@@ -373,7 +390,7 @@ fun SpellCardItem(
                                             fontSize = 9.sp,
                                             maxLines = 1
                                         )
-                                        
+
                                         Text(
                                             text = if (spellSaveDc > 0) spellSaveDc.toString() else "X",
                                             style = MaterialTheme.typography.titleMedium,
@@ -402,7 +419,7 @@ fun SpellCardItem(
                 Column(modifier = Modifier.padding(top = 12.dp)) {
                     HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     if (spell.materialComponentType != MaterialComponentType.NONE && spell.materialComponents.isNotBlank()) {
                         val mPrefix = when(spell.materialComponentType) {
                             MaterialComponentType.M_PLUS -> "М+ : "
@@ -417,7 +434,7 @@ fun SpellCardItem(
                             color = colorScheme.onSurface
                         )
                     }
-                    
+
                     if (spell.distance.isNotBlank()) {
                         Text(
                             text = "Дистанция: ${spell.distance}",
@@ -428,7 +445,7 @@ fun SpellCardItem(
                         )
                     }
 
-                    if (spell.castingTimeType == CastingTimeType.REACTION || 
+                    if (spell.castingTimeType == CastingTimeType.REACTION ||
                         ((spell.castingTimeType == CastingTimeType.ACTION || spell.castingTimeType == CastingTimeType.BONUS_ACTION) && spell.castingTime.isNotBlank())) {
                         val prefix = spell.castingTimeType.displayName
                         val combinedText = if (spell.castingTime.isNotBlank()) {
@@ -446,14 +463,14 @@ fun SpellCardItem(
                             color = colorScheme.onSurface
                         )
                     }
-                    
+
                     Text(
                         text = spell.description,
                         style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 20.sp,
                         color = colorScheme.onSurface
                     )
-                    
+
                     if (spell.notes.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Card(
@@ -487,6 +504,7 @@ fun SpellCardItem(
 
 @Composable
 fun SpellDamageButton(
+    spell: SpellCard,
     formula: String,
     damageTypes: List<DamageType>,
     statsMap: Map<String, String>,
@@ -496,33 +514,95 @@ fun SpellDamageButton(
     popupHazeState: HazeState? = null,
     isOled: Boolean = false,
     baseLevel: Int = 0,
-    upcastFormula: String = ""
+    upcastFormula: String = "",
+    isMainDamage: Boolean = true,
+    additionalIndex: Int = -1,
+    availableSlotLevels: List<Int> = emptyList(),
+    remainingSlots: Map<Int, Int> = emptyMap(),
+    allowCantripUpcast: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var showPopup by remember { mutableStateOf(false) }
     var btnSize by remember { mutableStateOf(IntSize.Zero) }
-    
+
     var selectedUpcastLevel by remember { mutableIntStateOf(baseLevel) }
+    var showLevelPicker by remember { mutableStateOf(false) }
+    var showDistribution by remember { mutableStateOf(false) }
 
-    val currentFormula = remember(formula, upcastFormula, selectedUpcastLevel, baseLevel) {
-        if (upcastFormula.isNotBlank() && selectedUpcastLevel > baseLevel) {
-            val diff = selectedUpcastLevel - baseLevel
-            var result = formula
-            repeat(diff) {
-                result += " + $upcastFormula"
+    val upcastableFields = remember(spell) {
+        val list = mutableListOf<Triple<String, String, String>>() // formula, title, upcastFormula
+        if (spell.upcastDamageFormula.isNotBlank()) {
+            list.add(Triple(spell.damageFormula, "Основной урон", spell.upcastDamageFormula))
+        }
+        spell.additionalDamageFormulas.forEachIndexed { idx, formula ->
+            val uFormula = spell.additionalUpcastDamageFormulas.getOrNull(idx)
+            if (!uFormula.isNullOrBlank()) {
+                list.add(Triple(formula, "Дополнительный урон ${idx + 1}", uFormula))
             }
-            result
-        } else formula
+        }
+        list
     }
 
-    val currentTitle = remember(title, selectedUpcastLevel, baseLevel) {
-        if (selectedUpcastLevel > baseLevel) "$title ($selectedUpcastLevel ур.)" else title
+    fun performRoll(adv: AdvantageType, distributions: List<Int>? = null) {
+        if (distributions != null) {
+            distributions.forEachIndexed { i, levels ->
+                val field = upcastableFields[i]
+                val baseF = field.first
+                val upF = field.third
+                var finalF = baseF
+                repeat(levels) { finalF += " + $upF" }
+                onRoll(finalF, "${field.second}: ${spell.name} ($selectedUpcastLevel ур.)", adv)
+            }
+
+            // Roll non-upcastable additional fields
+            spell.additionalDamageFormulas.forEachIndexed { idx, formula ->
+                val uFormula = spell.additionalUpcastDamageFormulas.getOrNull(idx)
+                if (uFormula.isNullOrBlank()) {
+                    onRoll(formula, "Дополнительный урон ${idx + 1}: ${spell.name}", adv)
+                }
+            }
+            selectedUpcastLevel = baseLevel
+        } else {
+            val diff = selectedUpcastLevel - baseLevel
+            if (diff > 0) {
+                if (spell.upcastOnlyOne) {
+                    // Find if THIS specific field is the one to be upcasted
+                    // If upcastOnlyOne is true, usually only the first upcastable field is increased
+                    val firstUpcastable = upcastableFields.firstOrNull()
+                    val isThisTheOne = if (isMainDamage) {
+                        firstUpcastable?.second == "Основной урон"
+                    } else {
+                        firstUpcastable?.second == "Дополнительный урон ${additionalIndex + 1}"
+                    }
+
+                    if (isThisTheOne) {
+                        var finalF = formula
+                        repeat(diff) { finalF += " + $upcastFormula" }
+                        onRoll(finalF, "$title ($selectedUpcastLevel ур.)", adv)
+                    } else {
+                        onRoll(formula, title, adv)
+                    }
+                } else {
+                    var finalF = formula
+                    if (upcastFormula.isNotBlank()) {
+                        repeat(diff) { finalF += " + $upcastFormula" }
+                    }
+                    onRoll(finalF, if (upcastFormula.isNotBlank()) "$title ($selectedUpcastLevel ур.)" else title, adv)
+                }
+            } else {
+                onRoll(formula, title, adv)
+            }
+            selectedUpcastLevel = baseLevel
+        }
     }
 
-    val fullDamageText = remember(currentFormula, damageTypes, statsMap) {
+    val displayFormula = remember(formula) { formula }
+    val displayTitle = remember(title) { title }
+
+    val fullDamageText = remember(displayFormula, damageTypes, statsMap) {
         val typesText = damageTypes.joinToString("/") { it.displayName }
         val baseDamage = formatFullDamage(
-            baseFormula = currentFormula,
+            baseFormula = displayFormula,
             baseDamageBonus = 0,
             bonuses = emptyList(),
             stats = statsMap
@@ -546,7 +626,14 @@ fun SpellDamageButton(
                 offsetY = 1.dp
             )
             .combinedClickable(
-                onClick = { onRoll(currentFormula, currentTitle, AdvantageType.NONE) },
+                onClick = { 
+                    if (baseLevel > 0 && remainingSlots[baseLevel] == 0 && availableSlotLevels.any { it >= baseLevel }) {
+                        selectedUpcastLevel = baseLevel
+                        showLevelPicker = true
+                    } else {
+                        onRoll(displayFormula, displayTitle, AdvantageType.NONE) 
+                    }
+                },
                 onLongClick = { showPopup = true }
             ),
         color = if (damageTypes.contains(DamageType.HEALING)) colorScheme.primary.copy(alpha = 0.08f) else colorScheme.primaryContainer.copy(alpha = 0.5f),
@@ -577,64 +664,91 @@ fun SpellDamageButton(
                 val density = LocalDensity.current
                 val sizeDp = with(density) { btnSize.toSize().let { DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
                 
-                if (upcastFormula.isNotBlank() && baseLevel in 1..8) {
-                    Popup(onDismissRequest = { showPopup = false }) {
-                        Surface(
-                            modifier = Modifier.width(sizeDp.width).outerShadow(
-                                shape = RoundedCornerShape(12.dp),
-                                blur = 16.dp,
-                                offsetY = 8.dp
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isOled) Color.Black else colorScheme.surfaceContainerHigh,
-                            tonalElevation = 2.dp
+                DiceRollAdvantagePopup(
+                    onAdvantage = { performRoll(AdvantageType.ADVANTAGE) },
+                    onDisadvantage = { performRoll(AdvantageType.DISADVANTAGE) },
+                    onCritical = { performRoll(AdvantageType.CRITICAL) },
+                    onUpcast = if ((baseLevel > 0 || allowCantripUpcast) && availableSlotLevels.any { it >= baseLevel.coerceAtLeast(1) }) { 
+                        { 
+                            selectedUpcastLevel = baseLevel.coerceAtLeast(1)
+                            showLevelPicker = true 
+                        } 
+                    } else null,
+                    onDismiss = { 
+                        showPopup = false
+                        selectedUpcastLevel = baseLevel
+                    },
+                    hazeState = popupHazeState ?: hazeState,
+                    isOled = isOled,
+                    modifier = Modifier.size(sizeDp)
+                )
+            }
+
+            if (showLevelPicker) {
+                AlertDialog(
+                    onDismissRequest = { showLevelPicker = false },
+                    title = { Text("Выберите уровень ячейки") },
+                    text = {
+                        val levels = remember(availableSlotLevels, baseLevel) {
+                            val set = availableSlotLevels.toMutableSet()
+                            if (baseLevel > 0) set.add(baseLevel)
+                            set.filter { it >= baseLevel.coerceAtLeast(1) }.sorted()
+                        }
+                        ScrollableTabRow(
+                            selectedTabIndex = (levels.indexOf(selectedUpcastLevel)).coerceAtLeast(0),
+                            edgePadding = 8.dp,
+                            containerColor = Color.Transparent,
+                            divider = {},
+                            indicator = {}
                         ) {
-                            Column {
-                                Text(
-                                    "Ячейка заклинания", 
-                                    modifier = Modifier.padding(8.dp), 
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colorScheme.primary
-                                )
-                                ScrollableTabRow(
-                                    selectedTabIndex = selectedUpcastLevel - baseLevel,
-                                    edgePadding = 8.dp,
-                                    containerColor = Color.Transparent,
-                                    divider = {},
-                                    indicator = {}
-                                ) {
-                                    (baseLevel..9).forEach { lvl ->
-                                        Tab(
-                                            selected = selectedUpcastLevel == lvl,
-                                            onClick = { selectedUpcastLevel = lvl },
-                                            text = { Text(lvl.toString(), fontWeight = if (selectedUpcastLevel == lvl) FontWeight.Bold else FontWeight.Normal) }
-                                        )
+                            levels.forEach { lvl ->
+                                val hasSlots = (remainingSlots[lvl] ?: 0) > 0
+                                Tab(
+                                    selected = selectedUpcastLevel == lvl,
+                                    onClick = { 
+                                        selectedUpcastLevel = lvl
+                                        showLevelPicker = false
+                                        if (spell.upcastOnlyOne && spell.upcastUserChoice && upcastableFields.size > 1) {
+                                            showDistribution = true
+                                        } else {
+                                            performRoll(AdvantageType.NONE)
+                                        }
+                                    },
+                                    text = { 
+                                        Text(
+                                            lvl.toString(), 
+                                            fontWeight = if (selectedUpcastLevel == lvl) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (hasSlots) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        ) 
                                     }
-                                }
-                                HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.2f))
-                                DiceRollAdvantagePopup(
-                                    onAdvantage = { onRoll(currentFormula, currentTitle, AdvantageType.ADVANTAGE) },
-                                    onDisadvantage = { onRoll(currentFormula, currentTitle, AdvantageType.DISADVANTAGE) },
-                                    onCritical = { onRoll(currentFormula, currentTitle, AdvantageType.CRITICAL) },
-                                    onDismiss = { showPopup = false },
-                                    hazeState = popupHazeState ?: hazeState,
-                                    isOled = isOled,
-                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { 
+                            showLevelPicker = false
+                            selectedUpcastLevel = baseLevel
+                        }) { Text("Отмена") }
                     }
-                } else {
-                    DiceRollAdvantagePopup(
-                        onAdvantage = { onRoll(currentFormula, currentTitle, AdvantageType.ADVANTAGE) },
-                        onDisadvantage = { onRoll(currentFormula, currentTitle, AdvantageType.DISADVANTAGE) },
-                        onCritical = { onRoll(currentFormula, currentTitle, AdvantageType.CRITICAL) },
-                        onDismiss = { showPopup = false },
-                        hazeState = popupHazeState ?: hazeState,
-                        isOled = isOled,
-                        modifier = Modifier.size(sizeDp)
-                    )
-                }
+                )
+            }
+
+            if (showDistribution) {
+                UpcastDistributionDialog(
+                    spellName = spell.name,
+                    totalUpcastPoints = selectedUpcastLevel - baseLevel,
+                    damageFields = upcastableFields,
+                    onDismiss = { 
+                        showDistribution = false
+                        selectedUpcastLevel = baseLevel
+                    },
+                    onConfirm = { dists ->
+                        performRoll(AdvantageType.NONE, dists)
+                        showDistribution = false
+                    }
+                )
             }
         }
     }

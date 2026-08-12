@@ -282,7 +282,10 @@ data class SpellCard(
     @SerializedName("damageType") val damageType: String = "",
     @SerializedName("damageTypes") val damageTypes: List<DamageType> = emptyList(),
     @SerializedName("additionalDamageFormulas") val additionalDamageFormulas: List<String> = emptyList(),
+    @SerializedName("additionalUpcastDamageFormulas") val additionalUpcastDamageFormulas: List<String> = emptyList(),
     @SerializedName("additionalDamageTypesList") val additionalDamageTypesList: List<List<DamageType>> = emptyList(),
+    @SerializedName("upcastOnlyOne") val upcastOnlyOne: Boolean = false,
+    @SerializedName("upcastUserChoice") val upcastUserChoice: Boolean = false,
     @SerializedName("attackType") val attackType: MagicAttackType? = null,
     @SerializedName("attackTypes") val attackTypes: List<MagicAttackType> = emptyList(),
     @SerializedName("savingThrowAttributes") val savingThrowAttributes: List<Attribute> = emptyList(),
@@ -425,7 +428,8 @@ data class SpellSettings(
     val preparedSpellIds: List<String> = emptyList(),
     val isSpellbookEnabled: Boolean = false,
     val levelContent: Map<String, List<SpellLevelItem>> = emptyMap(),
-    val spellAbilityOverrides: Map<String, Attribute> = emptyMap()
+    val spellAbilityOverrides: Map<String, Attribute> = emptyMap(),
+    val allowCantripUpcast: Boolean = false
 )
 
 data class Wallet(

@@ -501,49 +501,120 @@ fun SpellCardEditorDialog(
                                     placeholder = { Text("1d8") },
                                     shape = RoundedCornerShape(8.dp)
                                 )
+
+                                // Upcast settings toggles
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 12.dp)
+                                        .background(colorScheme.surfaceVariant.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                        .padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "Увеличивается только 1 формула",
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colorScheme.onSurface
+                                        )
+                                        Switch(
+                                            checked = state.upcastOnlyOne,
+                                            onCheckedChange = { 
+                                                state = state.copy(
+                                                    upcastOnlyOne = it,
+                                                    upcastUserChoice = if (it) true else state.upcastUserChoice
+                                                ) 
+                                            }
+                                        )
+                                    }
+                                    
+                                    val isUserChoiceActive = state.upcastOnlyOne
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.alpha(if (isUserChoiceActive) 1f else 0.5f)
+                                    ) {
+                                        Text(
+                                            "Выбор для увеличения",
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colorScheme.onSurface
+                                        )
+                                        Switch(
+                                            checked = state.upcastUserChoice,
+                                            onCheckedChange = { if (isUserChoiceActive) state = state.copy(upcastUserChoice = it) },
+                                            enabled = isUserChoiceActive
+                                        )
+                                    }
+                                }
                             }
 
                             // Additional damage rows
                             state.additionalDamageFormulas.forEachIndexed { index, formula ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedTextField(
-                                        value = formula,
-                                        onValueChange = { newFormula ->
-                                            val newList = state.additionalDamageFormulas.toMutableList()
-                                            newList[index] = newFormula
-                                            state = state.copy(additionalDamageFormulas = newList)
-                                        },
-                                        label = { Text("Доп. Формула") },
-                                        modifier = Modifier.weight(1f),
-                                        placeholder = { Text("1d4") },
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
+                                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        OutlinedTextField(
+                                            value = formula,
+                                            onValueChange = { newFormula ->
+                                                val newList = state.additionalDamageFormulas.toMutableList()
+                                                newList[index] = newFormula
+                                                state = state.copy(additionalDamageFormulas = newList)
+                                            },
+                                            label = { Text("Доп. Формула") },
+                                            modifier = Modifier.weight(1f),
+                                            placeholder = { Text("1d4") },
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
 
-                                    val currentTypes = state.additionalDamageTypesList.getOrNull(index) ?: emptyList()
-                                    DamageTypeMultiSelect(
-                                        selectedTypes = currentTypes,
-                                        onToggle = { type ->
-                                            val newList = state.additionalDamageTypesList.toMutableList()
-                                            while (newList.size <= index) newList.add(emptyList())
-                                            val rowList = newList[index]
-                                            newList[index] = if (rowList.contains(type)) rowList - type else rowList + type
-                                            state = state.copy(additionalDamageTypesList = newList)
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
+                                        val currentTypes = state.additionalDamageTypesList.getOrNull(index) ?: emptyList()
+                                        DamageTypeMultiSelect(
+                                            selectedTypes = currentTypes,
+                                            onToggle = { type ->
+                                                val newList = state.additionalDamageTypesList.toMutableList()
+                                                while (newList.size <= index) newList.add(emptyList())
+                                                val rowList = newList[index]
+                                                newList[index] = if (rowList.contains(type)) rowList - type else rowList + type
+                                                state = state.copy(additionalDamageTypesList = newList)
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
 
-                                    IconButton(onClick = {
-                                        val newFormulas = state.additionalDamageFormulas.toMutableList()
-                                        newFormulas.removeAt(index)
-                                        val newTypes = state.additionalDamageTypesList.toMutableList()
-                                        if (index < newTypes.size) newTypes.removeAt(index)
-                                        state = state.copy(additionalDamageFormulas = newFormulas, additionalDamageTypesList = newTypes)
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = null, tint = colorScheme.error)
+                                        IconButton(onClick = {
+                                            val newFormulas = state.additionalDamageFormulas.toMutableList()
+                                            newFormulas.removeAt(index)
+                                            val newUpcasts = state.additionalUpcastDamageFormulas.toMutableList()
+                                            if (index < newUpcasts.size) newUpcasts.removeAt(index)
+                                            val newTypes = state.additionalDamageTypesList.toMutableList()
+                                            if (index < newTypes.size) newTypes.removeAt(index)
+                                            state = state.copy(
+                                                additionalDamageFormulas = newFormulas,
+                                                additionalUpcastDamageFormulas = newUpcasts,
+                                                additionalDamageTypesList = newTypes
+                                            )
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = null, tint = colorScheme.error)
+                                        }
+                                    }
+
+                                    if (state.level != "0" && state.level.isNotBlank() && state.level.toIntOrNull() != null) {
+                                        val upcastVal = state.additionalUpcastDamageFormulas.getOrNull(index) ?: ""
+                                        OutlinedTextField(
+                                            value = upcastVal,
+                                            onValueChange = { newVal ->
+                                                val newList = state.additionalUpcastDamageFormulas.toMutableList()
+                                                while (newList.size <= index) newList.add("")
+                                                newList[index] = newVal
+                                                state = state.copy(additionalUpcastDamageFormulas = newList)
+                                            },
+                                            label = { Text("Доп. урон за уровень ячейки") },
+                                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                            placeholder = { Text("1d4") },
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
                                     }
                                 }
                             }
@@ -552,6 +623,7 @@ fun SpellCardEditorDialog(
                                 onClick = {
                                     state = state.copy(
                                         additionalDamageFormulas = state.additionalDamageFormulas + "",
+                                        additionalUpcastDamageFormulas = state.additionalUpcastDamageFormulas + "",
                                         additionalDamageTypesList = state.additionalDamageTypesList + listOf(emptyList<DamageType>())
                                     )
                                 },

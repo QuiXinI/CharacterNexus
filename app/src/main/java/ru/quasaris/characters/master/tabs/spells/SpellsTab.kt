@@ -114,6 +114,38 @@ fun SpellsTab(
         }
     }
 
+    val availableSlotLevels = remember(autoSlots, spellSettings.overrideSlots, spellSettings.specialSlots, spellSettings.isPactEnabled, spellSettings.pactSlotLevel, spellSettings.pactSlotsCount) {
+        val levels = mutableSetOf<Int>()
+        for (i in 1..9) {
+            val count = spellSettings.overrideSlots[i.toFloat()] ?: autoSlots.getOrNull(i - 1) ?: 0
+            if (count > 0) levels.add(i)
+        }
+        if (spellSettings.isPactEnabled && spellSettings.pactSlotsCount > 0) {
+            levels.add(spellSettings.pactSlotLevel.toInt())
+        }
+        spellSettings.specialSlots.forEach {
+            if (it.count > 0) levels.add(it.level.toInt())
+        }
+        levels.toList().sorted()
+    }
+
+    val remainingSlots = remember(autoSlots, spellSettings.overrideSlots, spellSettings.specialSlots, spellSettings.isPactEnabled, spellSettings.pactSlotLevel, spellSettings.pactSlotsCount, spellSettings.usedSlots, spellSettings.usedSlotsShortRest, spellSettings.usedSlotsDawn) {
+        val res = mutableMapOf<Int, Int>()
+        for (lvl in 1..9) {
+            val level = lvl.toFloat()
+            val baseSlots = spellSettings.overrideSlots[level] ?: autoSlots.getOrNull(lvl - 1) ?: 0
+            val specialLong = spellSettings.specialSlots.filter { it.level == level && !it.restoreOnShortRest && !it.restoreOnDawn }.sumOf { it.count }
+            val pactSlots = if (spellSettings.isPactEnabled && spellSettings.pactSlotLevel == level) spellSettings.pactSlotsCount else 0
+            val specialShort = spellSettings.specialSlots.filter { it.level == level && it.restoreOnShortRest }.sumOf { it.count }
+            val dawnSlots = spellSettings.specialSlots.filter { it.level == level && it.restoreOnDawn }.sumOf { it.count }
+
+            val totalMax = baseSlots + specialLong + pactSlots + specialShort + dawnSlots
+            val totalUsed = (spellSettings.usedSlots[level] ?: 0) + (spellSettings.usedSlotsShortRest[level] ?: 0) + (spellSettings.usedSlotsDawn[level] ?: 0)
+            res[lvl] = (totalMax - totalUsed).coerceAtLeast(0)
+        }
+        res
+    }
+
     fun parseLevelFromTitle(title: String): Float {
         val t = title.lowercase(Locale.getDefault())
         if (t.contains("заговор")) return 0f
@@ -707,7 +739,7 @@ fun SpellsTab(
                                                             onEdit = { editingSpell = card },
                                                             onRollDamage = { formula, title, advantage ->
                                                                 val isHealing = card.damageTypes.contains(DamageType.HEALING)
-                                                                val finalTitle = if (isHealing) title.replace("Урон:", "Лечение:").replace("Доп. урон:", "Доп. лечение:") else title
+                                                                val finalTitle = if (isHealing) title.replace("Урон:", "Лечение:").replace("Дополнительный урон:", "Дополнительное лечение:") else title
                                                                 onRoll(DiceRoller.roll(
                                                                     title = finalTitle,
                                                                     baseModifier = 0,
@@ -742,6 +774,9 @@ fun SpellsTab(
                                                             spellAttackDice = spellAttackDice,
                                                             spellSaveDc = spellDc,
                                                             spellSaveDice = spellSaveDice,
+                                                            availableSlotLevels = availableSlotLevels,
+                                                            remainingSlots = remainingSlots,
+                                                            allowCantripUpcast = spellSettings.allowCantripUpcast,
                                                             hazeState = hazeState,
                                                             popupHazeState = popupHazeState,
                                                             forceBlurEnabled = forceBlurEnabled,

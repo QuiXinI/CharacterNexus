@@ -23,8 +23,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -954,6 +956,7 @@ fun DiceRollAdvantagePopup(
     onDisadvantage: () -> Unit,
     onDismiss: () -> Unit,
     onCritical: (() -> Unit)? = null,
+    onUpcast: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     isOled: Boolean = false,
     widthMultiplier: Float = 1f,
@@ -967,6 +970,15 @@ fun DiceRollAdvantagePopup(
             val colorScheme = MaterialTheme.colorScheme
             val critBrush = Brush.linearGradient(
                 colors = listOf(Color(0xFF00E1FF), Color(0xFF00ffd9))
+            )
+            val goldenBrush = Brush.linearGradient(
+                colors = listOf(Color(0xFFFFD700), Color(0xFFFFA500))
+            )
+            val advBrush = Brush.linearGradient(
+                colors = listOf(Color(0xFF00ff5e), Color(0xFF92cf80))
+            )
+            val disBrush = Brush.linearGradient(
+                colors = listOf(Color(0xFFFF1100), Color(0xFFE18275))
             )
 
             Surface(
@@ -999,8 +1011,13 @@ fun DiceRollAdvantagePopup(
                         Icon(
                             Icons.Default.KeyboardArrowUp,
                             contentDescription = "Преимущество",
-                            tint = Color(0xFF4CAF50),
+                            tint = Color.Unspecified,
                             modifier = Modifier.size(28.dp)
+                                .graphicsLayer(alpha = 0.99f)
+                                .drawWithContent {
+                                    drawContent()
+                                    drawRect(advBrush, blendMode = BlendMode.SrcIn)
+                                }
                         )
                     }
                     
@@ -1024,6 +1041,30 @@ fun DiceRollAdvantagePopup(
                         }
                     }
 
+                    if (onUpcast != null) {
+                        VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        IconButton(
+                            onClick = {
+                                onUpcast()
+                                onDismiss()
+                            },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardDoubleArrowUp,
+                                contentDescription = "Апкаст",
+                                tint = Color.Unspecified,
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .graphicsLayer(alpha = 0.99f)
+                                    .drawWithContent {
+                                        drawContent()
+                                        drawRect(goldenBrush, blendMode = BlendMode.SrcIn)
+                                    }
+                            )
+                        }
+                    }
+
                     VerticalDivider(modifier = Modifier.height(20.dp), color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     
                     IconButton(
@@ -1036,8 +1077,13 @@ fun DiceRollAdvantagePopup(
                         Icon(
                             Icons.Default.KeyboardArrowDown,
                             contentDescription = "Помеха",
-                            tint = Color(0xFFF44336),
+                            tint = Color.Unspecified,
                             modifier = Modifier.size(28.dp)
+                                .graphicsLayer(alpha = 0.99f)
+                                .drawWithContent {
+                                    drawContent()
+                                    drawRect(disBrush, blendMode = BlendMode.SrcIn)
+                                }
                         )
                     }
                 }
