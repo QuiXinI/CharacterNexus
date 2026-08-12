@@ -1,0 +1,98 @@
+package ru.quasaris.characters.master.MainWindow
+
+import android.net.Uri
+import androidx.compose.runtime.Composable
+import ru.quasaris.characters.master.HeaderCode.CharacterHeader
+import ru.quasaris.characters.master.backend.ArchiveManager
+
+@Composable
+fun CharacterIdentitySection(
+    name: String,
+    onNameChange: (String) -> Unit,
+    level: String,
+    experience: String,
+    nextLevelExp: String,
+    selectedImageUri: Uri?,
+    characterImageData: String?,
+    characterUuid: String = "",
+    showAvatarMenu: Boolean,
+    onAvatarClick: () -> Unit,
+    onDismissAvatarMenu: () -> Unit,
+    onLevelClick: () -> Unit,
+    onNavigateBack: () -> Unit,
+    onOpenDrawer: () -> Unit,
+    activeACValue: String,
+    onACClick: () -> Unit,
+    onACLongClick: () -> Unit,
+    isShieldActive: Boolean,
+    activeInitValue: String,
+    onInitClick: () -> Unit,
+    currentHp: String,
+    maxHp: String,
+    tempHp: String,
+    healthColor: androidx.compose.ui.graphics.Color,
+    healthIcon: Int,
+    onHealthClick: () -> Unit,
+    conditionsCount: String,
+    selectedConditions: List<String>,
+    onConditionsClick: () -> Unit,
+    exhaustion: Int,
+    activeSpeedValue: String,
+    onSpeedClick: () -> Unit,
+    imagePicker: androidx.activity.result.ActivityResultLauncher<String>,
+    onDownloadClick: (String) -> Unit,
+    // New parameters for Rest system
+    onShortRest: () -> Unit = {},
+    onLongRest: () -> Unit = {},
+    onDawn: () -> Unit = {},
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
+    blurPopups: Boolean = false
+) {
+    CharacterHeader(
+        name = name,
+        onNameChange = onNameChange,
+        level = level,
+        experience = experience,
+        nextLevelExp = nextLevelExp,
+        selectedImageUri = selectedImageUri,
+        characterImageData = characterImageData,
+        characterUuid = characterUuid,
+        onAvatarClick = onAvatarClick,
+        onLevelClick = onLevelClick,
+        onNavigateBack = onNavigateBack,
+        onOpenDrawer = onOpenDrawer,
+        activeACValue = activeACValue,
+        onACClick = onACClick,
+        onACLongClick = onACLongClick,
+        isShieldActive = isShieldActive,
+        activeInitValue = activeInitValue,
+        onInitClick = onInitClick,
+        currentHp = currentHp,
+        maxHp = maxHp,
+        tempHp = tempHp,
+        healthColor = healthColor,
+        healthIcon = healthIcon,
+        onHealthClick = onHealthClick,
+        conditionsCount = conditionsCount,
+        selectedConditions = selectedConditions,
+        onConditionsClick = onConditionsClick,
+        exhaustion = exhaustion,
+        activeSpeedValue = activeSpeedValue,
+        onSpeedClick = onSpeedClick,
+        showAvatarMenu = showAvatarMenu,
+        onDismissAvatarMenu = onDismissAvatarMenu,
+        onImagePickerClick = {
+            onDismissAvatarMenu()
+            imagePicker.launch("image/*")
+        },
+        onDownloadClick = {
+            onDismissAvatarMenu()
+            onDownloadClick("${name.ifEmpty { "character" }}.${ArchiveManager.EXPORT_EXTENSION}")
+        },
+        onShortRest = onShortRest,
+        onLongRest = onLongRest,
+        onDawn = onDawn,
+        hazeState = hazeState,
+        blurPopups = blurPopups
+    )
+}
