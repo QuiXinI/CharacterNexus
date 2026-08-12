@@ -71,6 +71,7 @@ fun CharacterHeader(
     experience: String,
     nextLevelExp: String,
     characterImageData: String?,
+    characterUuid: String = "",
     onAvatarClick: () -> Unit,
     onLevelClick: () -> Unit,
     onOpenDrawer: () -> Unit,
@@ -234,9 +235,9 @@ fun CharacterHeader(
                             contentAlignment = Alignment.Center
                         ) {
                             val context = LocalContext.current
-                            val portraitFile = remember(characterImageData) {
+                            val portraitFile = remember(characterImageData, characterUuid) {
                                 if (characterImageData != null && characterImageData.length < 100) {
-                                    ImageManager.getThumbnailFile(context, characterImageData)
+                                    ImageManager.getThumbnailFile(context, characterImageData, characterUuid)
                                 } else null
                             }
                             val base64Bitmap = remember(characterImageData) {

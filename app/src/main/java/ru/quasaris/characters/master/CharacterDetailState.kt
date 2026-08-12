@@ -14,7 +14,7 @@ fun rememberCharacterDetailState(
     character: Character?,
     settingsViewModel: SettingsViewModel?
 ): CharacterDetailState {
-    return remember(character?.id) {
+    return remember(character?.uuid) {
         CharacterDetailState(character, settingsViewModel)
     }
 }
@@ -23,6 +23,7 @@ class CharacterDetailState(
     val initialCharacter: Character?,
     val settingsViewModel: SettingsViewModel?
 ) {
+    val characterUuid = initialCharacter?.uuid ?: ""
     var name by mutableStateOf(initialCharacter?.name ?: "")
     var characterClass by mutableStateOf(initialCharacter?.characterClass ?: "")
     var race by mutableStateOf(initialCharacter?.race ?: "")

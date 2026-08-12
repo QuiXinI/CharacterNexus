@@ -310,6 +310,7 @@ fun CreateWindow(
                             name = name, onNameChange = { name = it },
                             level = level, experience = experience, nextLevelExp = nextLevelExp,
                             selectedImageUri = selectedImageUri, characterImageData = characterImageData,
+                            characterUuid = character?.uuid ?: "",
                             showAvatarMenu = showAvatarMenu, onAvatarClick = { showAvatarMenu = true },
                             onDismissAvatarMenu = { showAvatarMenu = false },
                             onLevelClick = {

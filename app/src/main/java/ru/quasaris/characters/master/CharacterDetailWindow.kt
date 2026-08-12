@@ -489,6 +489,7 @@ fun CharacterDetailWindow(
                         name = state.name, onNameChange = { state.name = it },
                         level = state.level, experience = state.experience, nextLevelExp = state.nextLevelExp,
                         characterImageData = state.characterImageData,
+                        characterUuid = state.characterUuid,
                         onAvatarClick = { state.showAvatarMenu = true },
                         onLevelClick = {
                             state.isLevelPanelVisible = !state.isLevelPanelVisible

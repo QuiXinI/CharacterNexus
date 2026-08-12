@@ -70,15 +70,6 @@ data class RollResult(
     val altOrderedParts: List<RollPart>? = null
 )
 
-data class SimpleBonus(
-    override val id: String = UUID.randomUUID().toString(),
-    override val name: String = "",
-    override val formula: String = "",
-    override val isActive: Boolean = true,
-    override val operation: BonusOperation = BonusOperation.ADD,
-    override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE
-) : IBonus
-
 object DiceRoller {
 
     fun roll(

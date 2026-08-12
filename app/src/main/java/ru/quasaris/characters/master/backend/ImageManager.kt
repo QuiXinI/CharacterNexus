@@ -14,10 +14,67 @@ object ImageManager {
     private const val ORIGINAL_DIR = "originals"
     private const val PORTRAIT_DIR = "portraits"
     private const val THUMB_DIR = "thumbnails"
+    private const val CHARACTERS_DIR = "Characters"
+
+    fun getCharacterDir(context: Context, uuid: String): File {
+        return File(File(context.filesDir, CHARACTERS_DIR), uuid).apply { if (!exists()) mkdirs() }
+    }
+
+    /**
+     * Returns the portrait file for a character.
+     * Tries new character-specific folder first, then legacy global folder.
+     */
+    fun getPortraitFile(context: Context, imageIdOrUuid: String, characterUuid: String? = null): File {
+        // 1. Try new structure: Characters/[uuid]/portrait.webp
+        if (!characterUuid.isNullOrBlank()) {
+            val charDirFile = File(File(context.filesDir, CHARACTERS_DIR), characterUuid)
+            val newFile = File(charDirFile, "portrait.webp")
+            if (newFile.exists()) return newFile
+        }
+
+        // 2. Try using imageIdOrUuid as folder name (in case it IS the UUID or a folder-based ID)
+        if (imageIdOrUuid.isNotBlank()) {
+            val directFolderFile = File(File(File(context.filesDir, CHARACTERS_DIR), imageIdOrUuid), "portrait.webp")
+            if (directFolderFile.exists()) return directFolderFile
+        }
+        
+        // 3. Fallback to legacy global folder
+        return File(File(context.filesDir, PORTRAIT_DIR), "$imageIdOrUuid.webp")
+    }
+
+    fun getOriginalFile(context: Context, imageIdOrUuid: String, characterUuid: String? = null): File {
+        if (!characterUuid.isNullOrBlank()) {
+            val charDirFile = File(File(context.filesDir, CHARACTERS_DIR), characterUuid)
+            val newFile = File(charDirFile, "original.webp")
+            if (newFile.exists()) return newFile
+        }
+
+        if (imageIdOrUuid.isNotBlank()) {
+            val directFolderFile = File(File(File(context.filesDir, CHARACTERS_DIR), imageIdOrUuid), "original.webp")
+            if (directFolderFile.exists()) return directFolderFile
+        }
+        
+        return File(File(context.filesDir, ORIGINAL_DIR), "$imageIdOrUuid.webp")
+    }
+
+    fun getThumbnailFile(context: Context, imageIdOrUuid: String, characterUuid: String? = null): File {
+        if (!characterUuid.isNullOrBlank()) {
+            val charDirFile = File(File(context.filesDir, CHARACTERS_DIR), characterUuid)
+            val newFile = File(charDirFile, "thumbnail.webp")
+            if (newFile.exists()) return newFile
+        }
+
+        if (imageIdOrUuid.isNotBlank()) {
+            val directFolderFile = File(File(File(context.filesDir, CHARACTERS_DIR), imageIdOrUuid), "thumbnail.webp")
+            if (directFolderFile.exists()) return directFolderFile
+        }
+        
+        return File(File(context.cacheDir, THUMB_DIR), "$imageIdOrUuid.webp")
+    }
 
     /**
      * Just saves the original image from Uri and returns a new ID.
-     * Does not process or create thumbnails yet.
+     * For new system, we still return a UUID and later move it to character folder.
      */
     suspend fun saveOriginal(context: Context, uri: Uri): String? = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
@@ -91,76 +148,6 @@ object ImageManager {
         return@withContext id
     }
 
-    suspend fun downloadAndSaveImage(context: Context, url: String): String? = withContext(Dispatchers.IO) {
-        val result = downloadAndSaveImageRobust(context, url)
-        result.getOrNull()
-    }
-
-    suspend fun downloadAndSaveImageRobust(context: Context, url: String): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-            connection.apply {
-                connectTimeout = 10000
-                readTimeout = 15000
-                setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                connect()
-            }
-
-            if (connection.responseCode != 200) {
-                return@withContext Result.failure(Exception("HTTP ${connection.responseCode}: ${connection.responseMessage}"))
-            }
-
-            val inputStream = connection.inputStream
-            val bytes = inputStream.readBytes()
-            if (bytes.isEmpty()) {
-                return@withContext Result.failure(Exception("Downloaded data is empty"))
-            }
-
-            val originalBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) 
-                ?: return@withContext Result.failure(Exception("Failed to decode bitmap from bytes (${bytes.size} bytes)"))
-
-            val id = UUID.randomUUID().toString()
-            
-            // Save Original
-            val originalDir = File(context.filesDir, ORIGINAL_DIR).apply { if (!exists()) mkdirs() }
-            FileOutputStream(File(originalDir, "$id.webp")).use { out ->
-                originalBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
-            }
-
-            // Save Portrait
-            val portraitDir = File(context.filesDir, PORTRAIT_DIR).apply { if (!exists()) mkdirs() }
-            val portraitFile = File(portraitDir, "$id.webp")
-            FileOutputStream(portraitFile).use { out ->
-                originalBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
-            }
-
-            // Save Thumbnail
-            val thumbDir = File(context.cacheDir, THUMB_DIR).apply { if (!exists()) mkdirs() }
-            val thumbFile = File(thumbDir, "$id.webp")
-            val thumbBitmap = Bitmap.createScaledBitmap(originalBitmap, 200, 200, true)
-            FileOutputStream(thumbFile).use { out ->
-                thumbBitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)
-            }
-
-            Result.success(id)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Result.failure(e)
-        }
-    }
-
-    fun getOriginalFile(context: Context, id: String): File {
-        return File(File(context.filesDir, ORIGINAL_DIR), "$id.webp")
-    }
-
-    fun getPortraitFile(context: Context, id: String): File {
-        return File(File(context.filesDir, PORTRAIT_DIR), "$id.webp")
-    }
-
-    fun getThumbnailFile(context: Context, id: String): File {
-        return File(File(context.cacheDir, THUMB_DIR), "$id.webp")
-    }
-    
     suspend fun generateThumbnailFromPortrait(context: Context, id: String) = withContext(Dispatchers.IO) {
         val portraitFile = getPortraitFile(context, id)
         if (!portraitFile.exists()) return@withContext

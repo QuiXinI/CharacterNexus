@@ -62,11 +62,11 @@ fun BioTab(
     var editingShortField by remember { mutableStateOf<BioShortField?>(null) }
     var newShortFieldTitle by remember { mutableStateOf("") }
 
-    var portraitBitmap by remember(imageData) { mutableStateOf<android.graphics.Bitmap?>(null) }
-    LaunchedEffect(imageData) {
+    var portraitBitmap by remember(imageData, character.uuid) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(imageData, character.uuid) {
         if (imageData != null) {
             withContext(Dispatchers.IO) {
-                val file = ImageManager.getPortraitFile(context, imageData!!)
+                val file = ImageManager.getPortraitFile(context, imageData!!, character.uuid)
                 if (file.exists()) {
                     portraitBitmap = BitmapFactory.decodeFile(file.absolutePath)
                 } else {

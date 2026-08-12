@@ -1,15 +1,18 @@
 package ru.quasaris.characters.master
 
 import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
-interface FormulaEntry {
+@Serializable
+sealed interface FormulaEntry {
     val id: String
     val name: String
     val formula: String
     val bonuses: List<AttackBonus>
 }
 
+@Serializable
 data class ArmorClassEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -17,6 +20,7 @@ data class ArmorClassEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Serializable
 data class InitiativeEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -25,6 +29,7 @@ data class InitiativeEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Serializable
 data class SpeedEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -32,6 +37,7 @@ data class SpeedEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Serializable
 data class ClassEntry(
     val id: String = UUID.randomUUID().toString(),
     val className: CharacterClass = CharacterClass.FIGHTER,
@@ -39,6 +45,7 @@ data class ClassEntry(
     val level: Int = 1
 )
 
+@Serializable
 enum class CharacterTab(val title: String) {
     STATS("Характеристики"),
     ATTACKS("Атаки"),
@@ -49,6 +56,7 @@ enum class CharacterTab(val title: String) {
     SPELLS("Заклинания")
 }
 
+@Serializable
 enum class Attribute(val fullName: String, val shortName: String) {
     STRENGTH("Сила", "СИЛ"),
     DEXTERITY("Ловкость", "ЛОВ"),
@@ -59,12 +67,14 @@ enum class Attribute(val fullName: String, val shortName: String) {
     NONE("Нет", "НЕТ")
 }
 
+@Serializable
 enum class SpellMode {
     TEXT,
     HYBRID,
     CARDS
 }
 
+@Serializable
 enum class CasterType(val displayName: String) {
     NONE("Нет"),
     FULL("Заклинатель"),
@@ -72,14 +82,17 @@ enum class CasterType(val displayName: String) {
     THIRD("Особый заклинатель")
 }
 
+@Serializable
 enum class SlotAlignment {
     LEFT, CENTER, RIGHT
 }
 
+@Serializable
 enum class SlotFillDirection {
     LTR, CENTER, RTL
 }
 
+@Serializable
 enum class DamageType(val displayName: String) {
     BLUDGEONING("Дробящий"),
     PIERCING("Колющий"),
@@ -102,15 +115,18 @@ enum class DamageType(val displayName: String) {
     }
 }
 
+@Serializable
 enum class MagicAttackType(val displayName: String) {
     ATTACK("Бросок атаки"),
     SAVE("Спасбросок")
 }
 
+@Serializable
 enum class BonusOperation {
     ADD, SUBTRACT, OVERRIDE
 }
 
+@Serializable
 enum class AdvantagePreference {
     NONE,
     IGNORE_ADVANTAGE,
@@ -120,7 +136,8 @@ enum class AdvantagePreference {
     IGNORE_BOTH
 }
 
-interface IBonus {
+@Serializable
+sealed interface IBonus {
     val id: String
     val name: String
     val formula: String
@@ -129,6 +146,7 @@ interface IBonus {
     val advantagePreference: AdvantagePreference
 }
 
+@Serializable
 data class AttackBonus(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -138,6 +156,17 @@ data class AttackBonus(
     override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE
 ) : IBonus
 
+@Serializable
+data class SimpleBonus(
+    override val id: String = UUID.randomUUID().toString(),
+    override val name: String = "",
+    override val formula: String = "",
+    override val isActive: Boolean = true,
+    override val operation: BonusOperation = BonusOperation.ADD,
+    override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE
+) : IBonus
+
+@Serializable
 data class DamageBonus(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -148,12 +177,14 @@ data class DamageBonus(
     val damageType: String = ""
 ) : IBonus
 
+@Serializable
 enum class StatBonusType {
     SAVING_THROW,
     ABILITY_CHECK,
     CHARACTERISTIC_VALUE
 }
 
+@Serializable
 data class StatBonus(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -166,6 +197,7 @@ data class StatBonus(
     val applyToSkills: Boolean = false
 ) : IBonus
 
+@Serializable
 data class SkillBonus(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -176,6 +208,7 @@ data class SkillBonus(
     val skillName: String = ""
 ) : IBonus
 
+@Serializable
 data class DynamicNoteState(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
@@ -184,6 +217,7 @@ data class DynamicNoteState(
     val isLocked: Boolean = false
 )
 
+@Serializable
 data class AttackEntry(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
@@ -201,10 +235,12 @@ data class AttackEntry(
     val magicType: MagicAttackType = MagicAttackType.ATTACK
 )
 
+@Serializable
 enum class MaterialComponentType(val displayName: String) {
     NONE("Нет"), M("М"), M_PLUS("М+"), M_PLUS_PLUS("М++")
 }
 
+@Serializable
 enum class SpellSchool(val displayName: String) {
     EVOCATION("Воплощение"),
     ILLUSION("Иллюзия"),
@@ -217,6 +253,7 @@ enum class SpellSchool(val displayName: String) {
     NONE("Нет")
 }
 
+@Serializable
 enum class SpellVersion(val displayName: String) {
     V5_5("5.5"),
     V5E("5e"),
@@ -224,6 +261,7 @@ enum class SpellVersion(val displayName: String) {
     NONE("Нет")
 }
 
+@Serializable
 enum class CharacterClass(val displayName: String) {
     BARD("Бард"), WIZARD("Волшебник"), DRUID("Друид"), CLERIC("Жрец"), 
     ARTIFICER("Изобретатель"), WARLOCK("Колдун"), PALADIN("Паладин"), 
@@ -232,6 +270,7 @@ enum class CharacterClass(val displayName: String) {
     MONK("Монах"), ROGUE("Плут"), KINDRED("Сородич")
 }
 
+@Serializable
 enum class DurationUnit(val displayName: String, val requiresValue: Boolean) {
     INSTANT("Мгновенная", false),
     SECONDS("Сек", true),
@@ -241,6 +280,7 @@ enum class DurationUnit(val displayName: String, val requiresValue: Boolean) {
     PERMANENT("Пока не будет рассеяно", false);
 }
 
+@Serializable
 enum class CastingTimeType(val displayName: String) {
     ACTION("Действие"),
     BONUS_ACTION("Бонусное действие"),
@@ -248,12 +288,14 @@ enum class CastingTimeType(val displayName: String) {
     OTHER("Другое")
 }
 
+@Serializable
 data class SpellLink(
     @SerializedName("id") val id: String = UUID.randomUUID().toString(),
     @SerializedName("name") val name: String = "",
     @SerializedName("url") val url: String = ""
 )
 
+@Serializable
 data class SpellCard(
     @SerializedName("name") val name: String = "",
     @SerializedName("englishName") val englishName: String = "",
@@ -383,6 +425,7 @@ data class SpellFilterState(
     val attackOrSave: MagicAttackType? = null
 )
 
+@Serializable
 data class SpecialSlotSettings(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
@@ -392,17 +435,20 @@ data class SpecialSlotSettings(
     val restoreOnDawn: Boolean = false
 )
 
+@Serializable
 data class SpellLevelDivider(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
     val ability: Attribute = Attribute.NONE
 )
 
+@Serializable
 data class SpellLevelItem(
     val spellId: String? = null,
     val divider: SpellLevelDivider? = null
 )
 
+@Serializable
 data class SpellSettings(
     val isMagicEnabled: Boolean = true,
     val spellAttackBonus: String = "",
@@ -432,6 +478,7 @@ data class SpellSettings(
     val allowCantripUpcast: Boolean = false
 )
 
+@Serializable
 data class Wallet(
     val platinum: Double = 0.0,
     val gold: Double = 0.0,
@@ -441,6 +488,7 @@ data class Wallet(
     val visibleCurrencies: List<String> = listOf("platinum", "gold", "silver", "copper")
 )
 
+@Serializable
 data class BioShortField(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
@@ -449,6 +497,7 @@ data class BioShortField(
     val isCustom: Boolean = false
 )
 
+@Serializable
 data class BioSection(
     val id: String = UUID.randomUUID().toString(),
     val title: String = "",
@@ -456,6 +505,7 @@ data class BioSection(
     val isExpanded: Boolean = true
 )
 
+@Serializable
 data class HitDiceEntry(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
@@ -463,6 +513,7 @@ data class HitDiceEntry(
     val spent: Int = 0
 )
 
+@Serializable
 data class HPLevelEntry(
     val level: Int,
     val hitDie: Int,
@@ -470,8 +521,25 @@ data class HPLevelEntry(
     val manualValue: Int? = null
 )
 
-data class Character(
+@Serializable
+data class CharacterSummary(
+    val uuid: String,
+    val id: Int,
+    val name: String,
+    val characterClass: String,
+    val level: String,
+    val currentHp: String,
+    val maxHp: String,
+    val tempHp: String,
+    val imageData: String?,
+    val themeSeedColorArgb: Int?,
+    val experience: String,
+    val order: String
+)
 
+@Serializable
+data class Character(
+    val uuid: String = UUID.randomUUID().toString(),
     val id: Int = 0,
     val name: String = "",
     val characterClass: String = "",
@@ -565,9 +633,24 @@ data class Character(
     val cropH: Float? = null,
     val race: String = "",
     val classes: List<ClassEntry> = emptyList()
-)
+) {
+    fun toSummary(): CharacterSummary = CharacterSummary(
+        uuid = uuid,
+        id = id,
+        name = name,
+        characterClass = characterClass,
+        level = level,
+        currentHp = currentHp,
+        maxHp = maxHp,
+        tempHp = tempHp,
+        imageData = imageData,
+        themeSeedColorArgb = themeSeedColorArgb,
+        experience = experience,
+        order = order
+    )
+}
 
-
+@Serializable
 data class ShieldEntry(
     override val id: String = UUID.randomUUID().toString(),
     override val name: String = "",
@@ -575,12 +658,14 @@ data class ShieldEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Serializable
 data class ModuleContent(
     @SerializedName("type") val type: String,
     @SerializedName("id") val id: String,
     @SerializedName("file") val file: String
 )
 
+@Serializable
 data class ModuleManifest(
     @SerializedName("manifest_version") val manifestVersion: String = "1.0",
     @SerializedName("id") val id: String,
@@ -591,6 +676,7 @@ data class ModuleManifest(
     @SerializedName("contents") val contents: List<ModuleContent> = emptyList()
 )
 
+@Serializable
 data class InstalledModule(
     val manifest: ModuleManifest,
     val installTimestamp: Long = System.currentTimeMillis()

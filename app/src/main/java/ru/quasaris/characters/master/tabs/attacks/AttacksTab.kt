@@ -48,6 +48,7 @@ import ru.quasaris.characters.master.AttackEntry
 import ru.quasaris.characters.master.Attribute
 import ru.quasaris.characters.master.BonusOperation
 import ru.quasaris.characters.master.MagicAttackType
+import ru.quasaris.characters.master.SimpleBonus
 import ru.quasaris.characters.master.SpellSettings
 import ru.quasaris.characters.master.backend.*
 import ru.quasaris.characters.master.ui.DeleteConfirmationDialog

@@ -142,21 +142,16 @@ class MainActivity : ComponentActivity() {
             val hazeState = remember { HazeState() }
             val overlayHazeState = remember { HazeState() }
 
-            val characters: SnapshotStateList<Character> = remember {
-                mutableStateListOf<Character>().apply {
+            val characters: SnapshotStateList<CharacterSummary> = remember {
+                mutableStateListOf<CharacterSummary>().apply {
                     addAll(characterRepository.loadCharacters())
                 }
             }
 
             var rollHistory by remember { mutableStateOf(listOf<RollResult>()) }
 
-            // Sync SnapshotStateList back to Repository for debounced saving
-            LaunchedEffect(characters) {
-                snapshotFlow { characters.toList() }
-                    .collectLatest { list ->
-                        characterRepository.updateCharacters(list)
-                    }
-            }
+            // Sync SnapshotStateList back to Repository (only summaries for now, or just let repository handle it)
+            // Actually, we should probably update the repository when summaries change if we do additions/deletions here.
             
             val lastCharacter = characters.find { it.id == lastCharacterId }
             val avatarColor = lastCharacter?.themeSeedColorArgb ?: settingsManager.lastCharacterSeedColor
@@ -352,21 +347,24 @@ class MainActivity : ComponentActivity() {
                                                 MenuWindow(
                                                     characters = characters,
                                                     onNavigateToCreate = { navController.navigate("create_setup") },
-                                                    onCharacterClick = { characterId ->
-                                                        val char = characters.find { it.id == characterId }
-                                                        lastCharacterId = characterId
-                                                        settingsManager.lastCharacterId = characterId
-                                                        settingsManager.lastCharacterSeedColor = char?.themeSeedColorArgb
-                                                        navController.navigate("edit/$characterId")
+                                                    onCharacterClick = { characterUuid ->
+                                                        val char = characters.find { it.uuid == characterUuid }
+                                                        if (char != null) {
+                                                            lastCharacterId = char.id
+                                                            settingsManager.lastCharacterId = char.id
+                                                            settingsManager.lastCharacterSeedColor = char.themeSeedColorArgb
+                                                            navController.navigate("edit/${char.uuid}")
+                                                        }
                                                     },
                                                     onImportCharacter = { importedCharacter ->
-                                                        characters.add(importedCharacter)
-                                                        characterRepository.saveCharacters(characters)
+                                                        characterRepository.updateCharacter(importedCharacter)
+                                                        characters.clear()
+                                                        characters.addAll(characterRepository.loadCharacters())
                                                     },
-                                                    onDeleteCharacters = { idsToDelete ->
-                                                        characters.removeAll { it.id in idsToDelete }
-                                                        characterRepository.saveCharacters(characters)
-                                                        if (lastCharacterId in idsToDelete) {
+                                                    onDeleteCharacters = { uuidsToDelete ->
+                                                        uuidsToDelete.forEach { characterRepository.deleteCharacter(it) }
+                                                        characters.removeAll { it.uuid in uuidsToDelete }
+                                                        if (characters.none { it.id == lastCharacterId }) {
                                                             lastCharacterId = -1
                                                             settingsManager.lastCharacterId = -1
                                                         }
@@ -437,12 +435,13 @@ class MainActivity : ComponentActivity() {
                                                 CharacterCreationWindow(
                                                     onNavigateBack = { navController.popBackStack() },
                                                     onCharacterCreate = { newChar ->
-                                                        characters.add(newChar)
-                                                        characterRepository.saveCharacters(characters)
+                                                        characterRepository.updateCharacter(newChar)
+                                                        characters.clear()
+                                                        characters.addAll(characterRepository.loadCharacters())
                                                         lastCharacterId = newChar.id
                                                         settingsManager.lastCharacterId = newChar.id
                                                         settingsManager.lastCharacterSeedColor = newChar.themeSeedColorArgb
-                                                        navController.navigate("edit/${newChar.id}") {
+                                                        navController.navigate("edit/${newChar.uuid}") {
                                                             popUpTo("menu")
                                                         }
                                                     },
@@ -454,11 +453,17 @@ class MainActivity : ComponentActivity() {
                                             }
 
                                             composable(
-                                                route = "edit/{characterId}",
-                                                arguments = listOf(navArgument("characterId") { type = NavType.IntType })
+                                                route = "edit/{characterUuid}",
+                                                arguments = listOf(navArgument("characterUuid") { type = NavType.StringType })
                                             ) { backStackEntry ->
-                                                val characterId = backStackEntry.arguments?.getInt("characterId")
-                                                val character = characters.find { it.id == characterId }
+                                                val characterUuid: String? = backStackEntry.arguments?.getString("characterUuid")
+                                                var character by remember { mutableStateOf<Character?>(null) }
+                                                
+                                                LaunchedEffect(characterUuid) {
+                                                    if (characterUuid != null) {
+                                                        character = characterRepository.getFullCharacter(characterUuid)
+                                                    }
+                                                }
 
                                                 CharacterDetailWindow(
                                                     character = character,
@@ -467,8 +472,8 @@ class MainActivity : ComponentActivity() {
                                                     },
                                                     onOpenDrawer = { scope.launch { drawerState.open() } },
                                                     onDeleteCharacter = { charToDelete ->
-                                                        characters.removeAll { it.id == charToDelete.id }
-                                                        characterRepository.saveCharacters(characters)
+                                                        characterRepository.deleteCharacter(charToDelete.uuid)
+                                                        characters.removeAll { it.uuid == charToDelete.uuid }
                                                         if (lastCharacterId == charToDelete.id) {
                                                             lastCharacterId = -1
                                                             settingsManager.lastCharacterId = -1
@@ -476,10 +481,10 @@ class MainActivity : ComponentActivity() {
                                                         navController.popBackStack()
                                                     },
                                                     onSaveChanges = { updatedCharacter ->
-                                                        val index = characters.indexOfFirst { it.id == updatedCharacter.id }
+                                                        characterRepository.updateCharacter(updatedCharacter)
+                                                        val index = characters.indexOfFirst { it.uuid == updatedCharacter.uuid }
                                                         if (index != -1) {
-                                                            characters[index] = updatedCharacter
-                                                            characterRepository.saveCharacters(characters)
+                                                            characters[index] = updatedCharacter.toSummary()
                                                             if (updatedCharacter.id == lastCharacterId) {
                                                                 settingsManager.lastCharacterSeedColor = updatedCharacter.themeSeedColorArgb
                                                             }

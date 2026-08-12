@@ -46,6 +46,7 @@ import ru.quasaris.characters.master.backend.ArchiveManager
 import ru.quasaris.characters.master.backend.ImageManager
 import ru.quasaris.characters.master.backend.SettingsViewModel
 import android.graphics.BitmapFactory
+import java.io.File
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.drawBehind
@@ -63,11 +64,11 @@ import ru.quasaris.characters.master.backend.cropper.AvatarCropperWindow
 
 @Composable
 fun MenuWindow(
-    characters: List<Character>,
+    characters: List<CharacterSummary>,
     onNavigateToCreate: () -> Unit,
-    onCharacterClick: (Int) -> Unit,
+    onCharacterClick: (String) -> Unit,
     onImportCharacter: (Character) -> Unit,
-    onDeleteCharacters: (List<Int>) -> Unit,
+    onDeleteCharacters: (List<String>) -> Unit,
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
     settingsViewModel: SettingsViewModel? = null,
@@ -80,7 +81,7 @@ fun MenuWindow(
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
 
-    val selectedIds = remember { mutableStateListOf<Int>() }
+    val selectedIds = remember { mutableStateListOf<String>() }
 
     val autoDownload by settingsViewModel?.autoDownloadLssAvatar?.collectAsState() ?: remember { mutableStateOf(false) }
     val debugEnabled by settingsViewModel?.debugInfoEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
@@ -194,22 +195,22 @@ fun MenuWindow(
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(characters) { character ->
-                        val isSelected = character.id in selectedIds
+                        val isSelected = character.uuid in selectedIds
                         CharacterCard(
                             character = character,
                             isSelected = isSelected,
                             useOldAvatarStyle = useOldAvatarStyle,
                             onClick = {
                                 if (selectedIds.isNotEmpty()) {
-                                    if (isSelected) selectedIds.remove(character.id)
-                                    else selectedIds.add(character.id)
+                                    if (isSelected) selectedIds.remove(character.uuid)
+                                    else selectedIds.add(character.uuid)
                                 } else {
-                                    onCharacterClick(character.id)
+                                    onCharacterClick(character.uuid)
                                 }
                             },
                             onLongClick = {
-                                if (character.id !in selectedIds) {
-                                    selectedIds.add(character.id)
+                                if (character.uuid !in selectedIds) {
+                                    selectedIds.add(character.uuid)
                                 }
                             }
                         )
@@ -367,7 +368,7 @@ private fun downloadLssAvatar(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CharacterCard(
-    character: Character,
+    character: CharacterSummary,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
     useOldAvatarStyle: Boolean = false,
@@ -377,8 +378,15 @@ fun CharacterCard(
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
 
-    val thumbFile = remember(character.imageData) {
-        character.imageData?.let { ImageManager.getThumbnailFile(context, it) }
+    // In the new system, imageData might be a path or an ID.
+    // If it's a UUID/ID, we need to resolve it to a file.
+    val thumbFile = remember(character.imageData, character.uuid) {
+        character.imageData?.let { id ->
+            // Try new folder structure first
+            val newFile = File(File(File(context.filesDir, "Characters"), character.uuid), "thumbnail.webp")
+            if (newFile.exists()) newFile
+            else ImageManager.getThumbnailFile(context, id) // Fallback to old global folder
+        }
     }
 
     val cardColor = if (isSelected) {
@@ -587,26 +595,19 @@ fun CharacterCard(
 fun MenuWindowPreview() {
     quasarisTheme {
         val previewCharacters = listOf(
-            Character(
+            CharacterSummary(
+                uuid = "1",
                 id = 1,
                 name = "Гаррик",
                 characterClass = "Воин",
-                order = "Человек",
                 level = "3",
                 experience = "1500",
                 currentHp = "25",
-                maxHp = "30"
-            ),
-            Character(
-                id = 2,
-                name = "Лиара",
-                characterClass = "Плут",
-                order = "Эльф",
-                level = "1",
-                experience = "150",
-                currentHp = "5",
-                maxHp = "12",
-                tempHp = "5"
+                maxHp = "30",
+                tempHp = "0",
+                imageData = null,
+                themeSeedColorArgb = null,
+                order = "Человек"
             )
         )
         MenuWindow(
