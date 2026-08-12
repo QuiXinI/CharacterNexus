@@ -1,38 +1,33 @@
-# Системные файлы и временные файлы ОС
 .DS_Store
 Thumbs.db
 *.log
 *.tmp
 
-# Файлы настроек IDE (Android Studio)
 .idea/
 *.iml
 *.ipr
 *.iws
+xcuserdata
+
 /out/
 /captures/
 .artifacts
-
-# Локальные конфигурации (содержат пути к SDK и приватные ключи)
-/local.properties
-.gradle/config.properties
-
-# Кэш сборщика Gradle и компилятора Kotlin
-.gradle/
-.kotlin/
-
-# Результаты компиляции и сборки (Build Artifacts)
+/build/
 build/
 **/build/
-/build/
+!src/**/build/
+.externalNativeBuild
+.cxx
 
-# Специфичные папки нативной сборки (C/C++)
-.externalNativeBuild/
-.cxx/
-/ndkBuild/
-/imports
+local.properties
+.gradle/
+.gradle/config.properties
+.kotlin/
+node_modules/
 
-# Релизы и пакеты
-*.apk
-*.aar
-*.jar
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
