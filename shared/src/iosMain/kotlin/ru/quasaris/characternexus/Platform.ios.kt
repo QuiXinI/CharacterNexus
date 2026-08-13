@@ -9,6 +9,8 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.NSCachesDirectory
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 
 class IOSPlatform: Platform {
     override val name: String = UIDevice.currentDevice.systemName() + " " + UIDevice.currentDevice.systemVersion
@@ -41,4 +43,6 @@ actual fun getCacheDir(): Path {
     )
     return cacheDirectory!!.path!!.toPath()
 }
+
+actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 

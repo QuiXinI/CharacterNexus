@@ -1,21 +1,22 @@
 package ru.quasaris.characternexus.backend.storage
 
-import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import okio.FileSystem
-import okio.Path.Companion.toPath
-import okio.buffer
+import okio.Path
+import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.model.CharacterSummary
+import ru.quasaris.characternexus.platformFileSystem
 
-class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
+import ru.quasaris.characternexus.ioDispatcher
 
-    private val fileSystem = FileSystem.SYSTEM
-    private val baseDir = context.filesDir.absolutePath.toPath().div("Characters")
-    private val cacheFile = context.filesDir.absolutePath.toPath().div("characters_cache.json")
+class FileSystemCharacterStorage : CharacterStorage {
+
+    private val fileSystem = platformFileSystem
+    private val baseDir = getAppDataDir().div("Characters")
+    private val cacheFile = getAppDataDir().div("characters_cache.json")
     
     private val json = Json {
         ignoreUnknownKeys = true
@@ -29,7 +30,7 @@ class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
         }
     }
 
-    override suspend fun saveCharacter(character: Character): Unit = withContext(Dispatchers.IO) {
+    override suspend fun saveCharacter(character: Character): Unit = withContext(ioDispatcher) {
         val charDir = baseDir.div(character.uuid)
         if (!fileSystem.exists(charDir)) {
             fileSystem.createDirectories(charDir)
@@ -41,7 +42,7 @@ class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
         }
     }
 
-    override suspend fun loadCharacter(uuid: String): Character? = withContext(Dispatchers.IO) {
+    override suspend fun loadCharacter(uuid: String): Character? = withContext(ioDispatcher) {
         val charFile = baseDir.div(uuid).div("character.json")
         if (!fileSystem.exists(charFile)) return@withContext null
         
@@ -56,14 +57,14 @@ class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
         }
     }
 
-    override suspend fun deleteCharacter(uuid: String) = withContext(Dispatchers.IO) {
+    override suspend fun deleteCharacter(uuid: String) = withContext(ioDispatcher) {
         val charDir = baseDir.div(uuid)
         if (fileSystem.exists(charDir)) {
             fileSystem.deleteRecursively(charDir)
         }
     }
 
-    override suspend fun loadAllSummaries(): List<CharacterSummary> = withContext(Dispatchers.IO) {
+    override suspend fun loadAllSummaries(): List<CharacterSummary> = withContext(ioDispatcher) {
         if (!fileSystem.exists(cacheFile)) return@withContext emptyList()
         
         try {
@@ -77,18 +78,18 @@ class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
         }
     }
 
-    override suspend fun saveSummaries(summaries: List<CharacterSummary>): Unit = withContext(Dispatchers.IO) {
+    override suspend fun saveSummaries(summaries: List<CharacterSummary>): Unit = withContext(ioDispatcher) {
         fileSystem.write(cacheFile) {
             writeUtf8(json.encodeToString(summaries))
         }
     }
 
-    override suspend fun listCharacterUuids(): List<String> = withContext(Dispatchers.IO) {
+    override suspend fun listCharacterUuids(): List<String> = withContext(ioDispatcher) {
         if (!fileSystem.exists(baseDir)) return@withContext emptyList()
         fileSystem.list(baseDir).filter { fileSystem.metadata(it).isDirectory }.map { it.name }
     }
 
-    override suspend fun saveImage(uuid: String, fileName: String, bytes: ByteArray): String = withContext(Dispatchers.IO) {
+    override suspend fun saveImage(uuid: String, fileName: String, bytes: ByteArray): String = withContext(ioDispatcher) {
         val charDir = baseDir.div(uuid)
         if (!fileSystem.exists(charDir)) {
             fileSystem.createDirectories(charDir)
@@ -101,12 +102,12 @@ class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
         imageFile.toString()
     }
 
-    override suspend fun getImagePath(uuid: String, fileName: String): String? = withContext(Dispatchers.IO) {
+    override suspend fun getImagePath(uuid: String, fileName: String): String? = withContext(ioDispatcher) {
         val imageFile = baseDir.div(uuid).div(fileName)
         if (fileSystem.exists(imageFile)) imageFile.toString() else null
     }
 
-    override suspend fun deleteImage(uuid: String, fileName: String) = withContext(Dispatchers.IO) {
+    override suspend fun deleteImage(uuid: String, fileName: String) = withContext(ioDispatcher) {
         val imageFile = baseDir.div(uuid).div(fileName)
         if (fileSystem.exists(imageFile)) {
             fileSystem.delete(imageFile)

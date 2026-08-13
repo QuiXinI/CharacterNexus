@@ -124,7 +124,7 @@ fun CharacterTheme(
 @Composable
 fun quasarisTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Changed default to false to show the new "beautiful scheme"
     themeMode: AppThemeMode = AppThemeMode.M3,
     avatarColor: Int? = null,
     content: @Composable () -> Unit

@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -51,8 +52,8 @@ android {
         applicationId = "ru.quasaris.characternexus"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = rootProject.extra["appVersionCode"] as Int
+        versionName = rootProject.extra["appVersionName"] as String
     }
     packaging {
         resources {
@@ -68,7 +69,6 @@ android {
         create("debugCheck") {
             initWith(getByName("debug"))
             isMinifyEnabled = false
-            isShrinkResources = false
             matchingFallbacks += listOf("debug")
         }
 
@@ -111,5 +111,36 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val variantName = variant.name
+        val versionName = rootProject.extra["appVersionName"] as String
+        val buildsDir = rootProject.projectDir.resolve("builds")
+        val taskName = variantName.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
+        val copyTask = tasks.register<Copy>("copy${taskName}ApkToBuilds") {
+            from(variant.artifacts.get(com.android.build.api.artifact.SingleArtifact.APK))
+            into(buildsDir)
+            include("**/*.apk")
+            rename { fileName ->
+                if (fileName.endsWith(".apk")) {
+                    "${variantName}-${versionName}.apk"
+                } else {
+                    fileName
+                }
+            }
+            eachFile {
+                path = name // flatten directory structure
+            }
+            includeEmptyDirs = false
+        }
+
+        // Use a more robust way to hook into the assemble task
+        tasks.matching { it.name == "assemble$taskName" }.configureEach {
+            finalizedBy(copyTask)
+        }
     }
 }

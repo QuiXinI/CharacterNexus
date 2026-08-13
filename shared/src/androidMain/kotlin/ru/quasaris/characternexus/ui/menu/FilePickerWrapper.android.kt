@@ -5,6 +5,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import com.darkrockstudios.libraries.mpfilepicker.FilePicker
 import kotlinx.coroutines.launch
 
+import androidx.compose.runtime.rememberCoroutineScope
+import com.darkrockstudios.libraries.mpfilepicker.FilePicker
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import android.net.Uri
+
 @Composable
 actual fun FilePickerWrapper(
     show: Boolean,
@@ -16,8 +22,22 @@ actual fun FilePickerWrapper(
         if (platformFile == null) {
             onFileSelected(null)
         } else {
-            scope.launch {
-                onFileSelected(platformFile.getFileByteArray())
+            scope.launch(Dispatchers.IO) {
+                val bytes = try {
+                    val path = platformFile.path
+                    if (path.startsWith("content://")) {
+                        val uri = Uri.parse(path)
+                        ru.quasaris.characternexus.util.PlatformUtils.androidContext.contentResolver.openInputStream(uri)?.use { 
+                            it.readBytes() 
+                        }
+                    } else {
+                        platformFile.getFileByteArray()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    null
+                }
+                onFileSelected(bytes)
             }
         }
     }

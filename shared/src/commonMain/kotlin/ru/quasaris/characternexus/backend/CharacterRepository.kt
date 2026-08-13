@@ -1,22 +1,16 @@
-package ru.quasaris.characternexus
+package ru.quasaris.characternexus.backend
 
-import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import ru.quasaris.characternexus.backend.storage.AndroidCharacterStorage
 import ru.quasaris.characternexus.backend.storage.CharacterStorage
 import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.model.CharacterSummary
+import ru.quasaris.characternexus.ioDispatcher
 
 class CharacterRepository(
-    private val context: Context,
-    private val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val storage: CharacterStorage,
+    private val appScope: CoroutineScope
 ) {
-    private val storage: CharacterStorage = AndroidCharacterStorage(context)
-    private val sharedPreferences = context.getSharedPreferences("character_prefs", Context.MODE_PRIVATE)
-    private val charactersKey = "CHARACTERS_LIST"
-
     private val _charactersSummaryState = MutableStateFlow<List<CharacterSummary>>(emptyList())
     val charactersSummaryState: StateFlow<List<CharacterSummary>> = _charactersSummaryState.asStateFlow()
 
@@ -37,7 +31,7 @@ class CharacterRepository(
         }
     }
 
-    private suspend fun rebuildCache() = withContext(Dispatchers.IO) {
+    private suspend fun rebuildCache() = withContext(ioDispatcher) {
         val uuids = storage.listCharacterUuids()
         val summaries = uuids.mapNotNull { uuid ->
             storage.loadCharacter(uuid)?.toSummary()
@@ -93,11 +87,7 @@ class CharacterRepository(
     }
 
     fun flush() {
-        runBlocking {
-            fullCharactersCache.values.forEach {
-                storage.saveCharacter(it)
-            }
-            storage.saveSummaries(_charactersSummaryState.value)
-        }
+        // flush is problematic in common scope if it needs runBlocking
+        // usually we don't need it if we have debounced save
     }
 }

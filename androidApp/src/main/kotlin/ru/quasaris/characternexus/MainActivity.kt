@@ -13,6 +13,8 @@ import kotlinx.coroutines.SupervisorJob
 import ru.quasaris.characternexus.backend.AppScaleManager
 import ru.quasaris.characternexus.backend.SettingsManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
+import ru.quasaris.characternexus.backend.CharacterRepository
+import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
 import ru.quasaris.characternexus.util.PlatformUtils
 
 class MainActivity : ComponentActivity() {
@@ -24,7 +26,7 @@ class MainActivity : ComponentActivity() {
         val settingsViewModel = SettingsViewModel(appScaleManager, settingsManager)
 
         val characterRepository = CharacterRepository(
-            context = applicationContext,
+            storage = FileSystemCharacterStorage(),
             appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         )
         
