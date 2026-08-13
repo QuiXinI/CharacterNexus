@@ -9,7 +9,7 @@ import ru.quasaris.characternexus.ioDispatcher
 
 class CharacterRepository(
     private val storage: CharacterStorage,
-    private val appScope: CoroutineScope
+    private val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 ) {
     private val _charactersSummaryState = MutableStateFlow<List<CharacterSummary>>(emptyList())
     val charactersSummaryState: StateFlow<List<CharacterSummary>> = _charactersSummaryState.asStateFlow()
@@ -87,7 +87,15 @@ class CharacterRepository(
     }
 
     fun flush() {
-        // flush is problematic in common scope if it needs runBlocking
-        // usually we don't need it if we have debounced save
+        appScope.launch {
+            fullCharactersCache.values.forEach {
+                storage.saveCharacter(it)
+            }
+            storage.saveSummaries(_charactersSummaryState.value)
+        }
+    }
+
+    fun updateCharacters(characters: List<Character>) {
+        characters.forEach { updateCharacter(it) }
     }
 }

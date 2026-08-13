@@ -10,12 +10,12 @@ object DiceCalculationConfig {
 }
 
 /**
- * Description of a dice part (e.g., 2d6).
+ * Description of a formula part with dice (e.g., 2d6).
  */
 data class DicePart(val count: Int, val sides: Int)
 
 /**
- * Calculates attribute modifier from score.
+ * Calculation of attribute modifier by value.
  */
 fun calculateModifier(scoreStr: String): Int {
     val score = scoreStr.toIntOrNull() ?: 10
@@ -23,7 +23,7 @@ fun calculateModifier(scoreStr: String): Int {
 }
 
 /**
- * Gets base proficiency bonus by level.
+ * Get base proficiency bonus by level.
  */
 fun getProficiencyBonus(levelStr: String): Int {
     val level = levelStr.toIntOrNull() ?: 1
@@ -31,7 +31,7 @@ fun getProficiencyBonus(levelStr: String): Int {
 }
 
 /**
- * Experience threshold for next level.
+ * Experience threshold for the next level.
  */
 fun getNextLevelThreshold(levelStr: String): String {
     val level = levelStr.toIntOrNull() ?: 1
@@ -87,7 +87,7 @@ fun getPreviousLevelThreshold(levelStr: String): String {
 }
 
 /**
- * Calculates level based on accumulated experience.
+ * Calculate level based on accumulated experience.
  */
 fun calculateLevelFromExperience(expStr: String): Int {
     val exp = expStr.toLongOrNull() ?: 0L
@@ -114,5 +114,321 @@ fun calculateLevelFromExperience(expStr: String): Int {
         exp >= 900 -> 3
         exp >= 300 -> 2
         else -> 1
+    }
+}
+
+/**
+ * Representation of a formula part.
+ */
+sealed class FormulaPart {
+    data class Dice(val count: Int, val sides: Int) : FormulaPart()
+    data class Flat(val value: Int) : FormulaPart()
+}
+
+/**
+ * Parse formula into a flat bonus and a list of dice.
+ */
+fun parseFormulaParts(
+    formula: String,
+    stats: Map<String, String> = emptyMap()
+): Pair<Int, List<DicePart>> {
+    val ordered = parseFormulaOrdered(formula, stats)
+    var flat = 0
+    val dice = mutableListOf<DicePart>()
+    
+    ordered.forEach { part ->
+        when (part) {
+            is FormulaPart.Dice -> dice.add(DicePart(part.count, part.sides))
+            is FormulaPart.Flat -> flat += part.value
+        }
+    }
+    
+    return flat to dice
+}
+
+/**
+ * Parse formula preserving the order of elements.
+ */
+fun parseFormulaOrdered(
+    formula: String,
+    stats: Map<String, String> = emptyMap()
+): List<FormulaPart> {
+    val processed = preprocessFormula(formula, stats)
+    val result = mutableListOf<FormulaPart>()
+    
+    // Regex for dice (e.g., 1d6, +2d8, -d4)
+    val diceRegex = Regex("([+-]?\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
+    
+    val matches = diceRegex.findAll(processed).toList()
+    var lastIndex = 0
+    
+    matches.forEach { match ->
+        val gap = processed.substring(lastIndex, match.range.first).trim()
+        if (gap.isNotEmpty() && gap != "+" && gap != "-") {
+            val flatVal = evaluateFormulaDouble(gap, stats).toInt()
+            if (flatVal != 0) {
+                result.add(FormulaPart.Flat(flatVal))
+            }
+        }
+
+        val countStr = match.groupValues[1]
+        val count = when (countStr) {
+            "", "+" -> 1
+            "-" -> -1
+            else -> countStr.toIntOrNull() ?: 1
+        }
+        val sides = match.groupValues[2].toInt()
+        if (sides > 0) {
+            result.add(FormulaPart.Dice(count, sides))
+        }
+        
+        lastIndex = match.range.last + 1
+    }
+    
+    val remaining = processed.substring(lastIndex).trim()
+    if (remaining.isNotEmpty()) {
+        val flatVal = evaluateFormulaDouble(remaining, stats).toInt()
+        if (flatVal != 0) {
+            result.add(FormulaPart.Flat(flatVal))
+        }
+    }
+    
+    return result
+}
+
+/**
+ * Preprocess formula: replace all [...] tokens with numerical values.
+ */
+fun preprocessFormula(formula: String, stats: Map<String, String>): String {
+    val tokenRegex = Regex("\\[([^\\]]+)\\]")
+    
+    val statMapping = mapOf(
+        "СИЛ" to listOf("strength", "STR", "СИЛ"),
+        "STR" to listOf("strength", "STR", "СИЛ"),
+        "ЛОВ" to listOf("dexterity", "DEX", "ЛОВ"),
+        "DEX" to listOf("dexterity", "DEX", "ЛОВ"),
+        "ТЕЛ" to listOf("constitution", "CON", "ТЕЛ"),
+        "CON" to listOf("constitution", "CON", "ТЕЛ"),
+        "ИНТ" to listOf("intelligence", "INT", "ИНТ"),
+        "INT" to listOf("intelligence", "INT", "ИНТ"),
+        "МУД" to listOf("wisdom", "WIS", "МУД"),
+        "WIS" to listOf("wisdom", "WIS", "МУД"),
+        "ХАР" to listOf("charisma", "CHA", "ХАР"),
+        "CHA" to listOf("charisma", "CHA", "ХАР")
+    )
+
+    fun getStatValue(token: String): String {
+        val upperToken = token.uppercase().trim()
+        
+        if (upperToken.startsWith("НАСТ ") || upperToken.startsWith("CUR ")) {
+            val attr = upperToken.removePrefix("НАСТ ").removePrefix("CUR ").trim()
+            if (attr == "БМ" || attr == "PB") {
+                val level = stats["level"] ?: "1"
+                return getProficiencyBonus(level).toString()
+            }
+            val keys = statMapping[attr]
+            if (keys != null) {
+                for (k in keys) {
+                    val score = stats["base_$k"] ?: stats[k]
+                    if (score != null) return calculateModifier(score).toString()
+                }
+            }
+        }
+        
+        if (upperToken.endsWith(" ЗНАЧ") || upperToken.endsWith(" SCR")) {
+            val isBase = upperToken.startsWith("НАСТ ") || upperToken.startsWith("CUR ")
+            val attr = upperToken.removeSuffix(" ЗНАЧ").removeSuffix(" SCR")
+                .removePrefix("НАСТ ").removePrefix("CUR ").trim()
+            val keys = statMapping[attr]
+            if (keys != null) {
+                for (k in keys) {
+                    val key = if (isBase) "base_$k" else k
+                    val score = stats[key] ?: if (isBase) stats[k] else null
+                    if (score != null) return score
+                }
+            }
+            return stats[upperToken] ?: "10"
+        }
+
+        statMapping[upperToken]?.let { keys ->
+            for (k in keys) {
+                stats[k]?.let { return calculateModifier(it).toString() }
+            }
+        }
+
+        return when (upperToken) {
+            "LVL", "УР", "LEVEL" -> stats["level"] ?: "1"
+            "XP", "ОП" -> stats["xp"] ?: "0"
+            "HP", "ХП" -> stats["hp"] ?: "0"
+            "MHP", "МХП" -> stats["max_hp"] ?: "0"
+            "THP", "ВХП" -> stats["temp_hp"] ?: "0"
+            "AC", "КД" -> stats["ac"] ?: "10"
+            "EX", "ИСТ", "EXHAUSTION" -> stats["exhaustion"] ?: "0"
+            "COND", "СОСТ", "CONDITIONS" -> stats["conditions"] ?: "0"
+            "MHD", "МКХ" -> stats["totalMaxHitDice"] ?: stats["manualMaxHitDice"] ?: stats["level"] ?: "1"
+            "CHD", "ТКХ" -> stats["totalCurrentHitDice"] ?: stats["chd"] ?: "0"
+            "БМ", "PB", "PROF" -> {
+                val level = stats["level"] ?: "1"
+                stats["proficiencyBonus"] ?: getProficiencyBonus(level).toString()
+            }
+            "НАСТ БМ", "REAL PB" -> getProficiencyBonus(stats["level"] ?: "1").toString()
+            "MATC", "МАТК" -> stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: stats["mag_atk_bonus"] ?: "0"
+            "MSAVEB", "МСПАСБ" -> stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: stats["mag_save_bonus"] ?: "0"
+            "MMOD", "ММОД" -> stats["[MAG MOD]"] ?: stats["[МАГ МОД]"] ?: stats["mag_mod"] ?: "0"
+            else -> stats[token] ?: stats[upperToken] ?: "0"
+        }
+    }
+
+    return tokenRegex.replace(formula) { match ->
+        getStatValue(match.groupValues[1])
+    }
+}
+
+fun evaluateFormula(formula: String, stats: Map<String, String> = emptyMap()): Int {
+    return evaluateFormulaDouble(formula, stats).roundToInt()
+}
+
+fun evaluateFormulaDouble(formula: String, stats: Map<String, String> = emptyMap()): Double {
+    if (formula.isBlank()) return 0.0
+    val processed = preprocessFormula(formula, stats)
+    return try {
+        FormulaParser(processed).parse()
+    } catch (e: Exception) {
+        0.0
+    }
+}
+
+private class FormulaParser(private val input: String) {
+    private var pos = -1
+    private var ch = 0
+
+    private fun nextChar() {
+        ch = if (++pos < input.length) input[pos].code else -1
+    }
+
+    private fun eat(charToEat: Int): Boolean {
+        while (ch == ' '.code) nextChar()
+        if (ch == charToEat) {
+            nextChar()
+            return true
+        }
+        return false
+    }
+
+    fun parse(): Double {
+        nextChar()
+        return parseExpression()
+    }
+
+    private fun parseExpression(): Double {
+        var x = parseTerm()
+        while (true) {
+            if (eat('+'.code)) x += parseTerm()
+            else if (eat('-'.code)) x -= parseTerm()
+            else return x
+        }
+    }
+
+    private fun parseTerm(): Double {
+        var x = parseFactor()
+        while (true) {
+            if (eat('*'.code)) x *= parseFactor()
+            else if (eat('/'.code)) {
+                val y = parseFactor()
+                x = if (y != 0.0) x / y else 0.0
+            } else return x
+        }
+    }
+
+    private fun parseFactor(): Double {
+        if (eat('+'.code)) return parseFactor()
+        if (eat('-'.code)) return -parseFactor()
+
+        var x: Double
+        val startPos = this.pos
+        if (eat('('.code)) {
+            x = parseExpression()
+            eat(')'.code)
+        } else if ((ch >= '0'.code && ch <= '9'.code) || ch == '.'.code) {
+            while ((ch >= '0'.code && ch <= '9'.code) || ch == '.'.code) nextChar()
+            x = input.substring(startPos, this.pos).toDouble()
+        } else if (isLetter(ch)) {
+            while (isLetter(ch) || (ch >= '0'.code && ch <= '9'.code)) nextChar()
+            val funcOrDice = input.substring(startPos, this.pos).lowercase()
+            
+            if (funcOrDice.startsWith("d") || funcOrDice.startsWith("k") || funcOrDice.startsWith("к")) {
+                x = handleDiceSuffix(1.0, funcOrDice)
+            } else {
+                val args = mutableListOf<Double>()
+                if (eat('('.code)) {
+                    do {
+                        args.add(parseExpression())
+                    } while (eat(','.code) || eat(';'.code))
+                    eat(')'.code)
+                }
+                
+                x = when (funcOrDice) {
+                    "min", "мин" -> args.minOrNull() ?: 0.0
+                    "max", "макс" -> args.maxOrNull() ?: 0.0
+                    "floor", "вниз" -> floor(args.firstOrNull() ?: 0.0)
+                    "ceil", "вверх" -> ceil(args.firstOrNull() ?: 0.0)
+                    "abs" -> abs(args.firstOrNull() ?: 0.0)
+                    "round" -> round(args.firstOrNull() ?: 0.0)
+                    else -> 0.0
+                }
+            }
+        } else {
+            x = 0.0
+        }
+
+        if (ch == 'd'.code || ch == 'k'.code || ch == 'к'.code) {
+            val startDice = pos
+            nextChar() 
+            while (ch >= '0'.code && ch <= '9'.code) nextChar()
+            val diceStr = input.substring(startDice, pos)
+            x = handleDiceSuffix(x, diceStr)
+        }
+
+        if (eat('^'.code)) x = x.pow(parseFactor())
+
+        return x
+    }
+
+    private fun isLetter(c: Int): Boolean {
+        return (c >= 'a'.code && c <= 'z'.code) || (c >= 'A'.code && c <= 'Z'.code) || 
+               (c >= 'а'.code && c <= 'я'.code) || (c >= 'А'.code && c <= 'Я'.code)
+    }
+
+    private fun handleDiceSuffix(count: Double, diceStr: String): Double {
+        return 0.0 
+    }
+}
+
+data class Condition(val name: String, val description: String)
+
+fun parseConditions(content: String): List<Condition> {
+    return content.split("##").filter { it.isNotBlank() }.map { s ->
+        val lines = s.trim().lines()
+        Condition(lines.firstOrNull()?.trim() ?: "", lines.drop(1).joinToString("\n").trim())
+    }
+}
+
+fun scaleCantripFormula(formula: String, level: Int, noDamageAtLevel1: Boolean): String {
+    val scaleFactor = when {
+        level >= 17 -> 4
+        level >= 11 -> 3
+        level >= 5 -> 2
+        else -> 1
+    }
+    
+    val actualScale = if (noDamageAtLevel1) scaleFactor - 1 else scaleFactor
+    if (actualScale <= 0) return "0"
+    
+    val diceRegex = Regex("(\\d+)([dkк])(\\d+)", RegexOption.IGNORE_CASE)
+    return diceRegex.replace(formula) { match ->
+        val count = match.groupValues[1].toInt()
+        val type = match.groupValues[2]
+        val sides = match.groupValues[3]
+        "${count * actualScale}$type$sides"
     }
 }
