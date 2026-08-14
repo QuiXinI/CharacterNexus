@@ -11,6 +11,7 @@ import ru.quasaris.characternexus.model.CharacterSummary
 import ru.quasaris.characternexus.platformFileSystem
 
 import ru.quasaris.characternexus.ioDispatcher
+import ru.quasaris.characternexus.util.ensureNomedia
 
 class FileSystemCharacterStorage : CharacterStorage {
 
@@ -25,16 +26,12 @@ class FileSystemCharacterStorage : CharacterStorage {
     }
 
     init {
-        if (!fileSystem.exists(baseDir)) {
-            fileSystem.createDirectories(baseDir)
-        }
+        baseDir.ensureNomedia()
     }
 
     override suspend fun saveCharacter(character: Character): Unit = withContext(ioDispatcher) {
         val charDir = baseDir.div(character.uuid)
-        if (!fileSystem.exists(charDir)) {
-            fileSystem.createDirectories(charDir)
-        }
+        charDir.ensureNomedia()
         
         val charFile = charDir.div("character.json")
         fileSystem.write(charFile) {
@@ -65,7 +62,9 @@ class FileSystemCharacterStorage : CharacterStorage {
     }
 
     override suspend fun loadAllSummaries(): List<CharacterSummary> = withContext(ioDispatcher) {
-        if (!fileSystem.exists(cacheFile)) return@withContext emptyList()
+        if (!fileSystem.exists(cacheFile)) {
+            return@withContext rebuildCache()
+        }
         
         try {
             fileSystem.read(cacheFile) {
@@ -74,11 +73,23 @@ class FileSystemCharacterStorage : CharacterStorage {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            emptyList()
+            rebuildCache()
         }
     }
 
+    private suspend fun rebuildCache(): List<CharacterSummary> = withContext(ioDispatcher) {
+        val uuids = listCharacterUuids()
+        val summaries = uuids.mapNotNull { uuid ->
+            loadCharacter(uuid)?.toSummary()
+        }
+        saveSummaries(summaries)
+        summaries
+    }
+
     override suspend fun saveSummaries(summaries: List<CharacterSummary>): Unit = withContext(ioDispatcher) {
+        val parent = cacheFile.parent
+        parent?.ensureNomedia()
+        
         fileSystem.write(cacheFile) {
             writeUtf8(json.encodeToString(summaries))
         }
@@ -91,9 +102,7 @@ class FileSystemCharacterStorage : CharacterStorage {
 
     override suspend fun saveImage(uuid: String, fileName: String, bytes: ByteArray): String = withContext(ioDispatcher) {
         val charDir = baseDir.div(uuid)
-        if (!fileSystem.exists(charDir)) {
-            fileSystem.createDirectories(charDir)
-        }
+        charDir.ensureNomedia()
         
         val imageFile = charDir.div(fileName)
         fileSystem.write(imageFile) {

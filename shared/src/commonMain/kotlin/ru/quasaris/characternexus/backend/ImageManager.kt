@@ -2,132 +2,88 @@ package ru.quasaris.characternexus.backend
 
 import okio.Path
 import ru.quasaris.characternexus.getAppDataDir
-import ru.quasaris.characternexus.getCacheDir
 import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.util.ImageProcessor
-import ru.quasaris.characternexus.util.generateUuid
+import ru.quasaris.characternexus.util.ensureNomedia
 
 object ImageManager {
-    private const val ORIGINAL_DIR = "originals"
-    private const val PORTRAIT_DIR = "portraits"
-    private const val THUMB_DIR = "thumbnails"
     private const val CHARACTERS_DIR = "Characters"
 
     private val appDataDir = getAppDataDir()
-    private val cacheDir = getCacheDir()
 
     fun getCharacterDir(uuid: String): Path {
         val path = appDataDir / CHARACTERS_DIR / uuid
-        if (!platformFileSystem.exists(path)) platformFileSystem.createDirectories(path)
+        path.ensureNomedia()
         return path
     }
 
     fun getPortraitFile(imageIdOrUuid: String, characterUuid: String? = null): Path {
-        if (!characterUuid.isNullOrBlank()) {
-            val charDir = appDataDir / CHARACTERS_DIR / characterUuid
-            val newFile = charDir / "portrait.webp"
-            if (platformFileSystem.exists(newFile)) return newFile
-        }
-
-        if (imageIdOrUuid.isNotBlank()) {
-            val directFolder = appDataDir / CHARACTERS_DIR / imageIdOrUuid
-            val directFile = directFolder / "portrait.webp"
-            if (platformFileSystem.exists(directFile)) return directFile
-        }
-        
-        return appDataDir / PORTRAIT_DIR / "$imageIdOrUuid.webp"
+        val uuid = characterUuid ?: imageIdOrUuid
+        val charDir = appDataDir / CHARACTERS_DIR / uuid
+        return charDir / "portrait.webp"
     }
 
     fun getOriginalFile(imageIdOrUuid: String, characterUuid: String? = null): Path {
-        if (!characterUuid.isNullOrBlank()) {
-            val charDir = appDataDir / CHARACTERS_DIR / characterUuid
-            val newFile = charDir / "original.webp"
-            if (platformFileSystem.exists(newFile)) return newFile
-        }
-
-        if (imageIdOrUuid.isNotBlank()) {
-            val directFolder = appDataDir / CHARACTERS_DIR / imageIdOrUuid
-            val directFile = directFolder / "original.webp"
-            if (platformFileSystem.exists(directFile)) return directFile
-        }
-        
-        return appDataDir / ORIGINAL_DIR / "$imageIdOrUuid.webp"
+        val uuid = characterUuid ?: imageIdOrUuid
+        val charDir = appDataDir / CHARACTERS_DIR / uuid
+        return charDir / "original.webp"
     }
 
     fun getThumbnailFile(imageIdOrUuid: String, characterUuid: String? = null): Path {
-        if (!characterUuid.isNullOrBlank()) {
-            val charDir = appDataDir / CHARACTERS_DIR / characterUuid
-            val newFile = charDir / "thumbnail.webp"
-            if (platformFileSystem.exists(newFile)) return newFile
-        }
-
-        if (imageIdOrUuid.isNotBlank()) {
-            val directFolder = appDataDir / CHARACTERS_DIR / imageIdOrUuid
-            val directFile = directFolder / "thumbnail.webp"
-            if (platformFileSystem.exists(directFile)) return directFile
-        }
-        
-        return cacheDir / THUMB_DIR / "$imageIdOrUuid.webp"
+        val uuid = characterUuid ?: imageIdOrUuid
+        val charDir = appDataDir / CHARACTERS_DIR / uuid
+        return charDir / "thumbnail.webp"
     }
 
-    suspend fun saveBitmapAsOriginal(bytes: ByteArray): String {
-        val id = generateUuid()
-        val originalDir = appDataDir / ORIGINAL_DIR
-        if (!platformFileSystem.exists(originalDir)) platformFileSystem.createDirectories(originalDir)
-        val originalFile = originalDir / "$id.webp"
+    fun saveBitmapAsOriginal(bytes: ByteArray, characterUuid: String): String {
+        val charDir = getCharacterDir(characterUuid)
+        val originalFile = charDir / "original.webp"
         
         ImageProcessor.saveCompressedImage(bytes, originalFile)
-        return id
+        return characterUuid
     }
 
-    suspend fun saveCropped(id: String, croppedBytes: ByteArray) {
+    fun saveCropped(characterUuid: String, croppedBytes: ByteArray) {
+        val charDir = getCharacterDir(characterUuid)
+        
         // 1. Full-Resolution Portrait (Cropped)
-        val portraitDir = appDataDir / PORTRAIT_DIR
-        if (!platformFileSystem.exists(portraitDir)) platformFileSystem.createDirectories(portraitDir)
-        val portraitFile = portraitDir / "$id.webp"
+        val portraitFile = charDir / "portrait.webp"
         ImageProcessor.saveCompressedImage(croppedBytes, portraitFile)
 
         // 2. UI Thumbnail (200x200px)
-        val thumbDir = cacheDir / THUMB_DIR
-        if (!platformFileSystem.exists(thumbDir)) platformFileSystem.createDirectories(thumbDir)
-        val thumbFile = thumbDir / "$id.webp"
+        val thumbFile = charDir / "thumbnail.webp"
         ImageProcessor.saveCompressedImage(croppedBytes, thumbFile, 200, 200)
     }
 
-    fun generateThumbnailFromPortrait(id: String) {
-        val portraitFile = getPortraitFile(id)
+    fun generateThumbnailFromPortrait(characterUuid: String) {
+        val portraitFile = getPortraitFile("", characterUuid)
         if (!platformFileSystem.exists(portraitFile)) return
         
-        val thumbDir = cacheDir / THUMB_DIR
-        if (!platformFileSystem.exists(thumbDir)) platformFileSystem.createDirectories(thumbDir)
-        val thumbFile = thumbDir / "$id.webp"
+        val thumbFile = getThumbnailFile("", characterUuid)
         ImageProcessor.generateThumbnail(portraitFile, thumbFile)
     }
 
-    suspend fun saveImportedAvatar(characterUuid: String, portraitBytes: ByteArray?, originalBytes: ByteArray?): String {
-        val imageId = generateUuid()
+    fun saveImportedAvatar(characterUuid: String, portraitBytes: ByteArray?, originalBytes: ByteArray?): String {
+        getCharacterDir(characterUuid)
         
         // Save Original
         val finalOriginalBytes = originalBytes ?: portraitBytes
         if (finalOriginalBytes != null) {
-            val originalFile = getOriginalFile(imageId, characterUuid)
-            platformFileSystem.createDirectories(originalFile.parent!!)
+            val originalFile = getOriginalFile("", characterUuid)
             platformFileSystem.write(originalFile) { write(finalOriginalBytes) }
         }
 
         // Save Portrait
         val finalPortraitBytes = portraitBytes ?: originalBytes
         if (finalPortraitBytes != null) {
-            val portraitFile = getPortraitFile(imageId, characterUuid)
-            platformFileSystem.createDirectories(portraitFile.parent!!)
+            val portraitFile = getPortraitFile("", characterUuid)
             platformFileSystem.write(portraitFile) { write(finalPortraitBytes) }
             
             // Generate Thumbnail
-            val thumbFile = getThumbnailFile(imageId, characterUuid)
-            platformFileSystem.createDirectories(thumbFile.parent!!)
+            val thumbFile = getThumbnailFile("", characterUuid)
             ImageProcessor.saveCompressedImage(finalPortraitBytes, thumbFile, 200, 200)
         }
         
-        return imageId
+        return characterUuid
     }
 }

@@ -97,11 +97,28 @@ fun App(
     val overlayHazeState = remember { HazeState() }
 
     val characters = remember { mutableStateListOf<CharacterSummary>() }
-    val charactersFlow by characterRepository.charactersSummaryState.collectAsState()
+    val isInitialized by characterRepository.isInitialized.collectAsState()
     
-    LaunchedEffect(charactersFlow) {
-        characters.clear()
-        characters.addAll(charactersFlow)
+    if (!isInitialized) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    LaunchedEffect(isInitialized) {
+        if (isInitialized) {
+            characters.clear()
+            characters.addAll(characterRepository.loadCharacters())
+        }
+    }
+    
+    // Also sync with repository updates
+    LaunchedEffect(Unit) {
+        characterRepository.charactersSummaryState.collectLatest { newSummaries ->
+            characters.clear()
+            characters.addAll(newSummaries)
+        }
     }
 
     var rollHistory by remember { mutableStateOf(listOf<RollResult>()) }

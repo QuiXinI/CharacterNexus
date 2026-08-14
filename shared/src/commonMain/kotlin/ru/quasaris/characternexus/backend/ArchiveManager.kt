@@ -47,17 +47,18 @@ object ArchiveManager {
         return ZipUtils.zip(files)
     }
 
-    suspend fun importCharacters(bytes: ByteArray): List<Character> {
+    suspend fun importCharacters(
+        bytes: ByteArray,
+        onAvatarPrompt: suspend () -> Boolean = { false }
+    ): List<Character> {
         val importedCharacters = mutableListOf<Character>()
         
         // Detect if it's a ZIP file (PK header: 50 4B 03 04)
-        if (bytes.size > 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte()) {
+        val isZip = bytes.size > 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte()
+        
+        if (isZip) {
             try {
                 val unzipped = ZipUtils.unzip(bytes)
-                
-                // Legacy Strategy: 
-                // 1. Look for character.json (Native)
-                // 2. If not found, check if ANY json is LSS
                 
                 var character: Character? = null
                 var dir = ""
@@ -86,13 +87,13 @@ object ArchiveManager {
                     val originalBytes = unzipped[dir + "original.webp"] ?: unzipped[dir + "original.png"] ?: unzipped[dir + "original.jpg"]
                     
                     val finalChar = if (portraitBytes != null || originalBytes != null) {
-                        val imageId = ImageManager.saveImportedAvatar(
-                            characterUuid = character.uuid,
+                        ImageManager.saveImportedAvatar(
+                            characterUuid = character!!.uuid,
                             portraitBytes = portraitBytes,
                             originalBytes = originalBytes
                         )
-                        character.copy(imageData = imageId)
-                    } else character
+                        character!!
+                    } else character!!
                     
                     importedCharacters.add(finalChar)
                 }
@@ -101,61 +102,72 @@ object ArchiveManager {
             }
         } else {
             // Handle single JSON format
-            val jsonString = bytes.decodeToString()
-            val jsonElement = try { importJson.parseToJsonElement(jsonString) } catch (e: Exception) { null }
+            val jsonString = try { bytes.decodeToString() } catch (e: Exception) { "" }
+            if (jsonString.isNotBlank()) {
+                val jsonElement = try { importJson.parseToJsonElement(jsonString) } catch (e: Exception) { null }
 
-            var character: Character?
-            var portraitBytes: ByteArray? = null
-            val originalBytes: ByteArray? = null
+                var character: Character? = null
+                var portraitBytes: ByteArray? = null
+                var originalBytes: ByteArray? = null
 
-            if (jsonElement != null && LongStoryShortImporter.isLongStoryShort(jsonElement)) {
-                character = LongStoryShortImporter.parse(jsonElement)
-            } else {
-                character = try {
-                    importJson.decodeFromString<Character>(jsonString)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-
-            character?.let { char ->
-                // Check if imageData is a Base64 string
-                val imageData = char.imageData
-                if (imageData != null && imageData.length > 100) {
-                    try {
-                        val decoded = imageData.decodeBase64()
-                        if (decoded != null) {
-                            portraitBytes = decoded.toByteArray()
-                            character = char.copy(imageData = generateUuid())
+                if (jsonElement != null && LongStoryShortImporter.isLongStoryShort(jsonElement)) {
+                    character = LongStoryShortImporter.parse(jsonElement)
+                    
+                    // LSS Avatar handling
+                    if (character?.avatarUrl != null) {
+                        // TODO: Заменить на диалог обрезки картинки
+                        val shouldDownload = onAvatarPrompt()
+                        if (shouldDownload) {
+                            portraitBytes = LssAvatarService.downloadAvatar(character!!)
+                            originalBytes = portraitBytes
                         }
+                    }
+                } else if (jsonElement != null) {
+                    character = try {
+                        importJson.decodeFromString<Character>(jsonString)
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        null
                     }
                 }
-            }
 
-            character?.let { char ->
-                val finalChar = if (portraitBytes != null || originalBytes != null) {
-                    val imageId = ImageManager.saveImportedAvatar(
-                        characterUuid = char.uuid,
-                        portraitBytes = portraitBytes,
-                        originalBytes = originalBytes
-                    )
-                    char.copy(imageData = imageId)
-                } else char
-                importedCharacters.add(finalChar)
+                character?.let { char ->
+                    // Check if imageData is a Base64 string
+                    val imageData = char.imageData
+                    if (imageData != null && imageData.length > 100 && portraitBytes == null) {
+                        try {
+                            val decoded = imageData.decodeBase64()
+                            if (decoded != null) {
+                                portraitBytes = decoded.toByteArray()
+                                character = char.copy(imageData = null)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+
+                character?.let { char ->
+                    if (portraitBytes != null || originalBytes != null) {
+                        ImageManager.saveImportedAvatar(
+                            characterUuid = char.uuid,
+                            portraitBytes = portraitBytes,
+                            originalBytes = originalBytes
+                        )
+                    }
+                    importedCharacters.add(char)
+                }
             }
         }
         
         return importedCharacters
     }
 
-    @Deprecated("Use importCharacters", ReplaceWith("importCharacters(bytes).firstOrNull()"))
-    suspend fun importCharacter(bytes: ByteArray): Character? {
-        return importCharacters(bytes).firstOrNull()
+    @Deprecated("Use importCharacters", ReplaceWith("importCharacters(bytes, onAvatarPrompt).firstOrNull()"))
+    suspend fun importCharacter(bytes: ByteArray, onAvatarPrompt: suspend () -> Boolean = { false }): Character? {
+        return importCharacters(bytes, onAvatarPrompt).firstOrNull()
     }
 
-    suspend fun importCharactersFromFile(path: Path): List<Character> {
+    suspend fun importCharactersFromFile(path: Path, onAvatarPrompt: suspend () -> Boolean = { false }): List<Character> {
         val bytes = try {
             platformFileSystem.read(path) { readByteArray() }
         } catch (e: Exception) {
@@ -163,7 +175,7 @@ object ArchiveManager {
             null
         } ?: return emptyList()
         
-        return importCharacters(bytes)
+        return importCharacters(bytes, onAvatarPrompt)
     }
 
     @Deprecated("Use importCharactersFromFile", ReplaceWith("importCharactersFromFile(path).firstOrNull()"))

@@ -28,8 +28,6 @@ import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.backend.ArchiveManager
-import ru.quasaris.characternexus.backend.ImageManager
-import ru.quasaris.characternexus.backend.LssAvatarService
 import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.model.CharacterSummary
 
@@ -54,69 +52,51 @@ fun MenuWindow(
     val selectedIds = remember { mutableStateListOf<String>() }
 
     // Mock settings for now
-    val autoDownload = false
     val useOldAvatarStyle = false
     
-    var lssAvatarToDownload by remember { mutableStateOf<Character?>(null) }
+    var showAvatarDialog by remember { mutableStateOf(false) }
+    var avatarDeferred by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<Boolean>?>(null) }
     var showFilePicker by remember { mutableStateOf(false) }
 
-    FilePickerWrapper(show = showFilePicker, fileExtensions = listOf("charbook", "json")) { bytes ->
+    FilePickerWrapper(show = showFilePicker, fileExtensions = listOf("charbook", "json", "lsskiller")) { bytes ->
         showFilePicker = false
         if (bytes == null) return@FilePickerWrapper
         
         scope.launch {
-            val importedCharacters = ArchiveManager.importCharacters(bytes)
+            val importedCharacters = ArchiveManager.importCharacters(
+                bytes = bytes,
+                onAvatarPrompt = {
+                    val deferred = kotlinx.coroutines.CompletableDeferred<Boolean>()
+                    avatarDeferred = deferred
+                    showAvatarDialog = true
+                    deferred.await()
+                }
+            )
             
             for (importedCharacter in importedCharacters) {
-                // Ensure a fresh random ID to avoid local conflicts, matching legacy behavior
-                val charToImport = importedCharacter.copy(id = (0..1000000).random())
-                
-                if (charToImport.avatarUrl != null && charToImport.imageData == null) {
-                    if (autoDownload) {
-                        val avatarBytes = LssAvatarService.downloadAvatar(charToImport)
-                        var finalChar = charToImport
-                        if (avatarBytes != null) {
-                             val imageId = ImageManager.saveImportedAvatar(charToImport.uuid, avatarBytes, null)
-                             finalChar = charToImport.copy(imageData = imageId)
-                        }
-                        onImportCharacter(finalChar)
-                    } else {
-                        lssAvatarToDownload = charToImport
-                    }
-                } else {
-                    onImportCharacter(charToImport)
-                }
+                onImportCharacter(importedCharacter)
             }
         }
     }
 
-    if (lssAvatarToDownload != null) {
+    if (showAvatarDialog) {
         AlertDialog(
             onDismissRequest = { 
-                onImportCharacter(lssAvatarToDownload!!)
-                lssAvatarToDownload = null 
+                avatarDeferred?.complete(false)
+                showAvatarDialog = false 
             },
             title = { Text("Загрузить аватарку?") },
             text = { Text("Персонаж из Long Story Short имеет аватарку. Хотите скачать её?") },
             confirmButton = {
                 TextButton(onClick = {
-                    val char = lssAvatarToDownload!!
-                    lssAvatarToDownload = null
-                    scope.launch {
-                        val avatarBytes = LssAvatarService.downloadAvatar(char)
-                        var finalChar = char
-                        if (avatarBytes != null) {
-                            val imageId = ImageManager.saveImportedAvatar(char.uuid, avatarBytes, null)
-                            finalChar = char.copy(imageData = imageId)
-                        }
-                        onImportCharacter(finalChar)
-                    }
+                    avatarDeferred?.complete(true)
+                    showAvatarDialog = false
                 }) { Text("Да") }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    onImportCharacter(lssAvatarToDownload!!)
-                    lssAvatarToDownload = null
+                    avatarDeferred?.complete(false)
+                    showAvatarDialog = false
                 }) { Text("Нет") }
             }
         )

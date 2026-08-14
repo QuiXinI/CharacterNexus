@@ -2,7 +2,7 @@ package ru.quasaris.characternexus.backend
 
 import io.ktor.client.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.*
 import ru.quasaris.characternexus.model.Character
 
@@ -14,7 +14,7 @@ object LssAvatarService {
         return try {
             val response = client.get(url)
             if (response.status == HttpStatusCode.OK) {
-                response.readRawBytes()
+                response.bodyAsBytes()
             } else {
                 null
             }
