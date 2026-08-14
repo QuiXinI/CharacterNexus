@@ -29,7 +29,7 @@ actual object ImageProcessor {
     actual fun generateThumbnail(sourcePath: Path, targetPath: Path) {
         val img = ImageIO.read(File(sourcePath.toString())) ?: return
         val scaled = img.getScaledInstance(200, 200, Image.SCALE_SMOOTH)
-        val buffered = BufferedImage(200, 200, BufferedImage.TYPE_INT_RGB)
+        val buffered = BufferedImage(200, 200, BufferedImage.TYPE_INT_ARGB)
         val g = buffered.createGraphics()
         g.drawImage(scaled, 0, 0, null)
         g.dispose()
@@ -46,7 +46,7 @@ actual object ImageProcessor {
         } else {
             val img = ImageIO.read(bytes.inputStream()) ?: return
             val scaled = img.getScaledInstance(width!!, height!!, Image.SCALE_SMOOTH)
-            val buffered = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+            val buffered = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
             val g = buffered.createGraphics()
             g.drawImage(scaled, 0, 0, null)
             g.dispose()

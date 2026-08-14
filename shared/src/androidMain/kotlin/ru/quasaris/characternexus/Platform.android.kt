@@ -6,6 +6,7 @@ import okio.Path
 import okio.Path.Companion.toPath
 import ru.quasaris.characternexus.util.PlatformUtils
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
 class AndroidPlatform : Platform {
@@ -25,3 +26,5 @@ actual fun getCacheDir(): Path {
 }
 
 actual val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+actual fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T = kotlinx.coroutines.runBlocking { block() }

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.backend.ArchiveManager
+import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.LssAvatarService
 import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.model.CharacterSummary
@@ -64,21 +65,26 @@ fun MenuWindow(
         if (bytes == null) return@FilePickerWrapper
         
         scope.launch {
-            val importedCharacter = ArchiveManager.importCharacter(bytes)
+            val importedCharacters = ArchiveManager.importCharacters(bytes)
             
-            if (importedCharacter != null) {
-                if (importedCharacter.avatarUrl != null && importedCharacter.imageData == null) {
+            for (importedCharacter in importedCharacters) {
+                // Ensure a fresh random ID to avoid local conflicts, matching legacy behavior
+                val charToImport = importedCharacter.copy(id = (0..1000000).random())
+                
+                if (charToImport.avatarUrl != null && charToImport.imageData == null) {
                     if (autoDownload) {
-                        val avatarBytes = LssAvatarService.downloadAvatar(importedCharacter)
+                        val avatarBytes = LssAvatarService.downloadAvatar(charToImport)
+                        var finalChar = charToImport
                         if (avatarBytes != null) {
-                             // Handle saving avatar if needed
+                             val imageId = ImageManager.saveImportedAvatar(charToImport.uuid, avatarBytes, null)
+                             finalChar = charToImport.copy(imageData = imageId)
                         }
-                        onImportCharacter(importedCharacter)
+                        onImportCharacter(finalChar)
                     } else {
-                        lssAvatarToDownload = importedCharacter
+                        lssAvatarToDownload = charToImport
                     }
                 } else {
-                    onImportCharacter(importedCharacter)
+                    onImportCharacter(charToImport)
                 }
             }
         }
@@ -98,10 +104,12 @@ fun MenuWindow(
                     lssAvatarToDownload = null
                     scope.launch {
                         val avatarBytes = LssAvatarService.downloadAvatar(char)
+                        var finalChar = char
                         if (avatarBytes != null) {
-                            // save avatar...
+                            val imageId = ImageManager.saveImportedAvatar(char.uuid, avatarBytes, null)
+                            finalChar = char.copy(imageData = imageId)
                         }
-                        onImportCharacter(char)
+                        onImportCharacter(finalChar)
                     }
                 }) { Text("Да") }
             },

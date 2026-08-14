@@ -10,6 +10,7 @@ import platform.Foundation.NSUserDomainMask
 import platform.Foundation.NSCachesDirectory
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
 class IOSPlatform: Platform {
@@ -45,4 +46,6 @@ actual fun getCacheDir(): Path {
 }
 
 actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
+
+actual fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T = kotlinx.coroutines.runBlocking { block() }
 

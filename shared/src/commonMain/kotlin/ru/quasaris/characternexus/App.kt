@@ -24,10 +24,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.savedstate.read
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
+import coil3.request.crossfade
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import ru.quasaris.characternexus.backend.CharacterRepository
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.*
 import ru.quasaris.characternexus.util.PlatformUtils
@@ -39,7 +44,7 @@ fun App(
     initialLastCharacterId: Int,
     initialLastCharacterSeedColor: Int?,
     settingsViewModel: Any?, // TODO: Use actual type when migrated
-    characterRepository: Any?, // TODO: Use actual type when migrated
+    characterRepository: CharacterRepository,
     spellbookManager: Any?,
     moduleManager: Any?,
     glossaryImporter: Any?,
@@ -54,13 +59,18 @@ fun App(
     getRollPassThrough: @Composable () -> Boolean,
     getRollPosition: @Composable () -> DiceRollPosition,
     getRollCloseButtonPosition: @Composable () -> DiceRollPosition,
-    loadCharacters: () -> List<CharacterSummary>,
-    getFullCharacter: suspend (String) -> Character?,
-    updateCharacter: (Character) -> Unit,
-    deleteCharacter: (String) -> Unit,
     onCharacterIdChange: (Int) -> Unit,
     onSeedColorChange: (Int?) -> Unit
 ) {
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context)
+            .components {
+                add(KtorNetworkFetcherFactory())
+            }
+            .crossfade(true)
+            .build()
+    }
+
     val scaleFactor = getScaleFactor()
     val sliderHistorySize = getRollHistorySize()
     val customHistorySize = getCustomRollHistorySize()
@@ -86,10 +96,12 @@ fun App(
     val hazeState = remember { HazeState() }
     val overlayHazeState = remember { HazeState() }
 
-    val characters: SnapshotStateList<CharacterSummary> = remember {
-        mutableStateListOf<CharacterSummary>().apply {
-            addAll(loadCharacters())
-        }
+    val characters = remember { mutableStateListOf<CharacterSummary>() }
+    val charactersFlow by characterRepository.charactersSummaryState.collectAsState()
+    
+    LaunchedEffect(charactersFlow) {
+        characters.clear()
+        characters.addAll(charactersFlow)
     }
 
     var rollHistory by remember { mutableStateOf(listOf<RollResult>()) }
@@ -275,13 +287,10 @@ fun App(
                                             }
                                         },
                                         onImportCharacter = { importedCharacter ->
-                                            updateCharacter(importedCharacter)
-                                            characters.clear()
-                                            characters.addAll(loadCharacters())
+                                            characterRepository.updateCharacter(importedCharacter)
                                         },
                                         onDeleteCharacters = { uuidsToDelete ->
-                                            uuidsToDelete.forEach { deleteCharacter(it) }
-                                            characters.removeAll { it.uuid in uuidsToDelete }
+                                            uuidsToDelete.forEach { characterRepository.deleteCharacter(it) }
                                             if (characters.none { it.id == lastCharacterId }) {
                                                 lastCharacterId = -1
                                                 onCharacterIdChange(-1)
@@ -351,9 +360,7 @@ fun App(
                                     CharacterCreationWindow(
                                         onNavigateBack = { navController.popBackStack() },
                                         onCharacterCreate = { newChar ->
-                                            updateCharacter(newChar)
-                                            characters.clear()
-                                            characters.addAll(loadCharacters())
+                                            characterRepository.updateCharacter(newChar)
                                             lastCharacterId = newChar.id
                                             onCharacterIdChange(newChar.id)
                                             onSeedColorChange(newChar.themeSeedColorArgb)
@@ -377,7 +384,7 @@ fun App(
 
                                     LaunchedEffect(characterUuid) {
                                         if (characterUuid != null) {
-                                            character = getFullCharacter(characterUuid)
+                                            character = characterRepository.getFullCharacter(characterUuid)
                                         }
                                     }
 
@@ -388,8 +395,7 @@ fun App(
                                         },
                                         onOpenDrawer = { scope.launch { drawerState.open() } },
                                         onDeleteCharacter = { charToDelete ->
-                                            deleteCharacter(charToDelete.uuid)
-                                            characters.removeAll { it.uuid == charToDelete.uuid }
+                                            characterRepository.deleteCharacter(charToDelete.uuid)
                                             if (lastCharacterId == charToDelete.id) {
                                                 lastCharacterId = -1
                                                 onCharacterIdChange(-1)
@@ -397,7 +403,7 @@ fun App(
                                             navController.popBackStack()
                                         },
                                         onSaveChanges = { updatedCharacter ->
-                                            updateCharacter(updatedCharacter)
+                                            characterRepository.updateCharacter(updatedCharacter)
                                             val index = characters.indexOfFirst { it.uuid == updatedCharacter.uuid }
                                             if (index != -1) {
                                                 characters[index] = updatedCharacter.toSummary()

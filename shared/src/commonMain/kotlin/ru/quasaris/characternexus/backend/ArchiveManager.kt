@@ -47,33 +47,70 @@ object ArchiveManager {
         return ZipUtils.zip(files)
     }
 
-    suspend fun importCharacter(bytes: ByteArray): Character? {
-        var character: Character? = null
-        var portraitBytes: ByteArray? = null
-        var originalBytes: ByteArray? = null
-
+    suspend fun importCharacters(bytes: ByteArray): List<Character> {
+        val importedCharacters = mutableListOf<Character>()
+        
         // Detect if it's a ZIP file (PK header: 50 4B 03 04)
         if (bytes.size > 4 && bytes[0] == 0x50.toByte() && bytes[1] == 0x4B.toByte()) {
             try {
                 val unzipped = ZipUtils.unzip(bytes)
-                unzipped["character.json"]?.let {
-                    character = importJson.decodeFromString<Character>(it.decodeToString())
+                
+                // Legacy Strategy: 
+                // 1. Look for character.json (Native)
+                // 2. If not found, check if ANY json is LSS
+                
+                var character: Character? = null
+                var dir = ""
+
+                val nativeEntry = unzipped.entries.find { it.key.endsWith("character.json") }
+                if (nativeEntry != null) {
+                    val jsonContent = nativeEntry.value.decodeToString()
+                    character = try { importJson.decodeFromString<Character>(jsonContent) } catch (e: Exception) { null }
+                    dir = if (nativeEntry.key.contains("/")) nativeEntry.key.substringBeforeLast("/") + "/" else ""
+                } else {
+                    // Fallback to searching for LSS in any JSON
+                    val jsonEntries = unzipped.filter { it.key.endsWith(".json") && !it.key.contains("__MACOSX") }
+                    for ((fileName, jsonBytes) in jsonEntries) {
+                        val content = jsonBytes.decodeToString()
+                        val element = try { importJson.parseToJsonElement(content) } catch (e: Exception) { null }
+                        if (element != null && LongStoryShortImporter.isLongStoryShort(element)) {
+                            character = LongStoryShortImporter.parse(element)
+                            dir = if (fileName.contains("/")) fileName.substringBeforeLast("/") + "/" else ""
+                            break
+                        }
+                    }
                 }
-                portraitBytes = unzipped["portrait.webp"]
-                originalBytes = unzipped["original.webp"]
+
+                if (character != null) {
+                    val portraitBytes = unzipped[dir + "portrait.webp"] ?: unzipped[dir + "portrait.png"] ?: unzipped[dir + "portrait.jpg"]
+                    val originalBytes = unzipped[dir + "original.webp"] ?: unzipped[dir + "original.png"] ?: unzipped[dir + "original.jpg"]
+                    
+                    val finalChar = if (portraitBytes != null || originalBytes != null) {
+                        val imageId = ImageManager.saveImportedAvatar(
+                            characterUuid = character.uuid,
+                            portraitBytes = portraitBytes,
+                            originalBytes = originalBytes
+                        )
+                        character.copy(imageData = imageId)
+                    } else character
+                    
+                    importedCharacters.add(finalChar)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
-                return null
             }
         } else {
-            // Handle JSON formats
+            // Handle single JSON format
             val jsonString = bytes.decodeToString()
             val jsonElement = try { importJson.parseToJsonElement(jsonString) } catch (e: Exception) { null }
+
+            var character: Character?
+            var portraitBytes: ByteArray? = null
+            val originalBytes: ByteArray? = null
 
             if (jsonElement != null && LongStoryShortImporter.isLongStoryShort(jsonElement)) {
                 character = LongStoryShortImporter.parse(jsonElement)
             } else {
-                // Legacy JSON or current KMP JSON
                 character = try {
                     importJson.decodeFromString<Character>(jsonString)
                 } catch (e: Exception) {
@@ -82,14 +119,13 @@ object ArchiveManager {
             }
 
             character?.let { char ->
-                // Check if imageData is a Base64 string (longer than a UUID)
+                // Check if imageData is a Base64 string
                 val imageData = char.imageData
                 if (imageData != null && imageData.length > 100) {
                     try {
                         val decoded = imageData.decodeBase64()
                         if (decoded != null) {
                             portraitBytes = decoded.toByteArray()
-                            // Reset imageData to a new UUID so the logic below saves it properly
                             character = char.copy(imageData = generateUuid())
                         }
                     } catch (e: Exception) {
@@ -97,57 +133,41 @@ object ArchiveManager {
                     }
                 }
             }
+
+            character?.let { char ->
+                val finalChar = if (portraitBytes != null || originalBytes != null) {
+                    val imageId = ImageManager.saveImportedAvatar(
+                        characterUuid = char.uuid,
+                        portraitBytes = portraitBytes,
+                        originalBytes = originalBytes
+                    )
+                    char.copy(imageData = imageId)
+                } else char
+                importedCharacters.add(finalChar)
+            }
         }
-
-        character?.let { char ->
-            val finalChar = if (portraitBytes != null || originalBytes != null) {
-                val newId = char.imageData ?: generateUuid()
-                
-                // Use a temporary character UUID if the character doesn't have one (though Models.kt defaults it)
-                val charUuid = char.uuid
-                
-                // Save Original
-                if (originalBytes != null) {
-                    val originalFile = ImageManager.getOriginalFile(newId, charUuid)
-                    platformFileSystem.createDirectories(originalFile.parent!!)
-                    platformFileSystem.write(originalFile) { write(originalBytes!!) }
-                } else if (portraitBytes != null) {
-                    // If no original, save portrait as original for fallback
-                    val originalFile = ImageManager.getOriginalFile(newId, charUuid)
-                    platformFileSystem.createDirectories(originalFile.parent!!)
-                    platformFileSystem.write(originalFile) { write(portraitBytes!!) }
-                }
-
-                // Save Portrait
-                if (portraitBytes != null) {
-                    val portraitFile = ImageManager.getPortraitFile(newId, charUuid)
-                    platformFileSystem.createDirectories(portraitFile.parent!!)
-                    platformFileSystem.write(portraitFile) { write(portraitBytes!!) }
-                } else if (originalBytes != null) {
-                    // If only original, save it as portrait too
-                    val portraitFile = ImageManager.getPortraitFile(newId, charUuid)
-                    platformFileSystem.createDirectories(portraitFile.parent!!)
-                    platformFileSystem.write(portraitFile) { write(originalBytes!!) }
-                }
-
-                // Regenerate thumbnail
-                ImageManager.generateThumbnailFromPortrait(newId)
-                char.copy(imageData = newId)
-            } else char
-
-            return finalChar
-        }
-        return null
+        
+        return importedCharacters
     }
 
-    suspend fun importCharacterFromFile(path: Path): Character? {
+    @Deprecated("Use importCharacters", ReplaceWith("importCharacters(bytes).firstOrNull()"))
+    suspend fun importCharacter(bytes: ByteArray): Character? {
+        return importCharacters(bytes).firstOrNull()
+    }
+
+    suspend fun importCharactersFromFile(path: Path): List<Character> {
         val bytes = try {
             platformFileSystem.read(path) { readByteArray() }
         } catch (e: Exception) {
             e.printStackTrace()
             null
-        } ?: return null
+        } ?: return emptyList()
         
-        return importCharacter(bytes)
+        return importCharacters(bytes)
+    }
+
+    @Deprecated("Use importCharactersFromFile", ReplaceWith("importCharactersFromFile(path).firstOrNull()"))
+    suspend fun importCharacterFromFile(path: Path): Character? {
+        return importCharactersFromFile(path).firstOrNull()
     }
 }

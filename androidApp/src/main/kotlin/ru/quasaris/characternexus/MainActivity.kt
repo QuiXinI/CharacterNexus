@@ -71,10 +71,6 @@ class MainActivity : ComponentActivity() {
                 getRollPassThrough = { rollPassThrough },
                 getRollPosition = { rollPosition },
                 getRollCloseButtonPosition = { rollCloseButtonPos },
-                loadCharacters = { characterRepository.loadCharacters() },
-                getFullCharacter = { uuid -> characterRepository.getFullCharacter(uuid) },
-                updateCharacter = { char -> characterRepository.updateCharacter(char) },
-                deleteCharacter = { uuid -> characterRepository.deleteCharacter(uuid) },
                 onCharacterIdChange = { id -> settingsManager.lastCharacterId = id },
                 onSeedColorChange = { color -> settingsManager.lastCharacterSeedColor = color }
             )

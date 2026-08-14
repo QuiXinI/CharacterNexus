@@ -3,6 +3,7 @@ package ru.quasaris.characternexus
 import okio.FileSystem
 import okio.Path
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 
 interface Platform {
     val name: String
@@ -15,3 +16,5 @@ expect fun getAppDataDir(): Path
 expect fun getCacheDir(): Path
 
 expect val ioDispatcher: CoroutineDispatcher
+
+expect fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T

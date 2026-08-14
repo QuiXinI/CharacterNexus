@@ -61,7 +61,7 @@ fun CharacterHeader(
     level: String,
     experience: String,
     nextLevelExp: String,
-    characterImageData: String?,
+    characterImageData: Any?,
     onAvatarClick: () -> Unit,
     onLevelClick: () -> Unit,
     onOpenDrawer: () -> Unit,

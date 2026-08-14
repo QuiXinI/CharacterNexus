@@ -103,4 +103,31 @@ object ImageManager {
         val thumbFile = thumbDir / "$id.webp"
         ImageProcessor.generateThumbnail(portraitFile, thumbFile)
     }
+
+    suspend fun saveImportedAvatar(characterUuid: String, portraitBytes: ByteArray?, originalBytes: ByteArray?): String {
+        val imageId = generateUuid()
+        
+        // Save Original
+        val finalOriginalBytes = originalBytes ?: portraitBytes
+        if (finalOriginalBytes != null) {
+            val originalFile = getOriginalFile(imageId, characterUuid)
+            platformFileSystem.createDirectories(originalFile.parent!!)
+            platformFileSystem.write(originalFile) { write(finalOriginalBytes) }
+        }
+
+        // Save Portrait
+        val finalPortraitBytes = portraitBytes ?: originalBytes
+        if (finalPortraitBytes != null) {
+            val portraitFile = getPortraitFile(imageId, characterUuid)
+            platformFileSystem.createDirectories(portraitFile.parent!!)
+            platformFileSystem.write(portraitFile) { write(finalPortraitBytes) }
+            
+            // Generate Thumbnail
+            val thumbFile = getThumbnailFile(imageId, characterUuid)
+            platformFileSystem.createDirectories(thumbFile.parent!!)
+            ImageProcessor.saveCompressedImage(finalPortraitBytes, thumbFile, 200, 200)
+        }
+        
+        return imageId
+    }
 }

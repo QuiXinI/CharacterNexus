@@ -12,17 +12,21 @@ import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
 import ru.quasaris.characternexus.model.DiceRollPosition
 
 fun main() = application {
+    val characterRepository = remember {
+        CharacterRepository(
+            storage = FileSystemCharacterStorage(),
+            appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        )
+    }
+
     Window(
-        onCloseRequest = ::exitApplication,
+        onCloseRequest = {
+            characterRepository.flushBlocking()
+            exitApplication()
+        },
         title = "Character Nexus",
         icon = painterResource("icon.png"),
     ) {
-        val characterRepository = remember {
-            CharacterRepository(
-                storage = FileSystemCharacterStorage(),
-                appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-            )
-        }
         App(
             initialThemeMode = "dark",
             initialLastCharacterId = -1,
@@ -43,10 +47,6 @@ fun main() = application {
             getRollPassThrough = { false },
             getRollPosition = { DiceRollPosition.BOTTOM_LEFT },
             getRollCloseButtonPosition = { DiceRollPosition.TOP_RIGHT },
-            loadCharacters = { characterRepository.loadCharacters() },
-            getFullCharacter = { uuid -> characterRepository.getFullCharacter(uuid) },
-            updateCharacter = { char -> characterRepository.updateCharacter(char) },
-            deleteCharacter = { uuid -> characterRepository.deleteCharacter(uuid) },
             onCharacterIdChange = {},
             onSeedColorChange = {}
         )

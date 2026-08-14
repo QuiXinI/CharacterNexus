@@ -6,6 +6,7 @@ import ru.quasaris.characternexus.backend.storage.CharacterStorage
 import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.model.CharacterSummary
 import ru.quasaris.characternexus.ioDispatcher
+import ru.quasaris.characternexus.runBlockingPlatform
 
 class CharacterRepository(
     private val storage: CharacterStorage,
@@ -88,6 +89,19 @@ class CharacterRepository(
 
     fun flush() {
         appScope.launch {
+            fullCharactersCache.values.forEach {
+                storage.saveCharacter(it)
+            }
+            storage.saveSummaries(_charactersSummaryState.value)
+        }
+    }
+
+    /**
+     * Synchronously writes all cached data to disk. 
+     * Used on Desktop during application exit.
+     */
+    fun flushBlocking() {
+        runBlockingPlatform {
             fullCharactersCache.values.forEach {
                 storage.saveCharacter(it)
             }

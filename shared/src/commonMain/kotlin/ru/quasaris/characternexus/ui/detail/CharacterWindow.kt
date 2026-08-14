@@ -224,7 +224,11 @@ fun CharacterWindow(
                         CharacterHeader(
                             name = name, onNameChange = { name = it },
                             level = level, experience = experience, nextLevelExp = nextLevelExp,
-                            characterImageData = characterImageData,
+                            characterImageData = remember(characterImageData, character?.uuid) {
+                                if (characterImageData != null) {
+                                    ImageManager.getPortraitFile(characterImageData!!, character?.uuid)
+                                } else null
+                            },
                             onAvatarClick = { showAvatarMenu = true },
                             onLevelClick = {
                                 isLevelPanelVisible = !isLevelPanelVisible; isArmorClassPanelVisible = false; isInitiativePanelVisible = false
