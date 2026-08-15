@@ -1,15 +1,13 @@
 package ru.quasaris.characternexus.ui.menu
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import com.darkrockstudios.libraries.mpfilepicker.FilePicker
-import kotlinx.coroutines.launch
-
-import androidx.compose.runtime.rememberCoroutineScope
-import com.darkrockstudios.libraries.mpfilepicker.FilePicker
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
-import android.net.Uri
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.quasaris.characternexus.util.PlatformUtils
 
 @Composable
 actual fun FilePickerWrapper(
@@ -18,24 +16,30 @@ actual fun FilePickerWrapper(
     onFileSelected: (ByteArray?) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    FilePicker(show = show, fileExtensions = fileExtensions) { platformFile ->
+    
+    // On Android, we use */* to ensure custom extensions like .charbook and .lsskiller 
+    // are visible and selectable in the system picker, as they don't have standard MIME types.
+    
+    FilePicker(show = show, fileExtensions = listOf("*/*")) { platformFile ->
         if (platformFile == null) {
             onFileSelected(null)
         } else {
-            scope.launch(Dispatchers.IO) {
-                val bytes = try {
-                    val path = platformFile.path
-                    if (path.startsWith("content://")) {
-                        val uri = Uri.parse(path)
-                        ru.quasaris.characternexus.util.PlatformUtils.androidContext.contentResolver.openInputStream(uri)?.use { 
-                            it.readBytes() 
+            scope.launch {
+                val bytes = withContext(Dispatchers.IO) {
+                    try {
+                        val path = platformFile.path
+                        if (path.startsWith("content://")) {
+                            val uri = Uri.parse(path)
+                            PlatformUtils.androidContext.contentResolver.openInputStream(uri)?.use { 
+                                it.readBytes() 
+                            }
+                        } else {
+                            platformFile.getFileByteArray()
                         }
-                    } else {
-                        platformFile.getFileByteArray()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        null
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    null
                 }
                 onFileSelected(bytes)
             }

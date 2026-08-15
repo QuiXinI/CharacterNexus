@@ -4,6 +4,7 @@ import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 
 class WasmPlatform: Platform {
@@ -18,3 +19,5 @@ actual fun getAppDataDir(): Path = error("AppDataDir not supported on Wasm Brows
 actual fun getCacheDir(): Path = error("CacheDir not supported on Wasm Browser")
 
 actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
+
+actual fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T = error("runBlocking not supported on Wasm Browser")

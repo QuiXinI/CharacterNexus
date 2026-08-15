@@ -6,38 +6,30 @@ import ru.quasaris.characternexus.backend.storage.CharacterStorage
 import ru.quasaris.characternexus.Character
 import ru.quasaris.characternexus.CharacterSummary
 import ru.quasaris.characternexus.ioDispatcher
+import ru.quasaris.characternexus.runBlockingPlatform
 
 class CharacterRepository(
     private val storage: CharacterStorage,
-    private val appScope: CoroutineScope
+    private val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + ioDispatcher)
 ) {
     private val _charactersSummaryState = MutableStateFlow<List<CharacterSummary>>(emptyList())
     val charactersSummaryState: StateFlow<List<CharacterSummary>> = _charactersSummaryState.asStateFlow()
+
+    private val _isInitialized = MutableStateFlow(false)
+    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
     private val fullCharactersCache = mutableMapOf<String, Character>()
 
     init {
         appScope.launch {
             loadSummaries()
+            _isInitialized.value = true
         }
     }
 
     private suspend fun loadSummaries() {
         val summaries = storage.loadAllSummaries()
-        if (summaries.isEmpty()) {
-            rebuildCache()
-        } else {
-            _charactersSummaryState.value = summaries
-        }
-    }
-
-    private suspend fun rebuildCache() = withContext(ioDispatcher) {
-        val uuids = storage.listCharacterUuids()
-        val summaries = uuids.mapNotNull { uuid ->
-            storage.loadCharacter(uuid)?.toSummary()
-        }
         _charactersSummaryState.value = summaries
-        storage.saveSummaries(summaries)
     }
 
     fun loadCharacters(): List<CharacterSummary> = _charactersSummaryState.value
@@ -87,7 +79,28 @@ class CharacterRepository(
     }
 
     fun flush() {
-        // flush is problematic in common scope if it needs runBlocking
-        // usually we don't need it if we have debounced save
+        appScope.launch {
+            fullCharactersCache.values.forEach {
+                storage.saveCharacter(it)
+            }
+            storage.saveSummaries(_charactersSummaryState.value)
+        }
+    }
+
+    /**
+     * Synchronously writes all cached data to disk. 
+     * Used on Desktop during application exit.
+     */
+    fun flushBlocking() {
+        runBlockingPlatform {
+            fullCharactersCache.values.forEach {
+                storage.saveCharacter(it)
+            }
+            storage.saveSummaries(_charactersSummaryState.value)
+        }
+    }
+
+    fun updateCharacters(characters: List<Character>) {
+        characters.forEach { updateCharacter(it) }
     }
 }
