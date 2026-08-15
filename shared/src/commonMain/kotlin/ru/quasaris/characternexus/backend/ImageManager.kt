@@ -1,11 +1,13 @@
 package ru.quasaris.characternexus.backend
 
+import kotlinx.coroutines.withContext
 import okio.Path
 import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.getCacheDir
 import ru.quasaris.characternexus.platformFileSystem
-import ru.quasaris.characternexus.util.ImageProcessor
+import ru.quasaris.characternexus.ioDispatcher
 import ru.quasaris.characternexus.util.generateUuid
+import ru.quasaris.characternexus.util.ImageProcessor
 
 object ImageManager {
     private const val ORIGINAL_DIR = "originals"
@@ -13,94 +15,104 @@ object ImageManager {
     private const val THUMB_DIR = "thumbnails"
     private const val CHARACTERS_DIR = "Characters"
 
-    private val appDataDir = getAppDataDir()
-    private val cacheDir = getCacheDir()
+    private val fileSystem = platformFileSystem
 
     fun getCharacterDir(uuid: String): Path {
-        val path = appDataDir / CHARACTERS_DIR / uuid
-        if (!platformFileSystem.exists(path)) platformFileSystem.createDirectories(path)
+        val path = getAppDataDir().div(CHARACTERS_DIR).div(uuid)
+        if (!fileSystem.exists(path)) fileSystem.createDirectories(path)
         return path
     }
 
+    /**
+     * Returns the portrait file for a character.
+     * Tries new character-specific folder first, then legacy global folder.
+     */
     fun getPortraitFile(imageIdOrUuid: String, characterUuid: String? = null): Path {
+        // 1. Try new structure: Characters/[uuid]/portrait.webp
         if (!characterUuid.isNullOrBlank()) {
-            val charDir = appDataDir / CHARACTERS_DIR / characterUuid
-            val newFile = charDir / "portrait.webp"
-            if (platformFileSystem.exists(newFile)) return newFile
+            val charDir = getAppDataDir().div(CHARACTERS_DIR).div(characterUuid)
+            val newFile = charDir.div("portrait.webp")
+            if (fileSystem.exists(newFile)) return newFile
         }
 
+        // 2. Try using imageIdOrUuid as folder name (in case it IS the UUID or a folder-based ID)
         if (imageIdOrUuid.isNotBlank()) {
-            val directFolder = appDataDir / CHARACTERS_DIR / imageIdOrUuid
-            val directFile = directFolder / "portrait.webp"
-            if (platformFileSystem.exists(directFile)) return directFile
+            val directFolder = getAppDataDir().div(CHARACTERS_DIR).div(imageIdOrUuid).div("portrait.webp")
+            if (fileSystem.exists(directFolder)) return directFolder
         }
         
-        return appDataDir / PORTRAIT_DIR / "$imageIdOrUuid.webp"
+        // 3. Fallback to legacy global folder
+        return getAppDataDir().div(PORTRAIT_DIR).div("$imageIdOrUuid.webp")
     }
 
     fun getOriginalFile(imageIdOrUuid: String, characterUuid: String? = null): Path {
         if (!characterUuid.isNullOrBlank()) {
-            val charDir = appDataDir / CHARACTERS_DIR / characterUuid
-            val newFile = charDir / "original.webp"
-            if (platformFileSystem.exists(newFile)) return newFile
+            val charDir = getAppDataDir().div(CHARACTERS_DIR).div(characterUuid)
+            val newFile = charDir.div("original.webp")
+            if (fileSystem.exists(newFile)) return newFile
         }
 
         if (imageIdOrUuid.isNotBlank()) {
-            val directFolder = appDataDir / CHARACTERS_DIR / imageIdOrUuid
-            val directFile = directFolder / "original.webp"
-            if (platformFileSystem.exists(directFile)) return directFile
+            val directFolder = getAppDataDir().div(CHARACTERS_DIR).div(imageIdOrUuid).div("original.webp")
+            if (fileSystem.exists(directFolder)) return directFolder
         }
         
-        return appDataDir / ORIGINAL_DIR / "$imageIdOrUuid.webp"
+        return getAppDataDir().div(ORIGINAL_DIR).div("$imageIdOrUuid.webp")
     }
 
     fun getThumbnailFile(imageIdOrUuid: String, characterUuid: String? = null): Path {
         if (!characterUuid.isNullOrBlank()) {
-            val charDir = appDataDir / CHARACTERS_DIR / characterUuid
-            val newFile = charDir / "thumbnail.webp"
-            if (platformFileSystem.exists(newFile)) return newFile
+            val charDir = getAppDataDir().div(CHARACTERS_DIR).div(characterUuid)
+            val newFile = charDir.div("thumbnail.webp")
+            if (fileSystem.exists(newFile)) return newFile
         }
 
         if (imageIdOrUuid.isNotBlank()) {
-            val directFolder = appDataDir / CHARACTERS_DIR / imageIdOrUuid
-            val directFile = directFolder / "thumbnail.webp"
-            if (platformFileSystem.exists(directFile)) return directFile
+            val directFolder = getAppDataDir().div(CHARACTERS_DIR).div(imageIdOrUuid).div("thumbnail.webp")
+            if (fileSystem.exists(directFolder)) return directFolder
         }
         
-        return cacheDir / THUMB_DIR / "$imageIdOrUuid.webp"
+        return getCacheDir().div(THUMB_DIR).div("$imageIdOrUuid.webp")
     }
 
-    suspend fun saveBitmapAsOriginal(bytes: ByteArray): String {
+    /**
+     * Saves the image bytes as original and generates a portrait and thumbnail.
+     */
+    suspend fun saveNewImage(bytes: ByteArray): String = withContext(ioDispatcher) {
         val id = generateUuid()
-        val originalDir = appDataDir / ORIGINAL_DIR
-        if (!platformFileSystem.exists(originalDir)) platformFileSystem.createDirectories(originalDir)
-        val originalFile = originalDir / "$id.webp"
         
+        // Save Original
+        val originalDir = getAppDataDir().div(ORIGINAL_DIR)
+        if (!fileSystem.exists(originalDir)) fileSystem.createDirectories(originalDir)
+        val originalFile = originalDir.div("$id.webp")
         ImageProcessor.saveCompressedImage(bytes, originalFile)
-        return id
+
+        // Save Portrait
+        val portraitDir = getAppDataDir().div(PORTRAIT_DIR)
+        if (!fileSystem.exists(portraitDir)) fileSystem.createDirectories(portraitDir)
+        val portraitFile = portraitDir.div("$id.webp")
+        ImageProcessor.saveCompressedImage(bytes, portraitFile)
+
+        // Save Thumbnail
+        val thumbDir = getCacheDir().div(THUMB_DIR)
+        if (!fileSystem.exists(thumbDir)) fileSystem.createDirectories(thumbDir)
+        val thumbFile = thumbDir.div("$id.webp")
+        ImageProcessor.generateThumbnail(portraitFile, thumbFile)
+
+        id
     }
 
-    suspend fun saveCropped(id: String, croppedBytes: ByteArray) {
-        // 1. Full-Resolution Portrait (Cropped)
-        val portraitDir = appDataDir / PORTRAIT_DIR
-        if (!platformFileSystem.exists(portraitDir)) platformFileSystem.createDirectories(portraitDir)
-        val portraitFile = portraitDir / "$id.webp"
+    suspend fun saveCroppedImage(id: String, croppedBytes: ByteArray) = withContext(ioDispatcher) {
+        // Save Portrait (overwriting legacy or global one)
+        val portraitDir = getAppDataDir().div(PORTRAIT_DIR)
+        if (!fileSystem.exists(portraitDir)) fileSystem.createDirectories(portraitDir)
+        val portraitFile = portraitDir.div("$id.webp")
         ImageProcessor.saveCompressedImage(croppedBytes, portraitFile)
 
-        // 2. UI Thumbnail (200x200px)
-        val thumbDir = cacheDir / THUMB_DIR
-        if (!platformFileSystem.exists(thumbDir)) platformFileSystem.createDirectories(thumbDir)
-        val thumbFile = thumbDir / "$id.webp"
-        ImageProcessor.saveCompressedImage(croppedBytes, thumbFile, 200, 200)
-    }
-
-    fun generateThumbnailFromPortrait(id: String) {
-        val portraitFile = getPortraitFile(id)
-        if (!platformFileSystem.exists(portraitFile)) return
-        
-        val thumbDir = cacheDir / THUMB_DIR
-        if (!platformFileSystem.exists(thumbDir)) platformFileSystem.createDirectories(thumbDir)
-        val thumbFile = thumbDir / "$id.webp"
+        // Save Thumbnail
+        val thumbDir = getCacheDir().div(THUMB_DIR)
+        if (!fileSystem.exists(thumbDir)) fileSystem.createDirectories(thumbDir)
+        val thumbFile = thumbDir.div("$id.webp")
         ImageProcessor.generateThumbnail(portraitFile, thumbFile)
     }
 }

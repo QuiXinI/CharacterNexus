@@ -4,7 +4,8 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import ru.quasaris.characternexus.model.Character
+import ru.quasaris.characternexus.Character
+import ru.quasaris.characternexus.util.log
 
 object LssAvatarService {
     private val client = HttpClient()
@@ -19,7 +20,7 @@ object LssAvatarService {
                 null
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.log()
             null
         }
     }

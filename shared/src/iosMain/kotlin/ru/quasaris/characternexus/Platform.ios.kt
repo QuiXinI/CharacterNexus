@@ -11,6 +11,10 @@ import platform.Foundation.NSCachesDirectory
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
 class IOSPlatform: Platform {
     override val name: String = UIDevice.currentDevice.systemName() + " " + UIDevice.currentDevice.systemVersion
@@ -46,3 +50,21 @@ actual fun getCacheDir(): Path {
 
 actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 
+actual val performanceClass: Int = 99
+
+actual fun createDataStore(): DataStore<Preferences> {
+    return ru.quasaris.characternexus.backend.createDataStore {
+        getAppDataDir().div("settings.preferences_pb").toString()
+    }
+}
+
+actual class PlatformContext
+
+private var _platformContext = PlatformContext()
+actual var platformContext: PlatformContext
+    get() = _platformContext
+    set(value) { _platformContext = value }
+
+@Composable
+actual fun ApplySystemBarEffects(color: Color, darkTheme: Boolean) {
+}

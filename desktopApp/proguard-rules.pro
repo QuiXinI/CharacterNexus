@@ -21,3 +21,9 @@
 # Skiko / Compose Multiplatform Interop
 -dontwarn androidx.compose.ui.graphics.ShaderBrush
 -dontwarn org.jetbrains.skiko.swing.JbrSharedTexturesAdapter
+-dontwarn com.jetbrains.**
+
+# GraalVM / SVM (OkHttp)
+-dontwarn okhttp3.internal.graal.**
+-dontwarn org.graalvm.nativeimage.**
+-dontwarn com.oracle.svm.core.annotate.**

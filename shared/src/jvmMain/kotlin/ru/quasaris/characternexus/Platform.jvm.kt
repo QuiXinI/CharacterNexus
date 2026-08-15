@@ -6,6 +6,10 @@ import okio.Path.Companion.toPath
 import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 
 class JVMPlatform: Platform {
     override val name: String = "JVM ${System.getProperty("java.version")}"
@@ -40,3 +44,23 @@ actual fun getCacheDir(): Path {
 }
 
 actual val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+actual val performanceClass: Int = 99
+
+actual fun createDataStore(): DataStore<Preferences> {
+    return ru.quasaris.characternexus.backend.createDataStore {
+        getAppDataDir().div("settings.preferences_pb").toString()
+    }
+}
+
+actual class PlatformContext
+
+private var _platformContext = PlatformContext()
+actual var platformContext: PlatformContext
+    get() = _platformContext
+    set(value) { _platformContext = value }
+
+@Composable
+actual fun ApplySystemBarEffects(color: Color, darkTheme: Boolean) {
+    // No-op for Desktop
+}

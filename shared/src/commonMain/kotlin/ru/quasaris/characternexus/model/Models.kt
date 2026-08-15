@@ -1,4 +1,4 @@
-package ru.quasaris.characternexus.model
+package ru.quasaris.characternexus
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -91,6 +91,19 @@ enum class SlotAlignment {
 enum class SlotFillDirection {
     LTR, CENTER, RTL
 }
+
+@Serializable
+enum class AppThemeMode {
+    M3, OFF, CHARACTER
+}
+
+@Serializable
+enum class ExportFormat {
+    WEBP, PNG, JPG
+}
+
+@Serializable
+data class Condition(val name: String, val description: String)
 
 @Serializable
 enum class DamageType(val displayName: String) {

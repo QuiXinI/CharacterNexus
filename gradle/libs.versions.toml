@@ -1,30 +1,32 @@
 [versions]
-agp = "9.0.1"
-android-compileSdk = "36"
+agp = "9.3.1"
+android-compileSdk = "37"
 android-minSdk = "24"
-android-targetSdk = "36"
+android-targetSdk = "37"
 androidx-activity = "1.13.0"
-androidx-appcompat = "1.7.1"
+androidx-appcompat = "1.8.0"
 androidx-core = "1.19.0"
 androidx-espresso = "3.7.0"
-androidx-lifecycle = "2.11.0-beta01"
+androidx-lifecycle = "2.11.0"
 androidx-navigation = "2.9.2"
-androidx-datastore = "1.2.1"
+androidx-datastore = "1.1.1"
+androidx-palette = "1.0.0"
 androidx-savedstate = "1.5.0"
 androidx-testExt = "1.3.0"
-coil3 = "3.0.0-rc01"
+coil3 = "3.5.0"
 composeMultiplatform = "1.11.1"
 haze = "1.7.2"
 kotlinx-datetime = "0.8.0"
 junit = "4.13.2"
 kotlin = "2.4.10"
-kotlin-wrappers = "2026.7.7"
+kotlin-wrappers = "2026.8.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
-ktor = "3.0.0"
+ktor = "3.5.2"
 material3 = "1.11.0-alpha07"
 mpfilepicker = "3.1.0"
 okio = "3.18.1"
+reorderable = "3.1.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -41,6 +43,7 @@ androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecyc
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidx-datastore" }
 androidx-savedstate = { module = "androidx.savedstate:savedstate", version.ref = "androidx-savedstate" }
+androidx-palette = { module = "androidx.palette:palette-ktx", version.ref = "androidx-palette" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
 coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil3" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
@@ -59,6 +62,7 @@ ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negoti
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 mpfilepicker = { module = "com.darkrockstudios:mpfilepicker", version.ref = "mpfilepicker" }
+reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "androidx-navigation" }
 wrappers-browser = { module = "org.jetbrains.kotlin-wrappers:kotlin-browser", version.ref = "kotlin-wrappers" }
 

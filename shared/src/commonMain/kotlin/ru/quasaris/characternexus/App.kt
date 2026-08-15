@@ -28,21 +28,22 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.*
-import ru.quasaris.characternexus.util.PlatformUtils
+import ru.quasaris.characternexus.util.*
+import ru.quasaris.characternexus.backend.*
+import ru.quasaris.characternexus.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(
-    initialThemeMode: String,
+    initialThemeMode: AppThemeMode,
     initialLastCharacterId: Int,
     initialLastCharacterSeedColor: Int?,
-    settingsViewModel: Any?, // TODO: Use actual type when migrated
-    characterRepository: Any?, // TODO: Use actual type when migrated
-    spellbookManager: Any?,
-    moduleManager: Any?,
-    glossaryImporter: Any?,
+    settingsViewModel: SettingsViewModel,
+    characterRepository: CharacterRepository,
+    spellbookManager: SpellbookManager?,
+    moduleManager: ModuleManager?,
+    glossaryImporter: GlossaryImporter?,
     getScaleFactor: @Composable () -> Float,
     getRollHistorySize: @Composable () -> Int,
     getCustomRollHistorySize: @Composable () -> Int,
@@ -300,7 +301,8 @@ fun App(
                                     SettingsWindow(
                                         onOpenDrawer = { scope.launch { drawerState.open() } },
                                         onThemeModeChange = { themeMode = it },
-                                        settingsViewModel = settingsViewModel
+                                        settingsViewModel = settingsViewModel,
+                                        hazeState = hazeState
                                     )
                                 }
 
@@ -311,40 +313,46 @@ fun App(
                                 }
 
                                 composable("spellbook") {
-                                    SpellbookWindow(
-                                        spellbookManager = spellbookManager,
-                                        glossaryImporter = glossaryImporter,
-                                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
-                                        hazeState = hazeState,
-                                        popupHazeState = overlayHazeState,
-                                        forceBlurEnabled = effectiveBlurFullscreen,
-                                        settingsViewModel = settingsViewModel
-                                    )
+                                    if (spellbookManager != null && glossaryImporter != null) {
+                                        SpellbookWindow(
+                                            spellbookManager = spellbookManager,
+                                            glossaryImporter = glossaryImporter,
+                                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                                            onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
+                                            hazeState = hazeState,
+                                            popupHazeState = overlayHazeState,
+                                            forceBlurEnabled = effectiveBlurFullscreen,
+                                            settingsViewModel = settingsViewModel
+                                        )
+                                    }
                                 }
 
                                 composable("glossary") {
-                                    GlossaryWindow(
-                                        spellbookManager = spellbookManager,
-                                        moduleManager = moduleManager,
-                                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                                        onNavigateToSpells = { navController.navigate("spellbook") },
-                                        hazeState = hazeState,
-                                        popupHazeState = overlayHazeState,
-                                        forceBlurEnabled = effectiveBlurFullscreen,
-                                        settingsViewModel = settingsViewModel
-                                    )
+                                    if (spellbookManager != null && moduleManager != null) {
+                                        GlossaryWindow(
+                                            spellbookManager = spellbookManager,
+                                            moduleManager = moduleManager,
+                                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                                            onNavigateToSpells = { navController.navigate("spellbook") },
+                                            hazeState = hazeState,
+                                            popupHazeState = overlayHazeState,
+                                            forceBlurEnabled = effectiveBlurFullscreen,
+                                            settingsViewModel = settingsViewModel
+                                        )
+                                    }
                                 }
 
                                 composable("modules") {
-                                    ModulesWindow(
-                                        moduleManager = moduleManager,
-                                        glossaryImporter = glossaryImporter,
-                                        onOpenDrawer = { scope.launch { drawerState.open() } },
-                                        hazeState = hazeState,
-                                        forceBlurEnabled = effectiveBlurFullscreen,
-                                        settingsViewModel = settingsViewModel
-                                    )
+                                    if (moduleManager != null && glossaryImporter != null) {
+                                        ModulesWindow(
+                                            moduleManager = moduleManager,
+                                            glossaryImporter = glossaryImporter,
+                                            onOpenDrawer = { scope.launch { drawerState.open() } },
+                                            hazeState = hazeState,
+                                            forceBlurEnabled = effectiveBlurFullscreen,
+                                            settingsViewModel = settingsViewModel
+                                        )
+                                    }
                                 }
 
                                 composable("create_setup") {
@@ -424,7 +432,8 @@ fun App(
                     }
                 }
 
-                val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+                val density = LocalDensity.current
+                val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
                 val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true
                 if (rollHistory.isNotEmpty() && isOnCharacterScreen && !isKeyboardVisible && !isFullscreenDialogOpen) {
                     DiceRollOverlay(

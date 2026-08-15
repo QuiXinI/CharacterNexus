@@ -13,6 +13,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import ru.quasaris.characternexus.platformFileSystem
 import java.io.FileOutputStream
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import java.io.ByteArrayOutputStream
 
 actual object PlatformUtils {
     lateinit var androidContext: Context
@@ -43,6 +46,10 @@ actual object PlatformUtils {
             vibrator.vibrate(50)
         }
     }
+
+    actual fun showMessage(message: String) {
+        android.widget.Toast.makeText(androidContext, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
 }
 
 actual object ImageProcessor {
@@ -70,6 +77,13 @@ actual object ImageProcessor {
                 scaled.compress(Bitmap.CompressFormat.WEBP, 80, out)
             }
         }
+    }
+
+    actual fun encodeToByteArray(bitmap: ImageBitmap): ByteArray {
+        val stream = ByteArrayOutputStream()
+        @Suppress("DEPRECATION")
+        bitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.WEBP, 80, stream)
+        return stream.toByteArray()
     }
 }
 

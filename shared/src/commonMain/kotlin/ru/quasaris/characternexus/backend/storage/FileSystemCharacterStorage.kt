@@ -6,11 +6,12 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okio.Path
 import ru.quasaris.characternexus.getAppDataDir
-import ru.quasaris.characternexus.model.Character
-import ru.quasaris.characternexus.model.CharacterSummary
+import ru.quasaris.characternexus.Character
+import ru.quasaris.characternexus.CharacterSummary
 import ru.quasaris.characternexus.platformFileSystem
 
 import ru.quasaris.characternexus.ioDispatcher
+import ru.quasaris.characternexus.util.log
 
 class FileSystemCharacterStorage : CharacterStorage {
 
@@ -52,7 +53,7 @@ class FileSystemCharacterStorage : CharacterStorage {
                 json.decodeFromString<Character>(content)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.log()
             null
         }
     }
@@ -73,7 +74,7 @@ class FileSystemCharacterStorage : CharacterStorage {
                 json.decodeFromString<List<CharacterSummary>>(content)
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.log()
             emptyList()
         }
     }

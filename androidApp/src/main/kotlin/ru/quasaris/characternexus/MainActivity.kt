@@ -6,11 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import ru.quasaris.characternexus.backend.AppScaleManager
 import ru.quasaris.characternexus.backend.SettingsManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.CharacterRepository
@@ -19,24 +17,26 @@ import ru.quasaris.characternexus.util.PlatformUtils
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // Step 1: Initialize Platform Context
+        platformContext = PlatformContext(applicationContext)
         PlatformUtils.androidContext = applicationContext
         
-        val settingsManager = SettingsManager(applicationContext)
-        val appScaleManager = AppScaleManager(applicationContext)
-        val settingsViewModel = SettingsViewModel(appScaleManager, settingsManager)
+        val settingsManager = SettingsManager()
+        val settingsViewModel = SettingsViewModel(settingsManager)
 
         val characterRepository = CharacterRepository(
             storage = FileSystemCharacterStorage(),
             appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         )
         
-        // TODO: Initialize other managers when migrated
+        // TODO: Initialize other managers when fully migrated to common
         val spellbookManager = null 
         val moduleManager = null
         val glossaryImporter = null
 
         enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
 
         setContent {
             val scaleFactor by settingsViewModel.scaleFactor.collectAsState()

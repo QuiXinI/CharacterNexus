@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Character Nexus</string>
+    <string name="char_not_found">Персонаж не найден!</string>
+    <string name="level_label">Уровень</string>
+    <string name="xp_label">Опыта</string>
+    <string name="heal_label">Лечение</string>
+    <string name="damage_label">Урон</string>
+    <string name="temp_hp_label">Укрепление</string>
+    <string name="close_label">Закрыть</string>
+    <string name="roll_label">Бросок</string>
+    <string name="stats_tab">Характеристики</string>
+    <string name="attacks_tab">Атаки</string>
+    <string name="bio_tab">Биография</string>
+    <string name="inventory_tab">Инвентарь</string>
+    <string name="spells_tab">Заклинания</string>
+    <string name="notes_tab">Заметки</string>
+</resources>

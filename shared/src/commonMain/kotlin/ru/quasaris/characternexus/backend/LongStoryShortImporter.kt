@@ -1,14 +1,10 @@
 package ru.quasaris.characternexus.backend
 
 import kotlinx.serialization.json.*
-import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.util.log
 
 object LongStoryShortImporter {
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
 
     fun isLongStoryShort(jsonElement: JsonElement): Boolean {
         return try {
@@ -20,10 +16,10 @@ object LongStoryShortImporter {
     }
 
     private fun JsonElement?.safeString(default: String = ""): String {
-        return when {
-            this == null || this is JsonNull -> default
-            this is JsonPrimitive -> content
-            else -> default
+        return if (this != null && this is JsonPrimitive && !this.isString) {
+            this.content
+        } else {
+            this?.jsonPrimitive?.contentOrNull ?: default
         }
     }
 
@@ -38,12 +34,12 @@ object LongStoryShortImporter {
 
     fun parse(jsonElement: JsonElement): Character? {
         return try {
-            val root = jsonElement.jsonObject
+            val root = jsonElement as JsonObject
             val dataElement = root["data"] ?: return null
             val data = if (dataElement is JsonObject) {
                 dataElement
             } else {
-                json.parseToJsonElement(dataElement.jsonPrimitive.content).jsonObject
+                Json.parseToJsonElement(dataElement.jsonPrimitive.content) as JsonObject
             }
 
             val name = data["name"]?.jsonObject?.get("value").safeString("Новый персонаж")
@@ -62,15 +58,15 @@ object LongStoryShortImporter {
             val charisma = stats["cha"]?.jsonObject?.get("score").safeString("10")
 
             val avatarObj = data["avatar"]?.jsonObject
-            val avatarUrl = avatarObj?.get("jpeg")?.jsonPrimitive?.content ?: avatarObj?.get("webp")?.jsonPrimitive?.content
+            val avatarUrl = avatarObj?.get("jpeg")?.jsonPrimitive?.contentOrNull ?: avatarObj?.get("webp")?.jsonPrimitive?.contentOrNull
 
             val saves = data["saves"]?.jsonObject ?: buildJsonObject {}
-            val strProf = saves["str"]?.jsonObject?.get("isProf")?.jsonPrimitive?.boolean ?: false
-            val dexProf = saves["dex"]?.jsonObject?.get("isProf")?.jsonPrimitive?.boolean ?: false
-            val conProf = saves["con"]?.jsonObject?.get("isProf")?.jsonPrimitive?.boolean ?: false
-            val intProf = saves["int"]?.jsonObject?.get("isProf")?.jsonPrimitive?.boolean ?: false
-            val wisProf = saves["wis"]?.jsonObject?.get("isProf")?.jsonPrimitive?.boolean ?: false
-            val chaProf = saves["cha"]?.jsonObject?.get("isProf")?.jsonPrimitive?.boolean ?: false
+            val strProf = saves["str"]?.jsonObject?.get("isProf")?.jsonPrimitive?.booleanOrNull ?: false
+            val dexProf = saves["dex"]?.jsonObject?.get("isProf")?.jsonPrimitive?.booleanOrNull ?: false
+            val conProf = saves["con"]?.jsonObject?.get("isProf")?.jsonPrimitive?.booleanOrNull ?: false
+            val intProf = saves["int"]?.jsonObject?.get("isProf")?.jsonPrimitive?.booleanOrNull ?: false
+            val wisProf = saves["wis"]?.jsonObject?.get("isProf")?.jsonPrimitive?.booleanOrNull ?: false
+            val chaProf = saves["cha"]?.jsonObject?.get("isProf")?.jsonPrimitive?.booleanOrNull ?: false
 
             val vitality = data["vitality"]?.jsonObject ?: buildJsonObject {}
             val maxHp = vitality["hp-max"]?.getFieldValue().safeString("0")
@@ -123,14 +119,15 @@ object LongStoryShortImporter {
             for ((lssName, mpName) in skillMap) {
                 val skillObj = skills[lssName]?.jsonObject
                 if (skillObj != null) {
-                    val isProf = skillObj["isProf"]?.let {
-                        when {
-                            it is JsonPrimitive && it.isString -> it.content.toIntOrNull() ?: 0
-                            it is JsonPrimitive && it.booleanOrNull != null -> if (it.boolean) 1 else 0
-                            it is JsonPrimitive -> it.intOrNull ?: 0
-                            else -> 0
+                    val isProfElement = skillObj["isProf"]
+                    val isProf = if (isProfElement != null && isProfElement is JsonPrimitive) {
+                        if (isProfElement.isString) {
+                            isProfElement.content.toIntOrNull() ?: 0
+                        } else {
+                            isProfElement.intOrNull ?: if (isProfElement.booleanOrNull == true) 1 else 0
                         }
-                    } ?: 0
+                    } else 0
+                    
                     if (isProf >= 1) skilledProficiencies.add(mpName)
                     if (isProf == 2) {
                         skilledExpertise.add(mpName)
@@ -152,12 +149,13 @@ object LongStoryShortImporter {
 
             for (b in allBonuses) {
                 if (b !is JsonObject) continue
-                val target = b["target"].safeString()
-                val expr = b["expr"].safeString()
-                val disabled = b["disabled"]?.jsonPrimitive?.booleanOrNull ?: false
-                val mode = b["mode"]?.jsonPrimitive?.contentOrNull
+                val bonus = b
+                val target = bonus["target"].safeString()
+                val expr = bonus["expr"].safeString()
+                val disabled = bonus["disabled"]?.jsonPrimitive?.booleanOrNull ?: false
+                val mode = bonus["mode"]?.jsonPrimitive?.contentOrNull
                 
-                val label = b["label"].safeString().takeIf { it.isNotBlank() } ?: when {
+                val label = bonus["label"].safeString().takeIf { it.isNotBlank() } ?: when {
                     target == "ac" -> "Бонус КД"
                     target == "initiative" -> "Бонус Инициативы"
                     target.startsWith("speed") -> "Бонус Скорости"
@@ -184,7 +182,7 @@ object LongStoryShortImporter {
 
                 when {
                     target == "ac" -> {
-                        if (isActiveBonus(b)) {
+                        if (isActiveBonus(bonus)) {
                             if (label.contains("щит", ignoreCase = true) || label.contains("shield", ignoreCase = true)) {
                                 shieldBonusExprs.add(expr)
                                 shieldLabel = label
@@ -194,10 +192,10 @@ object LongStoryShortImporter {
                         }
                     }
                     target == "initiative" -> {
-                        if (isActiveBonus(b)) initBonusExprs.add(expr)
+                        if (isActiveBonus(bonus)) initBonusExprs.add(expr)
                     }
                     target.startsWith("speed") -> {
-                        if (isActiveBonus(b)) speedBonusExprs.add(expr)
+                        if (isActiveBonus(bonus)) speedBonusExprs.add(expr)
                     }
                     target == "skill-all" -> {
                         skillMap.values.forEach { mpSkillName ->
@@ -261,10 +259,10 @@ object LongStoryShortImporter {
                 speedEntries[0] = baseSpeed.copy(formula = fullSpeedFormula)
             }
             
-            val shieldEntries = mutableListOf(ShieldEntry(name = "Базовый Щит", formula = "2"))
+            val shieldEntriesList = mutableListOf(ShieldEntry(name = "Базовый Щит", formula = "2"))
             if (shieldBonusExprs.isNotEmpty()) {
                 val fullShieldFormula = shieldBonusExprs.joinToString(" + ") { "($it)" }
-                shieldEntries[0] = ShieldEntry(name = shieldLabel, formula = fullShieldFormula)
+                shieldEntriesList[0] = ShieldEntry(name = shieldLabel, formula = fullShieldFormula)
             }
 
             // Attacks
@@ -273,9 +271,10 @@ object LongStoryShortImporter {
             
             for (item in weaponsList) {
                 if (item !is JsonObject) continue
-                val weaponId = item["id"].safeString()
+                val weapon = item
+                val weaponId = weapon["id"].safeString()
                 
-                val abilityStr = item["ability"].safeString("str").lowercase()
+                val abilityStr = weapon["ability"].safeString("str").lowercase()
                 val attribute = when (abilityStr) {
                     "str" -> Attribute.STRENGTH
                     "dex" -> Attribute.DEXTERITY
@@ -287,39 +286,40 @@ object LongStoryShortImporter {
                     else -> Attribute.NONE
                 }
 
-                val attackBonuses = mutableListOf<AttackBonus>()
-                val damageBonuses = mutableListOf<DamageBonus>()
+                val attackBonusesList = mutableListOf<AttackBonus>()
+                val damageBonusesList = mutableListOf<DamageBonus>()
 
                 for (b in allBonuses) {
                     if (b !is JsonObject) continue
-                    val target = b["target"].safeString()
-                    val expr = b["expr"].safeString()
-                    val disabled = b["disabled"]?.jsonPrimitive?.booleanOrNull ?: false
-                    val mode = b["mode"]?.jsonPrimitive?.contentOrNull
+                    val bonus = b
+                    val target = bonus["target"].safeString()
+                    val expr = bonus["expr"].safeString()
+                    val disabled = bonus["disabled"]?.jsonPrimitive?.booleanOrNull ?: false
+                    val mode = bonus["mode"]?.jsonPrimitive?.contentOrNull
                     
-                    val label = b["label"].safeString().takeIf { it.isNotBlank() } ?: when {
+                    val label = bonus["label"].safeString().takeIf { it.isNotBlank() } ?: when {
                         target.contains(".attack") -> "Бонус к попаданию"
                         target.contains(".damage") -> "Бонус к урону"
                         else -> "Бонус"
                     }
                     
                     if (target == "weapon.$weaponId.attack" || target == "weapon-all.attack") {
-                        attackBonuses.add(AttackBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
+                        attackBonusesList.add(AttackBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
                     }
                     if (target == "weapon.$weaponId.damage" || target == "weapon-all.damage") {
-                        damageBonuses.add(DamageBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
+                        damageBonusesList.add(DamageBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
                     }
                 }
 
                 mpAttacks.add(
                     AttackEntry(
-                        name = item["name"]?.jsonObject?.get("value").safeString("Оружие"),
-                        damageFormula = item["dmg"]?.jsonObject?.get("value").safeString(),
-                        damageType = item["dmgType"]?.jsonObject?.get("value").safeString(),
-                        isProficient = item["isProf"]?.jsonPrimitive?.booleanOrNull ?: true,
+                        name = weapon["name"]?.jsonObject?.get("value").safeString("Оружие"),
+                        damageFormula = weapon["dmg"]?.jsonObject?.get("value").safeString(),
+                        damageType = weapon["dmgType"]?.jsonObject?.get("value").safeString(),
+                        isProficient = weapon["isProf"]?.jsonPrimitive?.booleanOrNull ?: true,
                         attribute = attribute,
-                        attackBonuses = attackBonuses,
-                        damageBonuses = damageBonuses
+                        attackBonuses = attackBonusesList,
+                        damageBonuses = damageBonusesList
                     )
                 )
             }
@@ -348,7 +348,7 @@ object LongStoryShortImporter {
             val equipmentText = extractText("equipment")
 
             val subInfo = data["subInfo"]?.jsonObject ?: buildJsonObject {}
-            val bioShortFields = listOf(
+            val bioShortFieldsList = listOf(
                 BioShortField(title = "Предыстория", value = info["background"]?.jsonObject?.get("value").safeString(), widthRatio = 0.5f),
                 BioShortField(title = "Мировоззрение", value = info["alignment"]?.jsonObject?.get("value").safeString(), widthRatio = 0.5f),
                 BioShortField(title = "Рост", value = subInfo["height"]?.jsonObject?.get("value").safeString(), widthRatio = 0.33f),
@@ -359,7 +359,7 @@ object LongStoryShortImporter {
                 BioShortField(title = "Волосы", value = subInfo["hair"]?.jsonObject?.get("value").safeString(), widthRatio = 0.33f)
             )
 
-            val bioLongSections = listOf(
+            val bioLongSectionsList = listOf(
                 DynamicNoteState(title = "Предыстория персонажа", content = extractText("background")),
                 DynamicNoteState(title = "Союзники и организации", content = extractText("allies")),
                 DynamicNoteState(title = "Враги и организации", content = ""), // Not explicitly in LSS template
@@ -369,7 +369,7 @@ object LongStoryShortImporter {
                 DynamicNoteState(title = "Слабости", content = extractText("flaws"))
             )
 
-            val skillsAndTraits = listOf(
+            val skillsAndTraitsList = listOf(
                 DynamicNoteState(title = "Атаки и заклинания", content = attacksText),
                 DynamicNoteState(title = "Умения и особенности", content = traitsText),
                 DynamicNoteState(title = "Дополнительные способности и умения", content = additionalText),
@@ -377,7 +377,7 @@ object LongStoryShortImporter {
                 DynamicNoteState(title = "Владения", content = profText)
             )
 
-            val inventory = listOf(
+            val inventoryList = listOf(
                 DynamicNoteState(title = "Снаряжение", content = equipmentText),
                 DynamicNoteState(title = "Предметы", content = itemsText)
             )
@@ -392,19 +392,19 @@ object LongStoryShortImporter {
             }
 
             // Additional notes
-            val notes = mutableListOf<DynamicNoteState>()
+            val notesList = mutableListOf<DynamicNoteState>()
             for (i in 1..4) {
                 val noteKey = "notes-$i"
                 val noteObj = text[noteKey]?.jsonObject
                 if (noteObj != null) {
-                    val label = noteObj["customLabel"]?.jsonPrimitive?.content ?: "Заметка $i"
+                    val label = noteObj["customLabel"].safeString("Заметка $i")
                     val content = extractText(noteKey)
                     if (content.isNotBlank()) {
-                        notes.add(DynamicNoteState(title = label, content = content))
+                        notesList.add(DynamicNoteState(title = label, content = content))
                     }
                 }
             }
-            if (notes.isEmpty()) notes.add(DynamicNoteState())
+            if (notesList.isEmpty()) notesList.add(DynamicNoteState())
 
             Character(
                 id = (0..Int.MAX_VALUE).random(),
@@ -435,24 +435,24 @@ object LongStoryShortImporter {
                 currentHp = currentHp,
                 tempHp = tempHp,
                 isShieldActive = isShieldActive,
-                shieldEntries = shieldEntries,
-                activeShieldId = shieldEntries.firstOrNull()?.id,
+                shieldEntries = shieldEntriesList,
+                activeShieldId = shieldEntriesList.firstOrNull()?.id,
                 wallet = wallet,
                 skilledProficiencies = skilledProficiencies,
                 skilledExpertise = skilledExpertise,
                 statBonuses = statBonuses,
                 skillBonuses = skillBonuses,
                 attacks = mpAttacks,
-                skillsAndTraits = skillsAndTraits,
-                inventory = inventory,
+                skillsAndTraits = skillsAndTraitsList,
+                inventory = inventoryList,
                 spells = mpSpells,
-                notes = notes,
-                bioShortFields = bioShortFields,
-                bioLongSections = bioLongSections,
+                notes = notesList,
+                bioShortFields = bioShortFieldsList,
+                bioLongSections = bioLongSectionsList,
                 avatarUrl = avatarUrl
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.log()
             null
         }
     }
@@ -474,12 +474,11 @@ object LongStoryShortImporter {
 
         val marks = node["marks"]?.jsonArray
         if (marks != null) {
-            // Sort marks so that "link" is processed first to be innermost: **[text](url)**
             val sortedMarks = marks.map { it.jsonObject }.sortedByDescending {
-                if (it["type"]?.jsonPrimitive?.content == "link") 1 else 0
+                if (it["type"]?.jsonPrimitive?.contentOrNull == "link") 1 else 0
             }
             for (mark in sortedMarks) {
-                when (mark["type"]?.jsonPrimitive?.content) {
+                when (mark["type"]?.jsonPrimitive?.contentOrNull) {
                     "bold" -> { prefix = "**$prefix"; suffix = "${suffix}**" }
                     "italic" -> { prefix = "_$prefix"; suffix = "${suffix}_" }
                     "strike" -> { prefix = "~~$prefix"; suffix = "${suffix}~~" }
@@ -493,7 +492,7 @@ object LongStoryShortImporter {
         }
 
         if (type == "text") {
-            sb.append(prefix).append(node["text"]?.jsonPrimitive?.content ?: "").append(suffix)
+            sb.append(prefix).append(node["text"]?.jsonPrimitive?.contentOrNull ?: "").append(suffix)
         } else if (type == "resource") {
             val resId = node["attrs"]?.jsonObject?.get("id").safeString()
             val lssRes = lssResources[resId]?.jsonObject

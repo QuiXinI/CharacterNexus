@@ -8,6 +8,9 @@ import java.awt.Image
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import java.io.File
+import java.io.ByteArrayOutputStream
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toAwtImage
 
 actual object PlatformUtils {
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
@@ -23,35 +26,54 @@ actual object PlatformUtils {
     actual fun performHapticFeedback() {
         // No haptic feedback on Desktop usually
     }
+
+    actual fun showMessage(message: String) {
+        println("MESSAGE: $message")
+    }
 }
 
 actual object ImageProcessor {
     actual fun generateThumbnail(sourcePath: Path, targetPath: Path) {
-        val img = ImageIO.read(File(sourcePath.toString())) ?: return
-        val scaled = img.getScaledInstance(200, 200, Image.SCALE_SMOOTH)
-        val buffered = BufferedImage(200, 200, BufferedImage.TYPE_INT_RGB)
-        val g = buffered.createGraphics()
-        g.drawImage(scaled, 0, 0, null)
-        g.dispose()
-        val targetFile = File(targetPath.toString())
-        targetFile.parentFile?.mkdirs()
-        ImageIO.write(buffered, "png", targetFile)
-    }
-
-    actual fun saveCompressedImage(bytes: ByteArray, targetPath: Path, width: Int?, height: Int?) {
-        val targetFile = File(targetPath.toString())
-        targetFile.parentFile?.mkdirs()
-        if (width == null && height == null) {
-            platformFileSystem.write(targetPath) { write(bytes) }
-        } else {
-            val img = ImageIO.read(bytes.inputStream()) ?: return
-            val scaled = img.getScaledInstance(width!!, height!!, Image.SCALE_SMOOTH)
-            val buffered = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        try {
+            val img = ImageIO.read(File(sourcePath.toString())) ?: return
+            val scaled = img.getScaledInstance(200, 200, Image.SCALE_SMOOTH)
+            val buffered = BufferedImage(200, 200, BufferedImage.TYPE_INT_RGB)
             val g = buffered.createGraphics()
             g.drawImage(scaled, 0, 0, null)
             g.dispose()
+            val targetFile = File(targetPath.toString())
+            targetFile.parentFile?.mkdirs()
             ImageIO.write(buffered, "png", targetFile)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
+    }
+
+    actual fun saveCompressedImage(bytes: ByteArray, targetPath: Path, width: Int?, height: Int?) {
+        try {
+            val targetFile = File(targetPath.toString())
+            targetFile.parentFile?.mkdirs()
+            if (width == null && height == null) {
+                platformFileSystem.write(targetPath) { write(bytes) }
+            } else {
+                val img = ImageIO.read(bytes.inputStream()) ?: return
+                val scaled = img.getScaledInstance(width!!, height!!, Image.SCALE_SMOOTH)
+                val buffered = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+                val g = buffered.createGraphics()
+                g.drawImage(scaled, 0, 0, null)
+                g.dispose()
+                ImageIO.write(buffered, "png", targetFile)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    actual fun encodeToByteArray(bitmap: ImageBitmap): ByteArray {
+        val awtImage = bitmap.toAwtImage()
+        val stream = ByteArrayOutputStream()
+        ImageIO.write(awtImage, "png", stream)
+        return stream.toByteArray()
     }
 }
 

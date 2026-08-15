@@ -1,0 +1,11 @@
+package ru.quasaris.characternexus.util
+
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toComposeImageBitmap
+import org.jetbrains.skia.Image
+import java.io.ByteArrayInputStream
+import javax.imageio.ImageIO
+
+actual fun decodeImageBitmap(bytes: ByteArray): ImageBitmap {
+    return Image.makeFromEncoded(bytes).toComposeImageBitmap()
+}

@@ -1,4 +1,4 @@
-package ru.quasaris.characternexus.model
+package ru.quasaris.characternexus
 
 import kotlinx.serialization.Serializable
 

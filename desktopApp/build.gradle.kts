@@ -22,6 +22,7 @@ dependencies {
     implementation(libs.kotlinx.coroutinesSwing)
 
     implementation(libs.compose.uiToolingPreview)
+    implementation(libs.androidx.lifecycle.viewmodelCompose)
 }
 
 tasks.withType<KotlinCompile>().configureEach {
