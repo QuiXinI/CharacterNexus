@@ -31,6 +31,10 @@ import org.jetbrains.compose.resources.painterResource
 import characternexus.shared.generated.resources.*
 import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.PaletteHelper
+import ru.quasaris.characternexus.util.generateUuid
+import ru.quasaris.characternexus.util.ImageProcessor
+import ru.quasaris.characternexus.backend.cropper.AvatarCropperWindow
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,8 +62,10 @@ fun CreateWindow(
 ) {
     val focusManager = LocalFocusManager.current
     val colorScheme = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
 
     val charId = remember { character?.id ?: (0..Int.MAX_VALUE).random() }
+    val characterUuid = remember { character?.uuid ?: generateUuid() }
 
     // States
     var name by remember { mutableStateOf(character?.name ?: "") }
@@ -93,6 +99,8 @@ fun CreateWindow(
 
     var characterImageData by remember { mutableStateOf(character?.imageData) }
     var themeSeedColorArgb by remember { mutableStateOf(character?.themeSeedColorArgb) }
+    var bytesToCrop by remember { mutableStateOf<ByteArray?>(null) }
+    var imageToCrop by remember { mutableStateOf<ImageBitmap?>(null) }
     var showImagePicker by remember { mutableStateOf(false) }
 
     var isLevelPanelVisible by remember { mutableStateOf(false) }
@@ -151,12 +159,10 @@ fun CreateWindow(
     CommonFilePicker(show = showImagePicker, fileExtensions = listOf("jpg", "png", "webp")) { file ->
         showImagePicker = false
         file?.let {
-            CoroutineScope(ioDispatcher).launch {
+            scope.launch {
                 val bytes = it.readBytes()
-                val newId = ImageManager.saveNewImage(bytes)
-                val seedColor = PaletteHelper.extractSeedColor(bytes)
-                characterImageData = newId
-                themeSeedColorArgb = seedColor
+                bytesToCrop = bytes
+                imageToCrop = decodeImageBitmap(bytes)
             }
         }
     }
@@ -304,7 +310,7 @@ fun CreateWindow(
             characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, hitDiceMap, defaultHitDie,
             hpLevelData, manualHPLevelData, isMulticlassHP, isManualHP, manualMaxHp, manualMaxHitDice, hpBonusesAtLevel, hpBonusesTotal
         )
-        onCharacterChange(updated)
+        onCharacterChange(updated.copy(uuid = characterUuid))
     }
 
     Scaffold(
@@ -628,6 +634,33 @@ fun CreateWindow(
                 onDismiss = { showHealthSettings = false }
             )
         }
+    }
+
+    if (imageToCrop != null && bytesToCrop != null) {
+        AvatarCropperWindow(
+            imageBitmap = imageToCrop!!,
+            onCrop = { cropped ->
+                scope.launch {
+                    val croppedBytes = ImageProcessor.encodeToByteArray(cropped)
+                    val originalBytes = bytesToCrop!!
+                    
+                    ImageManager.saveCharacterImages(
+                        characterUuid = characterUuid,
+                        originalBytes = originalBytes,
+                        portraitBytes = originalBytes,
+                        croppedBytes = croppedBytes
+                    )
+
+                    val seedColor = PaletteHelper.extractSeedColor(croppedBytes)
+
+                    characterImageData = generateUuid() // version
+                    themeSeedColorArgb = seedColor
+                    imageToCrop = null
+                    bytesToCrop = null
+                }
+            },
+            onDismiss = { imageToCrop = null; bytesToCrop = null }
+        )
     }
 }
 

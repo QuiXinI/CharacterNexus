@@ -28,9 +28,15 @@ import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.backend.ArchiveManager
+import ru.quasaris.characternexus.backend.ImportResult
+import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.LssAvatarService
 import ru.quasaris.characternexus.backend.SettingsViewModel
+import ru.quasaris.characternexus.backend.cropper.AvatarCropperWindow
 import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.util.decodeImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import ru.quasaris.characternexus.util.ImageProcessor
 
 @Composable
 fun MenuWindow(
@@ -56,30 +62,103 @@ fun MenuWindow(
     val useOldAvatarStyle by settingsViewModel?.useOldAvatarStyle?.collectAsState() ?: remember { mutableStateOf(false) }
     
     var lssAvatarToDownload by remember { mutableStateOf<Character?>(null) }
+    var importErrorMessage by remember { mutableStateOf<String?>(null) }
     var showFilePicker by remember { mutableStateOf(false) }
+    
+    var pendingImportResult by remember { mutableStateOf<ru.quasaris.characternexus.backend.ImportResult?>(null) }
+    var imageToCrop by remember { mutableStateOf<ImageBitmap?>(null) }
 
-    CommonFilePicker(show = showFilePicker, fileExtensions = listOf("charbook", "json")) { file ->
+    CommonFilePicker(show = showFilePicker, fileExtensions = listOf("charbook", "lsskiller", "json")) { file ->
         showFilePicker = false
         if (file == null) return@CommonFilePicker
         
         scope.launch {
-            val bytes = file.readBytes()
-            val importedCharacter = ArchiveManager.importCharacter(bytes)
-            
-            if (importedCharacter != null) {
-                if (importedCharacter.avatarUrl != null && importedCharacter.imageData == null) {
-                    if (autoDownload) {
-                        val avatarBytes = LssAvatarService.downloadAvatar(importedCharacter)
-                        // Handle saving avatar if needed in a real app
-                        onImportCharacter(importedCharacter)
+            try {
+                val bytes = file.readBytes()
+                val result = ArchiveManager.importCharacter(bytes)
+                
+                if (result != null) {
+                    val importedCharacter = result.character
+                    val portraitBytes = result.portraitBytes ?: result.originalBytes
+                    
+                    if (portraitBytes != null) {
+                        // Image present, go to cropper
+                        try {
+                            imageToCrop = decodeImageBitmap(portraitBytes)
+                            pendingImportResult = result
+                        } catch (e: Exception) {
+                            // If decoding fails, just import without image
+                            onImportCharacter(importedCharacter)
+                        }
+                    } else if (importedCharacter.avatarUrl != null && importedCharacter.imageData == null) {
+                        // LSS Avatar handling
+                        if (autoDownload) {
+                            val avatarBytes = LssAvatarService.downloadAvatar(importedCharacter)
+                            if (avatarBytes != null) {
+                                try {
+                                    imageToCrop = decodeImageBitmap(avatarBytes)
+                                    pendingImportResult = ImportResult(
+                                        character = importedCharacter,
+                                        portraitBytes = avatarBytes,
+                                        originalBytes = avatarBytes
+                                    )
+                                } catch (e: Exception) {
+                                    onImportCharacter(importedCharacter)
+                                }
+                            } else {
+                                onImportCharacter(importedCharacter)
+                            }
+                        } else {
+                            lssAvatarToDownload = importedCharacter
+                        }
                     } else {
-                        lssAvatarToDownload = importedCharacter
+                        onImportCharacter(importedCharacter)
                     }
                 } else {
-                    onImportCharacter(importedCharacter)
+                    importErrorMessage = "Не удалось распознать файл. Пожалуйста, выберите другой файл персонажа."
                 }
+            } catch (e: Exception) {
+                importErrorMessage = "Ошибка при чтении файла: ${e.message}"
             }
         }
+    }
+
+    if (imageToCrop != null && pendingImportResult != null) {
+        val result = pendingImportResult!!
+        AvatarCropperWindow(
+            imageBitmap = imageToCrop!!,
+            onCrop = { cropped ->
+                val char = result.character
+                scope.launch {
+                    val croppedBytes = ImageProcessor.encodeToByteArray(cropped)
+                    ImageManager.saveCharacterImages(
+                        characterUuid = char.uuid,
+                        originalBytes = result.originalBytes ?: result.portraitBytes,
+                        portraitBytes = result.portraitBytes ?: result.originalBytes,
+                        croppedBytes = croppedBytes
+                    )
+                    onImportCharacter(char)
+                    imageToCrop = null
+                    pendingImportResult = null
+                }
+            },
+            onDismiss = {
+                onImportCharacter(result.character.copy(imageData = null))
+                imageToCrop = null
+                pendingImportResult = null
+            }
+        )
+    }
+
+    if (importErrorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { importErrorMessage = null },
+            title = { Text("Ошибка импорта") },
+            text = { Text(importErrorMessage!!) },
+            confirmButton = {
+                TextButton(onClick = { importErrorMessage = null }) { Text("OK") }
+            }
+        )
     }
 
     if (lssAvatarToDownload != null) {
@@ -96,7 +175,20 @@ fun MenuWindow(
                     lssAvatarToDownload = null
                     scope.launch {
                         val avatarBytes = LssAvatarService.downloadAvatar(char)
-                        onImportCharacter(char)
+                        if (avatarBytes != null) {
+                            try {
+                                imageToCrop = decodeImageBitmap(avatarBytes)
+                                pendingImportResult = ImportResult(
+                                    character = char,
+                                    portraitBytes = avatarBytes,
+                                    originalBytes = avatarBytes
+                                )
+                            } catch (e: Exception) {
+                                onImportCharacter(char)
+                            }
+                        } else {
+                            onImportCharacter(char)
+                        }
                     }
                 }) { Text("Да") }
             },

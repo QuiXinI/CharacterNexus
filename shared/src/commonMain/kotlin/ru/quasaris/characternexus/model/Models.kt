@@ -536,18 +536,18 @@ data class HPLevelEntry(
 
 @Serializable
 data class CharacterSummary(
-    val uuid: String,
-    val id: Int,
-    val name: String,
-    val characterClass: String,
-    val level: String,
-    val currentHp: String,
-    val maxHp: String,
-    val tempHp: String,
-    val imageData: String?,
-    val themeSeedColorArgb: Int?,
-    val experience: String,
-    val order: String
+    val uuid: String = "",
+    val id: Int = 0,
+    val name: String = "",
+    val characterClass: String = "",
+    val level: String = "1",
+    val currentHp: String = "0",
+    val maxHp: String = "0",
+    val tempHp: String = "0",
+    val imageData: String? = null,
+    val themeSeedColorArgb: Int? = null,
+    val experience: String = "0",
+    val order: String = ""
 )
 
 @Serializable

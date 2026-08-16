@@ -62,8 +62,16 @@ fun runApp() = application {
         )
     }
 
+    val isDebug = System.getProperty("debug") == "true" || System.getenv("DEBUG") == "true"
+    if (isDebug) {
+        DebugLogWindow()
+    }
+
     Window(
-        onCloseRequest = ::exitApplication,
+        onCloseRequest = {
+            characterRepository.flushBlocking()
+            exitApplication()
+        },
         title = "Character Nexus",
         icon = painterResource("icon.png"),
     ) {

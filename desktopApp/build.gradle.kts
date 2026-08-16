@@ -23,6 +23,7 @@ dependencies {
 
     implementation(libs.compose.uiToolingPreview)
     implementation(libs.androidx.lifecycle.viewmodelCompose)
+    implementation(libs.compose.material3)
 }
 
 tasks.withType<KotlinCompile>().configureEach {
@@ -76,9 +77,15 @@ compose.desktop {
         
         // Для JVM оптимизаций можно добавить jvmArgs
         val profileJvmArgs = when (buildProfile) {
-            "debugCheck" -> listOf("-Xms256m", "-Xmx512m")
-            "debugCheckPortable" -> listOf("-Xms256m", "-Xmx512m", "-Dportable=true")
-            "debugFull", "release" -> listOf(
+            "debugCheck" -> listOf("-Xms256m", "-Xmx512m", "-Ddebug=true")
+            "debugCheckPortable" -> listOf("-Xms256m", "-Xmx512m", "-Dportable=true", "-Ddebug=true")
+            "debugFull" -> listOf(
+                "-Xms512m", "-Xmx2g",
+                "-XX:+UseParallelGC",
+                "-XX:+OptimizeStringConcat",
+                "-Ddebug=true"
+            )
+            "release" -> listOf(
                 "-Xms512m", "-Xmx2g",
                 "-XX:+UseParallelGC",
                 "-XX:+OptimizeStringConcat"

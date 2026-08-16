@@ -29,7 +29,25 @@ class CharacterRepository(
     }
 
     private suspend fun loadSummaries() {
-        val summaries = storage.loadAllSummaries()
+        var summaries = storage.loadAllSummaries()
+        
+        // Recovery logic: if cache is empty but characters exist in storage, rebuild it
+        if (summaries.isEmpty()) {
+            val uuids = storage.listCharacterUuids()
+            if (uuids.isNotEmpty()) {
+                val recovered = mutableListOf<CharacterSummary>()
+                uuids.forEach { uuid ->
+                    storage.loadCharacter(uuid)?.let { char ->
+                        recovered.add(char.toSummary())
+                    }
+                }
+                if (recovered.isNotEmpty()) {
+                    summaries = recovered
+                    storage.saveSummaries(summaries)
+                }
+            }
+        }
+        
         _charactersSummaryState.value = summaries
     }
 
@@ -85,6 +103,9 @@ class CharacterRepository(
                 storage.saveCharacter(it)
             }
             storage.saveSummaries(_charactersSummaryState.value)
+            
+            // Cleanup orphaned character folders on disk
+            ImageManager.cleanupOrphanedCharacters(_charactersSummaryState.value.map { it.uuid })
         }
     }
 
@@ -98,6 +119,9 @@ class CharacterRepository(
                 storage.saveCharacter(it)
             }
             storage.saveSummaries(_charactersSummaryState.value)
+            
+            // Cleanup orphaned character folders on disk
+            ImageManager.cleanupOrphanedCharacters(_charactersSummaryState.value.map { it.uuid })
         }
     }
 

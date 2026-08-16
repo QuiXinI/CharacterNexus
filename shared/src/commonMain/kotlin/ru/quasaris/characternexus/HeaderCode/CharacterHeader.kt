@@ -222,15 +222,27 @@ fun CharacterHeader(
                                 .background(colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            val portraitFile = remember(characterImageData, characterUuid) {
+                            val thumbFile = remember(characterImageData, characterUuid) {
                                 if (characterImageData != null && characterImageData.length < 100) {
                                     ImageManager.getThumbnailFile(characterImageData, characterUuid)
                                 } else null
                             }
 
-                            if (portraitFile != null && platformFileSystem.exists(portraitFile)) {
+                            val portraitFile = remember(characterImageData, characterUuid) {
+                                if (characterImageData != null && characterImageData.length < 100) {
+                                    ImageManager.getPortraitFile(characterImageData, characterUuid)
+                                } else null
+                            }
+
+                            val imageFile = remember(thumbFile, portraitFile) {
+                                if (thumbFile != null && platformFileSystem.exists(thumbFile)) thumbFile
+                                else if (portraitFile != null && platformFileSystem.exists(portraitFile)) portraitFile
+                                else null
+                            }
+
+                            if (imageFile != null) {
                                 AsyncImage(
-                                    model = portraitFile.toString(),
+                                    model = imageFile.toString(),
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop

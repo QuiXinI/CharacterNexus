@@ -33,6 +33,11 @@ object LongStoryShortImporter {
         }
     }
 
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
+
     fun parse(jsonElement: JsonElement): Character? {
         return try {
             val root = jsonElement as JsonObject
@@ -40,7 +45,7 @@ object LongStoryShortImporter {
             val data = if (dataElement is JsonObject) {
                 dataElement
             } else {
-                Json.parseToJsonElement(dataElement.jsonPrimitive.content) as JsonObject
+                json.parseToJsonElement(dataElement.jsonPrimitive.content) as JsonObject
             }
 
             val name = data["name"]?.jsonObject?.get("value").safeString("Новый персонаж")

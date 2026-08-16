@@ -258,12 +258,19 @@ fun CharacterDetailWindow(
             imageBitmap = state.imageToCrop!!,
             onCrop = { cropped ->
                 scope.launch {
-                    val bytes = ImageProcessor.encodeToByteArray(cropped)
-                    val id = ImageManager.saveNewImage(bytes)
+                    val croppedBytes = ImageProcessor.encodeToByteArray(cropped)
+                    val originalBytes = state.bytesToCrop!!
+                    
+                    ImageManager.saveCharacterImages(
+                        characterUuid = character.uuid,
+                        originalBytes = originalBytes,
+                        portraitBytes = originalBytes, // Using same for portrait high-res for now
+                        croppedBytes = croppedBytes
+                    )
 
-                    val seedColor = PaletteHelper.extractSeedColor(bytes)
+                    val seedColor = PaletteHelper.extractSeedColor(croppedBytes)
 
-                    state.characterImageData = id
+                    state.characterImageData = generateUuid() // Using fresh UUID as "version" string
                     state.themeSeedColorArgb = seedColor
                     state.imageToCrop = null
                     state.bytesToCrop = null

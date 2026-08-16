@@ -75,6 +75,8 @@ fun CharacterCreationWindow(
 
     val scope = rememberCoroutineScope()
     var showFilePicker by remember { mutableStateOf(false) }
+    
+    val characterUuid = remember { generateUuid() }
 
     CommonFilePicker(show = showFilePicker, fileExtensions = listOf("jpg", "png", "webp")) { file ->
         showFilePicker = false
@@ -149,6 +151,7 @@ fun CharacterCreationWindow(
                         onClick = {
                             val levelInt = level.toIntOrNull() ?: 1
                             val newChar = Character(
+                                uuid = characterUuid,
                                 id = (0..Int.MAX_VALUE).random(),
                                 name = name,
                                 characterClass = charClass,
@@ -239,9 +242,17 @@ fun CharacterCreationWindow(
                 imageBitmap = imageToCrop!!,
                 onCrop = { cropped ->
                     scope.launch {
-                        val bytes = ImageProcessor.encodeToByteArray(cropped)
-                        val id = ImageManager.saveNewImage(bytes)
-                        imageData = id
+                        val croppedBytes = ImageProcessor.encodeToByteArray(cropped)
+                        val originalBytes = bytesToCrop!!
+                        
+                        ImageManager.saveCharacterImages(
+                            characterUuid = characterUuid,
+                            originalBytes = originalBytes,
+                            portraitBytes = originalBytes,
+                            croppedBytes = croppedBytes
+                        )
+
+                        imageData = generateUuid() // version
                         imageToCrop = null
                         bytesToCrop = null
                     }

@@ -45,9 +45,17 @@ fun CharacterCard(
         ImageManager.getThumbnailFile(character.imageData ?: "", character.uuid)
     }
     
-    val thumbExists = remember(thumbPath) {
-        platformFileSystem.exists(thumbPath)
+    val portraitPath = remember(character.imageData, character.uuid) {
+        ImageManager.getPortraitFile(character.imageData ?: "", character.uuid)
     }
+
+    val imagePath = remember(thumbPath, portraitPath) {
+        if (platformFileSystem.exists(thumbPath)) thumbPath
+        else if (platformFileSystem.exists(portraitPath)) portraitPath
+        else null
+    }
+
+    val imageExists = imagePath != null
 
     val cardColor = if (isSelected) {
         colorScheme.primaryContainer
@@ -127,9 +135,9 @@ fun CharacterCard(
                             .background(colorScheme.surface),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (thumbExists) {
+                        if (imageExists) {
                             AsyncImage(
-                                model = thumbPath,
+                                model = imagePath.toString(),
                                 contentDescription = "Иконка",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
@@ -182,9 +190,9 @@ fun CharacterCard(
                             .background(colorScheme.surface),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (thumbExists) {
+                        if (imageExists) {
                             AsyncImage(
-                                model = thumbPath,
+                                model = imagePath.toString(),
                                 contentDescription = "Иконка",
                                 modifier = Modifier
                                     .requiredSize(amplifiedSize)
