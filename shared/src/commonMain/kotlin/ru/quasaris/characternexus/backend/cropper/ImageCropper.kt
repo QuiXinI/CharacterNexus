@@ -2,6 +2,7 @@ package ru.quasaris.characternexus.backend.cropper
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.ImageBitmap
+import ru.quasaris.characternexus.util.ImageProcessor
 
 sealed interface ImageCropResult {
     data object Idle : ImageCropResult
@@ -24,7 +25,7 @@ class ImageCropperImpl(
     override suspend fun cropImage(bmp: ImageBitmap): ImageCropResult {
         val state = cropState ?: return ImageCropResult.Cancelled
         return try {
-            val cropped = ImageUtils.crop(bmp, state)
+            val cropped = ImageProcessor.crop(bmp, state)
             ImageCropResult.Success(cropped)
         } catch (e: Exception) {
             ImageCropResult.Error(e)

@@ -1,6 +1,5 @@
 package ru.quasaris.characternexus.backend.cropper
 
-import android.graphics.Matrix
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -10,7 +9,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 interface ImageCropState {
-    var matrix: Matrix
+    var matrix: Matrix3x3
     var shape: ImageCropShape
     
     var containerSize: Size
@@ -32,7 +31,7 @@ class ImageCropStateImpl(
     initialShape: ImageCropShape,
     @Suppress("UNUSED_PARAMETER") initialAspectRatio: ImageAspectRatio,
 ) : ImageCropState {
-    override var matrix by mutableStateOf(Matrix())
+    override var matrix by mutableStateOf(Matrix3x3())
     override var shape by mutableStateOf(initialShape)
     
     override var containerSize by mutableStateOf(Size.Zero)
@@ -49,35 +48,35 @@ class ImageCropStateImpl(
         }
 
     override fun rotateCW() {
-        val newMatrix = Matrix(matrix)
+        val newMatrix = Matrix3x3(matrix)
         newMatrix.postRotate(90f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun rotateCCW() {
-        val newMatrix = Matrix(matrix)
+        val newMatrix = Matrix3x3(matrix)
         newMatrix.postRotate(-90f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun flipHorizontal() {
-        val newMatrix = Matrix(matrix)
+        val newMatrix = Matrix3x3(matrix)
         newMatrix.postScale(-1f, 1f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun flipVertical() {
-        val newMatrix = Matrix(matrix)
+        val newMatrix = Matrix3x3(matrix)
         newMatrix.postScale(1f, -1f, viewportRect.center.x, viewportRect.center.y)
         matrix = newMatrix
         clamp()
     }
 
     override fun onTransform(pan: Offset, zoom: Float) {
-        val newMatrix = Matrix(matrix)
+        val newMatrix = Matrix3x3(matrix)
         val center = viewportRect.center
         newMatrix.postScale(zoom, zoom, center.x, center.y)
         newMatrix.postTranslate(pan.x, pan.y)
@@ -92,7 +91,7 @@ class ImageCropStateImpl(
         val imgW = imageSize.width.toFloat()
         val imgH = imageSize.height.toFloat()
         
-        val newMatrix = Matrix()
+        val newMatrix = Matrix3x3()
         
         // 1. Initial scale to cover viewport
         val scale = max(viewport.width / imgW, viewport.height / imgH)
@@ -114,7 +113,7 @@ class ImageCropStateImpl(
         val imgW = imageSize.width.toFloat()
         val imgH = imageSize.height.toFloat()
         
-        val newMatrix = Matrix(matrix)
+        val newMatrix = Matrix3x3(matrix)
         
         // Transformed image corners
         val corners = floatArrayOf(

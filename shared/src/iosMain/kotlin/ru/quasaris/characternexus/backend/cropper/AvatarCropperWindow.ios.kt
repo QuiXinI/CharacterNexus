@@ -9,5 +9,9 @@ actual fun AvatarCropperWindow(
     onCrop: (ImageBitmap) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // No-op implementation for now
+    AvatarCropperContent(
+        imageBitmap = imageBitmap,
+        onCrop = onCrop,
+        onDismiss = onDismiss
+    )
 }

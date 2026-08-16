@@ -14,7 +14,8 @@ actual fun AvatarCropperWindow(
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
         )
     ) {
         AvatarCropperContent(

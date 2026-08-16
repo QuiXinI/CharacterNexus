@@ -11,11 +11,16 @@ import android.util.Log
 import okio.Path
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Matrix as AndroidMatrix
 import ru.quasaris.characternexus.platformFileSystem
 import java.io.FileOutputStream
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import java.io.ByteArrayOutputStream
+import ru.quasaris.characternexus.backend.cropper.ImageCropState
 
 actual object PlatformUtils {
     lateinit var androidContext: Context
@@ -84,6 +89,39 @@ actual object ImageProcessor {
         @Suppress("DEPRECATION")
         bitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.WEBP, 80, stream)
         return stream.toByteArray()
+    }
+
+    actual fun crop(bitmap: ImageBitmap, state: ImageCropState): ImageBitmap {
+        val androidBitmap = bitmap.asAndroidBitmap()
+        val targetSize = 1024
+        val output = Bitmap.createBitmap(targetSize, targetSize, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val viewport = state.viewportRect
+        
+        val androidMatrix = AndroidMatrix()
+        val v = FloatArray(9)
+        state.matrix.getValues(v)
+        androidMatrix.setValues(v)
+        
+        // Match legacy Matrix application order:
+        // 1. Shift by -viewport
+        // 2. Scale by finalScale
+        val finalScale = targetSize / viewport.width
+        
+        val cropMatrix = AndroidMatrix()
+        cropMatrix.postTranslate(-viewport.left, -viewport.top)
+        cropMatrix.postScale(finalScale, finalScale)
+        
+        // Final = CropMatrix * AndroidMatrix
+        cropMatrix.preConcat(androidMatrix)
+        
+        val paint = Paint().apply {
+            isFilterBitmap = true
+            isAntiAlias = true
+        }
+        canvas.drawBitmap(androidBitmap, cropMatrix, paint)
+        
+        return output.asImageBitmap()
     }
 }
 
