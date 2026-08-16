@@ -27,3 +27,11 @@
 -dontwarn okhttp3.internal.graal.**
 -dontwarn org.graalvm.nativeimage.**
 -dontwarn com.oracle.svm.core.annotate.**
+
+# Okio
+-keep class okio.** { *; }
+-dontwarn okio.**
+# Keep Kotlin internal names to prevent issues with extension functions
+-keepclassmembernames class okio.** {
+    *** *;
+}

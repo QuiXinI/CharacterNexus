@@ -21,7 +21,7 @@ actual fun getPlatform(): Platform = JVMPlatform()
 actual val platformFileSystem: FileSystem = FileSystem.SYSTEM
 
 actual fun getAppDataDir(): Path {
-    val isPortable = System.getProperty("portable") == "true"
+    val isPortable = System.getProperty("portable") == "true" || File("data").exists()
     val appDir = if (isPortable) {
         File("data")
     } else {
@@ -33,7 +33,7 @@ actual fun getAppDataDir(): Path {
 }
 
 actual fun getCacheDir(): Path {
-    val isPortable = System.getProperty("portable") == "true"
+    val isPortable = System.getProperty("portable") == "true" || File("data").exists()
     val cacheDir = if (isPortable) {
         File("data/cache")
     } else {

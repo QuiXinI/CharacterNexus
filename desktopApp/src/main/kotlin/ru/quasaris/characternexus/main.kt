@@ -15,7 +15,40 @@ import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
 import ru.quasaris.characternexus.model.DiceRollPosition
 
-fun main() = application {
+import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
+import java.text.SimpleDateFormat
+import java.util.Date
+
+fun main() {
+    try {
+        val workingDir = System.getProperty("user.dir")
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
+        
+        // Basic startup log
+        File("startup-log.txt").appendText("[$timestamp] App starting. Working dir: $workingDir\n")
+        
+        runApp()
+    } catch (e: Throwable) {
+        val sw = StringWriter()
+        val pw = PrintWriter(sw)
+        e.printStackTrace(pw)
+        val stackTrace = sw.toString()
+        
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
+        val logFile = File("crash-log.txt")
+        logFile.writeText("CRASH AT $timestamp\n\n$stackTrace")
+        
+        // Also print to console
+        e.printStackTrace()
+        
+        // Exit with error code to let launcher know something went wrong
+        System.exit(1)
+    }
+}
+
+fun runApp() = application {
     // Step 1: Initialize Platform Context
     platformContext = PlatformContext()
 

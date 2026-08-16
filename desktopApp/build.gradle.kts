@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
-// Определение профиля сборки через property: -PbuildProfile=debugCheck/debugFull/release/releasePortable
+// Определение профиля сборки через property: -PbuildProfile=debugCheck/debugCheckPortable/debugFull/release/releasePortable
 val buildProfile = project.findProperty("buildProfile")?.toString() ?: "debugCheck"
 val displayProfile = buildProfile.replace("Portable", "", ignoreCase = true)
 val appVariant = if (buildProfile.contains("release", ignoreCase = true)) "main-release" else "main"
@@ -30,7 +30,7 @@ tasks.withType<KotlinCompile>().configureEach {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         
         when (buildProfile) {
-            "debugCheck" -> {
+            "debugCheck", "debugCheckPortable" -> {
             }
             "debugFull" -> {
                 freeCompilerArgs.add("-Xbackend-threads=0")
@@ -69,7 +69,7 @@ compose.desktop {
             }
 
             // Настройка в зависимости от профиля
-            if (buildProfile == "debugCheck") {
+            if (buildProfile == "debugCheck" || buildProfile == "debugCheckPortable") {
                 // In debugCheck we can disable creation of heavy distributions if needed
             }
         }
@@ -77,6 +77,7 @@ compose.desktop {
         // Для JVM оптимизаций можно добавить jvmArgs
         val profileJvmArgs = when (buildProfile) {
             "debugCheck" -> listOf("-Xms256m", "-Xmx512m")
+            "debugCheckPortable" -> listOf("-Xms256m", "-Xmx512m", "-Dportable=true")
             "debugFull", "release" -> listOf(
                 "-Xms512m", "-Xmx2g",
                 "-XX:+UseParallelGC",
@@ -93,8 +94,8 @@ compose.desktop {
         
         jvmArgs += profileJvmArgs
         jvmArgs += listOf(
-            "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
-            "--add-exports", "jdk.unsupported/sun.misc=ALL-UNNAMED"
+            "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+            "--add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED"
         )
 
         buildTypes.release.proguard {
@@ -106,9 +107,10 @@ compose.desktop {
 /*
  * Пресеты для Desktop:
  * 1. debugCheck: ./gradlew :desktopApp:run -PbuildProfile=debugCheck (Быстрая отладка)
- * 2. debugFull: ./gradlew :desktopApp:run -PbuildProfile=debugFull (Производительность + Дебаг)
- * 3. release: ./gradlew :desktopApp:packageReleaseDistribution -PbuildProfile=release (Релиз)
- * 4. releasePortable: ./gradlew :desktopApp:packagePortableZip -PbuildProfile=releasePortable (Портативный ZIP)
+ * 2. debugCheckPortable: ./gradlew :desktopApp:run -PbuildProfile=debugCheckPortable (Быстрая отладка в портативном режиме)
+ * 3. debugFull: ./gradlew :desktopApp:run -PbuildProfile=debugFull (Производительность + Дебаг)
+ * 4. release: ./gradlew :desktopApp:packageReleaseDistribution -PbuildProfile=release (Релиз)
+ * 5. releasePortable: ./gradlew :desktopApp:packagePortableZip -PbuildProfile=releasePortable (Портативный ZIP)
  */
 
 tasks.register<Zip>("packagePortableZip") {
@@ -150,6 +152,12 @@ tasks.register<Copy>("copyPortableFolder") {
     includeEmptyDirs = false
 
     dependsOn(tasks.matching { it.name.contains("create") && it.name.contains("Distributable") })
+}
+
+tasks.register("packagePortableAll") {
+    group = "compose desktop"
+    description = "Packages both ZIP and Folder for portable application"
+    dependsOn("packagePortableZip", "copyPortableFolder")
 }
 
 tasks.register<Copy>("copyDistributions") {

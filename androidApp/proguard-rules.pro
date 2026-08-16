@@ -19,3 +19,10 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Okio
+-keep class okio.** { *; }
+-dontwarn okio.**
+-keepclassmembernames class okio.** {
+    *** *;
+}

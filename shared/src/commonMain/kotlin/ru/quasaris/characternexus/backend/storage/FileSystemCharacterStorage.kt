@@ -12,6 +12,7 @@ import ru.quasaris.characternexus.model.CharacterSummary
 import ru.quasaris.characternexus.platformFileSystem
 
 import ru.quasaris.characternexus.ioDispatcher
+import ru.quasaris.characternexus.util.PlatformUtils
 import ru.quasaris.characternexus.util.log
 
 class FileSystemCharacterStorage : CharacterStorage {
@@ -72,10 +73,11 @@ class FileSystemCharacterStorage : CharacterStorage {
         try {
             fileSystem.read(cacheFile) {
                 val content = readUtf8()
+                if (content.isBlank()) return@read emptyList<CharacterSummary>()
                 json.decodeFromString<List<CharacterSummary>>(content)
             }
         } catch (e: Exception) {
-            e.log()
+            PlatformUtils.logError("FileSystemCharacterStorage", "Failed to load summaries", e)
             emptyList()
         }
     }
