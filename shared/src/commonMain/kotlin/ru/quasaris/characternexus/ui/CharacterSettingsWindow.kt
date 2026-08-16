@@ -23,6 +23,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.HeaderCode.Fullscreen.HealthSettingsContent
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.*
 
 @OptIn(ExperimentalMaterial3Api::class)

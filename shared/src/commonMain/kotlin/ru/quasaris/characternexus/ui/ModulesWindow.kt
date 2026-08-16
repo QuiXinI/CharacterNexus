@@ -17,7 +17,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.backend.*
-import ru.quasaris.characternexus.InstalledModule
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.CommonFilePicker
 
 @OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)

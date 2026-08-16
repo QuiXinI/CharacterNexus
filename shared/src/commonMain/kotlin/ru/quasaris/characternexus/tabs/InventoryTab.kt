@@ -6,8 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import ru.quasaris.characternexus.DynamicNoteState
-import ru.quasaris.characternexus.Wallet
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.Currency
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.ui.CurrencyDisplayRow

@@ -32,7 +32,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.backend.parseFormulaParts
@@ -63,7 +63,7 @@ fun AttackConfigDialog(
     exhaustion: Int = 0,
     settingsViewModel: SettingsViewModel? = null,
     stats: Map<String, String> = emptyMap(),
-    spellSettings: ru.quasaris.characternexus.SpellSettings = ru.quasaris.characternexus.SpellSettings()
+    spellSettings: SpellSettings = SpellSettings()
 ) {
     var state by remember { mutableStateOf(attack) }
     var showDeleteConfirm by remember { mutableStateOf(false) }

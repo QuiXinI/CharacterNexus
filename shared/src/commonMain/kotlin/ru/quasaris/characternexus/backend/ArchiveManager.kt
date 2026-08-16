@@ -4,7 +4,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okio.Path.Companion.toPath
-import ru.quasaris.characternexus.Character
+import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.ioDispatcher
 import ru.quasaris.characternexus.util.log

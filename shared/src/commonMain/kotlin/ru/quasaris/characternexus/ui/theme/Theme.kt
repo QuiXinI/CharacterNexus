@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import ru.quasaris.characternexus.backend.AppThemeMode
+import ru.quasaris.characternexus.model.AppThemeMode
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,

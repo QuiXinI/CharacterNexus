@@ -21,7 +21,17 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.draw.alpha
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.model.CastingTimeType
+import ru.quasaris.characternexus.model.DurationUnit
+import ru.quasaris.characternexus.model.SpellCard
+import ru.quasaris.characternexus.model.SpellVersion
+import ru.quasaris.characternexus.model.SpellSchool
+import ru.quasaris.characternexus.model.CharacterClass
+import ru.quasaris.characternexus.model.MaterialComponentType
+import ru.quasaris.characternexus.model.MagicAttackType
+import ru.quasaris.characternexus.model.DamageType
+import ru.quasaris.characternexus.model.SpellLink
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -289,7 +299,7 @@ fun SpellCardEditorDialog(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         val cornerRadius = 16.dp
-                        val castingTypes = ru.quasaris.characternexus.CastingTimeType.entries
+                        val castingTypes = CastingTimeType.entries
                         
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -328,8 +338,8 @@ fun SpellCardEditorDialog(
                         
                         val isCastingTimeEnabled = true // Always enabled to allow typing
                         val isCastingTimeActive = state.castingTime.isNotBlank() || 
-                                                 state.castingTimeType == ru.quasaris.characternexus.CastingTimeType.REACTION || 
-                                                 state.castingTimeType == ru.quasaris.characternexus.CastingTimeType.OTHER
+                                                 state.castingTimeType == CastingTimeType.REACTION || 
+                                                 state.castingTimeType == CastingTimeType.OTHER
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
@@ -387,7 +397,7 @@ fun SpellCardEditorDialog(
                                 )
                                 Box(modifier = Modifier.matchParentSize().clickable { dimExpanded = true })
                                 DropdownMenu(expanded = dimExpanded, onDismissRequest = { dimExpanded = false }) {
-                                    ru.quasaris.characternexus.DurationUnit.entries.forEach { unit ->
+                                    DurationUnit.entries.forEach { unit ->
                                         DropdownMenuItem(
                                             text = { Text(unit.displayName) },
                                             onClick = {
@@ -756,7 +766,7 @@ fun SpellCardEditorDialog(
                                 }) { Icon(Icons.Default.Clear, null, tint = Color.Red) }
                             }
                         }
-                        Button(onClick = { state = state.copy(additionalLinks = state.additionalLinks + ru.quasaris.characternexus.SpellLink()) }, modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { state = state.copy(additionalLinks = state.additionalLinks + SpellLink()) }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Add, null)
                             Spacer(Modifier.width(8.dp))
                             Text("ДОБАВИТЬ ССЫЛКУ")

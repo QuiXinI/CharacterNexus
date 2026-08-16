@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.HeaderCode
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring

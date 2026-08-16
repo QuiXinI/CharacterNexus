@@ -27,7 +27,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import ru.quasaris.characternexus.Wallet
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.Currency
 import ru.quasaris.characternexus.backend.CurrencyUtils
 import kotlin.math.roundToInt

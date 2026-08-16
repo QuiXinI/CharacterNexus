@@ -4,6 +4,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.platformFileSystem
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.util.log
 

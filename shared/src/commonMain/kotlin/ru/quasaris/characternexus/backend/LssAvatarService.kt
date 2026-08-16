@@ -4,7 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsBytes
 import io.ktor.http.*
-import ru.quasaris.characternexus.Character
+import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.util.log
 
 object LssAvatarService {

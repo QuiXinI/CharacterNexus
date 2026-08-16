@@ -13,7 +13,7 @@ import ru.quasaris.characternexus.backend.CharacterRepository
 import ru.quasaris.characternexus.backend.SettingsManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
-import ru.quasaris.characternexus.DiceRollPosition
+import ru.quasaris.characternexus.model.DiceRollPosition
 
 fun main() = application {
     // Step 1: Initialize Platform Context

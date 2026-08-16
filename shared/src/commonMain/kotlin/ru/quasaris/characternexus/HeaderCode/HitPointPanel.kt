@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.HeaderCode
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,7 +30,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.quasaris.characternexus.HitDiceEntry
+import ru.quasaris.characternexus.model.HitDiceEntry
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import characternexus.shared.generated.resources.*

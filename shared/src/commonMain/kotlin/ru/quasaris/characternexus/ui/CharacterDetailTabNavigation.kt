@@ -29,7 +29,7 @@ import dev.chrisbanes.haze.LocalHazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 
 @Composable
 fun TabNavigationBar(

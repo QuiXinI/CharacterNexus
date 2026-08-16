@@ -26,7 +26,7 @@ import coil3.compose.AsyncImage
 import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.getNextLevelThreshold
 import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
-import ru.quasaris.characternexus.CharacterSummary
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.platformFileSystem
 
 @OptIn(ExperimentalFoundationApi::class)

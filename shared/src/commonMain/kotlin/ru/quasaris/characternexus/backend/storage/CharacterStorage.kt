@@ -1,7 +1,7 @@
 package ru.quasaris.characternexus.backend.storage
 
-import ru.quasaris.characternexus.Character
-import ru.quasaris.characternexus.CharacterSummary
+import ru.quasaris.characternexus.model.Character
+import ru.quasaris.characternexus.model.CharacterSummary
 
 interface CharacterStorage {
     suspend fun saveCharacter(character: Character)

@@ -1,6 +1,6 @@
 package ru.quasaris.characternexus.backend
 
-import ru.quasaris.characternexus.CasterType
+import ru.quasaris.characternexus.model.CasterType
 import kotlin.math.ceil
 
 object SpellSlotCalculator {

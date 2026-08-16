@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import ru.quasaris.characternexus.AppThemeMode
+import ru.quasaris.characternexus.model.AppThemeMode
 import ru.quasaris.characternexus.ApplySystemBarEffects
 
 private val LightColors = lightColorScheme(

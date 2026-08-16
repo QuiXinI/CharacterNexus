@@ -7,7 +7,7 @@ import okio.Path
 import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.ioDispatcher
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.util.*
 
 class SpellbookManager {

@@ -8,8 +8,8 @@ import kotlinx.serialization.json.Json
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.buffer
-import ru.quasaris.characternexus.Character
-import ru.quasaris.characternexus.CharacterSummary
+import ru.quasaris.characternexus.model.Character
+import ru.quasaris.characternexus.model.CharacterSummary
 import ru.quasaris.characternexus.util.log
 
 class AndroidCharacterStorage(private val context: Context) : CharacterStorage {

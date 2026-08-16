@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.MainWindow
 
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.backend.evaluateFormula
 import ru.quasaris.characternexus.tabs.attacks.calculateTotalBonus

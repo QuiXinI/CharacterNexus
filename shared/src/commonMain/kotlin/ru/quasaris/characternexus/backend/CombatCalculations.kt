@@ -1,9 +1,6 @@
 package ru.quasaris.characternexus.backend
 
-import ru.quasaris.characternexus.model.ArmorClassEntry
-import ru.quasaris.characternexus.model.InitiativeEntry
-import ru.quasaris.characternexus.model.SpeedEntry
-import ru.quasaris.characternexus.model.ShieldEntry
+import ru.quasaris.characternexus.model.*
 
 object CombatCalculations {
     fun calculateAC(

@@ -1,7 +1,6 @@
 package ru.quasaris.characternexus.backend
 
-import ru.quasaris.characternexus.model.IBonus
-import ru.quasaris.characternexus.model.BonusOperation
+import ru.quasaris.characternexus.model.*
 
 fun formatFullDamage(
     baseFormula: String,

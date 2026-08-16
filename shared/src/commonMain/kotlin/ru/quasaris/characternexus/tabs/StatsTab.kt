@@ -31,12 +31,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import kotlin.math.floor
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.MainWindow.AttributesSection
-import ru.quasaris.characternexus.AdvantageLogic
 import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.backend.calculateModifier
-import ru.quasaris.characternexus.RollResult
 import dev.chrisbanes.haze.HazeState
 import androidx.compose.ui.graphics.Color
 

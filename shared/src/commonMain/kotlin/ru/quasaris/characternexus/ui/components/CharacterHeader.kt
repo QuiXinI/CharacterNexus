@@ -47,12 +47,7 @@ import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
-import ru.quasaris.characternexus.backend.Condition
-import ru.quasaris.characternexus.model.ArmorClassEntry
-import ru.quasaris.characternexus.model.InitiativeEntry
-import ru.quasaris.characternexus.model.SpeedEntry
-import ru.quasaris.characternexus.model.ShieldEntry
-import ru.quasaris.characternexus.model.HitDiceEntry
+import ru.quasaris.characternexus.model.*
 
 @Composable
 fun CharacterHeader(

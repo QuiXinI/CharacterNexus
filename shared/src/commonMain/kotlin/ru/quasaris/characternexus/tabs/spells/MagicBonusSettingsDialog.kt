@@ -24,9 +24,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
-import ru.quasaris.characternexus.AdvantagePreference
-import ru.quasaris.characternexus.AttackBonus
-import ru.quasaris.characternexus.Attribute
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusField
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characternexus.tabs.attacks.AddBonusButton

@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState

@@ -3,9 +3,10 @@ package ru.quasaris.characternexus.backend
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import ru.quasaris.characternexus.backend.storage.CharacterStorage
-import ru.quasaris.characternexus.Character
-import ru.quasaris.characternexus.CharacterSummary
+import ru.quasaris.characternexus.model.Character
+import ru.quasaris.characternexus.model.CharacterSummary
 import ru.quasaris.characternexus.ioDispatcher
+import ru.quasaris.characternexus.runBlockingPlatform
 import ru.quasaris.characternexus.runBlockingPlatform
 
 class CharacterRepository(

@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.painterResource
 import characternexus.shared.generated.resources.*
 import androidx.compose.ui.window.Popup
-import ru.quasaris.characternexus.HitDiceEntry
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.AppScaleProvider
 import ru.quasaris.characternexus.backend.LocalAppScale
 import ru.quasaris.characternexus.backend.evaluateFormula

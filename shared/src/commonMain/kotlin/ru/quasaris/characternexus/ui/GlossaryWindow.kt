@@ -32,16 +32,9 @@ import okio.buffer
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.tabs.glossary.*
 import kotlinx.serialization.json.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.platformFileSystem
-import ru.quasaris.characternexus.AppThemeMode
-import ru.quasaris.characternexus.Character
-import ru.quasaris.characternexus.CharacterSummary
-import ru.quasaris.characternexus.DiceRollPosition
-import ru.quasaris.characternexus.AdvantageLogic
-import ru.quasaris.characternexus.SlotAlignment
-import ru.quasaris.characternexus.SlotFillDirection
-import ru.quasaris.characternexus.ExportFormat
 import ru.quasaris.characternexus.backend.JsonConfig
 import ru.quasaris.characternexus.ui.GlossaryCategory
 

@@ -1,6 +1,7 @@
 package ru.quasaris.characternexus.backend
 
 import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.parseFormulaOrdered
 import ru.quasaris.characternexus.backend.FormulaPart
 import ru.quasaris.characternexus.backend.calculateModifier

@@ -3,6 +3,7 @@ package ru.quasaris.characternexus
 import okio.FileSystem
 import okio.Path
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 
@@ -19,6 +20,8 @@ expect fun getCacheDir(): Path
 expect val ioDispatcher: CoroutineDispatcher
 
 expect val performanceClass: Int
+
+expect fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T
 
 expect fun createDataStore(): DataStore<Preferences>
 

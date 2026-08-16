@@ -34,6 +34,8 @@ import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.cropper.AvatarCropperWindow
 import dev.chrisbanes.haze.HazeState
 import androidx.compose.ui.graphics.ImageBitmap
+import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.util.*
 import ru.quasaris.characternexus.ui.CommonFilePicker

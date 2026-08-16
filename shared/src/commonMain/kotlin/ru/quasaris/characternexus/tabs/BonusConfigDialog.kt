@@ -29,9 +29,8 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.calculateModifier
-import ru.quasaris.characternexus.backend.getProficiencyBonus
-import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.tabs.attacks.AddBonusButton
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characternexus.backend.DicePart

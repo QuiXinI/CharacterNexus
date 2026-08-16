@@ -1,18 +1,18 @@
 package ru.quasaris.characternexus.ui
 
 import androidx.compose.runtime.*
-import ru.quasaris.characternexus.backend.SettingsViewModel
-import ru.quasaris.characternexus.backend.CharacterRepository
-import ru.quasaris.characternexus.backend.evaluateFormula
-import ru.quasaris.characternexus.backend.parseFormulaParts
-import ru.quasaris.characternexus.backend.getNextLevelThreshold
-import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
+import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.tabs.*
 import ru.quasaris.characternexus.tabs.attacks.*
 import ru.quasaris.characternexus.HeaderCode.*
 import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.model.Character
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
 import ru.quasaris.characternexus.util.generateUuid
+import characternexus.shared.generated.resources.Res
+import characternexus.shared.generated.resources.*
 
 @Composable
 fun rememberCharacterDetailState(
@@ -190,6 +190,183 @@ class CharacterDetailState(
     var isInitiativeSubDialogOpen by mutableStateOf(false)
     var isSpeedSubDialogOpen by mutableStateOf(false)
 
+    // Settings (moved from Composable to State for simplification)
+    @Composable
+    fun CollectSettings() {
+        if (settingsViewModel == null) return
+
+        val useNewACVal by settingsViewModel.useNewACInterface.collectAsState()
+        val useNewInitVal by settingsViewModel.useNewInitInterface.collectAsState()
+        val useNewCondVal by settingsViewModel.useNewCondInterface.collectAsState()
+        val useNewSpeedVal by settingsViewModel.useNewSpeedInterface.collectAsState()
+
+        val diceFabOffsetXVal by settingsViewModel.diceFabOffsetX.collectAsState()
+        val diceFabOffsetYVal by settingsViewModel.diceFabOffsetY.collectAsState()
+        val diceFabAlphaSettingVal by settingsViewModel.diceFabAlpha.collectAsState()
+        val diceFabBlurEnabledVal by settingsViewModel.diceFabBlurEnabled.collectAsState()
+        val masterBlurEnabledVal by settingsViewModel.masterBlurEnabled.collectAsState()
+        val diceFabEnabledVal by settingsViewModel.diceFabEnabled.collectAsState()
+        val advantageLogicVal by settingsViewModel.advantageLogic.collectAsState()
+
+        SideEffect {
+            useNewAC = useNewACVal
+            useNewInit = useNewInitVal
+            useNewCond = useNewCondVal
+            useNewSpeed = useNewSpeedVal
+            diceFabOffsetX = diceFabOffsetXVal
+            diceFabOffsetY = diceFabOffsetYVal
+            diceFabAlphaSetting = diceFabAlphaSettingVal
+            diceFabBlurEnabled = diceFabBlurEnabledVal
+            masterBlurEnabled = masterBlurEnabledVal
+            diceFabEnabled = diceFabEnabledVal
+            advantageLogic = advantageLogicVal
+        }
+    }
+
+    var useNewAC by mutableStateOf(true)
+    var useNewInit by mutableStateOf(true)
+    var useNewCond by mutableStateOf(true)
+    var useNewSpeed by mutableStateOf(true)
+
+    var diceFabOffsetX by mutableStateOf(-40f)
+    var diceFabOffsetY by mutableStateOf(-40f)
+    var diceFabAlphaSetting by mutableStateOf(1.0f)
+    var diceFabBlurEnabled by mutableStateOf(true)
+    var masterBlurEnabled by mutableStateOf(true)
+    var diceFabEnabled by mutableStateOf(true)
+    var advantageLogic by mutableStateOf(AdvantageLogic.TOTAL)
+
+    val effectiveDiceFabBlur by derivedStateOf { masterBlurEnabled && diceFabBlurEnabled }
+    val effectiveDiceFabAlpha by derivedStateOf { diceFabAlphaSetting }
+
+    // Derived State
+    val baseStatsMapForHP by derivedStateOf {
+        val totalMaxHD = hitDiceMap.values.sum()
+        val totalCurrentHD = totalMaxHD - hitDiceEntries.sumOf { it.spent }
+        statsState.toStatsMap(level, proficiencyBonus) + mapOf(
+            "manualMaxHitDice" to manualMaxHitDice.toString(),
+            "totalMaxHD" to totalMaxHD.toString(),
+            "totalCurrentHD" to totalCurrentHD.toString()
+        )
+    }
+
+    val calculatedMaxHp by derivedStateOf {
+        val conMod = evaluateFormula("[CON]", baseStatsMapForHP)
+        val levelInt = level.toIntOrNull() ?: 1
+        val totalFixedBonus = hpBonusesTotal.filter { it.isActive }.sumOf { evaluateFormula(it.formula, baseStatsMapForHP) }
+
+        if (isManualHP) {
+            manualMaxHp + totalFixedBonus
+        } else {
+            val totalPerLevelBonus = hpBonusesAtLevel.filter { it.isActive }.sumOf { evaluateFormula(it.formula, baseStatsMapForHP) }
+            val dataToUse = hpLevelData.take(levelInt)
+            val totalRolls = dataToUse.sumOf { it.rollResult ?: 0 }
+            totalRolls + (conMod * levelInt) + (totalPerLevelBonus * levelInt) + totalFixedBonus
+        }
+    }
+
+    val statsMap by derivedStateOf {
+        val pbVal = (proficiencyBonus.replace("+", "").toIntOrNull() ?: getProficiencyBonus(level))
+
+        val baseStats = statsState.toStatsMap(level, pbVal.toString()) + ("manualMaxHitDice" to manualMaxHitDice.toString())
+        val mutableStats = baseStats.toMutableMap()
+
+        Attribute.entries.forEach { attr ->
+            if (attr == Attribute.NONE) return@forEach
+            val key = attr.name.lowercase()
+            val baseScore = baseStats[key] ?: "10"
+            val effScore = ru.quasaris.characternexus.tabs.attacks.calculateTotalBonus(
+                bonuses = statsState.statBonuses.filter { bonus -> bonus.attribute == attr && bonus.type == StatBonusType.CHARACTERISTIC_VALUE },
+                stats = baseStats,
+                initialValue = baseScore.toIntOrNull() ?: 10
+            ).toString()
+
+            mutableStats[key] = effScore
+            mutableStats["base_$key"] = baseScore
+        }
+
+        mutableStats.apply {
+            put("[MAG ATC BON]", spellSettings.spellAttackBonus.ifBlank { "0" })
+            put("[МАГ АТК БОН]", spellSettings.spellAttackBonus.ifBlank { "0" })
+            put("[MAG SAVE BON]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
+            put("[МАГ СПАС БОН]", spellSettings.spellSaveDcBonus.ifBlank { "0" })
+
+            if (spellSettings.spellcastingAbility != Attribute.NONE) {
+                val score = get(spellSettings.spellcastingAbility.name.lowercase()) ?: "10"
+                val mod = calculateModifier(score)
+                put("[mdmg]", mod.toString())
+            } else {
+                put("[mdmg]", "0")
+            }
+
+            put("hp", currentHp)
+            put("max_hp", maxHp)
+            put("temp_hp", tempHp)
+            put("xp", experience)
+            put("exhaustion", exhaustion.toString())
+            put("conditions", selectedConditions.size.toString())
+
+            if (spellSettings.spellcastingAbility != Attribute.NONE) {
+                val score = get(spellSettings.spellcastingAbility.name.lowercase()) ?: "10"
+                val mod = calculateModifier(score)
+                put("[MAG MOD]", mod.toString())
+                put("[МАГ МОД]", mod.toString())
+            } else {
+                put("[MAG MOD]", "0")
+                put("[МАГ МОД]", "0")
+            }
+
+            val ac = ru.quasaris.characternexus.backend.CombatCalculations.calculateAC(
+                activeArmorClassId, armorClassEntries, this, isShieldActive, activeShieldId, shieldEntries
+            )
+            put("ac", ac)
+        }
+    }
+
+    val attributeModifiers by derivedStateOf {
+        Attribute.entries.filter { it != Attribute.NONE }.associateWith { attr ->
+            calculateModifier(statsMap[attr.name.lowercase()] ?: "10")
+        }
+    }
+
+    val acValue by derivedStateOf {
+        ru.quasaris.characternexus.backend.CombatCalculations.calculateAC(activeArmorClassId, armorClassEntries, statsMap, isShieldActive, activeShieldId, shieldEntries)
+    }
+
+    val initValue by derivedStateOf {
+        ru.quasaris.characternexus.backend.CombatCalculations.calculateInitiative(activeInitiativeId, initiativeEntries, statsMap, exhaustion)
+    }
+
+    val speedValue by derivedStateOf {
+        ru.quasaris.characternexus.backend.CombatCalculations.calculateSpeed(activeSpeedId, speedEntries, statsMap, exhaustion)
+    }
+
+    val healthStatus by derivedStateOf {
+        val c = currentHp.toIntOrNull() ?: 0
+        val m = maxHp.toIntOrNull() ?: 0
+        when {
+            c <= 0 -> "dead"
+            m > 0 && (c <= m / 2) -> "bloodied"
+            else -> "healthy"
+        }
+    }
+
+    val healthColor by derivedStateOf {
+        when(healthStatus) {
+            "dead" -> Color(0xFF454545)
+            "bloodied" -> Color(0xFFE57373)
+            else -> Color(0xFF00C46F)
+        }
+    }
+
+    val healthIcon by derivedStateOf {
+        when(healthStatus) {
+            "dead" -> Res.drawable.ic_health_death
+            "bloodied" -> Res.drawable.ic_health_bloodied
+            else -> Res.drawable.ic_health
+        }
+    }
+
     // HP Dialog
     var hpDialogType by mutableStateOf("")
     var hpDialogValue by mutableStateOf("")
@@ -198,6 +375,51 @@ class CharacterDetailState(
     // Modes
     var isEditMode by mutableStateOf(false)
     var isAdvancedMode by mutableStateOf(false)
+
+    fun syncHPAndHitDice() {
+        // Sync Max HP
+        val calcMax = calculatedMaxHp.toString()
+        if (maxHp != calcMax) {
+            maxHp = calcMax
+        }
+
+        val targetLevel = level.toIntOrNull() ?: 1
+        
+        // Sync hit dice counters for short rest
+        val dataToSync = if (isManualHP) manualHPLevelData else hpLevelData.take(targetLevel)
+        val groups = dataToSync.groupBy { it.hitDie }
+        
+        // Update hitDiceMap
+        val newHitDiceMap = groups.mapValues { it.value.size }
+        if (newHitDiceMap != hitDiceMap) {
+            hitDiceMap = newHitDiceMap
+        }
+
+        val newHitDiceEntries = groups.map { (die, list) ->
+            val existing = hitDiceEntries.find { it.formula.endsWith("d$die") }
+            HitDiceEntry(
+                id = existing?.id ?: generateUuid(),
+                name = existing?.name ?: "Кости Хитов d$die",
+                formula = "${list.size}d$die",
+                spent = existing?.spent?.coerceAtMost(list.size) ?: 0
+            )
+        }.sortedByDescending { 
+            it.formula.split('d').lastOrNull()?.toIntOrNull() ?: 0 
+        }
+
+        if (newHitDiceEntries != hitDiceEntries) {
+            hitDiceEntries = newHitDiceEntries
+        }
+
+        if (hpLevelData.size < targetLevel) {
+            val newList = hpLevelData.toMutableList()
+            for (i in newList.size + 1..targetLevel) {
+                val die = if (isMulticlassHP) defaultHitDie else (newList.lastOrNull()?.hitDie ?: defaultHitDie)
+                newList.add(HPLevelEntry(level = i, hitDie = die))
+            }
+            hpLevelData = newList
+        }
+    }
 
     fun toCharacter(character: Character): Character {
         return character.copy(

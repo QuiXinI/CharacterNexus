@@ -27,18 +27,13 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import ru.quasaris.characternexus.AppThemeMode
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FolderOpen
-import ru.quasaris.characternexus.ExportFormat
-import ru.quasaris.characternexus.DiceRollPosition
-import ru.quasaris.characternexus.AdvantageLogic
-import ru.quasaris.characternexus.SlotAlignment
-import ru.quasaris.characternexus.SlotFillDirection
 import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
 

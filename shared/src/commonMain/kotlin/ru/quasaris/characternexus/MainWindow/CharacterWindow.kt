@@ -1,5 +1,7 @@
 package ru.quasaris.characternexus.MainWindow
 
+import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.model.Character
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -122,16 +124,16 @@ fun CreateWindow(
     var isRestPanelVisible by remember { mutableStateOf(false) }
     var showHealthSettings by remember { mutableStateOf(false) }
     var defaultHitDie by remember { mutableIntStateOf(character?.defaultHitDie ?: 8) }
-    var hitDiceEntries by remember { mutableStateOf(character?.hitDiceEntries ?: emptyList<ru.quasaris.characternexus.HitDiceEntry>()) }
+    var hitDiceEntries by remember { mutableStateOf(character?.hitDiceEntries ?: emptyList<HitDiceEntry>()) }
     var hitDiceMap by remember { mutableStateOf(character?.hitDiceMap ?: emptyMap<Int, Int>()) }
-    var hpLevelData by remember { mutableStateOf(character?.hpLevelData ?: emptyList<ru.quasaris.characternexus.HPLevelEntry>()) }
-    var manualHPLevelData by remember { mutableStateOf(character?.manualHPLevelData ?: emptyList<ru.quasaris.characternexus.HPLevelEntry>()) }
+    var hpLevelData by remember { mutableStateOf(character?.hpLevelData ?: emptyList<HPLevelEntry>()) }
+    var manualHPLevelData by remember { mutableStateOf(character?.manualHPLevelData ?: emptyList<HPLevelEntry>()) }
     var isMulticlassHP by remember { mutableStateOf(character?.isMulticlassHP ?: false) }
     var isManualHP by remember { mutableStateOf(character?.isManualHP ?: false) }
     var manualMaxHp by remember { mutableIntStateOf(character?.manualMaxHp ?: 0) }
     var manualMaxHitDice by remember { mutableIntStateOf(character?.manualMaxHitDice ?: 0) }
-    var hpBonusesAtLevel by remember { mutableStateOf(character?.hpBonusesAtLevel ?: emptyList<ru.quasaris.characternexus.AttackBonus>()) }
-    var hpBonusesTotal by remember { mutableStateOf(character?.hpBonusesTotal ?: emptyList<ru.quasaris.characternexus.AttackBonus>()) }
+    var hpBonusesAtLevel by remember { mutableStateOf(character?.hpBonusesAtLevel ?: emptyList<AttackBonus>()) }
+    var hpBonusesTotal by remember { mutableStateOf(character?.hpBonusesTotal ?: emptyList<AttackBonus>()) }
 
     var isShieldActive by remember { mutableStateOf(character?.isShieldActive ?: false) }
     var shieldEntries by remember { mutableStateOf(character?.shieldEntries ?: listOf(

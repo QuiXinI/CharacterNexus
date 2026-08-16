@@ -1,6 +1,6 @@
 package ru.quasaris.characternexus.ui
 
-import ru.quasaris.characternexus.RollPart
+import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,8 +51,6 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.LocalHazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import ru.quasaris.characternexus.backend.*
-import ru.quasaris.characternexus.*
-import ru.quasaris.characternexus.AppThemeMode
 import ru.quasaris.characternexus.util.log
 import kotlin.math.cos
 import kotlin.math.sin
@@ -171,14 +170,10 @@ fun DiceRollingFab(
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
+            .run { if (expanded) fillMaxSize() else wrapContentSize() }
+            .pointerInput(expanded) {
                 if (expanded) {
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { },
-                        onDragEnd = { expanded = false },
-                        onDrag = { _, _ -> }
-                    )
+                    detectTapGestures(onTap = { expanded = false })
                 }
             },
         contentAlignment = Alignment.BottomEnd

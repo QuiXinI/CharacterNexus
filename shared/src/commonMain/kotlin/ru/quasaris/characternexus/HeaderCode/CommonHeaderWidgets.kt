@@ -31,7 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.quasaris.characternexus.Attribute
+import ru.quasaris.characternexus.model.*
 
 val SquirclePath = GenericShape { size, _ ->
     val r = size.width * 0.25f

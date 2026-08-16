@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import kotlin.math.abs
 
 @OptIn(ExperimentalLayoutApi::class)

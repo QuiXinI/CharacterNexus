@@ -1,5 +1,7 @@
 package ru.quasaris.characternexus.MainWindow
 
+import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.backend.ArchiveManager
 import kotlinx.coroutines.CoroutineScope

@@ -45,7 +45,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import ru.quasaris.characternexus.Attribute
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.backend.evaluateFormula
 import ru.quasaris.characternexus.backend.getProficiencyBonus

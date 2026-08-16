@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.HeaderCode.Fullscreen
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable

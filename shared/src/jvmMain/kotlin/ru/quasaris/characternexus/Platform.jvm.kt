@@ -5,6 +5,7 @@ import okio.Path
 import okio.Path.Companion.toPath
 import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -44,6 +45,10 @@ actual fun getCacheDir(): Path {
 }
 
 actual val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
+actual fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T {
+    return kotlinx.coroutines.runBlocking(block = block)
+}
 
 actual val performanceClass: Int = 99
 

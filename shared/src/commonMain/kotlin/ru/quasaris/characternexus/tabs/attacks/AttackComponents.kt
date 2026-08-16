@@ -29,12 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.outerShadow
-import ru.quasaris.characternexus.Attribute
-import ru.quasaris.characternexus.AttackBonus
-import ru.quasaris.characternexus.DamageBonus
-import ru.quasaris.characternexus.BonusOperation
-import ru.quasaris.characternexus.AdvantagePreference
 
 @Composable
 fun AttackBonusIndicator(

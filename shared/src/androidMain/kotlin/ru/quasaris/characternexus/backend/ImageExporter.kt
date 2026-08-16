@@ -11,7 +11,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
 import ru.quasaris.characternexus.util.log
-import ru.quasaris.characternexus.ExportFormat
+import ru.quasaris.characternexus.model.ExportFormat
 
 object ImageExporter {
 

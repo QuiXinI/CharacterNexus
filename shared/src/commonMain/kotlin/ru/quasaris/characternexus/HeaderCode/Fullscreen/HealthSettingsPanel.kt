@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.HeaderCode.Fullscreen
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

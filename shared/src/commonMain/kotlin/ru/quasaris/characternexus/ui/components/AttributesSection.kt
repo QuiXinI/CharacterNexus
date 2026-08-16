@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.platform.LocalDensity
-import ru.quasaris.characternexus.model.Attribute
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.backend.calculateTotalBonus
 import ru.quasaris.characternexus.ui.util.outerShadow

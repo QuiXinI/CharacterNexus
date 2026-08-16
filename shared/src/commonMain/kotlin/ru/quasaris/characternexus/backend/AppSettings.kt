@@ -1,13 +1,3 @@
 package ru.quasaris.characternexus.backend
 
-enum class AppThemeMode {
-    M3, OFF, CHARACTER
-}
-
-enum class ExportFormat {
-    WEBP, PNG, JPG
-}
-
-enum class AdvantageLogic {
-    TOTAL, INDIVIDUAL
-}
+// Enums moved to model/Models.kt and model/RollModels.kt to avoid duplication

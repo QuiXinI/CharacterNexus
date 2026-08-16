@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.HeaderCode
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.*
 import characternexus.shared.generated.resources.Res
 import androidx.compose.foundation.Image

@@ -29,12 +29,10 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
-import ru.quasaris.characternexus.SpellVersion
-import ru.quasaris.characternexus.AdvantageType
 import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.backend.scaleCantripFormula
 import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup

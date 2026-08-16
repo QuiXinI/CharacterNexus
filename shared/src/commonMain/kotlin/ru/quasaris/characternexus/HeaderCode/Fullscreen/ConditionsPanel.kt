@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.HeaderCode.Fullscreen
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,9 +31,7 @@ import ru.quasaris.characternexus.ui.DialogDimStyle
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
-import ru.quasaris.characternexus.Condition
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 
 @OptIn(ExperimentalMaterial3Api::class)

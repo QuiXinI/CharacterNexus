@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.HeaderCode
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntSize
@@ -33,7 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.quasaris.characternexus.Condition
+import ru.quasaris.characternexus.model.Condition
 
 @Composable
 fun ConditionsPanel(

@@ -7,6 +7,7 @@ import ru.quasaris.characternexus.HeaderCode.HealthDialog
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.tabs.spells.SpellSettingsDialog
 import ru.quasaris.characternexus.ui.RestPanel
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.*
 
 @Composable
@@ -16,7 +17,7 @@ fun CharacterDetailDialogs(
     hazeState: HazeState?,
     forceBlurEnabled: Boolean,
     blurPopups: Boolean,
-    allConditions: List<ru.quasaris.characternexus.Condition>
+    allConditions: List<Condition>
 ) {
     val effectiveBlurFullscreen = forceBlurEnabled
 

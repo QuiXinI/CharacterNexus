@@ -1,7 +1,7 @@
 package ru.quasaris.characternexus.backend
 
 import androidx.compose.ui.graphics.Color
-import ru.quasaris.characternexus.Wallet
+import ru.quasaris.characternexus.model.Wallet
 import kotlin.math.roundToInt
 
 enum class Currency(

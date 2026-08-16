@@ -1,18 +1,6 @@
 package ru.quasaris.characternexus.backend
 
-import ru.quasaris.characternexus.model.ArmorClassEntry
-import ru.quasaris.characternexus.model.Character
-import ru.quasaris.characternexus.model.InitiativeEntry
-import ru.quasaris.characternexus.model.SpeedEntry
-import ru.quasaris.characternexus.model.ShieldEntry
-import ru.quasaris.characternexus.model.Wallet
-import ru.quasaris.characternexus.model.HitDiceEntry
-import ru.quasaris.characternexus.model.HPLevelEntry
-import ru.quasaris.characternexus.model.AttackBonus
-import ru.quasaris.characternexus.model.AttackEntry
-import ru.quasaris.characternexus.model.DynamicNoteState
-import ru.quasaris.characternexus.model.SpellSettings
-import ru.quasaris.characternexus.model.BioShortField
+import ru.quasaris.characternexus.model.*
 
 object CharacterDataHandler {
 

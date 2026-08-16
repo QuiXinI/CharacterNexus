@@ -1,7 +1,6 @@
 package ru.quasaris.characternexus.tabs.attacks
 
-import ru.quasaris.characternexus.IBonus
-import ru.quasaris.characternexus.BonusOperation
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.FormulaPart
 import ru.quasaris.characternexus.backend.parseFormulaOrdered
 import ru.quasaris.characternexus.backend.DicePart

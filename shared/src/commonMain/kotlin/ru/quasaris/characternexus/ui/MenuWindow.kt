@@ -30,8 +30,7 @@ import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.backend.ArchiveManager
 import ru.quasaris.characternexus.backend.LssAvatarService
 import ru.quasaris.characternexus.backend.SettingsViewModel
-import ru.quasaris.characternexus.Character
-import ru.quasaris.characternexus.CharacterSummary
+import ru.quasaris.characternexus.model.*
 
 @Composable
 fun MenuWindow(

@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.MainWindow
 
+import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background

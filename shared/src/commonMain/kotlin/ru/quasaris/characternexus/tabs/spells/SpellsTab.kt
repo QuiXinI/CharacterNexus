@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import dev.chrisbanes.haze.HazeState
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.tabs.DynamicFieldsTab
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator

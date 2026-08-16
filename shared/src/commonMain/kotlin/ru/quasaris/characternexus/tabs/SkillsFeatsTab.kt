@@ -1,7 +1,7 @@
 package ru.quasaris.characternexus.tabs
 
 import androidx.compose.runtime.Composable
-import ru.quasaris.characternexus.DynamicNoteState
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
 

@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SpellSlotCalculator
 import ru.quasaris.characternexus.tabs.attacks.DiceIcon
 import ru.quasaris.characternexus.backend.DicePart

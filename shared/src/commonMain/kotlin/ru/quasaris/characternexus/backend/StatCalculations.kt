@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.backend
 
+import ru.quasaris.characternexus.model.*
 import kotlin.math.*
 
 /**
@@ -431,10 +432,10 @@ private class FormulaParser(private val input: String) {
     }
 }
 
-fun parseConditions(content: String): List<ru.quasaris.characternexus.Condition> {
+fun parseConditions(content: String): List<Condition> {
     return content.split("##").filter { it.isNotBlank() }.map { s ->
         val lines = s.trim().lines()
-        ru.quasaris.characternexus.Condition(lines.firstOrNull()?.trim() ?: "", lines.drop(1).joinToString("\n").trim())
+        Condition(lines.firstOrNull()?.trim() ?: "", lines.drop(1).joinToString("\n").trim())
     }
 }
 

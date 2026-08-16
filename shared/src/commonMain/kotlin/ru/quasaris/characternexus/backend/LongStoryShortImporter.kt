@@ -1,6 +1,7 @@
 package ru.quasaris.characternexus.backend
 
 import kotlinx.serialization.json.*
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.util.log
 

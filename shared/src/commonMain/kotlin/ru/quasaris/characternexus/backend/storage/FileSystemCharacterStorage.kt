@@ -6,8 +6,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okio.Path
 import ru.quasaris.characternexus.getAppDataDir
-import ru.quasaris.characternexus.Character
-import ru.quasaris.characternexus.CharacterSummary
+import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.model.Character
+import ru.quasaris.characternexus.model.CharacterSummary
 import ru.quasaris.characternexus.platformFileSystem
 
 import ru.quasaris.characternexus.ioDispatcher
