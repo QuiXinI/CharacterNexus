@@ -14,7 +14,6 @@ import ru.quasaris.characternexus.*
 fun CharacterDetailDialogs(
     state: CharacterDetailState,
     statsMap: Map<String, String>,
-    hazeState: HazeState?,
     forceBlurEnabled: Boolean,
     blurPopups: Boolean,
     allConditions: List<Condition>
@@ -28,7 +27,6 @@ fun CharacterDetailDialogs(
             onSettingsChange = { state.spellSettings = it },
             onDismiss = { state.showSpellSettings = false },
             onSubDialogOpenChange = { state.isMagicBonusSettingsOpen = it },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
             statsMap = statsMap
         )
@@ -44,7 +42,6 @@ fun CharacterDetailDialogs(
             onAllEntriesChange = { state.armorClassEntries = it.filterIsInstance<ArmorClassEntry>() },
             onActiveIdChange = { state.activeArmorClassId = it },
             statsMap = statsMap,
-            hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
             onDismiss = { state.showEnhancedAC = false },
             onSubDialogOpenChange = { state.isArmorClassSubDialogOpen = it },
@@ -73,7 +70,6 @@ fun CharacterDetailDialogs(
             onAllEntriesChange = { state.initiativeEntries = it.filterIsInstance<InitiativeEntry>() },
             onActiveIdChange = { state.activeInitiativeId = it },
             statsMap = statsMap,
-            hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
             onDismiss = { state.showEnhancedInit = false },
             onSubDialogOpenChange = { state.isInitiativeSubDialogOpen = it }
@@ -88,7 +84,6 @@ fun CharacterDetailDialogs(
             onAllEntriesChange = { state.speedEntries = it.filterIsInstance<SpeedEntry>() },
             onActiveIdChange = { state.activeSpeedId = it },
             statsMap = statsMap,
-            hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
             onDismiss = { state.showEnhancedSpeed = false },
             onSubDialogOpenChange = { state.isSpeedSubDialogOpen = it }
@@ -117,7 +112,6 @@ fun CharacterDetailDialogs(
             onHpBonusesTotalChange = { state.hpBonusesTotal = it },
             statsMap = statsMap,
             level = state.level.toIntOrNull() ?: 1,
-            hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
             onDismiss = { state.showHealthSettings = false }
         )
@@ -132,7 +126,6 @@ fun CharacterDetailDialogs(
             },
             exhaustion = state.exhaustion,
             onExhaustionChange = { state.exhaustion = it },
-            hazeState = hazeState,
             forceBlurEnabled = effectiveBlurFullscreen,
             onDismiss = { state.showEnhancedCond = false }
         )

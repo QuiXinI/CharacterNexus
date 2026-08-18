@@ -49,6 +49,8 @@ data class AppSettings(
     var useNewInitInterface: Boolean = true,
     var useNewCondInterface: Boolean = true,
     var useNewSpeedInterface: Boolean = true,
+    var blurRadius: Int = 12,
+    var customBlurRadius: Int = 12,
     var useOldAvatarStyle: Boolean = false,
     var diceFabOffsetX: Float = -40f,
     var diceFabOffsetY: Float = -40f,
@@ -125,6 +127,8 @@ class SettingsManager {
     var diceFabAlpha: Float get() = settings.diceFabAlpha; set(value) { settings.diceFabAlpha = value; save() }
     var diceFabBlurEnabled: Boolean get() = settings.diceFabBlurEnabled; set(value) { settings.diceFabBlurEnabled = value; save() }
     var diceFabEnabled: Boolean get() = settings.diceFabEnabled; set(value) { settings.diceFabEnabled = value; save() }
+    var blurRadius: Int get() = settings.blurRadius; set(value) { settings.blurRadius = value; save() }
+    var customBlurRadius: Int get() = settings.customBlurRadius; set(value) { settings.customBlurRadius = value; save() }
 
     fun resetToDefaults() {
         settings = AppSettings()

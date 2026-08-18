@@ -24,13 +24,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.ui.DialogDimStyle
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.HazeStyle
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 
@@ -42,7 +37,6 @@ fun ConditionsDialog(
     onToggleCondition: (String) -> Unit,
     exhaustion: Int,
     onExhaustionChange: (Int) -> Unit,
-    hazeState: HazeState?,
     forceBlurEnabled: Boolean,
     onDismiss: () -> Unit
 ) {
@@ -64,11 +58,11 @@ fun ConditionsDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background
         ) { paddingValues ->
             Column(
                 modifier = Modifier

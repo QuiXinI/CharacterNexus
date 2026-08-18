@@ -20,10 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusField
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
@@ -42,7 +38,6 @@ fun MagicBonusSettingsDialog(
     stats: Map<String, String> = emptyMap(),
     onDismiss: () -> Unit,
     onSave: (List<AttackBonus>) -> Unit,
-    hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false
 ) {
     var currentBonuses by remember { mutableStateOf(bonuses) }
@@ -77,11 +72,11 @@ fun MagicBonusSettingsDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 Column(

@@ -302,7 +302,7 @@ fun LevelPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .background(colorScheme.surface.copy(alpha = 0.0f), RoundedCornerShape(16.dp))
             .border(BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
     ) {
         Text(
@@ -448,7 +448,7 @@ fun HealthPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .background(colorScheme.surface.copy(alpha = 0.0f), RoundedCornerShape(16.dp))
             .border(BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -709,7 +709,7 @@ fun FormulaPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .background(colorScheme.surface.copy(alpha = 0.0f), RoundedCornerShape(16.dp))
             .border(BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
     ) {
         Box(
@@ -1002,7 +1002,7 @@ fun ConditionsPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .background(colorScheme.surface.copy(alpha = 0.0f), RoundedCornerShape(16.dp))
             .border(BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {

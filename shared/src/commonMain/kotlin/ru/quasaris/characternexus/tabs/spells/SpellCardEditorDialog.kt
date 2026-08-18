@@ -55,13 +55,15 @@ fun SpellCardEditorDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         val colorScheme = MaterialTheme.colorScheme
-        val surfaceColor = if (forceBlurEnabled) {
-            colorScheme.surface.copy(alpha = 0.1f)
+        val isOled = colorScheme.background == Color.Black
+
+        val surfaceColor = if (forceBlurEnabled && !isOled) {
+            Color.Transparent.copy(alpha = 0.0f)
         } else {
             colorScheme.surface
         }
-        val backgroundColor = if (forceBlurEnabled) {
-            colorScheme.background.copy(alpha = 0.1f)
+        val backgroundColor = if (forceBlurEnabled && !isOled) {
+            Color.Transparent.copy(alpha = 0.0f)
         } else {
             colorScheme.background
         }

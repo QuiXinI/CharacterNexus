@@ -5,6 +5,7 @@ import ru.quasaris.characternexus.model.CharacterSummary
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.model.AppThemeMode
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -78,11 +80,14 @@ fun App(
     val blurRolls = getBlurRolls()
     val blurFullscreen = getBlurFullscreen()
     val blurPopups = getBlurPopups()
+    val blurRadiusVal by settingsViewModel.blurRadius.collectAsState()
+    val customBlurRadiusVal by settingsViewModel.customBlurRadius.collectAsState()
     val rollAlpha = getRollInterfaceAlpha()
 
     val effectiveBlurRolls = masterBlurEnabled && blurRolls
     val effectiveBlurFullscreen = masterBlurEnabled && blurFullscreen
     val effectiveBlurPopups = masterBlurEnabled && blurPopups
+    val targetBlurRadius = if (blurRadiusVal >= 48) customBlurRadiusVal else blurRadiusVal
 
     val rollPassThrough = getRollPassThrough()
     val rollPosition = getRollPosition()
@@ -104,6 +109,9 @@ fun App(
 
     AppScaleProvider(scaleFactor = scaleFactor) {
         quasarisTheme(themeMode = themeMode, avatarColor = avatarColor) {
+            val colorScheme = MaterialTheme.colorScheme
+            val isOled = colorScheme.background == Color.Black
+
             val navController = rememberNavController()
             val focusManager = LocalFocusManager.current
 
@@ -115,6 +123,10 @@ fun App(
             }
 
             var isFullscreenDialogOpen by remember { mutableStateOf(false) }
+            val blurRadius by animateDpAsState(
+                targetValue = if (isFullscreenDialogOpen && effectiveBlurFullscreen && !isOled) targetBlurRadius.dp else 0.dp,
+                animationSpec = tween(durationMillis = 300)
+            )
 
             val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
             val scope = rememberCoroutineScope()
@@ -125,16 +137,17 @@ fun App(
             val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
 
             Box(modifier = Modifier.fillMaxSize()) {
-                // Layer 1: Global Background Source
+                // Unified Source for Blur (Background + UI)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
                         .hazeSource(state = hazeState)
-                )
-
-                // Layer 2: Main UI Source
-                Box(modifier = Modifier.fillMaxSize().hazeSource(state = overlayHazeState)) {
+                        .hazeSource(state = overlayHazeState)
+                        .blur(blurRadius)
+                ) {
+                    // Background
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                    
                     ModalNavigationDrawer(
                         drawerState = drawerState,
                         gesturesEnabled = currentRoute == "menu" ||
@@ -293,6 +306,7 @@ fun App(
                                             }
                                         },
                                         onOpenDrawer = { scope.launch { drawerState.open() } },
+                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
                                         settingsViewModel = settingsViewModel,
                                         hazeState = hazeState,
                                         popupHazeState = overlayHazeState,
@@ -306,7 +320,8 @@ fun App(
                                         onOpenDrawer = { scope.launch { drawerState.open() } },
                                         onThemeModeChange = { themeMode = it },
                                         settingsViewModel = settingsViewModel,
-                                        hazeState = hazeState
+                                        hazeState = hazeState,
+                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it }
                                     )
                                 }
 
@@ -323,8 +338,6 @@ fun App(
                                             glossaryImporter = glossaryImporter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
                                             onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
-                                            hazeState = hazeState,
-                                            popupHazeState = overlayHazeState,
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             settingsViewModel = settingsViewModel
                                         )
@@ -338,8 +351,7 @@ fun App(
                                             moduleManager = moduleManager,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
                                             onNavigateToSpells = { navController.navigate("spellbook") },
-                                            hazeState = hazeState,
-                                            popupHazeState = overlayHazeState,
+                                            onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             settingsViewModel = settingsViewModel
                                         )
@@ -352,7 +364,7 @@ fun App(
                                             moduleManager = moduleManager,
                                             glossaryImporter = glossaryImporter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            hazeState = hazeState,
+                                            onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             settingsViewModel = settingsViewModel
                                         )
@@ -373,6 +385,7 @@ fun App(
                                                 popUpTo("menu")
                                             }
                                         },
+                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
                                         hazeState = hazeState,
                                         popupHazeState = overlayHazeState,
                                         forceBlurEnabled = effectiveBlurFullscreen,

@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -39,12 +40,9 @@ import ru.quasaris.characternexus.backend.SpellSlotCalculator
 import ru.quasaris.characternexus.tabs.attacks.DiceIcon
 import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.backend.parseFormulaParts
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.backend.getProficiencyBonus
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
+import ru.quasaris.characternexus.HeaderCode.Fullscreen.EditVariantDialog
 import kotlin.math.floor
 
 fun formatFloat(value: Float): String {
@@ -59,7 +57,6 @@ fun SpellSettingsDialog(
     onSettingsChange: (SpellSettings) -> Unit,
     onDismiss: () -> Unit,
     onSubDialogOpenChange: (Boolean) -> Unit = {},
-    hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     statsMap: Map<String, String> = emptyMap()
 ) {
@@ -164,13 +161,21 @@ fun SpellSettingsDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background,
             modifier = Modifier
-                .blur(if (isSubDialogOpen && forceBlurEnabled) 16.dp else 0.dp)
+                .blur(if (isSubDialogOpen && forceBlurEnabled && !isOled) 16.dp else 0.dp)
+                .run {
+                    if (isSubDialogOpen && forceBlurEnabled && !isOled) {
+                        this.drawWithContent {
+                            drawContent()
+                            drawRect(colorScheme.surface.copy(alpha = 0.1f))
+                        }
+                    } else this
+                }
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDrag = { change, _ ->
@@ -630,7 +635,6 @@ fun SpellSettingsDialog(
                 spellAttackBonuses = it
                 showAttackBonusDialog = false
             },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled
         )
     }
@@ -647,7 +651,6 @@ fun SpellSettingsDialog(
                 spellSaveDcBonuses = it
                 showSaveDcBonusDialog = false
             },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled
         )
     }

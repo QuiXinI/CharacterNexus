@@ -25,10 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
+import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.tabs.attacks.AddBonusButton
@@ -67,7 +64,6 @@ fun BonusConfigDialog(
         skillProficiencies: List<String>,
         skillExpertise: List<String>
     ) -> Unit,
-    hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false
 ) {
     var baseScore by remember { mutableStateOf(initialBaseScore) }
@@ -96,11 +92,11 @@ fun BonusConfigDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
         ) { paddingValues ->
             Box(
                 modifier = Modifier

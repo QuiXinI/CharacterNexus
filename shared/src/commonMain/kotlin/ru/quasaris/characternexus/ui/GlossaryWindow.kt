@@ -22,10 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import okio.Path
 import okio.use
 import okio.buffer
@@ -51,15 +47,14 @@ enum class GlossaryCategory(val title: String, val dirName: String, val icon: Im
     FEATS("Черты", "feats", Icons.Default.Star)
 }
 
-@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GlossaryWindow(
     spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
     moduleManager: ru.quasaris.characternexus.backend.ModuleManager,
     onOpenDrawer: () -> Unit,
     onNavigateToSpells: () -> Unit,
-    hazeState: HazeState? = null,
-    popupHazeState: HazeState? = null,
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     forceBlurEnabled: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
 ) {
@@ -106,18 +101,11 @@ fun GlossaryWindow(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                 )
             )
         },
-        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
-        modifier = Modifier.run {
-            if (forceBlurEnabled && hazeState != null && !isOled) {
-                hazeEffect(state = hazeState) {
-                    style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
-                }
-            } else this
-        }
+        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             AnimatedContent(

@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +25,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.key.*
+import androidx.compose.ui.focus.*
 import org.jetbrains.compose.resources.painterResource
 import characternexus.shared.generated.resources.*
 import androidx.compose.ui.window.Popup
@@ -59,6 +62,11 @@ fun RestPopup(
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val offsetX = with(density) { (-135).dp.roundToPx() }
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
     
     Popup(
         onDismissRequest = onDismiss,
@@ -72,6 +80,30 @@ fun RestPopup(
                 modifier = modifier
                     .width(180.dp)
                     .shadow(8.dp, RoundedCornerShape(12.dp))
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown) {
+                            when (event.key) {
+                                Key.W -> {
+                                    onShortRest()
+                                    onDismiss()
+                                    true
+                                }
+                                Key.E -> {
+                                    onDawn()
+                                    onDismiss()
+                                    true
+                                }
+                                Key.R -> {
+                                    onLongRest()
+                                    onDismiss()
+                                    true
+                                }
+                                else -> false
+                            }
+                        } else false
+                    }
                     .run {
                         if (hazeState != null && !isOled) {
                             this.clip(RoundedCornerShape(12.dp))

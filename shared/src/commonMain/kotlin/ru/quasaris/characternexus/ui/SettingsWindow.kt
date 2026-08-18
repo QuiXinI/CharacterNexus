@@ -34,6 +34,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Keyboard
 import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
 
@@ -45,7 +46,8 @@ fun SettingsWindow(
     onOpenDrawer: () -> Unit,
     onThemeModeChange: (AppThemeMode) -> Unit,
     settingsViewModel: SettingsViewModel,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {}
 ) {
     val settingsManager = remember { SettingsManager() }
     var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
@@ -55,6 +57,23 @@ fun SettingsWindow(
     val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
 
     var showResetDialog by remember { mutableStateOf(false) }
+    var showKeybindSettings by remember { mutableStateOf(false) }
+
+    val forceBlurEnabled by settingsViewModel.blurFullscreen.collectAsState()
+    val masterBlurEnabled by settingsViewModel.masterBlurEnabled.collectAsState()
+    val effectiveBlurFullscreen = masterBlurEnabled && forceBlurEnabled
+
+    LaunchedEffect(showKeybindSettings) {
+        onFullscreenDialogOpenChange(showKeybindSettings)
+    }
+
+    if (showKeybindSettings) {
+        KeybindSettingsWindow(
+            viewModel = settingsViewModel,
+            onDismiss = { showKeybindSettings = false },
+            forceBlurEnabled = effectiveBlurFullscreen
+        )
+    }
 
     if (showResetDialog) {
         AlertDialog(
@@ -154,6 +173,22 @@ fun SettingsWindow(
                         modifier = Modifier.weight(1.4f)
                     ) { Text("Персонаж") }
                 }
+            }
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            Button(
+                onClick = { showKeybindSettings = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.secondaryContainer,
+                    contentColor = colorScheme.onSecondaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Keyboard, null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Изменить горячие клавиши", fontWeight = FontWeight.Bold)
             }
 
             HorizontalDivider(color = colorScheme.outlineVariant)
@@ -471,6 +506,10 @@ fun BlurSettingsSection(
                     checked = blurDynamicFields,
                     onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurDynamicFields(it) } }
                 )
+
+                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                BlurRadiusSection(settingsViewModel)
             }
         }
 
@@ -1511,5 +1550,77 @@ fun SlotAlignmentSettingsSection(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BlurRadiusSection(settingsViewModel: SettingsViewModel) {
+    val colorScheme = MaterialTheme.colorScheme
+    val blurRadius by settingsViewModel.blurRadius.collectAsState()
+    val customBlurRadius by settingsViewModel.customBlurRadius.collectAsState()
+    var customBlurText by remember(customBlurRadius) { mutableStateOf(customBlurRadius.toString()) }
+    val isCustomActive = blurRadius >= 48
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Сила размытия (радиус)",
+                fontSize = 16.sp,
+                color = colorScheme.onSurface
+            )
+            Text(
+                text = if (isCustomActive) "$customBlurRadius dp (Своё)" else "$blurRadius dp",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primary
+            )
+        }
+
+        Slider(
+            value = blurRadius.coerceIn(1, 48).toFloat(),
+            onValueChange = { 
+                val newVal = it.roundToInt()
+                settingsViewModel.updateBlurRadius(newVal)
+            },
+            valueRange = 1f..48f,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        OutlinedTextField(
+            value = customBlurText,
+            onValueChange = {
+                customBlurText = it.filter { it.isDigit() }
+            },
+            enabled = isCustomActive,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    val n = customBlurText.toIntOrNull() ?: 48
+                    settingsViewModel.updateCustomBlurRadius(maxOf(1, n))
+                    focusManager.clearFocus()
+                }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { focusState ->
+                    if (!focusState.isFocused) {
+                        val n = customBlurText.toIntOrNull() ?: 48
+                        settingsViewModel.updateCustomBlurRadius(maxOf(1, n))
+                    }
+                },
+            label = { Text("Своё значение в dp (активно при 48+)") },
+            singleLine = true
+        )
     }
 }

@@ -167,6 +167,7 @@ class CharacterDetailState(
     var isConditionsPanelVisible by mutableStateOf(false)
     var isHealthPanelVisible by mutableStateOf(false)
     var isRestPanelVisible by mutableStateOf(false)
+    var showRestPopup by mutableStateOf(false)
 
     // Fullscreen Dialogs visibility
     var showEnhancedAC by mutableStateOf(false)

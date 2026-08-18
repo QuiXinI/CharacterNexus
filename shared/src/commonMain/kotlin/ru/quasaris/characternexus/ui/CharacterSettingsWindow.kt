@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.HeaderCode.Fullscreen.HealthSettingsContent
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.model.*
@@ -32,7 +31,6 @@ fun CharacterSettingsWindow(
     state: CharacterDetailState,
     statsMap: Map<String, String>,
     onDismiss: () -> Unit,
-    hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false
 ) {
     Dialog(
@@ -49,7 +47,7 @@ fun CharacterSettingsWindow(
             topBar = {
                 Column(
                     modifier = Modifier.background(
-                        if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                     )
                 ) {
                     CenterAlignedTopAppBar(
@@ -78,7 +76,7 @@ fun CharacterSettingsWindow(
                     }
                 }
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                 when (selectedTabIndex) {

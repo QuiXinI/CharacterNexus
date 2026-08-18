@@ -207,7 +207,7 @@ fun SpellbookWindow(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                     )
                 )
             },
@@ -218,14 +218,14 @@ fun SpellbookWindow(
                     }
                 }
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
             modifier = Modifier
-                .blur(if (isAnyFullscreenDialogOpen && forceBlurEnabled) 24.dp else 0.dp)
+                .blur(if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) 24.dp else 0.dp)
                 .run {
                     if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) {
                         this.drawWithContent {
                             drawContent()
-                            drawRect(colorScheme.surface.copy(alpha = 0.2f))
+                            drawRect(colorScheme.surface.copy(alpha = 0.1f))
                         }
                     } else this
                 }

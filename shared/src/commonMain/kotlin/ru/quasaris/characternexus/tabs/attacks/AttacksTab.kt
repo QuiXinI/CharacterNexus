@@ -207,7 +207,6 @@ fun AttacksTab(
                 onUpdateAttacks(attacks.filter { it.id != attackToDelete.id })
                 editingAttack = null
             },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled,
             exhaustion = exhaustion,
             settingsViewModel = settingsViewModel,

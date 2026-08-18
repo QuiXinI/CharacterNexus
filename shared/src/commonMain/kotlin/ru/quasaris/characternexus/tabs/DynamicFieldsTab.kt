@@ -32,6 +32,7 @@ import ru.quasaris.characternexus.ui.outerShadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
@@ -538,7 +539,13 @@ fun DynamicFieldItem(
                         cursorBrush = SolidColor(colorScheme.primary),
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 8.dp)
+                            .onKeyEvent { event ->
+                                if ((event.key == Key.Escape || event.key == Key.Tab) && event.type == KeyEventType.KeyDown) {
+                                    focusManager.clearFocus()
+                                    true
+                                } else false
+                            },
                         decorationBox = { innerTextField ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (field.title.isEmpty()) {
@@ -645,7 +652,13 @@ fun DynamicFieldItem(
                                                 .hazeSource(state = internalHazeState)
                                                 .bringIntoViewRequester(bringIntoViewRequester)
                                                 .focusRequester(focusRequester)
-                                                .onFocusChanged { isFocused = it.isFocused },
+                                                .onFocusChanged { isFocused = it.isFocused }
+                                                .onKeyEvent { event ->
+                                                    if ((event.key == Key.Escape || event.key == Key.Tab) && event.type == KeyEventType.KeyDown) {
+                                                        focusManager.clearFocus()
+                                                        true
+                                                    } else false
+                                                },
                                             onTextLayout = { textLayoutResult = it },
                                             textStyle = MaterialTheme.typography.bodyLarge.copy(
                                                 fontSize = 17.sp,
@@ -990,11 +1003,11 @@ fun DynamicFieldFullscreenDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (blurFullscreen && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (blurFullscreen && !isOled) Color.Transparent else colorScheme.background,
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
             modifier = Modifier
                 .imePadding()
         ) { paddingValues ->
@@ -1012,7 +1025,7 @@ fun DynamicFieldFullscreenDialog(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        color = if (blurFullscreen && !isOled) colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+                        color = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f)
                         else colorScheme.surfaceContainerHighest,
                         shadowElevation = 0.dp,
                         tonalElevation = 0.dp

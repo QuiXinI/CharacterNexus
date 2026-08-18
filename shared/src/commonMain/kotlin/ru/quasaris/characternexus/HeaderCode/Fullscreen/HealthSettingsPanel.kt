@@ -59,7 +59,6 @@ fun HealthSettingsDialog(
     onHpBonusesTotalChange: (List<AttackBonus>) -> Unit,
     statsMap: Map<String, String>,
     level: Int,
-    hazeState: HazeState?,
     forceBlurEnabled: Boolean,
     onDismiss: () -> Unit
 ) {
@@ -81,7 +80,7 @@ fun HealthSettingsDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
                     )
                 )
             },
@@ -89,7 +88,7 @@ fun HealthSettingsDialog(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     tonalElevation = 8.dp,
-                    color = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                    color = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
                 ) {
                     Button(
                         onClick = onDismiss,
@@ -104,7 +103,7 @@ fun HealthSettingsDialog(
                     }
                 }
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues)) {
                 HealthSettingsContent(

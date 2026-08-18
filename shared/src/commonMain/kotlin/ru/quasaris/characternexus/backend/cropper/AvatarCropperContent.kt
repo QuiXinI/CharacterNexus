@@ -47,13 +47,13 @@ fun AvatarCropperContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (useHaze) Color.Black.copy(alpha = 0.1f) else Color.Black)
+                .background(if (useHaze) Color.Black.copy(alpha = 0.0f) else Color.Black)
                 .run {
                     if (useHaze && hazeState != null) {
                         this.hazeEffect(state = hazeState) {
                             style = HazeStyle(
                                 blurRadius = 24.dp,
-                                tints = listOf(HazeTint(Color.Black.copy(alpha = 0.1f)))
+                                tints = listOf(HazeTint(Color.Black.copy(alpha = 0.0f)))
                             )
                             inputScale = HazeInputScale.Fixed(0.6f)
                         }
@@ -69,7 +69,7 @@ fun AvatarCropperContent(
             // Top Layer: UI Controls
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
-                containerColor = Color.Transparent,
+                containerColor = Color.Transparent.copy(alpha = 0.0f),
                 topBar = {
                     CenterAlignedTopAppBar(
                         title = { Text("Кадрирование", style = MaterialTheme.typography.titleMedium, color = Color.White) },
@@ -93,7 +93,7 @@ fun AvatarCropperContent(
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent,
+                            containerColor = Color.Transparent.copy(alpha = 0.0f),
                             titleContentColor = Color.White,
                             navigationIconContentColor = Color.White,
                             actionIconContentColor = Color.White
@@ -102,7 +102,7 @@ fun AvatarCropperContent(
                 },
                 bottomBar = {
                     BottomAppBar(
-                        containerColor = Color.Transparent,
+                        containerColor = Color.Transparent.copy(alpha = 0.0f),
                         contentPadding = PaddingValues(0.dp),
                         modifier = Modifier.height(80.dp)
                     ) {

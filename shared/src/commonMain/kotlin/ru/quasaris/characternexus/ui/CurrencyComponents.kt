@@ -116,11 +116,11 @@ fun CurrencyEditDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background,
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
             modifier = Modifier
                 .fillMaxSize()
         ) { padding ->

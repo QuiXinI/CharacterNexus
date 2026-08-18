@@ -95,6 +95,8 @@ fun CharacterHeader(
     onShortRest: () -> Unit = {},
     onLongRest: () -> Unit = {},
     onDawn: () -> Unit = {},
+    showRestPopup: Boolean = false,
+    onShowRestPopupChange: (Boolean) -> Unit = {},
     hazeState: HazeState? = null,
     blurPopups: Boolean = false
 ) {
@@ -106,7 +108,6 @@ fun CharacterHeader(
     val isOled = colorScheme.background == Color.Black
 
     var totalDrag by remember { mutableStateOf(0f) }
-    var showRestPopup by remember { mutableStateOf(false) }
 
     val panelsSpringSpec = remember {
         spring<IntSize>(
@@ -187,7 +188,7 @@ fun CharacterHeader(
 
                 // Rest
                 Box(contentAlignment = Alignment.Center) {
-                    IconButton(onClick = { showRestPopup = true }) {
+                    IconButton(onClick = { onShowRestPopupChange(!showRestPopup) }) {
                         Icon(Icons.Default.WbSunny, null, modifier = Modifier.size(32.dp), tint = colorScheme.primary)
                     }
 
@@ -196,7 +197,7 @@ fun CharacterHeader(
                             onShortRest = { onShortRest() },
                             onLongRest = { onLongRest() },
                             onDawn = { onDawn() },
-                            onDismiss = { showRestPopup = false },
+                            onDismiss = { onShowRestPopupChange(false) },
                             hazeState = hazeState,
                             isOled = colorScheme.background == Color.Black
                         )

@@ -21,16 +21,11 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.ui.DialogDimStyle
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
 
-@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArmorClassDialog(
     activeEntry: FormulaEntry?,
@@ -38,7 +33,6 @@ fun ArmorClassDialog(
     onAllEntriesChange: (List<FormulaEntry>) -> Unit,
     onActiveIdChange: (String?) -> Unit,
     statsMap: Map<String, String>,
-    hazeState: HazeState?,
     forceBlurEnabled: Boolean,
     onDismiss: () -> Unit,
     onSubDialogOpenChange: (Boolean) -> Unit = {},
@@ -68,23 +62,12 @@ fun ArmorClassDialog(
 
         Scaffold(
             modifier = Modifier
-                .blur(if (isSubDialogOpen && forceBlurEnabled) 24.dp else 0.dp)
+                .blur(if (isSubDialogOpen && forceBlurEnabled && !isOled) 24.dp else 0.dp)
                 .run {
                     if (isSubDialogOpen && forceBlurEnabled && !isOled) {
                         this.drawWithContent {
                             drawContent()
-                            drawRect(colorScheme.surface.copy(alpha = 0.2f))
-                        }
-                    } else this
-                }
-                .run {
-                    if (isSubDialogOpen && forceBlurEnabled && hazeState != null && !isOled) {
-                        this.hazeEffect(state = hazeState) {
-                            style = HazeStyle(
-                                blurRadius = 24.dp,
-                                tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f)))
-                            )
-                            inputScale = HazeInputScale.Fixed(0.6f)
+                            drawRect(colorScheme.surface.copy(alpha = 0.1f))
                         }
                     } else this
                 },
@@ -97,11 +80,11 @@ fun ArmorClassDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 Column(
@@ -234,7 +217,6 @@ fun ArmorClassDialog(
                 editingEntry = null
             },
             onDismiss = { editingEntry = null },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled
         )
     }
@@ -262,7 +244,6 @@ fun ArmorClassDialog(
                 editingShield = null
             },
             onDismiss = { editingShield = null },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled
         )
     }

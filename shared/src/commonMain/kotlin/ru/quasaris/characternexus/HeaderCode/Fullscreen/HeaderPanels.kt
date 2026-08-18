@@ -22,11 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
@@ -93,7 +88,7 @@ fun StatVariantItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, dev.chrisbanes.haze.ExperimentalHazeApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditVariantDialog(
     title: String,
@@ -103,7 +98,6 @@ fun EditVariantDialog(
     onSave: (FormulaEntry) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
-    hazeState: HazeState?,
     forceBlurEnabled: Boolean
 ) {
     var state by remember { mutableStateOf(entry) }
@@ -116,17 +110,6 @@ fun EditVariantDialog(
         val isOled = colorScheme.background == Color.Black
 
         Scaffold(
-            modifier = Modifier.run {
-                if (forceBlurEnabled && hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = 24.dp,
-                            tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f)))
-                        )
-                        inputScale = HazeInputScale.Fixed(0.6f)
-                    }
-                } else this
-            },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(title, fontWeight = FontWeight.Bold) },
@@ -141,11 +124,11 @@ fun EditVariantDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background
         ) { paddingValues ->
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                 Column(

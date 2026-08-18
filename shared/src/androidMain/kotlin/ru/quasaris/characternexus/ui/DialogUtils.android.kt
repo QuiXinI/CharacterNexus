@@ -9,6 +9,8 @@ import androidx.compose.ui.window.DialogWindowProvider
 actual fun DialogDimStyle(dimAmount: Float) {
     val view = LocalView.current
     SideEffect {
-        (view.parent as? DialogWindowProvider)?.window?.setDimAmount(dimAmount)
+        val window = (view.parent as? DialogWindowProvider)?.window
+        window?.setDimAmount(dimAmount)
+        window?.setBackgroundDrawableResource(android.R.color.transparent)
     }
 }

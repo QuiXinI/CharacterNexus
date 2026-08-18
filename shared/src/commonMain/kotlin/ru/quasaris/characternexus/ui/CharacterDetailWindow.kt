@@ -26,6 +26,9 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.focus.*
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import ru.quasaris.characternexus.backend.KeybindAction
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.tabs.*
 import ru.quasaris.characternexus.MainWindow.*
@@ -131,6 +134,10 @@ fun CharacterDetailWindow(
     val sheetState = rememberModalBottomSheetState()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+    val rootFocusRequester = remember { FocusRequester() }
+    var isRootFocused by remember { mutableStateOf(false) }
+
+    val keybinds by settingsViewModel?.keybinds?.collectAsState() ?: remember { mutableStateOf(emptyMap<KeybindAction, Key>()) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -139,12 +146,13 @@ fun CharacterDetailWindow(
     }
 
     LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        rootFocusRequester.requestFocus()
     }
 
     LaunchedEffect(pagerState.currentPage) {
         state.isEditMode = false
         focusManager.clearFocus()
+        rootFocusRequester.requestFocus()
     }
 
     LaunchedEffect(
@@ -176,74 +184,224 @@ fun CharacterDetailWindow(
             state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen || state.isSpellbookSelectionOpen ||
             state.isArmorClassSubDialogOpen || state.isInitiativeSubDialogOpen || state.isSpeedSubDialogOpen
 
-    LaunchedEffect(isAnyFullscreenDialogOpen) {
-        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
-    }
-
     val isAnyPanelVisible = state.isLevelPanelVisible || state.isHealthPanelVisible || 
             state.isRestPanelVisible || state.isArmorClassPanelVisible || 
             state.isInitiativePanelVisible || state.isConditionsPanelVisible || 
             state.isSpeedPanelVisible
 
-    Scaffold(
-        containerColor = colorScheme.background,
+    LaunchedEffect(isAnyFullscreenDialogOpen) {
+        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
+        if (!isAnyFullscreenDialogOpen && !isAnyPanelVisible) {
+            rootFocusRequester.requestFocus()
+        }
+    }
+
+    LaunchedEffect(isAnyPanelVisible) {
+        if (!isAnyPanelVisible && !isAnyFullscreenDialogOpen) {
+            rootFocusRequester.requestFocus()
+        }
+    }
+
+    Box(
         modifier = Modifier
-            .blur(if (isAnyFullscreenDialogOpen && forceBlurEnabled) 24.dp else 0.dp)
-            .run {
-                if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) {
-                    this.drawWithContent {
-                        drawContent()
-                        drawRect(colorScheme.surface.copy(alpha = 0.2f))
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    focusManager.clearFocus()
+                    rootFocusRequester.requestFocus()
+                }
+            }
+    ) {
+        Scaffold(
+            containerColor = if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(rootFocusRequester)
+                .onFocusChanged { 
+                    isRootFocused = it.isFocused 
+                }
+                .focusable()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown) {
+                        val action = keybinds.entries.find { it.value.keyCode == event.key.keyCode }?.key
+                        if (!isRootFocused) {
+                            // If cursor is in a text field, Intercept navigation keys to clear focus first
+                            if (action == KeybindAction.BACK || action == KeybindAction.OPEN_DRAWER) {
+                                focusManager.clearFocus()
+                                rootFocusRequester.requestFocus()
+                                return@onPreviewKeyEvent true
+                            }
+                        }
                     }
-                } else this
-            },
-        topBar = {
-            CharacterDetailTopBar(
+                    false
+                }
+                .onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && isRootFocused) {
+                        val action = keybinds.entries.find { it.value.keyCode == event.key.keyCode }?.key
+                        if (action != null) {
+                            when (action) {
+                                KeybindAction.BACK -> {
+                                    onNavigateBack()
+                                    true
+                                }
+                                KeybindAction.OPEN_DRAWER -> {
+                                    onOpenDrawer()
+                                    true
+                                }
+                                KeybindAction.PREV_TAB -> {
+                                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                                    true
+                                }
+                                KeybindAction.NEXT_TAB -> {
+                                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                                    true
+                                }
+                                KeybindAction.TOGGLE_AC -> {
+                                    if (state.useNewAC) state.showEnhancedAC = !state.showEnhancedAC
+                                    else state.isArmorClassPanelVisible = !state.isArmorClassPanelVisible
+                                    true
+                                }
+                                KeybindAction.TOGGLE_INIT -> {
+                                    if (state.useNewInit) state.showEnhancedInit = !state.showEnhancedInit
+                                    else state.isInitiativePanelVisible = !state.isInitiativePanelVisible
+                                    true
+                                }
+                                KeybindAction.TOGGLE_HEALTH -> {
+                                    state.isHealthPanelVisible = !state.isHealthPanelVisible
+                                    true
+                                }
+                                KeybindAction.TOGGLE_COND -> {
+                                    if (state.useNewCond) state.showEnhancedCond = !state.showEnhancedCond
+                                    else state.isConditionsPanelVisible = !state.isConditionsPanelVisible
+                                    true
+                                }
+                                KeybindAction.TOGGLE_SPEED -> {
+                                    if (state.useNewSpeed) state.showEnhancedSpeed = !state.showEnhancedSpeed
+                                    else state.isSpeedPanelVisible = !state.isSpeedPanelVisible
+                                    true
+                                }
+                                KeybindAction.TOGGLE_LEVEL -> {
+                                    state.isLevelPanelVisible = !state.isLevelPanelVisible
+                                    true
+                                }
+                                KeybindAction.TOGGLE_REST -> {
+                                    state.showRestPopup = !state.showRestPopup
+                                    true
+                                }
+                                KeybindAction.TOGGLE_EDIT_MODE -> {
+                                    val tab = tabs[pagerState.currentPage % tabs.size]
+                                    if (tab == CharacterTab.STATS) {
+                                        state.isAdvancedMode = !state.isAdvancedMode
+                                    } else {
+                                        state.isEditMode = !state.isEditMode
+                                    }
+                                    true
+                                }
+                                KeybindAction.TOGGLE_EXPANSION -> {
+                                    val tab = tabs[pagerState.currentPage % tabs.size]
+                                    val currentList = when (tab) {
+                                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
+                                        CharacterTab.INVENTORY -> state.inventory
+                                        CharacterTab.SPELLS -> state.spells
+                                        CharacterTab.NOTES -> state.notes
+                                        else -> emptyList()
+                                    }
+                                    if (currentList.isNotEmpty()) {
+                                        val anyCollapsed = currentList.any { !it.isExpanded }
+                                        val newState = if (anyCollapsed) {
+                                            currentList.map { it.copy(isExpanded = true) }
+                                        } else {
+                                            currentList.map { it.copy(isExpanded = false) }
+                                        }
+                                        when (tab) {
+                                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
+                                            CharacterTab.INVENTORY -> state.inventory = newState
+                                            CharacterTab.SPELLS -> state.spells = newState
+                                            CharacterTab.NOTES -> state.notes = newState
+                                            else -> {}
+                                        }
+                                    }
+                                    true
+                                }
+                                KeybindAction.ADD_ITEM -> {
+                                    val tab = tabs[pagerState.currentPage % tabs.size]
+                                    when (tab) {
+                                        CharacterTab.ATTACKS -> state.attacks = state.attacks + AttackEntry()
+                                        CharacterTab.BIO -> state.bioLongSections = state.bioLongSections + DynamicNoteState()
+                                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = state.skillsAndTraits + DynamicNoteState()
+                                        CharacterTab.INVENTORY -> state.inventory = state.inventory + DynamicNoteState()
+                                        CharacterTab.SPELLS -> state.spells = state.spells + DynamicNoteState()
+                                        CharacterTab.NOTES -> state.notes = state.notes + DynamicNoteState()
+                                        else -> {}
+                                    }
+                                    true
+                                }
+                            }
+                        } else false
+                    } else false
+                }
+                .blur(if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) 24.dp else 0.dp)
+                .run {
+                    if (isAnyFullscreenDialogOpen && forceBlurEnabled && !isOled) {
+                        this.drawWithContent {
+                            drawContent()
+                            drawRect(colorScheme.surface.copy(alpha = 0.1f))
+                        }
+                    } else this
+                },
+            topBar = {
+                CharacterDetailTopBar(
+                    state = state,
+                    onOpenDrawer = onOpenDrawer,
+                    onRoll = onRoll,
+                    onNavigateBack = onNavigateBack,
+                    hazeState = hazeState,
+                    popupHazeState = popupHazeState,
+                    blurPopups = blurPopups,
+                    colorScheme = colorScheme,
+                    isOled = isOled,
+                    isAnyPanelVisible = isAnyPanelVisible,
+                    handleRestoration = handleRestoration,
+                    currentTab = currentTab,
+                    onShowTabSheet = { showTabSheet = true; rootFocusRequester.requestFocus() },
+                    onShowSpellSettings = { state.showSpellSettings = true; rootFocusRequester.requestFocus() },
+                    onImagePickerClick = { showImagePicker = true; rootFocusRequester.requestFocus() },
+                    onDownloadClick = { showExportPicker = true; rootFocusRequester.requestFocus() },
+                rootFocusRequester = rootFocusRequester
+                )
+            }
+        ) { paddingValues ->
+            CharacterDetailMainContent(
+                paddingValues = paddingValues,
                 state = state,
-                onOpenDrawer = onOpenDrawer,
+                pagerState = pagerState,
+                focusRequester = focusRequester,
+                rootFocusRequester = rootFocusRequester,
+                scope = scope,
+                tabs = tabs,
+                character = character,
                 onRoll = onRoll,
-                onNavigateBack = onNavigateBack,
+                pb = pb,
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
+                forceBlurEnabled = forceBlurEnabled,
                 blurPopups = blurPopups,
-                colorScheme = colorScheme,
-                isOled = isOled,
-                isAnyPanelVisible = isAnyPanelVisible,
-                handleRestoration = handleRestoration,
-                currentTab = currentTab,
-                onShowTabSheet = { showTabSheet = true },
-                onShowSpellSettings = { state.showSpellSettings = true },
-                onImagePickerClick = { showImagePicker = true },
-                onDownloadClick = { showExportPicker = true }
+                settingsViewModel = settingsViewModel,
+                spellbookManager = spellbookManager,
+                allConditions = allConditions,
+                isAnyFullscreenDialogOpen = isAnyFullscreenDialogOpen,
+                onNavigateBack = onNavigateBack,
+                showImagePicker = { showImagePicker = true }
             )
         }
-    ) { paddingValues ->
-        CharacterDetailMainContent(
-            paddingValues = paddingValues,
-            state = state,
-            pagerState = pagerState,
-            focusRequester = focusRequester,
-            scope = scope,
-            tabs = tabs,
-            character = character,
-            onRoll = onRoll,
-            pb = pb,
-            hazeState = hazeState,
-            popupHazeState = popupHazeState,
-            forceBlurEnabled = forceBlurEnabled,
-            blurPopups = blurPopups,
-            settingsViewModel = settingsViewModel,
-            spellbookManager = spellbookManager,
-            allConditions = allConditions,
-            isAnyFullscreenDialogOpen = isAnyFullscreenDialogOpen,
-            onNavigateBack = onNavigateBack,
-            showImagePicker = { showImagePicker = true }
-        )
     }
 
     TabSelectionSheet(
         showTabSheet = showTabSheet,
-        onDismissRequest = { showTabSheet = false },
+        onDismissRequest = { 
+            showTabSheet = false
+            rootFocusRequester.requestFocus()
+        },
         sheetState = sheetState,
         currentTab = currentTab,
         tabs = tabs,
@@ -298,7 +456,8 @@ fun CharacterDetailTopBar(
     onShowTabSheet: () -> Unit,
     onShowSpellSettings: () -> Unit,
     onImagePickerClick: () -> Unit,
-    onDownloadClick: () -> Unit
+    onDownloadClick: () -> Unit,
+    rootFocusRequester: FocusRequester
 ) {
     // Единый Surface обёртывает Хедер, Табы и Выпадающие Панели!
     Surface(
@@ -313,19 +472,21 @@ fun CharacterDetailTopBar(
                 level = state.level, experience = state.experience, nextLevelExp = state.nextLevelExp,
                 characterImageData = state.characterImageData,
                 characterUuid = state.characterUuid,
-                onAvatarClick = { state.showAvatarMenu = true },
+                onAvatarClick = { state.showAvatarMenu = true; rootFocusRequester.requestFocus() },
                 onLevelClick = {
                     state.isLevelPanelVisible = !state.isLevelPanelVisible
+                    rootFocusRequester.requestFocus()
                 },
                 onOpenDrawer = onOpenDrawer,
                 activeACValue = state.acValue,
-                onACClick = { state.isShieldActive = !state.isShieldActive },
+                onACClick = { state.isShieldActive = !state.isShieldActive; rootFocusRequester.requestFocus() },
                 onACLongClick = {
                     if (state.useNewAC) {
                         state.showEnhancedAC = true
                     } else {
                         state.isArmorClassPanelVisible = !state.isArmorClassPanelVisible
                     }
+                    rootFocusRequester.requestFocus()
                 },
                 isShieldActive = state.isShieldActive,
                 activeInitValue = state.initValue,
@@ -334,6 +495,7 @@ fun CharacterDetailTopBar(
                     val activeEntry = state.initiativeEntries.find { it.id == state.activeInitiativeId }
                     val advantage = if (activeEntry?.hasAdvantage == true) AdvantageType.ADVANTAGE else AdvantageType.NONE
                     onRoll(DiceRoller.roll("Инициатива", baseInit, bonuses = activeEntry?.bonuses ?: emptyList(), stats = state.statsMap, exhaustion = state.exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = state.advantageLogic))
+                    rootFocusRequester.requestFocus()
                 },
                 onInitLongClick = {
                     if (state.useNewInit) {
@@ -341,11 +503,13 @@ fun CharacterDetailTopBar(
                     } else {
                         state.isInitiativePanelVisible = !state.isInitiativePanelVisible
                     }
+                    rootFocusRequester.requestFocus()
                 },
                 currentHp = state.currentHp, maxHp = state.maxHp, tempHp = state.tempHp,
                 healthColor = state.healthColor, healthIcon = state.healthIcon,
                 onHealthClick = {
                     state.isHealthPanelVisible = !state.isHealthPanelVisible
+                    rootFocusRequester.requestFocus()
                 },
                 conditionsCount = state.exhaustion.toString(),
                 selectedConditions = state.selectedConditions,
@@ -355,6 +519,7 @@ fun CharacterDetailTopBar(
                     } else {
                         state.isConditionsPanelVisible = !state.isConditionsPanelVisible
                     }
+                    rootFocusRequester.requestFocus()
                 },
                 activeSpeedValue = state.speedValue,
                 onSpeedClick = {
@@ -363,33 +528,41 @@ fun CharacterDetailTopBar(
                     } else {
                         state.isSpeedPanelVisible = !state.isSpeedPanelVisible
                     }
+                    rootFocusRequester.requestFocus()
                 },
                 showAvatarMenu = state.showAvatarMenu,
-                onDismissAvatarMenu = { state.showAvatarMenu = false },
-                onImagePickerClick = { onImagePickerClick(); state.showAvatarMenu = false },
-                onDownloadClick = { onDownloadClick(); state.showAvatarMenu = false },
-                onDeletePortraitClick = { state.characterImageData = null; state.showAvatarMenu = false },
-                onSettingsClick = { state.showCharacterSettings = true; state.showAvatarMenu = false },
+                onDismissAvatarMenu = { state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
+                onImagePickerClick = { onImagePickerClick(); state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
+                onDownloadClick = { onDownloadClick(); state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
+                onDeletePortraitClick = { state.characterImageData = null; state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
+                onSettingsClick = { state.showCharacterSettings = true; state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
                 onNavigateBack = onNavigateBack,
                 exhaustion = state.exhaustion,
                 hasInspiration = state.hasInspiration,
-                onInspirationChange = { state.hasInspiration = it },
+                onInspirationChange = { state.hasInspiration = it; rootFocusRequester.requestFocus() },
                 onShortRest = {
                     state.isRestPanelVisible = !state.isRestPanelVisible
+                    rootFocusRequester.requestFocus()
                 },
-                onLongRest = { handleRestoration("long") },
-                onDawn = { handleRestoration("dawn") },
+                onLongRest = { handleRestoration("long"); rootFocusRequester.requestFocus() },
+                onDawn = { handleRestoration("dawn"); rootFocusRequester.requestFocus() },
                 hazeState = popupHazeState ?: hazeState,
                 blurPopups = blurPopups
             )
 
             TabNavigationBar(
                 currentTab = currentTab,
-                onShowTabSheet = onShowTabSheet,
+                onShowTabSheet = { onShowTabSheet(); rootFocusRequester.requestFocus() },
                 isEditMode = state.isEditMode,
-                onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                onToggleEditMode = { 
+                    state.isEditMode = !state.isEditMode
+                    rootFocusRequester.requestFocus()
+                },
                 isAdvancedMode = state.isAdvancedMode,
-                onToggleAdvancedMode = { state.isAdvancedMode = !state.isAdvancedMode },
+                onToggleAdvancedMode = { 
+                    state.isAdvancedMode = !state.isAdvancedMode
+                    rootFocusRequester.requestFocus()
+                },
                 hasContentToEdit = when(currentTab) {
                     CharacterTab.ATTACKS -> state.attacks.isNotEmpty()
                     CharacterTab.NOTES -> state.notes.isNotEmpty()
@@ -433,8 +606,9 @@ fun CharacterDetailTopBar(
                         CharacterTab.NOTES -> state.notes = newState
                         else -> {}
                     }
+                    rootFocusRequester.requestFocus()
                 },
-                onShowSpellSettings = onShowSpellSettings
+                onShowSpellSettings = { onShowSpellSettings(); rootFocusRequester.requestFocus() }
             )
 
             // Расположение панели внутри Surface объединяет её с тенью от TopBar!
@@ -639,6 +813,7 @@ fun CharacterDetailMainContent(
     state: CharacterDetailState,
     pagerState: PagerState,
     focusRequester: FocusRequester,
+    rootFocusRequester: FocusRequester,
     scope: CoroutineScope,
     tabs: List<CharacterTab>,
     character: Character,
@@ -658,31 +833,17 @@ fun CharacterDetailMainContent(
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val keybinds by settingsViewModel?.keybinds?.collectAsState() ?: remember { mutableStateOf(emptyMap<KeybindAction, Key>()) }
 
     Box(modifier = Modifier
         .fillMaxSize()
         .padding(paddingValues)
         .background(Color.Transparent)
-        .focusRequester(focusRequester)
-        .focusable()
-        .onKeyEvent { event ->
-            if (event.type == KeyEventType.KeyDown) {
-                when (event.key) {
-                    Key.DirectionLeft -> {
-                        scope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage - 1)
-                        }
-                        true
-                    }
-                    Key.DirectionRight -> {
-                        scope.launch {
-                            pagerState.animateScrollToPage(pagerState.currentPage + 1)
-                        }
-                        true
-                    }
-                    else -> false
-                }
-            } else false
+        .pointerInput(Unit) {
+            detectTapGestures {
+                focusManager.clearFocus()
+                rootFocusRequester.requestFocus()
+            }
         }
     ) {
         HorizontalPager(
@@ -854,7 +1015,6 @@ fun CharacterDetailMainContent(
         CharacterDetailDialogs(
             state = state,
             statsMap = state.statsMap,
-            hazeState = popupHazeState ?: hazeState,
             forceBlurEnabled = forceBlurEnabled,
             blurPopups = blurPopups,
             allConditions = allConditions
@@ -865,7 +1025,6 @@ fun CharacterDetailMainContent(
                 state = state,
                 statsMap = state.statsMap,
                 onDismiss = { state.showCharacterSettings = false },
-                hazeState = popupHazeState ?: hazeState,
                 forceBlurEnabled = blurPopups
             )
         }

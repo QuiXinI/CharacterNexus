@@ -399,18 +399,14 @@ fun ResourceConfigDialog(
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (blurDynamicFields && !isOled) Color.Transparent else colorScheme.surface
+                            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                         )
                     )
                 },
-                containerColor = if (blurDynamicFields && !isOled) Color.Transparent else colorScheme.background,
+                containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
                 modifier = Modifier.run {
-                    if (blurDynamicFields && hazeState != null && !isOled) {
-                        hazeEffect(state = hazeState) {
-                            style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
-                            inputScale = HazeInputScale.Fixed(0.7f)
-                        }
-                    } else this
+                    // No more hazeEffect for the dialog background
+                    this
                 }
             ) { paddingValues ->
                 Box(

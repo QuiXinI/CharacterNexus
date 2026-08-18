@@ -2,6 +2,7 @@ package ru.quasaris.characternexus.backend
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.compose.ui.input.key.Key
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +29,12 @@ class SettingsViewModel(
 
     private val _blurPopups = MutableStateFlow(settingsManager.settings.blurPopups)
     val blurPopups = _blurPopups.asStateFlow()
+
+    private val _blurRadius = MutableStateFlow(settingsManager.settings.blurRadius)
+    val blurRadius = _blurRadius.asStateFlow()
+
+    private val _customBlurRadius = MutableStateFlow(settingsManager.settings.customBlurRadius)
+    val customBlurRadius = _customBlurRadius.asStateFlow()
 
     private val _masterBlurEnabled = MutableStateFlow(settingsManager.settings.masterBlurEnabled)
     val masterBlurEnabled = _masterBlurEnabled.asStateFlow()
@@ -152,6 +159,10 @@ class SettingsViewModel(
     private val _exportDirectoryUri = MutableStateFlow(settingsManager.settings.exportDirectoryUri)
     val exportDirectoryUri = _exportDirectoryUri.asStateFlow()
 
+    private val keybindManager = KeybindManager()
+    private val _keybinds = MutableStateFlow(keybindManager.mappings)
+    val keybinds = _keybinds.asStateFlow()
+
     val performanceClass get() = ru.quasaris.characternexus.performanceClass
 
     fun updateRollHistorySize(size: Int) {
@@ -181,6 +192,18 @@ class SettingsViewModel(
     fun updateBlurPopups(enabled: Boolean) {
         _blurPopups.value = enabled
         settingsManager.settings.blurPopups = enabled
+        settingsManager.save()
+    }
+
+    fun updateBlurRadius(radius: Int) {
+        _blurRadius.value = radius
+        settingsManager.settings.blurRadius = radius
+        settingsManager.save()
+    }
+
+    fun updateCustomBlurRadius(radius: Int) {
+        _customBlurRadius.value = radius
+        settingsManager.settings.customBlurRadius = radius
         settingsManager.save()
     }
 
@@ -415,6 +438,23 @@ class SettingsViewModel(
         settingsManager.save()
     }
 
+    fun updateKeybind(action: KeybindAction, key: Key) {
+        keybindManager.updateMapping(action, key)
+        _keybinds.value = keybindManager.mappings
+    }
+
+    fun resetKeybind(action: KeybindAction) {
+        keybindManager.resetAction(action)
+        _keybinds.value = keybindManager.mappings
+    }
+
+    fun resetAllKeybinds() {
+        keybindManager.resetAll()
+        _keybinds.value = keybindManager.mappings
+    }
+
+    fun getDefaultKey(action: KeybindAction) = keybindManager.getDefaultKey(action)
+
     fun resetToDefaults() {
         settingsManager.resetToDefaults()
         
@@ -424,6 +464,8 @@ class SettingsViewModel(
         _blurRolls.value = s.blurRolls
         _blurFullscreen.value = s.blurFullscreen
         _blurPopups.value = s.blurPopups
+        _blurRadius.value = s.blurRadius
+        _customBlurRadius.value = s.customBlurRadius
         _masterBlurEnabled.value = s.masterBlurEnabled
         _rollInterfaceAlpha.value = s.rollInterfaceAlpha
         _rollPassThrough.value = s.rollPassThrough

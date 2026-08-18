@@ -220,7 +220,6 @@ fun StatsTab(
                 onStatsStateChange(newState)
                 showBonusDialogForAttribute = null
             },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled
         )
     }
@@ -257,7 +256,6 @@ fun StatsTab(
                 ))
                 showBonusDialogForSkill = null
             },
-            hazeState = hazeState,
             forceBlurEnabled = forceBlurEnabled
         )
     }

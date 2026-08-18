@@ -28,10 +28,6 @@ import androidx.compose.ui.window.DialogProperties
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.LocalContentColor
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.DicePart
@@ -58,7 +54,6 @@ fun AttackConfigDialog(
     onDismiss: () -> Unit,
     onSave: (AttackEntry) -> Unit,
     onDelete: (AttackEntry) -> Unit,
-    hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     exhaustion: Int = 0,
     settingsViewModel: SettingsViewModel? = null,
@@ -121,11 +116,11 @@ fun AttackConfigDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
         ) { paddingValues ->
             Box(
                 modifier = Modifier

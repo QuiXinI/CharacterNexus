@@ -47,6 +47,7 @@ fun MenuWindow(
     onDeleteCharacters: (List<String>) -> Unit,
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     settingsViewModel: SettingsViewModel? = null,
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
@@ -67,6 +68,11 @@ fun MenuWindow(
     
     var pendingImportResult by remember { mutableStateOf<ru.quasaris.characternexus.backend.ImportResult?>(null) }
     var imageToCrop by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    val isAnyFullscreenDialogOpen = imageToCrop != null || lssAvatarToDownload != null || importErrorMessage != null
+    LaunchedEffect(isAnyFullscreenDialogOpen) {
+        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
+    }
 
     CommonFilePicker(show = showFilePicker, fileExtensions = listOf("charbook", "lsskiller", "json")) { file ->
         showFilePicker = false

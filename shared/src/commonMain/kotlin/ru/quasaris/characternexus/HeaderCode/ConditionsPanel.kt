@@ -50,7 +50,7 @@ fun ConditionsPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .background(colorScheme.surface.copy(alpha = 0.0f), RoundedCornerShape(16.dp))
             .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
     ) {
         Text(

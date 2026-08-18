@@ -629,7 +629,6 @@ fun CreateWindow(
                 onHpBonusesTotalChange = { hpBonusesTotal = it },
                 statsMap = statsMap,
                 level = level.toIntOrNull() ?: 1,
-                hazeState = null,
                 forceBlurEnabled = false,
                 onDismiss = { showHealthSettings = false }
             )

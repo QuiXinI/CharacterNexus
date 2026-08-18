@@ -45,13 +45,15 @@ import ru.quasaris.characternexus.ui.CommonFilePicker
 fun CharacterCreationWindow(
     onNavigateBack: () -> Unit,
     onCharacterCreate: (Character) -> Unit,
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    
+    val isOled = colorScheme.background == Color.Black
+
     var name by remember { mutableStateOf("") }
     var charClass by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("1") }
@@ -77,6 +79,11 @@ fun CharacterCreationWindow(
     var showFilePicker by remember { mutableStateOf(false) }
     
     val characterUuid = remember { generateUuid() }
+
+    val isAnyFullscreenDialogOpen = imageToCrop != null
+    LaunchedEffect(isAnyFullscreenDialogOpen) {
+        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
+    }
 
     CommonFilePicker(show = showFilePicker, fileExtensions = listOf("jpg", "png", "webp")) { file ->
         showFilePicker = false
@@ -136,7 +143,7 @@ fun CharacterCreationWindow(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = colorScheme.surface,
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface,
                         titleContentColor = colorScheme.onSurface
                     )
                 )
@@ -145,8 +152,9 @@ fun CharacterCreationWindow(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shadowElevation = 8.dp,
-                    color = colorScheme.surface
+                    color = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                 ) {
+                    // ...
                     Button(
                         onClick = {
                             val levelInt = level.toIntOrNull() ?: 1
