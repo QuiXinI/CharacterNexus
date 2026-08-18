@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -171,7 +170,7 @@ fun GlossaryHub(onCategoryClick: (GlossaryCategory) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(100.dp)
-                    .shadow(2.dp, RoundedCornerShape(16.dp))
+                    .outerShadow(RoundedCornerShape(16.dp), blur = 2.dp)
                     .clickable { onCategoryClick(category) },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -273,7 +272,7 @@ fun GlossaryCategoryList(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(1.dp, RoundedCornerShape(16.dp)),
+                            .outerShadow(RoundedCornerShape(16.dp), blur = 1.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = colorScheme.surfaceVariant

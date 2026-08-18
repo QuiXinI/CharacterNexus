@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -53,7 +52,7 @@ fun AvatarPopup(
             Surface(
                 modifier = modifier
                     .width(220.dp)
-                    .shadow(8.dp, RoundedCornerShape(12.dp))
+                    .outerShadow(RoundedCornerShape(12.dp), blur = 8.dp)
                     .run {
                         if (hazeState != null && !isOled) {
                             this.clip(RoundedCornerShape(12.dp))

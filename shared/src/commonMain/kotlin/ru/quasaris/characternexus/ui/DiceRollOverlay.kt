@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -216,7 +215,7 @@ fun DiceRollingFab(
                         scaleX = s
                         scaleY = s
                     }
-                    .shadow(if (!isPoolEmpty && !isOled) 10.dp else 3.dp, CircleShape)
+                    .outerShadow(CircleShape, blur = if (!isPoolEmpty && !isOled) 10.dp else 3.dp)
                     .clip(CircleShape)
                     .pointerInput(Unit) {
                         detectDragGesturesAfterLongPress(
@@ -272,7 +271,7 @@ fun DiceMenuItem(
     val colorScheme = MaterialTheme.colorScheme
     Box(modifier = modifier.size(48.dp), contentAlignment = Alignment.Center) {
         Surface(
-            modifier = Modifier.fillMaxSize().shadow(if (count > 0) 6.dp else 2.dp, CircleShape),
+            modifier = Modifier.fillMaxSize().outerShadow(CircleShape, blur = if (count > 0) 6.dp else 2.dp),
             shape = CircleShape,
             color = if (isOled) Color.Black else colorScheme.surfaceVariant.copy(alpha = alpha),
             border = BorderStroke(if (count > 0) 2.dp else 1.dp, if (count > 0) colorScheme.primary else Color.White.copy(alpha = 0.1f))
@@ -331,7 +330,7 @@ fun DiceRollAdvantagePopup(
 ) {
     Popup(onDismissRequest = onDismiss) {
         Surface(
-            modifier = modifier.fillMaxWidth(widthMultiplier).shadow(8.dp, RoundedCornerShape(12.dp)),
+            modifier = modifier.fillMaxWidth(widthMultiplier).outerShadow(RoundedCornerShape(12.dp), blur = 8.dp),
             shape = RoundedCornerShape(12.dp),
             color = if (isOled) Color.Black else MaterialTheme.colorScheme.surface,
             border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))

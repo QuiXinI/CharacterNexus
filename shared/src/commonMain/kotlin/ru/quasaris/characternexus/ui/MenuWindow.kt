@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -288,7 +287,7 @@ fun MenuWindow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
-                        .shadow(4.dp, RoundedCornerShape(12.dp)),
+                        .outerShadow(RoundedCornerShape(12.dp), blur = 4.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colorScheme.primaryContainer,
@@ -320,7 +319,7 @@ fun MenuWindow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
-                    .shadow(6.dp, RoundedCornerShape(12.dp)),
+                    .outerShadow(RoundedCornerShape(12.dp), blur = 6.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colorScheme.error,

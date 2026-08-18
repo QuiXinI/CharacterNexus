@@ -7,6 +7,15 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.asSkiaPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+
 @Composable
 actual fun BackHandler(enabled: Boolean, onBack: () -> Unit) {
 }
@@ -25,4 +34,25 @@ actual fun Modifier.outerShadow(
     blur: Dp,
     offsetY: Dp,
     offsetX: Dp
-): Modifier = this
+): Modifier = this.drawBehind {
+    drawIntoCanvas { canvas ->
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val path = Path().apply { addOutline(outline) }
+
+        canvas.save()
+        canvas.clipPath(path, clipOp = ClipOp.Difference)
+
+        val skiaPaint = org.jetbrains.skia.Paint().apply {
+            maskFilter = org.jetbrains.skia.MaskFilter.makeBlur(org.jetbrains.skia.FilterBlurMode.NORMAL, blur.toPx())
+            this.color = color.toArgb()
+        }
+
+        val skiaCanvas = canvas.nativeCanvas
+        skiaCanvas.save()
+        skiaCanvas.translate(offsetX.toPx(), offsetY.toPx())
+        skiaCanvas.drawPath(path.asSkiaPath(), skiaPaint)
+        skiaCanvas.restore()
+
+        canvas.restore()
+    }
+}
