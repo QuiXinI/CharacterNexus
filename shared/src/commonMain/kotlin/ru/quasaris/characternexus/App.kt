@@ -93,6 +93,12 @@ fun App(
     val rollPosition = getRollPosition()
     val rollCloseButtonPos = getRollCloseButtonPosition()
 
+    val diceFabEnabled by settingsViewModel.diceFabEnabled.collectAsState()
+    val diceFabOffsetX by settingsViewModel.diceFabOffsetX.collectAsState()
+    val diceFabOffsetY by settingsViewModel.diceFabOffsetY.collectAsState()
+    val diceFabAlpha by settingsViewModel.diceFabAlpha.collectAsState()
+    val diceFabBlurEnabled by settingsViewModel.diceFabBlurEnabled.collectAsState()
+
     val hazeState = remember { HazeState() }
     val overlayHazeState = remember { HazeState() }
 
@@ -137,17 +143,22 @@ fun App(
             val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
 
             Box(modifier = Modifier.fillMaxSize()) {
-                // Unified Source for Blur (Background + UI)
+                // Layer 1: Global Background Source (for cards)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
                         .hazeSource(state = hazeState)
+                        .blur(blurRadius)
+                )
+
+                // Layer 2: Main UI Source (for popups, FAB and dragged items)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
                         .hazeSource(state = overlayHazeState)
                         .blur(blurRadius)
                 ) {
-                    // Background
-                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-                    
                     ModalNavigationDrawer(
                         drawerState = drawerState,
                         gesturesEnabled = currentRoute == "menu" ||
@@ -455,6 +466,30 @@ fun App(
                 val density = LocalDensity.current
                 val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
                 val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true
+
+                if (!isKeyboardVisible && diceFabEnabled && isOnCharacterScreen && !isFullscreenDialogOpen) {
+                    DiceRollerFab(
+                        onRoll = { pool: Map<Int, Int> ->
+                            val res = DiceRoller.rollPool(pool)
+                            PlatformUtils.performHapticFeedback()
+                            rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
+                        },
+                        hazeState = overlayHazeState,
+                        modifier = Modifier.align(Alignment.BottomEnd),
+                        isOled = isOled,
+                        alpha = diceFabAlpha,
+                        forceBlurEnabled = masterBlurEnabled && diceFabBlurEnabled,
+                        initialOffsetX = diceFabOffsetX * density.density,
+                        initialOffsetY = diceFabOffsetY * density.density,
+                        onPositionChange = { x, y ->
+                            settingsViewModel.updateDiceFabPosition(
+                                x / density.density,
+                                y / density.density
+                            )
+                        }
+                    )
+                }
+
                 if (rollHistory.isNotEmpty() && isOnCharacterScreen && !isKeyboardVisible && !isFullscreenDialogOpen) {
                     DiceRollOverlay(
                         history = rollHistory,

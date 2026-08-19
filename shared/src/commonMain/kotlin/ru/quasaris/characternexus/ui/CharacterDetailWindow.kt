@@ -389,7 +389,6 @@ fun CharacterDetailWindow(
                 settingsViewModel = settingsViewModel,
                 spellbookManager = spellbookManager,
                 allConditions = allConditions,
-                isAnyFullscreenDialogOpen = isAnyFullscreenDialogOpen,
                 onNavigateBack = onNavigateBack,
                 showImagePicker = { showImagePicker = true }
             )
@@ -826,12 +825,9 @@ fun CharacterDetailMainContent(
     settingsViewModel: SettingsViewModel?,
     spellbookManager: SpellbookManager?,
     allConditions: List<Condition>,
-    isAnyFullscreenDialogOpen: Boolean,
     onNavigateBack: () -> Unit,
     showImagePicker: () -> Unit
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    val density = LocalDensity.current
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val keybinds by settingsViewModel?.keybinds?.collectAsState() ?: remember { mutableStateOf(emptyMap<KeybindAction, Key>()) }
 
@@ -994,28 +990,7 @@ fun CharacterDetailMainContent(
                 }
             }
 
-            val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
-            if (!isKeyboardVisible && state.diceFabEnabled && !isAnyFullscreenDialogOpen) {
-                DiceRollerFab(
-                    onRoll = { pool: Map<Int, Int> ->
-                        val res = DiceRoller.rollPool(pool)
-                        onRoll(res)
-                    },
-                    hazeState = popupHazeState ?: hazeState,
-                    modifier = Modifier.align(Alignment.BottomEnd),
-                    isOled = colorScheme.background == Color.Black,
-                    alpha = state.effectiveDiceFabAlpha,
-                    forceBlurEnabled = state.effectiveDiceFabBlur,
-                    initialOffsetX = state.diceFabOffsetX * density.density,
-                    initialOffsetY = state.diceFabOffsetY * density.density,
-                    onPositionChange = { x, y ->
-                        settingsViewModel?.updateDiceFabPosition(
-                            x / density.density,
-                            y / density.density
-                        )
-                    }
-                )
-            }
+
 
             CharacterDetailDialogs(
                 state = state,

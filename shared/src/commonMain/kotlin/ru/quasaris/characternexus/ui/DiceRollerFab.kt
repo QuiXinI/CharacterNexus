@@ -35,9 +35,6 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-/**
- * Перечисление типов кубиков с их иконками и количеством граней.
- */
 enum class DiceType(val sides: Int, val iconRes: DrawableResource) {
     D2(2, Res.drawable.ic_d2_dice),
     D4(4, Res.drawable.ic_d4_dice),
@@ -46,18 +43,15 @@ enum class DiceType(val sides: Int, val iconRes: DrawableResource) {
     D10(10, Res.drawable.ic_d10_dice),
     D12(12, Res.drawable.ic_d12_dice),
     D20(20, Res.drawable.ic_d20_dice),
-    D100(100, Res.drawable.ic_d10_dice) // Для D100 используем иконку D10 (или спец. обработку)
+    D100(100, Res.drawable.ic_d10_dice)
 }
 
 private val HazeFabStyle = HazeStyle(
-    blurRadius = 24.dp,
-    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
+    blurRadius = 32.dp,
+    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.15f))),
+    noiseFactor = 0f
 )
 
-/**
- * Stateful-обертка для DiceRollerFab.
- * Управляет состоянием пула кубиков, позицией и развернутостью.
- */
 @Composable
 fun DiceRollerFab(
     onRoll: (Map<Int, Int>) -> Unit,
@@ -73,18 +67,15 @@ fun DiceRollerFab(
     var isExpanded by remember { mutableStateOf(false) }
     val dicePool = remember { mutableStateMapOf<Int, Int>() }
     var isDragging by remember { mutableStateOf(false) }
-    
-    // Позиция FAB. Используем initialOffset для инициализации.
+
     var fabOffset by remember { mutableStateOf(IntOffset(initialOffsetX.roundToInt(), initialOffsetY.roundToInt())) }
-    
-    // Синхронизация при внешнем изменении (например, из настроек)
+
     LaunchedEffect(initialOffsetX, initialOffsetY) {
         if (!isDragging) {
             fabOffset = IntOffset(initialOffsetX.roundToInt(), initialOffsetY.roundToInt())
         }
     }
 
-    // Инициализация пула нулями
     LaunchedEffect(Unit) {
         DiceType.entries.forEach { dicePool[it.sides] = 0 }
     }
@@ -98,8 +89,8 @@ fun DiceRollerFab(
         alpha = alpha,
         forceBlurEnabled = forceBlurEnabled,
         onToggleExpand = { isExpanded = !isExpanded },
-        onDiceClick = { sides -> 
-            dicePool[sides] = (dicePool[sides] ?: 0) + 1 
+        onDiceClick = { sides ->
+            dicePool[sides] = (dicePool[sides] ?: 0) + 1
         },
         onDiceLongClick = { sides ->
             val current = dicePool[sides] ?: 0
@@ -126,9 +117,6 @@ fun DiceRollerFab(
     )
 }
 
-/**
- * Stateless UI компонент плавающей кнопки броска кубиков.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DiceRollerFabStateless(
@@ -154,92 +142,102 @@ fun DiceRollerFabStateless(
 
     val radialRadius by transition.animateDp(
         label = "RadialRadius",
-        transitionSpec = { 
+        transitionSpec = {
             spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessLow
-            ) 
+            )
         }
     ) { expanded -> if (expanded) 90.dp else 0.dp }
 
     val fabScale by transition.animateFloat(
         label = "FabScale",
-        transitionSpec = { 
+        transitionSpec = {
             spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessLow
-            ) 
+            )
         }
     ) { expanded ->
-        if (expanded) 0.8f else 1f
+        if (expanded) 0.85f else 1f
     }
 
     val isAnyDiceSelected = dicePool.values.any { it > 0 }
 
+    // Якорь фиксированного размера (72dp) гарантирует, что центр FAB не смещается при раскрытии меню
     Box(
         modifier = modifier
             .offset { offset }
-            .size(72.dp)
-            .alpha(alpha),
+            .size(72.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Фоновая подложка для закрытия при клике в пустоту (в развернутом состоянии)
-        if (isExpanded) {
-            Box(
-                modifier = Modifier
-                    .size(220.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onToggleExpand
-                    )
-            )
-        }
-
-        // 8 кнопок кубиков
-        DiceType.entries.forEachIndexed { index, dice ->
-            val angle = index * (2 * PI / 8) - PI / 2 // Начинаем сверху
-            val diceOffsetX = with(density) { (radialRadius.toPx() * cos(angle)).roundToInt() }
-            val diceOffsetY = with(density) { (radialRadius.toPx() * sin(angle)).roundToInt() }
-
-            AnimatedVisibility(
-                visible = isExpanded,
-                enter = fadeIn() + scaleIn(initialScale = 0f),
-                exit = fadeOut() + scaleOut(targetScale = 0f),
-                modifier = Modifier.offset { IntOffset(diceOffsetX, diceOffsetY) }
-            ) {
-                DiceButton(
-                    dice = dice,
-                    count = dicePool[dice.sides] ?: 0,
-                    hazeState = hazeState,
-                    isOled = isOled,
-                    forceBlurEnabled = forceBlurEnabled,
-                    onClick = { onDiceClick(dice.sides) },
-                    onLongClick = { onDiceLongClick(dice.sides) }
+        // Контейнер для меню с "unbounded" размером позволяет костям вылетать за пределы якоря
+        Box(
+            modifier = Modifier
+                .wrapContentSize(unbounded = true)
+                .size(280.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isExpanded) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onToggleExpand
+                        )
                 )
+            }
+
+            DiceType.entries.forEachIndexed { index, dice ->
+                val angle = index * (2 * PI / 8) - PI / 2
+                val diceOffsetX = with(density) { (radialRadius.toPx() * cos(angle)).roundToInt() }
+                val diceOffsetY = with(density) { (radialRadius.toPx() * sin(angle)).roundToInt() }
+
+                AnimatedVisibility(
+                    visible = isExpanded,
+                    enter = fadeIn() + scaleIn(initialScale = 0f),
+                    exit = fadeOut() + scaleOut(targetScale = 0f),
+                    modifier = Modifier.offset { IntOffset(diceOffsetX, diceOffsetY) }
+                ) {
+                    DiceButton(
+                        dice = dice,
+                        count = dicePool[dice.sides] ?: 0,
+                        hazeState = hazeState,
+                        isOled = isOled,
+                        alpha = alpha,
+                        forceBlurEnabled = forceBlurEnabled,
+                        onClick = { onDiceClick(dice.sides) },
+                        onLongClick = { onDiceLongClick(dice.sides) }
+                    )
+                }
             }
         }
 
-        // Центральная кнопка
+        val surfaceColor = MaterialTheme.colorScheme.surface
         Box(
             modifier = Modifier
                 .size(if (isExpanded) 64.dp else 72.dp)
                 .scale(fabScale)
+                .outerShadow(
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = if (isOled) 0.6f else 0.25f),
+                    blur = if (isAnyDiceSelected) 16.dp else 10.dp,
+                    offsetY = 4.dp
+                )
                 .clip(CircleShape)
                 .run {
                     if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.hazeEffect(state = hazeState, style = HazeFabStyle)
-                    } else this
+                        this.background(Color.Transparent)
+                    } else {
+                        this.background(if (isOled) Color.Black.copy(alpha = alpha) else surfaceColor.copy(alpha = alpha))
+                    }
                 }
-                .background(
-                    color = if (isOled) Color.Black else MaterialTheme.colorScheme.surface.copy(alpha = if (forceBlurEnabled && hazeState != null) 0.4f else 1.0f),
-                    shape = CircleShape
-                )
-                .border(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.2f), CircleShape)
                 .pointerInput(isExpanded) {
                     detectDragGesturesAfterLongPress(
-                        onDragStart = { 
+                        onDragStart = {
                             if (isExpanded) onResetAndDrag()
                             onDragStart()
                         },
@@ -260,6 +258,16 @@ fun DiceRollerFabStateless(
                 ),
             contentAlignment = Alignment.Center
         ) {
+            if (forceBlurEnabled && hazeState != null && !isOled) {
+                Box(
+                    modifier = Modifier
+                        .wrapContentSize(unbounded = true)
+                        .size(160.dp)
+                        .background(surfaceColor.copy(alpha = alpha * 0.4f))
+                        .hazeEffect(state = hazeState, style = HazeFabStyle)
+                )
+            }
+
             val showRollText = isExpanded && isAnyDiceSelected
             AnimatedContent(
                 targetState = showRollText,
@@ -274,7 +282,7 @@ fun DiceRollerFabStateless(
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = alpha)
                         )
                     )
                 } else {
@@ -282,7 +290,7 @@ fun DiceRollerFabStateless(
                         painter = painterResource(Res.drawable.ic_d20_dice),
                         contentDescription = "Dice Roller",
                         modifier = Modifier.size(36.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = alpha)
                     )
                 }
             }
@@ -290,9 +298,6 @@ fun DiceRollerFabStateless(
     }
 }
 
-/**
- * Отдельная кнопка кубика в радиальном меню.
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DiceButton(
@@ -300,6 +305,7 @@ private fun DiceButton(
     count: Int,
     hazeState: HazeState?,
     isOled: Boolean,
+    alpha: Float,
     forceBlurEnabled: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit
@@ -313,21 +319,20 @@ private fun DiceButton(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .outerShadow(
+                    shape = CircleShape,
+                    color = Color.Black.copy(alpha = if (isOled) 0.5f else 0.25f),
+                    blur = if (count > 0) 10.dp else 6.dp,
+                    offsetY = 2.dp
+                )
                 .clip(CircleShape)
                 .run {
                     if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.hazeEffect(state = hazeState, style = HazeFabStyle)
-                    } else this
+                        this.background(Color.Transparent)
+                    } else {
+                        this.background(if (isOled) Color.Black.copy(alpha = alpha) else colorScheme.surface.copy(alpha = alpha))
+                    }
                 }
-                .background(
-                    color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = if (forceBlurEnabled && hazeState != null) 0.4f else 1.0f),
-                    shape = CircleShape
-                )
-                .border(
-                    width = if (count > 0) 2.dp else 1.dp,
-                    color = if (count > 0) colorScheme.primary else Color.White.copy(alpha = if (isOled) 0.3f else 0.1f),
-                    shape = CircleShape
-                )
                 .pointerInput(onClick, onLongClick) {
                     awaitPointerEventScope {
                         while (true) {
@@ -345,19 +350,29 @@ private fun DiceButton(
                 ),
             contentAlignment = Alignment.Center
         ) {
+            if (forceBlurEnabled && hazeState != null && !isOled) {
+                Box(
+                    modifier = Modifier
+                        .wrapContentSize(unbounded = true)
+                        .size(80.dp)
+                        .background(colorScheme.surface.copy(alpha = alpha * 0.4f))
+                        .hazeEffect(state = hazeState, style = HazeFabStyle)
+                )
+            }
+
             if (dice == DiceType.D100) {
                 Box(modifier = Modifier.size(24.dp)) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_d10_dice),
                         contentDescription = null,
                         modifier = Modifier.size(14.dp).align(Alignment.TopStart),
-                        tint = colorScheme.primary
+                        tint = colorScheme.primary.copy(alpha = alpha)
                     )
                     Icon(
                         painter = painterResource(Res.drawable.ic_d10_dice),
                         contentDescription = null,
                         modifier = Modifier.size(14.dp).align(Alignment.BottomEnd),
-                        tint = colorScheme.primary
+                        tint = colorScheme.primary.copy(alpha = alpha)
                     )
                 }
             } else {
@@ -365,7 +380,7 @@ private fun DiceButton(
                     painter = painterResource(dice.iconRes),
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = colorScheme.primary
+                    tint = colorScheme.primary.copy(alpha = alpha)
                 )
             }
         }
@@ -375,13 +390,13 @@ private fun DiceButton(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset(x = 4.dp, y = (-4).dp)
-                    .background(colorScheme.primary, CircleShape)
+                    .background(colorScheme.primary.copy(alpha = alpha), CircleShape)
                     .padding(horizontal = 6.dp, vertical = 2.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = count.toString(),
-                    color = colorScheme.onPrimary,
+                    color = colorScheme.onPrimary.copy(alpha = alpha),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 9.sp)
                 )
             }

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Keyboard
 import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
+import ru.quasaris.characternexus.generated.BuildConstants
 
 private const val SHOW_DEBUG_SETTINGS = true
 
@@ -302,7 +303,7 @@ fun SettingsWindow(
             )
             
             Text(
-                text = "Мастер Персонажей\nВерсия 0.1.0",
+                text = "Мастер Персонажей\nВерсия ${BuildConstants.VERSION}",
                 fontSize = 14.sp,
                 color = colorScheme.onSurfaceVariant
             )
