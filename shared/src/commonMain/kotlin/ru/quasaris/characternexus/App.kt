@@ -425,7 +425,10 @@ fun App(
                                             updateCharacter(updatedCharacter)
                                             val index = characters.indexOfFirst { it.uuid == updatedCharacter.uuid }
                                             if (index != -1) {
-                                                characters[index] = updatedCharacter.toSummary()
+                                                val newSummary = updatedCharacter.toSummary()
+                                                if (characters[index] != newSummary) {
+                                                    characters[index] = newSummary
+                                                }
                                                 if (updatedCharacter.id == lastCharacterId) {
                                                     onSeedColorChange(updatedCharacter.themeSeedColorArgb)
                                                 }

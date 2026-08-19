@@ -52,7 +52,7 @@ fun ClassDetailWindow(
     var selectedSubclass by remember { mutableStateOf<GameSubclass?>(null) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    
+
     // Right drawer state (custom)
     var showRightDrawer by remember { mutableStateOf(false) }
 

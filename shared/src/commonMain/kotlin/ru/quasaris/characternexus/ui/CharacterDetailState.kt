@@ -209,18 +209,22 @@ class CharacterDetailState(
         val diceFabEnabledVal by settingsViewModel.diceFabEnabled.collectAsState()
         val advantageLogicVal by settingsViewModel.advantageLogic.collectAsState()
 
-        SideEffect {
-            useNewAC = useNewACVal
-            useNewInit = useNewInitVal
-            useNewCond = useNewCondVal
-            useNewSpeed = useNewSpeedVal
-            diceFabOffsetX = diceFabOffsetXVal
-            diceFabOffsetY = diceFabOffsetYVal
-            diceFabAlphaSetting = diceFabAlphaSettingVal
-            diceFabBlurEnabled = diceFabBlurEnabledVal
-            masterBlurEnabled = masterBlurEnabledVal
-            diceFabEnabled = diceFabEnabledVal
-            advantageLogic = advantageLogicVal
+        LaunchedEffect(
+            useNewACVal, useNewInitVal, useNewCondVal, useNewSpeedVal,
+            diceFabOffsetXVal, diceFabOffsetYVal, diceFabAlphaSettingVal,
+            diceFabBlurEnabledVal, masterBlurEnabledVal, diceFabEnabledVal, advantageLogicVal
+        ) {
+            if (useNewAC != useNewACVal) useNewAC = useNewACVal
+            if (useNewInit != useNewInitVal) useNewInit = useNewInitVal
+            if (useNewCond != useNewCondVal) useNewCond = useNewCondVal
+            if (useNewSpeed != useNewSpeedVal) useNewSpeed = useNewSpeedVal
+            if (diceFabOffsetX != diceFabOffsetXVal) diceFabOffsetX = diceFabOffsetXVal
+            if (diceFabOffsetY != diceFabOffsetYVal) diceFabOffsetY = diceFabOffsetYVal
+            if (diceFabAlphaSetting != diceFabAlphaSettingVal) diceFabAlphaSetting = diceFabAlphaSettingVal
+            if (diceFabBlurEnabled != diceFabBlurEnabledVal) diceFabBlurEnabled = diceFabBlurEnabledVal
+            if (masterBlurEnabled != masterBlurEnabledVal) masterBlurEnabled = masterBlurEnabledVal
+            if (diceFabEnabled != diceFabEnabledVal) diceFabEnabled = diceFabEnabledVal
+            if (advantageLogic != advantageLogicVal) advantageLogic = advantageLogicVal
         }
     }
 
