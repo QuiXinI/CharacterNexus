@@ -269,7 +269,8 @@ fun DynamicFieldsTab(
                         forceBlurEnabled = forceBlurEnabled,
                         blurPopups = blurPopups,
                         settingsViewModel = settingsViewModel,
-                        statsMap = statsMap
+                        statsMap = statsMap,
+                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
                     )
                 }
             }
@@ -344,8 +345,12 @@ fun DynamicFieldsTab(
                         onFieldsChange(items.toList())
                     }
                     fullscreenFieldIndex = null
+                    onFullscreenDialogOpenChange(false)
                 },
-                onDismiss = { fullscreenFieldIndex = null },
+                onDismiss = { 
+                    fullscreenFieldIndex = null
+                    onFullscreenDialogOpenChange(false)
+                },
                 hazeState = hazeState,
                 forceBlurEnabled = forceBlurEnabled,
                 blurPopups = blurPopups,
@@ -381,6 +386,7 @@ fun DynamicFieldItem(
     blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
     val internalHazeState = remember { HazeState() }
@@ -778,6 +784,7 @@ fun DynamicFieldItem(
                                                                             blurDynamicFields = blurDynamicFields,
                                                                             blurPopups = blurPopups,
                                                                             settingsViewModel = settingsViewModel,
+                                                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                                             onDeleteRequest = {
                                                                                 val newBlocks = blocks.toMutableList()
                                                                                 val blockIndex = newBlocks.indexOf(block)
@@ -877,8 +884,13 @@ fun DynamicFieldFullscreenDialog(
     blurDynamicFields: Boolean = true,
     blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
-    statsMap: Map<String, String> = emptyMap()
+    statsMap: Map<String, String> = emptyMap(),
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {}
 ) {
+    LaunchedEffect(Unit) {
+        onFullscreenDialogOpenChange(true)
+    }
+
     var title by remember { mutableStateOf(field.title) }
     var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
 
@@ -1109,6 +1121,7 @@ fun DynamicFieldFullscreenDialog(
                                                     forceBlurEnabled = blurPopups,
                                                     blurDynamicFields = blurDynamicFields,
                                                     settingsViewModel = settingsViewModel,
+                                                    onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                     onDeleteRequest = {
                                                         val newBlocks = blocks.toMutableList()
                                                         val blockIndex = newBlocks.indexOf(block)
