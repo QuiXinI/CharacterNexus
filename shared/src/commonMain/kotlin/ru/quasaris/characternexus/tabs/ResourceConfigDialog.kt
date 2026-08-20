@@ -3,6 +3,9 @@ package ru.quasaris.characternexus.tabs
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalTextToolbar
@@ -26,9 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import org.jetbrains.compose.resources.painterResource
 import ru.quasaris.characternexus.backend.SettingsViewModel
+import characternexus.shared.generated.resources.*
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.DialogDimStyle
+import ru.quasaris.characternexus.ui.util.PayWall
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +54,8 @@ fun ResourceConfigDialog(
     var shortRestAll by remember { mutableStateOf(resource.shortRest.lowercase() == "all" || resource.shortRest.lowercase() == "все") }
     var longRestAll by remember { mutableStateOf(resource.longRest.lowercase() == "all" || resource.longRest.lowercase() == "все") }
     var dawnRestAll by remember { mutableStateOf(resource.dawnRest.lowercase() == "all" || resource.dawnRest.lowercase() == "все") }
+
+    val isPremium by settingsViewModel?.isPremium?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val blurRadiusVal by settingsViewModel?.blurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
     val customBlurRadiusVal by settingsViewModel?.customBlurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
@@ -162,8 +171,8 @@ fun ResourceConfigDialog(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Короткий отдых", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                                    Text("Все", style = MaterialTheme.typography.labelMedium)
+                                    Text("Короткий отдых", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                                    Text("Все", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant)
                                     Switch(
                                         checked = shortRestAll,
                                         onCheckedChange = {
@@ -192,8 +201,8 @@ fun ResourceConfigDialog(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Продолжительный отдых", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                                    Text("Все", style = MaterialTheme.typography.labelMedium)
+                                    Text("Продолжительный отдых", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                                    Text("Все", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant)
                                     Switch(
                                         checked = longRestAll,
                                         onCheckedChange = {
@@ -222,8 +231,8 @@ fun ResourceConfigDialog(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Рассвет", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                                    Text("Все", style = MaterialTheme.typography.labelMedium)
+                                    Text("Рассвет", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                                    Text("Все", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant)
                                     Switch(
                                         checked = dawnRestAll,
                                         onCheckedChange = {
@@ -244,8 +253,62 @@ fun ResourceConfigDialog(
                             }
                         }
 
+                        // Slider setting
+                        PayWall(isLocked = !isPremium) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Режим слайдера",
+                                        modifier = Modifier.weight(1f),
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorScheme.onSurface
+                                    )
+                                    Switch(
+                                        checked = state.useSlider,
+                                        onCheckedChange = { state = state.copy(useSlider = it) }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Resource Step setting
+                        PayWall(isLocked = !isPremium) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        "Шаг изменения",
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorScheme.onSurface,
+                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    )
+                                    OutlinedTextField(
+                                        value = state.sliderStep.toString(),
+                                        onValueChange = {
+                                            val step = it.toDoubleOrNull() ?: state.sliderStep
+                                            state = state.copy(sliderStep = step)
+                                        },
+                                        label = { Text("Значение шага") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+                        }
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Заметки ресурса", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                            Text("Отображать заметки", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
                             Switch(checked = state.showNotes, onCheckedChange = { state = state.copy(showNotes = it) })
                         }
 
@@ -260,7 +323,6 @@ fun ResourceConfigDialog(
 
                         Spacer(modifier = Modifier.height(32.dp))
 
-                        // Delete Button
                         OutlinedButton(
                             onClick = { showDeleteConfirm = true },
                             modifier = Modifier.fillMaxWidth(),

@@ -178,6 +178,32 @@ fun SettingsWindow(
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            Text(
+                text = "Character Nexus Premium",
+                style = MaterialTheme.typography.titleMedium,
+                color = colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            val isPremium by settingsViewModel.isPremium.collectAsState()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Премиум аккаунт",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Switch(
+                    checked = isPremium,
+                    onCheckedChange = { settingsViewModel.updateIsPremium(it) }
+                )
+            }
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
             Button(
                 onClick = { showKeybindSettings = true },
                 modifier = Modifier.fillMaxWidth(),
@@ -1079,19 +1105,20 @@ fun WarningBlurDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .border(2.dp, Color.Red, RoundedCornerShape(28.dp)),
-        containerColor = Color(0xFF121212),
+            .border(2.dp, colorScheme.error, RoundedCornerShape(28.dp)),
+        containerColor = colorScheme.surface,
         tonalElevation = 8.dp,
         title = {
             Text(
                 text = "⚠️ ВНИМАНИЕ: ОПАСНО ДЛЯ УСТРОЙСТВА",
-                color = Color.Red,
+                color = colorScheme.error,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
             )
@@ -1099,7 +1126,7 @@ fun WarningBlurDialog(
         text = {
             val annotatedString = buildAnnotatedString {
                 append("Вы собираетесь принудительно включить эффекты размытия на неподдерживаемом устройстве. Это может привести к дикому троттлингу, лагам, критическому перегреву и даже выходу из строя железа при долгой партии. Вы рискуете ")
-                withStyle(style = SpanStyle(color = Color.Red, fontWeight = FontWeight.Bold)) {
+                withStyle(style = SpanStyle(color = colorScheme.error, fontWeight = FontWeight.Bold)) {
                     append("своим железом")
                 }
                 append(" по собственной воле! Команда ")
@@ -1110,18 +1137,18 @@ fun WarningBlurDialog(
             }
             Text(
                 text = annotatedString,
-                color = Color.White,
+                color = colorScheme.onSurface,
                 fontSize = 16.sp
             )
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Да, я понимаю риски и беру ответственность на себя", color = Color.Red, fontWeight = FontWeight.Black)
+                Text("Да, я понимаю риски и беру ответственность на себя", color = colorScheme.error, fontWeight = FontWeight.Black)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Не включать", color = Color.White)
+                Text("Не включать", color = colorScheme.onSurface)
             }
         },
         shape = RoundedCornerShape(28.dp),

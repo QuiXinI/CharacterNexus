@@ -13,7 +13,9 @@ sealed class DynamicContentBlock {
         val dawnRest: String = "0",
         val link: String? = null,
         val notes: String = "",
-        val showNotes: Boolean = false
+        val showNotes: Boolean = false,
+        val useSlider: Boolean = false,
+        val sliderStep: Double = 1.0
     ) : DynamicContentBlock() {
         fun toTag(): String {
             val parts = mutableListOf<String>()
@@ -26,6 +28,8 @@ sealed class DynamicContentBlock {
             if (link != null) parts.add("link=$link")
             if (notes.isNotEmpty()) parts.add("notes=$notes")
             if (showNotes) parts.add("showNotes=true")
+            if (useSlider) parts.add("slider=true")
+            if (sliderStep != 1.0) parts.add("step=$sliderStep")
             
             return "{Ресурс: ${parts.joinToString(" | ")}}"
         }
@@ -35,7 +39,7 @@ sealed class DynamicContentBlock {
 object DynamicContentParser {
     private val dividerRegex = Regex("^---$", RegexOption.MULTILINE)
     private val spoilerRegex = Regex("(?s)::(.*?)::")
-    private val resourceRegex = Regex("\\{(?:Ресурс|Resource):\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
+    private val resourceRegex = Regex("(?s)\\{(?:Ресурс|Resource):\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
 
     fun parse(text: String): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
@@ -76,7 +80,9 @@ object DynamicContentParser {
                     dawnRest = params["dr"] ?: params["dawnrest"] ?: params["dawn"] ?: "0",
                     link = params["link"],
                     notes = params["notes"] ?: "",
-                    showNotes = params["shownotes"]?.toBoolean() ?: false
+                    showNotes = params["shownotes"]?.toBoolean() ?: false,
+                    useSlider = params["slider"]?.toBoolean() ?: false,
+                    sliderStep = params["step"]?.toDoubleOrNull() ?: 1.0
                 )
                 allMatches.add(match.range to block)
             }

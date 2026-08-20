@@ -60,7 +60,8 @@ data class AppSettings(
     var renderDiceInOrder: Boolean = true,
     var collapseActionsOnEdit: Boolean = true,
     var collapseSpellsOnEdit: Boolean = true,
-    var collapseDynamicFieldsOnEdit: Boolean = true
+    var collapseDynamicFieldsOnEdit: Boolean = true,
+    var isPremium: Boolean = false
 )
 
 class SettingsManager {
@@ -129,6 +130,7 @@ class SettingsManager {
     var diceFabEnabled: Boolean get() = settings.diceFabEnabled; set(value) { settings.diceFabEnabled = value; save() }
     var blurRadius: Int get() = settings.blurRadius; set(value) { settings.blurRadius = value; save() }
     var customBlurRadius: Int get() = settings.customBlurRadius; set(value) { settings.customBlurRadius = value; save() }
+    var isPremium: Boolean get() = settings.isPremium; set(value) { settings.isPremium = value; save() }
 
     fun resetToDefaults() {
         settings = AppSettings()

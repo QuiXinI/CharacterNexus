@@ -156,6 +156,9 @@ class SettingsViewModel(
     private val _dawnRestFillDirection = MutableStateFlow(settingsManager.settings.dawnRestFillDirection)
     val dawnRestFillDirection = _dawnRestFillDirection.asStateFlow()
 
+    private val _isPremium = MutableStateFlow(settingsManager.settings.isPremium)
+    val isPremium = _isPremium.asStateFlow()
+
     private val _exportDirectoryUri = MutableStateFlow(settingsManager.settings.exportDirectoryUri)
     val exportDirectoryUri = _exportDirectoryUri.asStateFlow()
 
@@ -443,6 +446,11 @@ class SettingsViewModel(
         _keybinds.value = keybindManager.mappings
     }
 
+    fun updateIsPremium(enabled: Boolean) {
+        _isPremium.value = enabled
+        settingsManager.isPremium = enabled
+    }
+
     fun resetKeybind(action: KeybindAction) {
         keybindManager.resetAction(action)
         _keybinds.value = keybindManager.mappings
@@ -508,5 +516,6 @@ class SettingsViewModel(
         _dawnRestAlignment.value = s.dawnRestAlignment
         _dawnRestFillDirection.value = s.dawnRestFillDirection
         _exportDirectoryUri.value = s.exportDirectoryUri
+        _isPremium.value = s.isPremium
     }
 }
