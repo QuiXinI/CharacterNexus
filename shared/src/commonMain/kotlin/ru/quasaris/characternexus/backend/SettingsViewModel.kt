@@ -159,6 +159,9 @@ class SettingsViewModel(
     private val _isPremium = MutableStateFlow(settingsManager.settings.isPremium)
     val isPremium = _isPremium.asStateFlow()
 
+    private val _veryResponsiveHaptics = MutableStateFlow(settingsManager.settings.veryResponsiveHaptics)
+    val veryResponsiveHaptics = _veryResponsiveHaptics.asStateFlow()
+
     private val _exportDirectoryUri = MutableStateFlow(settingsManager.settings.exportDirectoryUri)
     val exportDirectoryUri = _exportDirectoryUri.asStateFlow()
 
@@ -449,6 +452,11 @@ class SettingsViewModel(
     fun updateIsPremium(enabled: Boolean) {
         _isPremium.value = enabled
         settingsManager.isPremium = enabled
+    }
+
+    fun updateVeryResponsiveHaptics(enabled: Boolean) {
+        _veryResponsiveHaptics.value = enabled
+        settingsManager.veryResponsiveHaptics = enabled
     }
 
     fun resetKeybind(action: KeybindAction) {

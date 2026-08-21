@@ -31,6 +31,35 @@ val generateBuildConstants = tasks.register("generateBuildConstants") {
     }
 }
 
+val generateConditionsJson = tasks.register("generateConditionsJson") {
+    val conditionsFile = project.file("src/commonMain/composeResources/files/Conditions.md")
+    inputs.file(conditionsFile)
+    val outputDir = layout.buildDirectory.dir("generated/conditions/resources")
+    outputs.dir(outputDir)
+    
+    doLast {
+        if (conditionsFile.exists()) {
+            val content = conditionsFile.readText()
+            val conditions = mutableListOf<String>()
+            
+            content.split(Regex("(^|\\n)##\\s+"))
+                .filter { it.isNotBlank() }
+                .forEach { section ->
+                    val lines = section.trim().lines()
+                    val name = lines.firstOrNull()?.trim()?.replace("\"", "\\\"") ?: ""
+                    val description = lines.drop(1).joinToString("\\n").trim().replace("\"", "\\\"")
+                    conditions.add("{\"name\":\"$name\",\"description\":\"$description\"}")
+                }
+            
+            val json = "[${conditions.joinToString(",")}]"
+            // Path must match the package-based structure expected by Compose Resources loader
+            val file = outputDir.get().file("composeResources/characternexus.shared.generated.resources/files/conditions.json").asFile
+            file.parentFile.mkdirs()
+            file.writeText(json)
+        }
+    }
+}
+
 kotlin {
     listOf(
         iosArm64(),
@@ -75,6 +104,7 @@ kotlin {
         }
         commonMain {
             kotlin.srcDir(generateBuildConstants)
+            resources.srcDir(generateConditionsJson)
             dependencies {
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)

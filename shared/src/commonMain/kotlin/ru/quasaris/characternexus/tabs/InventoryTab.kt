@@ -27,6 +27,7 @@ fun InventoryTab(
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     onWalletDialogOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
@@ -45,6 +46,7 @@ fun InventoryTab(
         blurPopups = blurPopups,
         isEditMode = isEditMode,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+        onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Инвентарь пуст",
         titlePlaceholder = "Название раздела",

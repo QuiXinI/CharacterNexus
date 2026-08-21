@@ -396,9 +396,8 @@ fun StatCard(
                         BasicTextField(
                             value = value,
                             onValueChange = {
-                                val f = it.filter { it.isDigit() }; if (f.isEmpty()) onValue("") else {
-                                val n = f.toIntOrNull(); if (n != null && n in 1..30) onValue(f)
-                            }
+                                val f = it.filter { it.isDigit() }
+                                if (f.length <= 2) onValue(f)
                             },
                             textStyle = TextStyle(
                                 textAlign = TextAlign.Center,
@@ -407,16 +406,32 @@ fun StatCard(
                                 color = colorScheme.onSurface
                             ),
                             modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            decorationBox = { innerTextField ->
+                                Box(contentAlignment = Alignment.Center) {
+                                    if (value.isEmpty()) {
+                                        Text(
+                                            "10",
+                                            style = TextStyle(
+                                                textAlign = TextAlign.Center,
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = colorScheme.onSurface.copy(alpha = 0.3f)
+                                            )
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
                         )
                     } else {
                         Text(
-                            text = value,
+                            text = value.ifEmpty { "10" },
                             style = TextStyle(
                                 textAlign = TextAlign.Center,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Black,
-                                color = colorScheme.onSurface
+                                color = if (value.isEmpty()) colorScheme.onSurface.copy(alpha = 0.3f) else colorScheme.onSurface
                             ),
                             modifier = Modifier.clickable { onClick() }
                         )

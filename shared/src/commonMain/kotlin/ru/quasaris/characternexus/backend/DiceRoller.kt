@@ -606,12 +606,20 @@ object DiceRoller {
     ): RollResult {
         val allDice = mutableListOf<DieRoll>()
         var total = 0
+        var mainD20: Int? = null
+        var isCritSuccess = false
+        var isCritFailure = false
         
         pool.forEach { (sides, count) ->
             repeat(count) {
                 val r = kotlin.random.Random.nextInt(1, sides + 1)
                 total += r
                 allDice.add(DieRoll(r, sides))
+                if (sides == 20) {
+                    if (r == 20) isCritSuccess = true
+                    if (r == 1) isCritFailure = true
+                    if (mainD20 == null) mainD20 = r
+                }
             }
         }
         
@@ -620,7 +628,10 @@ object DiceRoller {
             total = total,
             breakdown = pool.entries.joinToString(" + ") { "${it.value}d${it.key}" },
             bonusDice = allDice,
-            sourceType = RollSourceType.OTHER
+            sourceType = RollSourceType.OTHER,
+            isCriticalSuccess = isCritSuccess,
+            isCriticalFailure = isCritFailure,
+            mainD20 = mainD20
         )
     }
 }

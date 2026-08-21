@@ -9,7 +9,7 @@ actual object PlatformUtils {
     actual fun setClipboardText(label: String, text: String) {
     }
 
-    actual fun performHapticFeedback() {
+    actual fun performHapticFeedback(type: HapticType) {
     }
 }
 

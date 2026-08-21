@@ -279,12 +279,21 @@ class CharacterDetailState(
         Attribute.entries.forEach { attr ->
             if (attr == Attribute.NONE) return@forEach
             val key = attr.name.lowercase()
-            val baseScore = baseStats[key] ?: "10"
-            val effScore = ru.quasaris.characternexus.tabs.attacks.calculateTotalBonus(
-                bonuses = statsState.statBonuses.filter { bonus -> bonus.attribute == attr && bonus.type == StatBonusType.CHARACTERISTIC_VALUE },
-                stats = baseStats,
-                initialValue = baseScore.toIntOrNull() ?: 10
-            ).toString()
+            val baseScore = baseStats[key] ?: ""
+            
+            val characteristicBonuses = statsState.statBonuses.filter { bonus -> 
+                bonus.attribute == attr && bonus.type == StatBonusType.CHARACTERISTIC_VALUE && bonus.isActive 
+            }
+            
+            val effScore = if (characteristicBonuses.isEmpty()) {
+                baseScore
+            } else {
+                ru.quasaris.characternexus.tabs.attacks.calculateTotalBonus(
+                    bonuses = characteristicBonuses,
+                    stats = baseStats,
+                    initialValue = baseScore.toIntOrNull() ?: 10
+                ).toString()
+            }
 
             mutableStats[key] = effScore
             mutableStats["base_$key"] = baseScore

@@ -1,6 +1,5 @@
 package ru.quasaris.characternexus.HeaderCode
 
-import ru.quasaris.characternexus.model.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntSize
@@ -23,17 +22,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.quasaris.characternexus.ui.util.formatConditionDescription
 import ru.quasaris.characternexus.model.Condition
 
 @Composable
@@ -244,37 +239,8 @@ fun ConditionItem(condition: Condition, isSelected: Boolean, onToggle: () -> Uni
         ) {
             Column {
                 HorizontalDivider(color = sep, thickness = 1.2.dp)
-                Text(formatDescription(condition.description, colorScheme.primary), modifier = Modifier.padding(16.dp), fontSize = 14.sp, color = colorScheme.onSurface.copy(alpha = 0.8f))
+                Text(formatConditionDescription(condition.description, colorScheme.primary), modifier = Modifier.padding(16.dp), fontSize = 14.sp, color = colorScheme.onSurface.copy(alpha = 0.8f))
             }
-        }
-    }
-}
-
-fun formatDescription(text: String, primaryColor: Color = Color.Unspecified): AnnotatedString {
-    return buildAnnotatedString {
-        val lines = text.lines()
-        lines.forEachIndexed { i, line ->
-            var l = line.trim()
-            if (l.startsWith("- ")) {
-                withStyle(SpanStyle(fontWeight = FontWeight.Black, color = if (primaryColor != Color.Unspecified) primaryColor else Color.Unspecified)) {
-                    append("• ")
-                }
-                l = l.substring(2)
-            }
-            val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
-            var last = 0
-            boldRegex.findAll(l).forEach { m ->
-                append(l.substring(last, m.range.first))
-                withStyle(SpanStyle(
-                    fontWeight = FontWeight.Bold,
-                    color = if (primaryColor != Color.Unspecified) primaryColor.copy(alpha = 0.9f) else Color.Unspecified
-                )) { 
-                    append(m.groupValues[1]) 
-                }
-                last = m.range.last + 1
-            }
-            append(l.substring(last))
-            if (i < lines.size - 1) append("\n")
         }
     }
 }

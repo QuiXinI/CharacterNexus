@@ -43,6 +43,7 @@ fun BioTab(
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -83,7 +84,9 @@ fun BioTab(
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,
+        collapseOnEdit = null,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+        onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Список разделов пуст",
         titlePlaceholder = "Название раздела",
@@ -111,7 +114,7 @@ fun BioTab(
                     ) {
                         if (portraitPath != null) {
                             AsyncImage(
-                                model = portraitPath.toString(),
+                                model = portraitPath,
                                 contentDescription = "Портрет персонажа",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop

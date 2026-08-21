@@ -16,19 +16,15 @@ kotlin {
 
 // Настройка оптимизаций Kotlin компилятора в зависимости от таска
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    val isReleaseOrDebugFull = name.contains("Release", ignoreCase = true) || 
-                               name.contains("DebugFull", ignoreCase = true)
+    val isRelease = name.contains("Release", ignoreCase = true)
     
     compilerOptions {
-        if (isReleaseOrDebugFull) {
-            // Включаем оптимизации для тяжелых сборок
+        if (isRelease) {
+            // Включаем оптимизации для релизной сборки
             freeCompilerArgs.add("-Xbackend-threads=0") // Параллельная компиляция
-            if (name.contains("Release", ignoreCase = true)) {
-                // В релизе отсекаем отладочные метаданные, где это допустимо
-                freeCompilerArgs.add("-Xno-call-assertions")
-                freeCompilerArgs.add("-Xno-receiver-assertions")
-                freeCompilerArgs.add("-Xno-param-assertions")
-            }
+            freeCompilerArgs.add("-Xno-call-assertions")
+            freeCompilerArgs.add("-Xno-receiver-assertions")
+            freeCompilerArgs.add("-Xno-param-assertions")
         }
     }
 }
@@ -62,38 +58,16 @@ android {
     }
     buildTypes {
         /*
-         * debugCheck:
-         * Цель: Максимально быстрая сборка только для проверки компиляции (без глубоких оптимизаций).
-         * Android: minificationEnabled = false, shrinkResources = false.
+         * debug:
+         * Минимальные оптимизации для быстрой разработки.
          */
-        create("debugCheck") {
-            initWith(getByName("debug"))
+        getByName("debug") {
             isMinifyEnabled = false
-            matchingFallbacks += listOf("debug")
-        }
-
-        /*
-         * debugFull:
-         * Цель: Максимальная производительность рантайма (как в релизе), но с возможностью полноценного дебага.
-         * Android: Включить R8 (minificationEnabled = true), но оставить debuggable = true.
-         */
-        create("debugFull") {
-            initWith(getByName("debug"))
-            isMinifyEnabled = true
-            isDebuggable = true
-            signingConfig = signingConfigs.getByName("debug")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            matchingFallbacks += listOf("release")
         }
 
         /*
          * release:
-         * Цель: Итоговый релизный APK.
-         * Android: Включить R8, minificationEnabled = true, shrinkResources = true.
-         * Используется signingConfigs.debug, так как ключа разработчика пока нет.
+         * Полная оптимизация (R8) для конечного пользователя.
          */
         release {
             isMinifyEnabled = true

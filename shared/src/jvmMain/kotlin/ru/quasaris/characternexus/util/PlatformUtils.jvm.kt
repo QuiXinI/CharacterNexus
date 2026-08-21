@@ -1,21 +1,15 @@
 package ru.quasaris.characternexus.util
 
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import okio.Path
 import ru.quasaris.characternexus.platformFileSystem
-import java.awt.Image
-import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.io.File
-import java.io.ByteArrayOutputStream
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import ru.quasaris.characternexus.backend.cropper.ImageCropState
-import java.awt.Graphics2D
-import java.awt.RenderingHints
-import java.awt.geom.AffineTransform
+import org.jetbrains.skia.*
 
 actual object PlatformUtils {
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
@@ -28,7 +22,7 @@ actual object PlatformUtils {
         Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
     }
 
-    actual fun performHapticFeedback() {
+    actual fun performHapticFeedback(type: HapticType) {
         // No haptic feedback on Desktop usually
     }
 
@@ -40,15 +34,19 @@ actual object PlatformUtils {
 actual object ImageProcessor {
     actual fun generateThumbnail(sourcePath: Path, targetPath: Path) {
         try {
-            val img = ImageIO.read(File(sourcePath.toString())) ?: return
-            val scaled = img.getScaledInstance(200, 200, Image.SCALE_SMOOTH)
-            val buffered = BufferedImage(200, 200, BufferedImage.TYPE_INT_RGB)
-            val g = buffered.createGraphics()
-            g.drawImage(scaled, 0, 0, null)
-            g.dispose()
-            val targetFile = File(targetPath.toString())
-            targetFile.parentFile?.mkdirs()
-            ImageIO.write(buffered, "png", targetFile)
+            val bytes = platformFileSystem.read(sourcePath) { readByteArray() }
+            val image = Image.makeFromEncoded(bytes)
+            
+            val targetSize = 200
+            val surface = Surface.makeRasterN32Premul(targetSize, targetSize)
+            val canvas = surface.canvas
+            canvas.drawImageRect(image, Rect.makeWH(targetSize.toFloat(), targetSize.toFloat()))
+            
+            val scaledImage = surface.makeImageSnapshot()
+            val data = scaledImage.encodeToData(EncodedImageFormat.WEBP, 80)
+            data?.let {
+                platformFileSystem.write(targetPath) { write(it.bytes) }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -56,18 +54,21 @@ actual object ImageProcessor {
 
     actual fun saveCompressedImage(bytes: ByteArray, targetPath: Path, width: Int?, height: Int?) {
         try {
-            val targetFile = File(targetPath.toString())
-            targetFile.parentFile?.mkdirs()
-            if (width == null && height == null) {
-                platformFileSystem.write(targetPath) { write(bytes) }
+            val image = Image.makeFromEncoded(bytes)
+            val data = if (width == null && height == null) {
+                image.encodeToData(EncodedImageFormat.WEBP, 90)
             } else {
-                val img = ImageIO.read(bytes.inputStream()) ?: return
-                val scaled = img.getScaledInstance(width!!, height!!, Image.SCALE_SMOOTH)
-                val buffered = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
-                val g = buffered.createGraphics()
-                g.drawImage(scaled, 0, 0, null)
-                g.dispose()
-                ImageIO.write(buffered, "png", targetFile)
+                val surface = Surface.makeRasterN32Premul(width!!, height!!)
+                val canvas = surface.canvas
+                canvas.drawImageRect(image, Rect.makeWH(width.toFloat(), height.toFloat()))
+                val scaledImage = surface.makeImageSnapshot()
+                scaledImage.encodeToData(EncodedImageFormat.WEBP, 80)
+            }
+            
+            data?.let {
+                val targetFile = File(targetPath.toString())
+                targetFile.parentFile?.mkdirs()
+                platformFileSystem.write(targetPath) { write(it.bytes) }
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -75,47 +76,42 @@ actual object ImageProcessor {
     }
 
     actual fun encodeToByteArray(bitmap: ImageBitmap): ByteArray {
-        val awtImage = bitmap.toAwtImage()
-        val stream = ByteArrayOutputStream()
-        ImageIO.write(awtImage, "png", stream)
-        return stream.toByteArray()
+        val skiaImage = Image.makeFromBitmap(bitmap.asSkiaBitmap())
+        return skiaImage.encodeToData(EncodedImageFormat.WEBP, 90)?.bytes ?: byteArrayOf()
     }
 
     actual fun crop(bitmap: ImageBitmap, state: ImageCropState): ImageBitmap {
-        val awtImage = bitmap.toAwtImage()
+        val skiaBitmap = bitmap.asSkiaBitmap()
         val targetSize = 1024
-        val output = BufferedImage(targetSize, targetSize, BufferedImage.TYPE_INT_ARGB)
-        val g2d = output.createGraphics()
         
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+        val surface = Surface.makeRasterN32Premul(targetSize, targetSize)
+        val canvas = surface.canvas
         
         val viewport = state.viewportRect
         
         val v = FloatArray(9)
         state.matrix.getValues(v)
         
-        // Construct the AffineTransform from the state matrix (row-major)
-        // AffineTransform(m00, m10, m01, m11, m02, m12)
-        val stateTransform = AffineTransform(
-            v[0].toDouble(), v[3].toDouble(), v[1].toDouble(),
-            v[4].toDouble(), v[2].toDouble(), v[5].toDouble()
+        // Skia matrix is row-major: [scaleX, skewX, transX, skewY, scaleY, transY, persp0, persp1, persp2]
+        // state.matrix (Compose) is also usually row-major in getValues? 
+        // Actually Compose Matrix is 4x4. ImageCropState.matrix is likely a Compose Matrix.
+        // Let's check how state.matrix values mapping works.
+        
+        val skiaMatrix = Matrix33(
+            v[0], v[1], v[2],
+            v[3], v[4], v[5],
+            v[6], v[7], v[8]
         )
         
-        // Calculate crop transform (Scale * Translate)
-        val finalScale = targetSize.toDouble() / viewport.width.toDouble()
-        val cropTransform = AffineTransform()
-        cropTransform.scale(finalScale, finalScale)
-        cropTransform.translate(-viewport.left.toDouble(), -viewport.top.toDouble())
+        val finalScale = targetSize.toFloat() / viewport.width
         
-        // Final = CropTransform * StateTransform
-        cropTransform.concatenate(stateTransform)
+        canvas.scale(finalScale, finalScale)
+        canvas.translate(-viewport.left, -viewport.top)
+        canvas.concat(skiaMatrix)
         
-        g2d.setTransform(cropTransform)
-        g2d.drawImage(awtImage, 0, 0, null)
-        g2d.dispose()
+        canvas.drawImage(Image.makeFromBitmap(skiaBitmap), 0f, 0f)
         
-        return output.toComposeImageBitmap()
+        return surface.makeImageSnapshot().toComposeImageBitmap()
     }
 }
 

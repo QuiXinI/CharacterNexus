@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
@@ -99,7 +101,6 @@ fun CharacterHeader(
     speedIcon: DrawableResource
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val haptic = LocalHapticFeedback.current
 
     val inspirationRotation by animateFloatAsState(if (hasInspiration) 0f else 45f)
     val inspirationScale by animateFloatAsState(if (hasInspiration) 1f else 0.8f)
@@ -128,7 +129,7 @@ fun CharacterHeader(
                     },
                     onDragEnd = {
                         if (totalDrag > 150) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
                             onOpenDrawer()
                         }
                     }
@@ -137,7 +138,7 @@ fun CharacterHeader(
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                PlatformUtils.performHapticFeedback(HapticType.CLICK)
                 onOpenDrawer()
             }) { Icon(Icons.Default.Menu, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface) }
             
@@ -158,7 +159,7 @@ fun CharacterHeader(
                 // Inspiration
                 IconButton(
                     onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        PlatformUtils.performHapticFeedback(HapticType.CLICK)
                         onInspirationChange(!hasInspiration)
                     },
                     modifier = Modifier
@@ -184,7 +185,7 @@ fun CharacterHeader(
                         .size(48.dp)
                         .clip(CircleShape)
                         .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            PlatformUtils.performHapticFeedback(HapticType.CLICK)
                             onAvatarClick()
                         },
                     contentAlignment = Alignment.Center
@@ -219,7 +220,7 @@ fun CharacterHeader(
             .clip(RoundedCornerShape(12.dp))
             .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .clickable { 
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                PlatformUtils.performHapticFeedback(HapticType.CLICK)
                 onLevelClick() 
             }
         ) {
@@ -277,7 +278,7 @@ fun CharacterHeader(
                 StatIconBox(activeInitValue, swordIcon, onClick = onInitClick, onLongClick = onInitLongClick, isHighlighted = true)
             }
             Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, healthColor, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).clickable { 
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                PlatformUtils.performHapticFeedback(HapticType.CLICK)
                 onHealthClick() 
             }, contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

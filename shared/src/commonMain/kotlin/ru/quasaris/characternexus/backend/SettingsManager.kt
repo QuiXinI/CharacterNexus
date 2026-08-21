@@ -61,6 +61,7 @@ data class AppSettings(
     var collapseActionsOnEdit: Boolean = true,
     var collapseSpellsOnEdit: Boolean = true,
     var collapseDynamicFieldsOnEdit: Boolean = true,
+    var veryResponsiveHaptics: Boolean = true,
     var isPremium: Boolean = false
 )
 
@@ -130,6 +131,7 @@ class SettingsManager {
     var diceFabEnabled: Boolean get() = settings.diceFabEnabled; set(value) { settings.diceFabEnabled = value; save() }
     var blurRadius: Int get() = settings.blurRadius; set(value) { settings.blurRadius = value; save() }
     var customBlurRadius: Int get() = settings.customBlurRadius; set(value) { settings.customBlurRadius = value; save() }
+    var veryResponsiveHaptics: Boolean get() = settings.veryResponsiveHaptics; set(value) { settings.veryResponsiveHaptics = value; save() }
     var isPremium: Boolean get() = settings.isPremium; set(value) { settings.isPremium = value; save() }
 
     fun resetToDefaults() {

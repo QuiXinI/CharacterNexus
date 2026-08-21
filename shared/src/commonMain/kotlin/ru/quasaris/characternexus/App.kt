@@ -128,7 +128,14 @@ fun App(
                 }
             }
 
-            var isFullscreenDialogOpen by remember { mutableStateOf(false) }
+            var fullscreenDialogCount by remember { mutableIntStateOf(0) }
+            val isFullscreenDialogOpen = fullscreenDialogCount > 0
+            val onFullscreenDialogOpenChange: (Boolean) -> Unit = remember {
+                { opened ->
+                    if (opened) fullscreenDialogCount++
+                    else fullscreenDialogCount = maxOf(0, fullscreenDialogCount - 1)
+                }
+            }
             val blurRadius by animateDpAsState(
                 targetValue = if (isFullscreenDialogOpen && effectiveBlurFullscreen && !isOled) targetBlurRadius.dp else 0.dp,
                 animationSpec = tween(durationMillis = 300)
@@ -317,7 +324,7 @@ fun App(
                                             }
                                         },
                                         onOpenDrawer = { scope.launch { drawerState.open() } },
-                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
+                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                         settingsViewModel = settingsViewModel,
                                         hazeState = hazeState,
                                         popupHazeState = overlayHazeState,
@@ -332,7 +339,7 @@ fun App(
                                         onThemeModeChange = { themeMode = it },
                                         settingsViewModel = settingsViewModel,
                                         hazeState = hazeState,
-                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it }
+                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
                                     )
                                 }
 
@@ -348,7 +355,7 @@ fun App(
                                             spellbookManager = spellbookManager,
                                             glossaryImporter = glossaryImporter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
+                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             settingsViewModel = settingsViewModel
                                         )
@@ -362,7 +369,7 @@ fun App(
                                             moduleManager = moduleManager,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
                                             onNavigateToSpells = { navController.navigate("spellbook") },
-                                            onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
+                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             settingsViewModel = settingsViewModel
                                         )
@@ -375,7 +382,7 @@ fun App(
                                             moduleManager = moduleManager,
                                             glossaryImporter = glossaryImporter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
+                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             settingsViewModel = settingsViewModel
                                         )
@@ -396,7 +403,7 @@ fun App(
                                                 popUpTo("menu")
                                             }
                                         },
-                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
+                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                         hazeState = hazeState,
                                         popupHazeState = overlayHazeState,
                                         forceBlurEnabled = effectiveBlurFullscreen,
@@ -446,10 +453,15 @@ fun App(
                                             }
                                         },
                                         onRoll = { res ->
-                                            PlatformUtils.performHapticFeedback()
+                                            val hapticType = when {
+                                                res.isCriticalSuccess -> HapticType.SUCCESS
+                                                res.isCriticalFailure -> HapticType.ERROR
+                                                else -> HapticType.CLICK
+                                            }
+                                            PlatformUtils.performHapticFeedback(hapticType)
                                             rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
                                         },
-                                        onFullscreenDialogOpenChange = { isFullscreenDialogOpen = it },
+                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                         hazeState = hazeState,
                                         popupHazeState = overlayHazeState,
                                         forceBlurEnabled = effectiveBlurFullscreen,
@@ -471,7 +483,12 @@ fun App(
                     DiceRollerFab(
                         onRoll = { pool: Map<Int, Int> ->
                             val res = DiceRoller.rollPool(pool)
-                            PlatformUtils.performHapticFeedback()
+                            val hapticType = when {
+                                res.isCriticalSuccess -> HapticType.SUCCESS
+                                res.isCriticalFailure -> HapticType.ERROR
+                                else -> HapticType.CLICK
+                            }
+                            PlatformUtils.performHapticFeedback(hapticType)
                             rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
                         },
                         hazeState = overlayHazeState,

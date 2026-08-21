@@ -255,6 +255,12 @@ fun SettingsWindow(
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            HapticSettingsSection(
+                settingsViewModel = settingsViewModel
+            )
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
             NewHeaderInterfaceSettingsSection(
                 settingsViewModel = settingsViewModel
             )
@@ -946,6 +952,47 @@ fun BlurSwitchRow(
             checked = checked,
             onCheckedChange = onCheckedChange
         )
+    }
+}
+
+@Composable
+fun HapticSettingsSection(settingsViewModel: SettingsViewModel) {
+    val veryResponsive by settingsViewModel.veryResponsiveHaptics.collectAsState()
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Хаптика",
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Очень отзывчивая хаптика",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                Text(
+                    text = "Добавляет тактильный отклик на каждое нажатие и свайп",
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = veryResponsive,
+                onCheckedChange = { settingsViewModel.updateVeryResponsiveHaptics(it) }
+            )
+        }
     }
 }
 

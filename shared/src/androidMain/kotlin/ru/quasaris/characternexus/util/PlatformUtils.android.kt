@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.util
 
+import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -13,6 +14,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.annotation.RequiresPermission
 import android.graphics.Matrix as AndroidMatrix
 import ru.quasaris.characternexus.platformFileSystem
 import java.io.FileOutputStream
@@ -35,7 +37,8 @@ actual object PlatformUtils {
         clipboard.setPrimaryClip(clip)
     }
 
-    actual fun performHapticFeedback() {
+    @RequiresPermission(Manifest.permission.VIBRATE)
+    actual fun performHapticFeedback(type: HapticType) {
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager = androidContext.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
             vibratorManager.defaultVibrator
@@ -44,11 +47,60 @@ actual object PlatformUtils {
             androidContext.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(50)
+        if (!vibrator.hasVibrator()) return
+
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                val effect = when (type) {
+                    HapticType.CLICK -> VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK)
+                        .compose()
+                    HapticType.LONG_PRESS -> VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f, 20)
+                        .compose()
+                    HapticType.SUCCESS -> VibrationEffect.startComposition()
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK)
+                        .addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 1.0f, 50)
+                        .compose()
+                    HapticType.ERROR -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            VibrationEffect.startComposition()
+                                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD)
+                                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 1.0f, 100)
+                                .compose()
+                        } else {
+                            VibrationEffect.startComposition()
+                                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK)
+                                .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 100)
+                                .compose()
+                        }
+                    }
+                }
+                vibrator.vibrate(effect)
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                val effectId = when (type) {
+                    HapticType.CLICK -> VibrationEffect.EFFECT_CLICK
+                    HapticType.LONG_PRESS -> VibrationEffect.EFFECT_HEAVY_CLICK
+                    HapticType.SUCCESS -> VibrationEffect.EFFECT_DOUBLE_CLICK
+                    HapticType.ERROR -> VibrationEffect.EFFECT_HEAVY_CLICK // Best fallback
+                }
+                vibrator.vibrate(VibrationEffect.createPredefined(effectId))
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+                val duration = when (type) {
+                    HapticType.CLICK -> 20L
+                    HapticType.LONG_PRESS -> 50L
+                    HapticType.SUCCESS -> 40L
+                    HapticType.ERROR -> 100L
+                }
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE))
+            }
+            else -> {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(50)
+            }
         }
     }
 

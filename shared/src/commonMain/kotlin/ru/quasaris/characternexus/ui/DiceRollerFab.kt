@@ -106,6 +106,7 @@ fun DiceRollerFab(
             isExpanded = false
         },
         onDragStart = { isDragging = true },
+        isDragging = isDragging,
         onDragEnd = { isDragging = false },
         onPositionChange = { delta ->
             val newX = fabOffset.x + delta.x
@@ -133,6 +134,7 @@ fun DiceRollerFabStateless(
     onRollClick: () -> Unit,
     onResetAndDrag: () -> Unit,
     onDragStart: () -> Unit = {},
+    isDragging: Boolean = false,
     onDragEnd: () -> Unit = {},
     onPositionChange: (androidx.compose.ui.geometry.Offset) -> Unit,
     modifier: Modifier = Modifier
@@ -163,6 +165,15 @@ fun DiceRollerFabStateless(
     }
 
     val isAnyDiceSelected = dicePool.values.any { it > 0 }
+
+    val dragScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.1f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "DragScale"
+    )
 
     // Якорь фиксированного размера (72dp) гарантирует, что центр FAB не смещается при раскрытии меню
     Box(
@@ -220,7 +231,7 @@ fun DiceRollerFabStateless(
         Box(
             modifier = Modifier
                 .size(if (isExpanded) 64.dp else 72.dp)
-                .scale(fabScale)
+                .scale(fabScale * dragScale)
                 .outerShadow(
                     shape = CircleShape,
                     color = Color.Black.copy(alpha = if (isOled) 0.6f else 0.25f),

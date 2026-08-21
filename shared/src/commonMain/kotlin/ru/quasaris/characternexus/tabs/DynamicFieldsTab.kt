@@ -2,6 +2,7 @@ package ru.quasaris.characternexus.tabs
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -129,6 +130,7 @@ fun DynamicFieldsTab(
     isContentVisible: Boolean = true,
     collapseOnEdit: Boolean? = null,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {},
     footer: @Composable () -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
@@ -164,7 +166,7 @@ fun DynamicFieldsTab(
     var fullscreenFieldIndex by remember { mutableStateOf<Int?>(null) }
     
     LaunchedEffect(fullscreenFieldIndex) {
-        onFullscreenDialogOpenChange(fullscreenFieldIndex != null)
+        onFullscreenVisibilityChanged(fullscreenFieldIndex != null)
     }
 
     var fieldToDeleteIndex by remember { mutableStateOf<Int?>(null) }
@@ -341,17 +343,16 @@ fun DynamicFieldsTab(
                         onFieldsChange(items.toList())
                     }
                     fullscreenFieldIndex = null
-                    onFullscreenDialogOpenChange(false)
                 },
                 onDismiss = { 
                     fullscreenFieldIndex = null
-                    onFullscreenDialogOpenChange(false)
                 },
                 hazeState = hazeState,
                 forceBlurEnabled = forceBlurEnabled,
                 blurPopups = blurPopups,
                 settingsViewModel = settingsViewModel,
-                statsMap = statsMap
+                statsMap = statsMap,
+                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
             )
         }
     }
@@ -793,6 +794,7 @@ fun DynamicFieldItem(
                                                                             blurPopups = blurPopups,
                                                                             settingsViewModel = settingsViewModel,
                                                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                                            onSubDialogOpenChange = { /* Item doesn't blur on sub-dialog */ },
                                                                             onDeleteRequest = {
                                                                                 val newBlocks = blocks.toMutableList()
                                                                                 val blockIndex = newBlocks.indexOf(block)
@@ -895,8 +897,16 @@ fun DynamicFieldFullscreenDialog(
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {}
 ) {
-    LaunchedEffect(Unit) {
-        onFullscreenDialogOpenChange(true)
+    val isOled = MaterialTheme.colorScheme.background == Color.Black
+    val effectiveBlur = forceBlurEnabled && !isOled
+
+    val currentOnFullscreenDialogOpenChange by rememberUpdatedState(onFullscreenDialogOpenChange)
+
+    DisposableEffect(Unit) {
+        currentOnFullscreenDialogOpenChange(true)
+        onDispose {
+            currentOnFullscreenDialogOpenChange(false)
+        }
     }
 
     var title by remember { mutableStateOf(field.title) }
@@ -926,6 +936,16 @@ fun DynamicFieldFullscreenDialog(
         )
     }
 
+    var isSubDialogOpen by remember { mutableStateOf(false) }
+    val blurRadiusVal by settingsViewModel?.blurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
+    val customBlurRadiusVal by settingsViewModel?.customBlurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
+    val targetBlurRadius = if (blurRadiusVal == -1) customBlurRadiusVal else blurRadiusVal
+
+    val subDialogBlurRadius by animateDpAsState(
+        targetValue = if ((isSubDialogOpen || showDeleteConfirm || showLinkDialog) && effectiveBlur) targetBlurRadius.dp else 0.dp,
+        animationSpec = tween(durationMillis = 300)
+    )
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -934,13 +954,10 @@ fun DynamicFieldFullscreenDialog(
         val focusManager = LocalFocusManager.current
         val focusRequester = remember { FocusRequester() }
         val colorScheme = MaterialTheme.colorScheme
-        val isOled = colorScheme.background == Color.Black
         val bringIntoViewRequester = remember { BringIntoViewRequester() }
         val coroutineScope = rememberCoroutineScope()
         var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
         var isFocused by remember { mutableStateOf(false) }
-
-        val blurFullscreen by settingsViewModel?.blurFullscreen?.collectAsState() ?: remember { mutableStateOf(true) }
 
         var toolbarState by remember { mutableStateOf(Triple(contentValue, false, false)) }
         LaunchedEffect(contentValue, isFocused, isPreviewMode) {
@@ -1015,12 +1032,14 @@ fun DynamicFieldFullscreenDialog(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                        containerColor = if (effectiveBlur) Color.Transparent else colorScheme.surface
                     )
                 )
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
+            containerColor = if (effectiveBlur) Color.Transparent else colorScheme.background,
             modifier = Modifier
+                .fillMaxSize()
+                .blur(subDialogBlurRadius)
                 .imePadding()
         ) { paddingValues ->
             Box(
@@ -1037,7 +1056,7 @@ fun DynamicFieldFullscreenDialog(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
-                        color = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f)
+                        color = if (effectiveBlur) colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
                         else colorScheme.surfaceContainerHighest,
                         shadowElevation = 0.dp,
                         tonalElevation = 0.dp
@@ -1113,33 +1132,35 @@ fun DynamicFieldFullscreenDialog(
                                                 SpoilerComponent(content = annotated)
                                             }
                                             is DynamicContentBlock.Resource -> {
-                                                ResourceBlock(
-                                                    resource = block,
-                                                    statsMap = statsMap,
-                                                    onUpdate = { updatedResource ->
-                                                        val newBlocks = blocks.toMutableList()
-                                                        val blockIndex = newBlocks.indexOf(block)
-                                                        if (blockIndex != -1) {
-                                                            newBlocks[blockIndex] = updatedResource
-                                                            val newContent = DynamicContentParser.render(newBlocks)
-                                                            contentValue = contentValue.copy(text = newContent)
+                                                    ResourceBlock(
+                                                        resource = block,
+                                                        statsMap = statsMap,
+                                                        onUpdate = { updatedResource ->
+                                                            val newBlocks = blocks.toMutableList()
+                                                            val blockIndex = newBlocks.indexOf(block)
+                                                            if (blockIndex != -1) {
+                                                                newBlocks[blockIndex] = updatedResource
+                                                                val newContent = DynamicContentParser.render(newBlocks)
+                                                                contentValue = contentValue.copy(text = newContent)
+                                                            }
+                                                        },
+                                                        hazeState = hazeState,
+                                                        forceBlurEnabled = effectiveBlur,
+                                                        blurDynamicFields = blurDynamicFields,
+                                                        blurPopups = blurPopups,
+                                                        settingsViewModel = settingsViewModel,
+                                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                        onSubDialogOpenChange = { isSubDialogOpen = it },
+                                                        onDeleteRequest = {
+                                                            val newBlocks = blocks.toMutableList()
+                                                            val blockIndex = newBlocks.indexOf(block)
+                                                            if (blockIndex != -1) {
+                                                                newBlocks.removeAt(blockIndex)
+                                                                val newContent = DynamicContentParser.render(newBlocks)
+                                                                contentValue = contentValue.copy(text = newContent)
+                                                            }
                                                         }
-                                                    },
-                                                    hazeState = hazeState,
-                                                    forceBlurEnabled = blurPopups,
-                                                    blurDynamicFields = blurDynamicFields,
-                                                    settingsViewModel = settingsViewModel,
-                                                    onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                                    onDeleteRequest = {
-                                                        val newBlocks = blocks.toMutableList()
-                                                        val blockIndex = newBlocks.indexOf(block)
-                                                        if (blockIndex != -1) {
-                                                            newBlocks.removeAt(blockIndex)
-                                                            val newContent = DynamicContentParser.render(newBlocks)
-                                                            contentValue = contentValue.copy(text = newContent)
-                                                        }
-                                                    }
-                                                )
+                                                    )
                                             }
                                         }
                                     }
@@ -1294,9 +1315,10 @@ fun DynamicFieldFullscreenDialog(
                                                                             }
                                                                         },
                                                                         hazeState = hazeState,
-                                                                        forceBlurEnabled = blurPopups,
+                                                                        forceBlurEnabled = effectiveBlur,
                                                                         settingsViewModel = settingsViewModel,
                                                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                                        onSubDialogOpenChange = { isSubDialogOpen = it },
                                                                         onDeleteRequest = {
                                                                             val newBlocks = blocks.toMutableList()
                                                                             val blockIndex = newBlocks.indexOf(block)

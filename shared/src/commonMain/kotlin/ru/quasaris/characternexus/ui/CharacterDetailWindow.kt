@@ -367,7 +367,8 @@ fun CharacterDetailWindow(
                     onShowSpellSettings = { state.showSpellSettings = true; rootFocusRequester.requestFocus() },
                     onImagePickerClick = { showImagePicker = true; rootFocusRequester.requestFocus() },
                     onDownloadClick = { showExportPicker = true; rootFocusRequester.requestFocus() },
-                rootFocusRequester = rootFocusRequester
+                    rootFocusRequester = rootFocusRequester,
+                    settingsViewModel = settingsViewModel
                 )
             }
         ) { paddingValues ->
@@ -390,6 +391,7 @@ fun CharacterDetailWindow(
                 spellbookManager = spellbookManager,
                 allConditions = allConditions,
                 onNavigateBack = onNavigateBack,
+                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 showImagePicker = { showImagePicker = true }
             )
         }
@@ -456,7 +458,8 @@ fun CharacterDetailTopBar(
     onShowSpellSettings: () -> Unit,
     onImagePickerClick: () -> Unit,
     onDownloadClick: () -> Unit,
-    rootFocusRequester: FocusRequester
+    rootFocusRequester: FocusRequester,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     // Единый Surface обёртывает Хедер, Табы и Выпадающие Панели!
     Surface(
@@ -546,7 +549,8 @@ fun CharacterDetailTopBar(
                 onLongRest = { handleRestoration("long"); rootFocusRequester.requestFocus() },
                 onDawn = { handleRestoration("dawn"); rootFocusRequester.requestFocus() },
                 hazeState = popupHazeState ?: hazeState,
-                blurPopups = blurPopups
+                blurPopups = blurPopups,
+                settingsViewModel = settingsViewModel
             )
 
             TabNavigationBar(
@@ -826,6 +830,7 @@ fun CharacterDetailMainContent(
     spellbookManager: SpellbookManager?,
     allConditions: List<Condition>,
     onNavigateBack: () -> Unit,
+    onFullscreenDialogOpenChange: (Boolean) -> Unit,
     showImagePicker: () -> Unit
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -915,7 +920,8 @@ fun CharacterDetailMainContent(
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
                             statsMap = state.statsMap,
-                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it }
+                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                            onFullscreenVisibilityChanged = { state.isFullscreenDynamicFieldOpen = it }
                         )
                     }
                     CharacterTab.SKILLS_FEATS -> {
@@ -929,7 +935,8 @@ fun CharacterDetailMainContent(
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
                             statsMap = state.statsMap,
-                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it }
+                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                            onFullscreenVisibilityChanged = { state.isFullscreenDynamicFieldOpen = it }
                         )
                     }
                     CharacterTab.INVENTORY -> {
@@ -945,7 +952,8 @@ fun CharacterDetailMainContent(
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
                             statsMap = state.statsMap,
-                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it },
+                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                            onFullscreenVisibilityChanged = { state.isFullscreenDynamicFieldOpen = it },
                             onWalletDialogOpenChange = { state.isWalletDialogOpen = it }
                         )
                     }
@@ -969,7 +977,8 @@ fun CharacterDetailMainContent(
                             spellbookManager = spellbookManager,
                             onSpellEditorOpenChange = { state.isSpellEditorOpen = it },
                             onMagicBonusSettingsOpenChange = { state.isMagicBonusSettingsOpen = it },
-                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it },
+                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                            onFullscreenVisibilityChanged = { state.isFullscreenDynamicFieldOpen = it },
                             onSpellbookSelectionOpenChange = { state.isSpellbookSelectionOpen = it }
                         )
                     }
@@ -984,7 +993,8 @@ fun CharacterDetailMainContent(
                             isEditMode = state.isEditMode,
                             settingsViewModel = settingsViewModel,
                             statsMap = state.statsMap,
-                            onFullscreenDialogOpenChange = { state.isFullscreenDynamicFieldOpen = it }
+                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                            onFullscreenVisibilityChanged = { state.isFullscreenDynamicFieldOpen = it }
                         )
                     }
                 }

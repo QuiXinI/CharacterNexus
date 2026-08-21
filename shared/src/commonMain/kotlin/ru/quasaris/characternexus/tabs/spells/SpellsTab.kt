@@ -69,6 +69,7 @@ fun SpellsTab(
     onSpellEditorOpenChange: (Boolean) -> Unit = {},
     onMagicBonusSettingsOpenChange: (Boolean) -> Unit = {},
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     onSpellbookSelectionOpenChange: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
@@ -400,6 +401,7 @@ fun SpellsTab(
                 isContentVisible = spellSettings.spellMode != SpellMode.CARDS,
                 collapseOnEdit = collapseSpellsOnEdit,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
                 header = header,
                 footer = {
                     if (spellSettings.isMagicEnabled) {

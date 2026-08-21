@@ -8,12 +8,29 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
-// Определение профиля сборки через property: -PbuildProfile=debugCheck/debugCheckPortable/debugFull/release/releasePortable
-val buildProfile = project.findProperty("buildProfile")?.toString() ?: "debugCheck"
-val displayProfile = buildProfile.replace("Portable", "", ignoreCase = true)
-val appVariant = if (buildProfile.contains("release", ignoreCase = true)) "main-release" else "main"
+// Профили: debug (быстро) или release (полная оптимизация)
+val buildProfile = project.findProperty("buildProfile")?.toString() ?: "debug"
+val isRelease = buildProfile.equals("release", ignoreCase = true)
+val appVariant = if (isRelease) "main-release" else "main"
 val appVersion = rootProject.extra["appVersionName"] as String
 val rootBuildsDir = rootProject.projectDir.resolve("builds")
+
+// Определение платформы для именования архивов
+val osName = System.getProperty("os.name").lowercase().let {
+    when {
+        it.contains("win") -> "windows"
+        it.contains("mac") -> "macos"
+        else -> "linux"
+    }
+}
+val osArch = System.getProperty("os.arch").lowercase().let {
+    when {
+        it.contains("aarch64") || it.contains("arm64") -> "arm64"
+        it.contains("64") -> "x64"
+        else -> it
+    }
+}
+val platformName = "${osName}-${osArch}"
 
 dependencies {
     implementation(project(":shared"))
@@ -30,18 +47,12 @@ tasks.withType<KotlinCompile>().configureEach {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         
-        when (buildProfile) {
-            "debugCheck", "debugCheckPortable" -> {
-            }
-            "debugFull" -> {
-                freeCompilerArgs.add("-Xbackend-threads=0")
-            }
-            "release", "releasePortable" -> {
-                freeCompilerArgs.add("-Xbackend-threads=0")
-                freeCompilerArgs.add("-Xno-call-assertions")
-                freeCompilerArgs.add("-Xno-receiver-assertions")
-                freeCompilerArgs.add("-Xno-param-assertions")
-            }
+        if (isRelease) {
+            // Оптимизации для релиза
+            freeCompilerArgs.add("-Xbackend-threads=0")
+            freeCompilerArgs.add("-Xno-call-assertions")
+            freeCompilerArgs.add("-Xno-receiver-assertions")
+            freeCompilerArgs.add("-Xno-param-assertions")
         }
     }
 }
@@ -51,7 +62,8 @@ compose.desktop {
         mainClass = "ru.quasaris.characternexus.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg)
+            
             packageName = "Character Nexus"
             packageVersion = rootProject.extra["appVersion3Part"] as String
             vendor = "Quasaris"
@@ -61,42 +73,19 @@ compose.desktop {
             modules("jdk.unsupported")
 
             windows {
-                dirChooser = true
-                shortcut = true
-                menu = true
-                perUserInstall = false
                 iconFile.set(project.file("src/main/resources/icon.ico"))
-                upgradeUuid = "F6B2A8B1-4A5D-4D9E-B1A2-F6B2A8B14A5D"
-            }
-
-            // Настройка в зависимости от профиля
-            if (buildProfile == "debugCheck" || buildProfile == "debugCheckPortable") {
-                // In debugCheck we can disable creation of heavy distributions if needed
             }
         }
         
-        // Для JVM оптимизаций можно добавить jvmArgs
-        val profileJvmArgs = when (buildProfile) {
-            "debugCheck" -> listOf("-Xms256m", "-Xmx512m", "-Ddebug=true")
-            "debugCheckPortable" -> listOf("-Xms256m", "-Xmx512m", "-Dportable=true", "-Ddebug=true")
-            "debugFull" -> listOf(
-                "-Xms512m", "-Xmx2g",
-                "-XX:+UseParallelGC",
-                "-XX:+OptimizeStringConcat",
-                "-Ddebug=true"
-            )
-            "release" -> listOf(
+        // JVM оптимизации
+        val profileJvmArgs = if (isRelease) {
+            listOf(
                 "-Xms512m", "-Xmx2g",
                 "-XX:+UseParallelGC",
                 "-XX:+OptimizeStringConcat"
             )
-            "releasePortable" -> listOf(
-                "-Xms512m", "-Xmx2g",
-                "-XX:+UseParallelGC",
-                "-XX:+OptimizeStringConcat",
-                "-Dportable=true",
-            )
-            else -> emptyList()
+        } else {
+            listOf("-Xms256m", "-Xmx512m", "-Ddebug=true")
         }
         
         jvmArgs += profileJvmArgs
@@ -112,97 +101,49 @@ compose.desktop {
 }
 
 /*
- * Пресеты для Desktop:
- * 1. debugCheck: ./gradlew :desktopApp:run -PbuildProfile=debugCheck (Быстрая отладка)
- * 2. debugCheckPortable: ./gradlew :desktopApp:run -PbuildProfile=debugCheckPortable (Быстрая отладка в портативном режиме)
- * 3. debugFull: ./gradlew :desktopApp:run -PbuildProfile=debugFull (Производительность + Дебаг)
- * 4. release: ./gradlew :desktopApp:packageReleaseDistribution -PbuildProfile=release (Релиз)
- * 5. releasePortable: ./gradlew :desktopApp:packagePortableZip -PbuildProfile=releasePortable (Портативный ZIP)
+ * Команды для Desktop:
+ * 1. debug: ./gradlew :desktopApp:run -PbuildProfile=debug
+ * 2. release zip: ./gradlew :desktopApp:packagePortableZip -PbuildProfile=release
  */
 
 tasks.register<Zip>("packagePortableZip") {
     group = "compose desktop"
-    description = "Packages the portable application into a ZIP file"
+    description = "Packages the portable application into a ZIP file (Release only)"
 
-    val currentProfile = displayProfile
-    val currentVersion = appVersion
-    val targetDir = rootBuildsDir
-    val variant = appVariant
+    // Отключаем для дебага полностью
+    onlyIf { isRelease }
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    val archiveName = "portable-${currentProfile}-${currentVersion}.zip"
+    val archiveName = "portable-${platformName}-${buildProfile}-${appVersion}.zip"
     archiveFileName.set(archiveName)
-    destinationDirectory.set(targetDir)
+    destinationDirectory.set(rootBuildsDir)
     
-    from(layout.buildDirectory.dir("compose/binaries/$variant/app"))
+    from(layout.buildDirectory.dir("compose/binaries/$appVariant/app"))
     includeEmptyDirs = false
 
-    dependsOn(tasks.matching { it.name.contains("create") && it.name.contains("Distributable") })
+    dependsOn(tasks.matching { it.name == "createReleaseDistributable" })
 }
 
 tasks.register<Copy>("copyPortableFolder") {
     group = "compose desktop"
     description = "Copies the portable application folder to builds"
 
-    val currentProfile = displayProfile
-    val currentVersion = appVersion
-    val targetDir = rootBuildsDir
-    val variant = appVariant
-
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    val folderName = "portable-${currentProfile}-${currentVersion}"
-    into(targetDir.resolve(folderName))
+    val folderName = "portable-${platformName}-${buildProfile}-${appVersion}"
+    into(rootBuildsDir.resolve(folderName))
     
-    from(layout.buildDirectory.dir("compose/binaries/$variant/app"))
+    from(layout.buildDirectory.dir("compose/binaries/$appVariant/app"))
     includeEmptyDirs = false
 
-    dependsOn(tasks.matching { it.name.contains("create") && it.name.contains("Distributable") })
-}
-
-tasks.register("packagePortableAll") {
-    group = "compose desktop"
-    description = "Packages both ZIP and Folder for portable application"
-    dependsOn("packagePortableZip", "copyPortableFolder")
-}
-
-tasks.register<Copy>("copyDistributions") {
-    group = "compose desktop"
-    description = "Copies the native distributions to builds"
-
-    val currentProfile = displayProfile
-    val currentVersion = appVersion
-    val targetDir = rootBuildsDir
-    val variant = appVariant
-
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-
-    from(layout.buildDirectory.dir("compose/binaries/$variant"))
-    include("msi/*.msi", "dmg/*.dmg", "deb/*.deb")
-    
-    into(targetDir)
-    rename { fileName ->
-        val ext = fileName.substringAfterLast(".")
-        "${currentProfile}-${currentVersion}.${ext}"
-    }
-    eachFile {
-        path = name // flatten
-    }
-    includeEmptyDirs = false
-}
-
-// Hook into lifecycle
-tasks.matching { it.name.contains("create") && it.name.contains("Distributable") }.configureEach {
-    finalizedBy("copyPortableFolder")
-}
-
-tasks.matching { it.name.contains("package") && (it.name.contains("Distribution") || it.name.contains("Distributable")) }.configureEach {
-    finalizedBy("copyDistributions")
-}
-
-tasks.withType<org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask>().configureEach {
-    if (name.contains("Msi", ignoreCase = true) || name.contains("Exe", ignoreCase = true)) {
-        freeArgs.add("--win-shortcut-prompt")
+    // Привязываем строго к конкретному варианту
+    if (isRelease) {
+        dependsOn(tasks.matching { it.name == "createReleaseDistributable" })
+    } else {
+        dependsOn(tasks.matching { it.name == "createDistributable" })
     }
 }
+
+// Запускаем копирование в папку builds только при явном вызове создания distributable
+// Убираем finalizedBy, который мог срабатывать слишком часто

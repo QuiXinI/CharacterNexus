@@ -16,8 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalDensity
@@ -38,7 +38,6 @@ fun StatIconBox(
     val colorScheme = MaterialTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
     val density = LocalDensity.current
-    val haptic = LocalHapticFeedback.current
 
     Box(
         modifier = Modifier
@@ -47,12 +46,12 @@ fun StatIconBox(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    PlatformUtils.performHapticFeedback(HapticType.CLICK)
                     onClick()
                 },
                 onLongClick = onLongClick?.let {
                     {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
                         it()
                     }
                 }

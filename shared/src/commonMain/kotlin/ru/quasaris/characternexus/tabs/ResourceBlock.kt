@@ -32,6 +32,8 @@ import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.tabs.attacks.DiceIcon
 import ru.quasaris.characternexus.backend.parseFormulaParts
 import ru.quasaris.characternexus.ui.outerShadow
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 import kotlin.math.round
 import kotlin.math.pow
 import kotlin.math.max
@@ -47,7 +49,8 @@ fun ResourceBlock(
     blurDynamicFields: Boolean = true,
     blurPopups: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
-    onFullscreenDialogOpenChange: (Boolean) -> Unit = {}
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onSubDialogOpenChange: (Boolean) -> Unit = {}
 ) {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var showConfig by remember { mutableStateOf(false) }
@@ -65,8 +68,9 @@ fun ResourceBlock(
     
     val useHaze = hazeState != null && blurDynamicFields
 
-    fun formatValue(value: Double, step: Double = resource.sliderStep): String {
-        val stepStr = step.toString()
+    fun formatValue(value: Double, step: Double? = resource.sliderStep): String {
+        val actualStep = step ?: 1.0
+        val stepStr = actualStep.toString()
         val precision = if (stepStr.contains('.')) {
             val decimals = stepStr.substringAfter('.')
             if (decimals == "0") 0 else decimals.length
@@ -88,6 +92,13 @@ fun ResourceBlock(
     }
 
     val colorScheme = MaterialTheme.colorScheme
+    val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
+    
+    fun performClickHaptic() {
+        if (veryResponsive) {
+            PlatformUtils.performHapticFeedback(HapticType.CLICK)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -104,6 +115,7 @@ fun ResourceBlock(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
+                performClickHaptic()
                 showConfig = true
             }
             .padding(12.dp)
@@ -141,7 +153,11 @@ fun ResourceBlock(
                     ResourceActionButton(
                         icon = Icons.Default.Remove,
                         enabled = canDecrement,
-                        onClick = { onUpdate(resource.copy(current = formatValue((curValue - resource.sliderStep).coerceAtLeast(0.0)))) }
+                        onClick = { 
+                            performClickHaptic()
+                            val step = resource.sliderStep ?: 1.0
+                            onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
+                        }
                     )
 
                     // Current/Max display
@@ -151,7 +167,11 @@ fun ResourceBlock(
                     ResourceActionButton(
                         icon = Icons.Default.Add,
                         enabled = canIncrement,
-                        onClick = { onUpdate(resource.copy(current = formatValue(curValue + resource.sliderStep))) }
+                        onClick = { 
+                            performClickHaptic()
+                            val step = resource.sliderStep ?: 1.0
+                            onUpdate(resource.copy(current = formatValue(curValue + step))) 
+                        }
                     )
                 }
             }
@@ -196,14 +216,16 @@ fun ResourceBlock(
                         icon = Icons.Default.Remove,
                         enabled = canDecrement,
                         onClick = { 
-                            onUpdate(resource.copy(current = formatValue((curValue - resource.sliderStep).coerceAtLeast(0.0)))) 
+                            performClickHaptic()
+                            val step = resource.sliderStep ?: 1.0
+                            onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
                         }
                     )
 
                     Slider(
                         value = curValue.toFloat(),
                         onValueChange = { 
-                            val step = resource.sliderStep
+                            val step = resource.sliderStep ?: 1.0
                             val max = maxValue
                             val rawValue = it.toDouble().coerceIn(0.0, max)
                             
@@ -213,7 +235,11 @@ fun ResourceBlock(
                             val snappedDiff = round(diff / step) * step
                             val snappedValue = (max - snappedDiff).coerceIn(0.0, max)
                             
-                            onUpdate(resource.copy(current = formatValue(snappedValue)))
+                            val updatedResource = resource.copy(current = formatValue(snappedValue))
+                            if (updatedResource.current != resource.current) {
+                                performClickHaptic()
+                            }
+                            onUpdate(updatedResource)
                         },
                         valueRange = 0f..maxValue.toFloat().coerceAtLeast(0.001f),
                         modifier = Modifier.weight(1f),
@@ -228,7 +254,9 @@ fun ResourceBlock(
                         icon = Icons.Default.Add,
                         enabled = canIncrement,
                         onClick = { 
-                            onUpdate(resource.copy(current = formatValue(curValue + resource.sliderStep))) 
+                            performClickHaptic()
+                            val step = resource.sliderStep ?: 1.0
+                            onUpdate(resource.copy(current = formatValue(curValue + step))) 
                         }
                     )
                 }
@@ -239,26 +267,29 @@ fun ResourceBlock(
         }
     }
 
+    val currentOnFullscreenDialogOpenChange by rememberUpdatedState(onFullscreenDialogOpenChange)
+    val currentOnSubDialogOpenChange by rememberUpdatedState(onSubDialogOpenChange)
+
     if (showConfig) {
         ResourceConfigDialog(
             resource = resource,
             onDismiss = {
                 showConfig = false
-                onFullscreenDialogOpenChange(false)
             },
             onSave = {
                 onUpdate(it)
                 showConfig = false
-                onFullscreenDialogOpenChange(false)
             },
             onDelete = {
                 onDeleteRequest()
                 showConfig = false
-                onFullscreenDialogOpenChange(false)
             },
             forceBlurEnabled = forceBlurEnabled,
             settingsViewModel = settingsViewModel,
-            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
+            onFullscreenDialogOpenChange = { opened ->
+                currentOnFullscreenDialogOpenChange(opened)
+                currentOnSubDialogOpenChange(opened)
+            }
         )
     }
 
@@ -285,7 +316,7 @@ private fun ResourceRestsInfo(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(top = 4.dp)
     ) {
-        if (resource.shortRest != "0") {
+        if (resource.shortRest != "0" && resource.shortRest.isNotEmpty()) {
             RestIndicator(
                 isShort = true,
                 value = resource.shortRest,
@@ -293,7 +324,7 @@ private fun ResourceRestsInfo(
                 proficiencyBonus = pb
             )
         }
-        if (resource.longRest != "0") {
+        if (resource.longRest != "0" && resource.longRest.isNotEmpty()) {
             RestIndicator(
                 isShort = false,
                 value = resource.longRest,
@@ -301,7 +332,7 @@ private fun ResourceRestsInfo(
                 proficiencyBonus = pb
             )
         }
-        if (resource.dawnRest != "0") {
+        if (resource.dawnRest != "0" && resource.dawnRest.isNotEmpty()) {
             RestIndicator(
                 isShort = false,
                 isDawn = true,

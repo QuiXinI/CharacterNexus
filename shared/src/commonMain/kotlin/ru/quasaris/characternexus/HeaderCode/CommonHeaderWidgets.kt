@@ -15,13 +15,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
 import characternexus.shared.generated.resources.*
@@ -49,11 +52,18 @@ val SquirclePath = GenericShape { size, _ ->
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun StatIconBox(value: String, iconRes: DrawableResource, onClick: () -> Unit = {}, isHighlighted: Boolean = false, onLongClick: (() -> Unit)? = null) {
+fun StatIconBox(
+    value: String,
+    iconRes: DrawableResource,
+    onClick: () -> Unit = {},
+    isHighlighted: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+) {
     val colorScheme = MaterialTheme.colorScheme
     val interactionSource = remember { MutableInteractionSource() }
     val density = LocalDensity.current
-    val haptic = LocalHapticFeedback.current
+    val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
 
     Box(
         modifier = Modifier
@@ -62,12 +72,14 @@ fun StatIconBox(value: String, iconRes: DrawableResource, onClick: () -> Unit = 
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (veryResponsive) {
+                        PlatformUtils.performHapticFeedback(HapticType.CLICK)
+                    }
                     onClick()
                 },
                 onLongClick = onLongClick?.let {
                     {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
                         it()
                     }
                 }

@@ -36,6 +36,8 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.util.decodeImageBitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import ru.quasaris.characternexus.util.ImageProcessor
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 
 @Composable
 fun MenuWindow(
@@ -60,6 +62,13 @@ fun MenuWindow(
 
     val autoDownload by settingsViewModel?.autoDownloadLssAvatar?.collectAsState() ?: remember { mutableStateOf(false) }
     val useOldAvatarStyle by settingsViewModel?.useOldAvatarStyle?.collectAsState() ?: remember { mutableStateOf(false) }
+    val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
+
+    fun performClickHaptic() {
+        if (veryResponsive) {
+            PlatformUtils.performHapticFeedback(HapticType.CLICK)
+        }
+    }
     
     var lssAvatarToDownload by remember { mutableStateOf<Character?>(null) }
     var importErrorMessage by remember { mutableStateOf<String?>(null) }
@@ -222,7 +231,10 @@ fun MenuWindow(
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = onOpenDrawer) {
+                        IconButton(onClick = {
+                            performClickHaptic()
+                            onOpenDrawer()
+                        }) {
                             Icon(Icons.Default.Menu, contentDescription = null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface)
                         }
                         Text(
@@ -233,7 +245,10 @@ fun MenuWindow(
                             textAlign = TextAlign.Center,
                             color = colorScheme.onSurface
                         )
-                        IconButton(onClick = { showFilePicker = true }) {
+                        IconButton(onClick = { 
+                            performClickHaptic()
+                            showFilePicker = true 
+                        }) {
                             Icon(Icons.Default.UploadFile, contentDescription = "Загрузить", tint = colorScheme.onSurface)
                         }
                     }
@@ -266,6 +281,7 @@ fun MenuWindow(
                             isSelected = isSelected,
                             useOldAvatarStyle = useOldAvatarStyle,
                             onClick = {
+                                performClickHaptic()
                                 if (selectedIds.isNotEmpty()) {
                                     if (isSelected) selectedIds.remove(character.uuid)
                                     else selectedIds.add(character.uuid)
@@ -274,6 +290,7 @@ fun MenuWindow(
                                 }
                             },
                             onLongClick = {
+                                PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
                                 if (character.uuid !in selectedIds) {
                                     selectedIds.add(character.uuid)
                                 }
@@ -283,7 +300,10 @@ fun MenuWindow(
                 }
 
                 Button(
-                    onClick = onNavigateToCreate,
+                    onClick = {
+                        performClickHaptic()
+                        onNavigateToCreate()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
@@ -313,6 +333,7 @@ fun MenuWindow(
         ) {
             Button(
                 onClick = {
+                    PlatformUtils.performHapticFeedback(HapticType.ERROR)
                     onDeleteCharacters(selectedIds.toList())
                     selectedIds.clear()
                 },

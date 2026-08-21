@@ -137,7 +137,7 @@ fun CharacterCard(
                     ) {
                         if (imageExists) {
                             AsyncImage(
-                                model = imagePath.toString(),
+                                model = imagePath,
                                 contentDescription = "Иконка",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
@@ -192,7 +192,7 @@ fun CharacterCard(
                     ) {
                         if (imageExists) {
                             AsyncImage(
-                                model = imagePath.toString(),
+                                model = imagePath,
                                 contentDescription = "Иконка",
                                 modifier = Modifier
                                     .requiredSize(amplifiedSize)

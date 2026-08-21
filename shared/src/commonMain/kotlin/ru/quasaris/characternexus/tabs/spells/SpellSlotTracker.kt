@@ -12,8 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 import androidx.compose.ui.unit.dp
 import ru.quasaris.characternexus.model.*
 import kotlin.math.abs
@@ -32,7 +32,6 @@ fun SpellSlotTracker(
 ) {
     if (maxSlots <= 0) return
 
-    val haptic = LocalHapticFeedback.current
     val colorScheme = MaterialTheme.colorScheme
     val color = when {
         isDawnRest -> Color(0xFFCE93D8)
@@ -87,7 +86,7 @@ fun SpellSlotTracker(
                         else Modifier.border(1.5.dp, color.copy(alpha = 0.5f), shape)
                     )
                     .clickable {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        PlatformUtils.performHapticFeedback(HapticType.CLICK)
                         val newUsed = if (isFilled) usedSlots - 1 else usedSlots + 1
                         onUsedSlotsChange(newUsed)
                     }

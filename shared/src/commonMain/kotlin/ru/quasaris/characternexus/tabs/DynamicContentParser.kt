@@ -15,7 +15,7 @@ sealed class DynamicContentBlock {
         val notes: String = "",
         val showNotes: Boolean = false,
         val useSlider: Boolean = false,
-        val sliderStep: Double = 1.0
+        val sliderStep: Double? = null
     ) : DynamicContentBlock() {
         fun toTag(): String {
             val parts = mutableListOf<String>()
@@ -29,7 +29,7 @@ sealed class DynamicContentBlock {
             if (notes.isNotEmpty()) parts.add("notes=$notes")
             if (showNotes) parts.add("showNotes=true")
             if (useSlider) parts.add("slider=true")
-            if (sliderStep != 1.0) parts.add("step=$sliderStep")
+            if (sliderStep != null) parts.add("step=$sliderStep")
             
             return "{Ресурс: ${parts.joinToString(" | ")}}"
         }
@@ -82,7 +82,7 @@ object DynamicContentParser {
                     notes = params["notes"] ?: "",
                     showNotes = params["shownotes"]?.toBoolean() ?: false,
                     useSlider = params["slider"]?.toBoolean() ?: false,
-                    sliderStep = params["step"]?.toDoubleOrNull() ?: 1.0
+                    sliderStep = params["step"]?.toDoubleOrNull()
                 )
                 allMatches.add(match.range to block)
             }

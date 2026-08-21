@@ -2,10 +2,14 @@ package ru.quasaris.characternexus.util
 
 import okio.Path
 
+enum class HapticType {
+    CLICK, LONG_PRESS, SUCCESS, ERROR
+}
+
 expect object PlatformUtils {
     fun logError(tag: String, message: String, throwable: Throwable? = null)
     fun setClipboardText(label: String, text: String)
-    fun performHapticFeedback()
+    fun performHapticFeedback(type: HapticType = HapticType.CLICK)
     fun showMessage(message: String)
 }
 

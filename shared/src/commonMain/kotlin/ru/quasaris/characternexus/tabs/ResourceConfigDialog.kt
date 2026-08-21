@@ -51,24 +51,34 @@ fun ResourceConfigDialog(
     var state by remember { mutableStateOf(resource) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
+    var sliderStepText by remember { mutableStateOf(resource.sliderStep?.toString() ?: "") }
+
     var shortRestAll by remember { mutableStateOf(resource.shortRest.lowercase() == "all" || resource.shortRest.lowercase() == "все") }
     var longRestAll by remember { mutableStateOf(resource.longRest.lowercase() == "all" || resource.longRest.lowercase() == "все") }
     var dawnRestAll by remember { mutableStateOf(resource.dawnRest.lowercase() == "all" || resource.dawnRest.lowercase() == "все") }
 
     val isPremium by settingsViewModel?.isPremium?.collectAsState() ?: remember { mutableStateOf(true) }
 
+    val isOled = MaterialTheme.colorScheme.background == Color.Black
+    val effectiveBlur = forceBlurEnabled && !isOled
+
+    val currentOnFullscreenDialogOpenChange by rememberUpdatedState(onFullscreenDialogOpenChange)
+
+    DisposableEffect(Unit) {
+        currentOnFullscreenDialogOpenChange(true)
+        onDispose {
+            currentOnFullscreenDialogOpenChange(false)
+        }
+    }
+    
     val blurRadiusVal by settingsViewModel?.blurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
     val customBlurRadiusVal by settingsViewModel?.customBlurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
     val targetBlurRadius = if (blurRadiusVal == -1) customBlurRadiusVal else blurRadiusVal
     
-    val blurRadius by animateDpAsState(
+    val deleteConfirmBlurRadius by animateDpAsState(
         targetValue = if (showDeleteConfirm && forceBlurEnabled) targetBlurRadius.dp else 0.dp,
         animationSpec = tween(durationMillis = 300)
     )
-
-    LaunchedEffect(Unit) {
-        onFullscreenDialogOpenChange(true)
-    }
 
     val emptyTextToolbar = remember {
         object : TextToolbar {
@@ -95,7 +105,6 @@ fun ResourceConfigDialog(
         DialogDimStyle(0f)
         CompositionLocalProvider(LocalTextToolbar provides emptyTextToolbar) {
             val colorScheme = MaterialTheme.colorScheme
-            val isOled = colorScheme.background == Color.Black
 
             Scaffold(
                 topBar = {
@@ -103,19 +112,18 @@ fun ResourceConfigDialog(
                         title = { Text("Настройка ресурса", fontWeight = FontWeight.Black) },
                         navigationIcon = {
                             IconButton(onClick = {
-                                onFullscreenDialogOpenChange(false)
                                 onDismiss()
                             }) {
                                 Icon(Icons.Default.Close, contentDescription = "Закрыть")
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                            containerColor = if (effectiveBlur) Color.Transparent else colorScheme.surface
                         )
                     )
                 },
-                containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
-                modifier = Modifier.blur(blurRadius)
+                containerColor = if (effectiveBlur) Color.Transparent else colorScheme.background,
+                modifier = Modifier.blur(deleteConfirmBlurRadius)
             ) { paddingValues ->
                 Box(
                     modifier = Modifier
@@ -178,6 +186,7 @@ fun ResourceConfigDialog(
                                         onCheckedChange = {
                                             shortRestAll = it
                                             if (it) state = state.copy(shortRest = "all")
+                                            else state = state.copy(shortRest = "0")
                                         }
                                     )
                                 }
@@ -186,6 +195,7 @@ fun ResourceConfigDialog(
                                         value = if (state.shortRest.lowercase() == "all" || state.shortRest.lowercase() == "все") "" else state.shortRest,
                                         onValueChange = { state = state.copy(shortRest = it) },
                                         label = { Text("Восстановление") },
+                                        placeholder = { Text("0 (по умолчанию)") },
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(8.dp)
                                     )
@@ -208,6 +218,7 @@ fun ResourceConfigDialog(
                                         onCheckedChange = {
                                             longRestAll = it
                                             if (it) state = state.copy(longRest = "all")
+                                            else state = state.copy(longRest = "0")
                                         }
                                     )
                                 }
@@ -216,6 +227,7 @@ fun ResourceConfigDialog(
                                         value = if (state.longRest.lowercase() == "all" || state.longRest.lowercase() == "все") "" else state.longRest,
                                         onValueChange = { state = state.copy(longRest = it) },
                                         label = { Text("Восстановление") },
+                                        placeholder = { Text("0 (по умолчанию)") },
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(8.dp)
                                     )
@@ -238,6 +250,7 @@ fun ResourceConfigDialog(
                                         onCheckedChange = {
                                             dawnRestAll = it
                                             if (it) state = state.copy(dawnRest = "all")
+                                            else state = state.copy(dawnRest = "0")
                                         }
                                     )
                                 }
@@ -246,6 +259,7 @@ fun ResourceConfigDialog(
                                         value = if (state.dawnRest.lowercase() == "all" || state.dawnRest.lowercase() == "все") "" else state.dawnRest,
                                         onValueChange = { state = state.copy(dawnRest = it) },
                                         label = { Text("Восстановление") },
+                                        placeholder = { Text("0 (по умолчанию)") },
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(8.dp)
                                     )
@@ -293,14 +307,14 @@ fun ResourceConfigDialog(
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
                                     OutlinedTextField(
-                                        value = state.sliderStep.toString(),
+                                        value = sliderStepText,
                                         onValueChange = {
-                                            val step = it.toDoubleOrNull() ?: state.sliderStep
-                                            state = state.copy(sliderStep = step)
+                                            sliderStepText = it
                                         },
                                         label = { Text("Значение шага") },
                                         modifier = Modifier.fillMaxWidth(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        placeholder = { Text("1.0 (по умолчанию)") },
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                 }
@@ -338,8 +352,10 @@ fun ResourceConfigDialog(
 
                     Button(
                         onClick = {
-                            onFullscreenDialogOpenChange(false)
-                            onSave(state)
+                            val sanitizedState = state.copy(
+                                sliderStep = sliderStepText.toDoubleOrNull()
+                            )
+                            onSave(sanitizedState)
                         },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -355,7 +371,6 @@ fun ResourceConfigDialog(
                         showDialog = showDeleteConfirm,
                         onDismiss = { showDeleteConfirm = false },
                         onConfirm = {
-                            onFullscreenDialogOpenChange(false)
                             onDelete(state)
                             showDeleteConfirm = false
                         },

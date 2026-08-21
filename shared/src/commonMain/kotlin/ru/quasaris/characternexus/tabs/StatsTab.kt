@@ -336,13 +336,28 @@ fun StatCardDetail(label: String, value: String, modifier: Modifier = Modifier, 
                 BasicTextField(
                     value = value, 
                     onValueChange = { 
-                        val num = it.filter { it.isDigit() }.toIntOrNull()
-                        if (it.isEmpty()) onValueChange("")
-                        else if (num != null && num in 1..30) onValueChange(it.filter { it.isDigit() }) 
+                        val filtered = it.filter { it.isDigit() }
+                        if (filtered.length <= 2) onValueChange(filtered)
                     }, 
                     textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface), 
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), 
-                    modifier = Modifier.width(36.dp)
+                    modifier = Modifier.width(36.dp),
+                    decorationBox = { innerTextField ->
+                        Box(contentAlignment = Alignment.Center) {
+                            if (value.isEmpty()) {
+                                Text(
+                                    "10",
+                                    style = TextStyle(
+                                        textAlign = TextAlign.Center,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colorScheme.onSurface.copy(alpha = 0.3f)
+                                    )
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
                 )
             }
             Box(modifier = Modifier

@@ -12,7 +12,25 @@ actual object PlatformUtils {
     actual fun setClipboardText(label: String, text: String) {
     }
 
-    actual fun performHapticFeedback() {
+    actual fun performHapticFeedback(type: HapticType) {
+        when (type) {
+            HapticType.CLICK -> {
+                val generator = platform.UIKit.UIImpactFeedbackGenerator(platform.UIKit.UIImpactFeedbackStyle.UIImpactFeedbackStyleLight)
+                generator.impactOccurred()
+            }
+            HapticType.LONG_PRESS -> {
+                val generator = platform.UIKit.UIImpactFeedbackGenerator(platform.UIKit.UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium)
+                generator.impactOccurred()
+            }
+            HapticType.SUCCESS -> {
+                val generator = platform.UIKit.UINotificationFeedbackGenerator()
+                generator.notificationOccurred(platform.UIKit.UINotificationFeedbackType.UINotificationFeedbackTypeSuccess)
+            }
+            HapticType.ERROR -> {
+                val generator = platform.UIKit.UINotificationFeedbackGenerator()
+                generator.notificationOccurred(platform.UIKit.UINotificationFeedbackType.UINotificationFeedbackTypeError)
+            }
+        }
     }
 
     actual fun showMessage(message: String) {

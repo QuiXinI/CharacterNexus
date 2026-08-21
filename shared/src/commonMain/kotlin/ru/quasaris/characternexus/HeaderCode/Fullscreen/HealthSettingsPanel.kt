@@ -190,7 +190,7 @@ fun HealthSettingsContent(
         val newList = mutableListOf<HPLevelEntry>()
         var processed = 0
         localGroups.forEach { group ->
-            val count = group.countText.toIntOrNull() ?: 0
+            val count = if (group.countText.isBlank() && !isMulticlass) level else group.countText.toIntOrNull() ?: 0
             for (i in 1..count) {
                 processed++
                 newList.add(HPLevelEntry(level = processed, hitDie = group.hitDie))
@@ -272,7 +272,9 @@ fun HealthSettingsContent(
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
                     )
 
-                    val totalSum = localGroups.sumOf { it.countText.toIntOrNull() ?: 0 }
+                    val totalSum = localGroups.sumOf { 
+                        if (it.countText.isBlank() && !isMulticlass) level else it.countText.toIntOrNull() ?: 0 
+                    }
                     val isWarning = totalSum != level
 
                     Row(
@@ -305,6 +307,11 @@ fun HealthSettingsContent(
                                 },
                                 readOnly = false,
                                 label = { Text("Уровней") },
+                                placeholder = {
+                                    if (!isMulticlass) {
+                                        Text("$level (по умолчанию)")
+                                    }
+                                },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(8.dp),
                                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),

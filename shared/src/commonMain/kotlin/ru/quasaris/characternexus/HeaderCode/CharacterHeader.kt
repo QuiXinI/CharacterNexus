@@ -38,8 +38,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 import coil3.compose.AsyncImage
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.ui.*
@@ -51,6 +51,7 @@ import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
 import ru.quasaris.characternexus.util.log
 import ru.quasaris.characternexus.platformFileSystem
+import kotlinx.serialization.json.Json
 
 @Composable
 fun CharacterHeader(
@@ -98,16 +99,23 @@ fun CharacterHeader(
     showRestPopup: Boolean = false,
     onShowRestPopupChange: (Boolean) -> Unit = {},
     hazeState: HazeState? = null,
-    blurPopups: Boolean = false
+    blurPopups: Boolean = false,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val haptic = LocalHapticFeedback.current
+    val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val inspirationRotation by androidx.compose.animation.core.animateFloatAsState(if (hasInspiration) 0f else 45f)
     val inspirationScale by androidx.compose.animation.core.animateFloatAsState(if (hasInspiration) 1f else 0.8f)
     val isOled = colorScheme.background == Color.Black
 
     var totalDrag by remember { mutableStateOf(0f) }
+
+    fun performClickHaptic() {
+        if (veryResponsive) {
+            PlatformUtils.performHapticFeedback(ru.quasaris.characternexus.util.HapticType.CLICK)
+        }
+    }
 
     val panelsSpringSpec = remember {
         spring<IntSize>(
@@ -130,7 +138,7 @@ fun CharacterHeader(
                     },
                     onDragEnd = {
                         if (totalDrag > 150) {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
                             onOpenDrawer()
                         }
                     }
@@ -139,7 +147,7 @@ fun CharacterHeader(
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                performClickHaptic()
                 onOpenDrawer()
             }) { Icon(Icons.Default.Menu, null, modifier = Modifier.size(32.dp), tint = colorScheme.onSurface) }
             
@@ -161,7 +169,7 @@ fun CharacterHeader(
                 Box(contentAlignment = Alignment.Center) {
                     IconButton(
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            performClickHaptic()
                             onInspirationChange(!hasInspiration)
                         },
                         modifier = Modifier
@@ -211,7 +219,7 @@ fun CharacterHeader(
                             .size(48.dp)
                             .clip(CircleShape)
                             .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                performClickHaptic()
                                 onAvatarClick()
                             },
                         contentAlignment = Alignment.Center
@@ -243,7 +251,7 @@ fun CharacterHeader(
 
                             if (imageFile != null) {
                                 AsyncImage(
-                                    model = imageFile.toString(),
+                                    model = imageFile,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
@@ -275,7 +283,7 @@ fun CharacterHeader(
             .clip(RoundedCornerShape(12.dp))
             .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .clickable { 
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                performClickHaptic()
                 onLevelClick() 
             }
         ) {
@@ -329,11 +337,11 @@ fun CharacterHeader(
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatIconBox(activeACValue,
-                    Res.drawable.ic_shield, onClick = onACClick, onLongClick = onACLongClick, isHighlighted = isShieldActive)
-                StatIconBox(activeInitValue, Res.drawable.ic_sword, onClick = onInitClick, onLongClick = onInitLongClick, isHighlighted = true)
+                    Res.drawable.ic_shield, onClick = onACClick, onLongClick = onACLongClick, isHighlighted = isShieldActive, settingsViewModel = settingsViewModel)
+                StatIconBox(activeInitValue, Res.drawable.ic_sword, onClick = onInitClick, onLongClick = onInitLongClick, isHighlighted = true, settingsViewModel = settingsViewModel)
             }
             Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp).height(55.dp).border(1.5.dp, healthColor, RoundedCornerShape(8.dp)).background(colorScheme.surface, RoundedCornerShape(8.dp)).clickable { 
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                performClickHaptic()
                 onHealthClick() 
             }, contentAlignment = Alignment.Center) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -347,9 +355,10 @@ fun CharacterHeader(
                     value = if (conditionsCount == "0" || conditionsCount.isEmpty()) "" else conditionsCount,
                     iconRes = Res.drawable.ic_conditions,
                     onClick = onConditionsClick,
-                    isHighlighted = selectedConditions.isNotEmpty()
+                    isHighlighted = selectedConditions.isNotEmpty(),
+                    settingsViewModel = settingsViewModel
                 )
-                StatIconBox(activeSpeedValue, Res.drawable.ic_speed, onClick = onSpeedClick, isHighlighted = true)
+                StatIconBox(activeSpeedValue, Res.drawable.ic_speed, onClick = onSpeedClick, isHighlighted = true, settingsViewModel = settingsViewModel)
             }
         }
     }
@@ -506,13 +515,9 @@ fun rememberAllConditions(): List<Condition> {
     var allConditions by remember { mutableStateOf(emptyList<Condition>()) }
     LaunchedEffect(Unit) {
         try {
-            // Using a simpler approach if Res is not yet generated or available
-            // In a real project, we would use Res.readBytes("files/Conditions.md")
-            // For now, let's provide a basic list to avoid crashes until resources are synced
-            allConditions = listOf(
-                Condition("Ослеплён", "Существо не видит..."),
-                Condition("Очарован", "Очарованное существо...")
-            )
+            val bytes = Res.readBytes("files/conditions.json")
+            val content = bytes.decodeToString()
+            allConditions = Json.decodeFromString<List<Condition>>(content)
         } catch (e: Exception) {
             e.log()
         }

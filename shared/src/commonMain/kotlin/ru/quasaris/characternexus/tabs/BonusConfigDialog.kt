@@ -117,12 +117,10 @@ fun BonusConfigDialog(
                             value = baseScore,
                             onValueChange = { 
                                 val f = it.filter { c -> c.isDigit() }
-                                if (f.isEmpty()) baseScore = "" else {
-                                    val n = f.toIntOrNull()
-                                    if (n != null && n in 1..30) baseScore = f
-                                }
+                                if (f.length <= 2) baseScore = f
                             },
                             label = { Text("Значение характеристики") },
+                            placeholder = { Text("10 (по умолчанию)") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),

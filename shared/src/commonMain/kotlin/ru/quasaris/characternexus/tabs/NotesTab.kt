@@ -17,6 +17,7 @@ fun NotesTab(
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     header: @Composable () -> Unit = {}
 ) {
     DynamicFieldsTab(
@@ -34,6 +35,7 @@ fun NotesTab(
         settingsViewModel = settingsViewModel,
         statsMap = statsMap,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+        onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
         header = header
     )
 }

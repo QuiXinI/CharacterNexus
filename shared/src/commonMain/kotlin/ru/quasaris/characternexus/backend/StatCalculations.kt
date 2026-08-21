@@ -1,6 +1,5 @@
 package ru.quasaris.characternexus.backend
 
-import ru.quasaris.characternexus.model.*
 import kotlin.math.*
 
 /**
@@ -429,13 +428,6 @@ private class FormulaParser(private val input: String) {
         // Если кубы включены, но мы в evaluateFormula, мы можем вернуть среднее или 0.
         // Пользователь просил: "при отключении просто игнорирует, условное, 1к4, а не превращает его в 14"
         return 0.0 
-    }
-}
-
-fun parseConditions(content: String): List<Condition> {
-    return content.split("##").filter { it.isNotBlank() }.map { s ->
-        val lines = s.trim().lines()
-        Condition(lines.firstOrNull()?.trim() ?: "", lines.drop(1).joinToString("\n").trim())
     }
 }
 
