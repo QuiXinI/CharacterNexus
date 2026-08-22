@@ -156,6 +156,15 @@ class SettingsViewModel(
     private val _dawnRestFillDirection = MutableStateFlow(settingsManager.settings.dawnRestFillDirection)
     val dawnRestFillDirection = _dawnRestFillDirection.asStateFlow()
 
+    private val _themeMode = MutableStateFlow(settingsManager.settings.themeMode)
+    val themeMode = _themeMode.asStateFlow()
+
+    private val _themeBehavior = MutableStateFlow(settingsManager.settings.themeBehavior)
+    val themeBehavior = _themeBehavior.asStateFlow()
+
+    private val _m3SeedColor = MutableStateFlow(settingsManager.settings.m3SeedColor)
+    val m3SeedColor = _m3SeedColor.asStateFlow()
+
     private val _isPremium = MutableStateFlow(settingsManager.settings.isPremium)
     val isPremium = _isPremium.asStateFlow()
 
@@ -449,6 +458,24 @@ class SettingsViewModel(
         _keybinds.value = keybindManager.mappings
     }
 
+    fun updateThemeMode(mode: AppThemeMode) {
+        _themeMode.value = mode
+        settingsManager.settings.themeMode = mode
+        settingsManager.save()
+    }
+
+    fun updateThemeBehavior(behavior: AppThemeBehavior) {
+        _themeBehavior.value = behavior
+        settingsManager.settings.themeBehavior = behavior
+        settingsManager.save()
+    }
+
+    fun updateM3SeedColor(color: String) {
+        _m3SeedColor.value = color
+        settingsManager.settings.m3SeedColor = color
+        settingsManager.save()
+    }
+
     fun updateIsPremium(enabled: Boolean) {
         _isPremium.value = enabled
         settingsManager.isPremium = enabled
@@ -524,6 +551,9 @@ class SettingsViewModel(
         _dawnRestAlignment.value = s.dawnRestAlignment
         _dawnRestFillDirection.value = s.dawnRestFillDirection
         _exportDirectoryUri.value = s.exportDirectoryUri
+        _themeMode.value = s.themeMode
+        _themeBehavior.value = s.themeBehavior
+        _m3SeedColor.value = s.m3SeedColor
         _isPremium.value = s.isPremium
     }
 }

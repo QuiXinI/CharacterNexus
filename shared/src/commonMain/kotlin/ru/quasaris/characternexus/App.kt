@@ -42,7 +42,6 @@ import ru.quasaris.characternexus.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(
-    initialThemeMode: AppThemeMode,
     initialLastCharacterId: Int,
     initialLastCharacterSeedColor: Int?,
     settingsViewModel: SettingsViewModel,
@@ -73,7 +72,9 @@ fun App(
     val customHistorySize = getCustomRollHistorySize()
     val historyLimit = if (sliderHistorySize >= 10) customHistorySize else sliderHistorySize
 
-    var themeMode by remember { mutableStateOf(initialThemeMode) }
+    val themeMode by settingsViewModel.themeMode.collectAsState()
+    val themeBehavior by settingsViewModel.themeBehavior.collectAsState()
+    val m3SeedColor by settingsViewModel.m3SeedColor.collectAsState()
     var lastCharacterId by remember { mutableIntStateOf(initialLastCharacterId) }
 
     val masterBlurEnabled = getMasterBlurEnabled()
@@ -114,7 +115,12 @@ fun App(
     val avatarColor = lastCharacter?.themeSeedColorArgb ?: initialLastCharacterSeedColor
 
     AppScaleProvider(scaleFactor = scaleFactor) {
-        quasarisTheme(themeMode = themeMode, avatarColor = avatarColor) {
+        quasarisTheme(
+            themeBehavior = themeBehavior,
+            themeMode = themeMode,
+            avatarColor = avatarColor,
+            m3SeedColor = m3SeedColor
+        ) {
             val colorScheme = MaterialTheme.colorScheme
             val isOled = colorScheme.background == Color.Black
 
@@ -237,19 +243,6 @@ fun App(
                                 )
 
                                 NavigationDrawerItem(
-                                    label = { Text("Книга заклинаний") },
-                                    selected = currentRoute == "spellbook",
-                                    onClick = {
-                                        scope.launch { drawerState.close() }
-                                        if (currentRoute != "spellbook") {
-                                            navController.navigate("spellbook")
-                                        }
-                                    },
-                                    icon = { Icon(Icons.Default.AutoFixHigh, null) },
-                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                )
-
-                                NavigationDrawerItem(
                                     label = { Text("Глоссарий") },
                                     selected = currentRoute == "glossary",
                                     onClick = {
@@ -336,7 +329,6 @@ fun App(
                                 composable("settings") {
                                     SettingsWindow(
                                         onOpenDrawer = { scope.launch { drawerState.open() } },
-                                        onThemeModeChange = { themeMode = it },
                                         settingsViewModel = settingsViewModel,
                                         hazeState = hazeState,
                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
@@ -368,7 +360,6 @@ fun App(
                                             spellbookManager = spellbookManager,
                                             moduleManager = moduleManager,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            onNavigateToSpells = { navController.navigate("spellbook") },
                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             settingsViewModel = settingsViewModel
@@ -377,9 +368,10 @@ fun App(
                                 }
 
                                 composable("modules") {
-                                    if (moduleManager != null && glossaryImporter != null) {
+                                    if (moduleManager != null && glossaryImporter != null && spellbookManager != null) {
                                         ModulesWindow(
                                             moduleManager = moduleManager,
+                                            spellbookManager = spellbookManager,
                                             glossaryImporter = glossaryImporter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,

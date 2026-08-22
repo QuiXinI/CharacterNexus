@@ -1,0 +1,42 @@
+{
+  "name": "Звёздный Огонёк",
+  "englishName": "Starry Wisp",
+  "showEnglishName": true,
+  "level": "0",
+  "version": "V5_5",
+  "school": "EVOCATION",
+  "classes": [
+    "BARD",
+    "DRUID"
+  ],
+  "castingTimeType": "ACTION",
+  "castingTime": "",
+  "hasVerbalComponent": true,
+  "hasSomaticComponent": true,
+  "isRitual": false,
+  "isCircle": false,
+  "materialComponentType": "NONE",
+  "materialComponents": "",
+  "hasConcentration": false,
+  "durationValue": "",
+  "durationUnit": "INSTANT",
+  "description": "Вы запускаете частицу света в одно существо или объект в пределах дистанции. Совершите дальнобойную атаку заклинанием против цели. При попадании, цель получает 1к8 Излучающего урона, и до конца вашего следующего хода, она испускает Тусклый Свет в 10-футовом радиусе и не может получать преимуществ от состояния Невидимый.\nУлучшение Заговора. Урон увеличивается на 1к8 когда вы достигаете 5 (2к8), 11 (3к8), и 17 (4к8) уровней.",
+  "hasDamage": true,
+  "damageFormula": "1к8",
+  "damageType": "Излучающий",
+  "damageTypes": [
+    "RADIANT"
+  ],
+  "additionalDamageFormulas": [],
+  "additionalDamageTypesList": [],
+  "attackType": "ATTACK",
+  "attackTypes": [
+    "ATTACK"
+  ],
+  "savingThrowAttributes": [],
+  "distance": "60ft",
+  "notes": "",
+  "link": null,
+  "additionalLinks": [],
+  "id": "d987aca5-8f3d-4815-b0a1-d4c7fd01309e"
+}

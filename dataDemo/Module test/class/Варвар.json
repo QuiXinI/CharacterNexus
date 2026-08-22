@@ -1,0 +1,366 @@
+{
+  "id": "barbarian",
+  "name": "Варвар",
+  "system": "dnd 5.5",
+  "description": "Свирепый воин первобытного происхождения, способный входить в боевой раж — [Ярость](ref://class/barbarian/feature/rage).",
+  "headers": [
+    { "key": "level", "label": "Уровень" },
+    { "key": "proficiency_bonus", "label": "Бонус владения" },
+    { "key": "features", "label": "Умения класса" },
+    { "key": "rages", "label": "Ярости" },
+    { "key": "rage_damage", "label": "Урон ярости" },
+    { "key": "weapon_masteries", "label": "Мастерство оружия" }
+  ],
+  "progression_table": [
+    {
+      "level": 1,
+      "proficiency_bonus": 2,
+      "features": [
+        "[Ярость](ref://class/barbarian/feature/rage)",
+        "[Защита без доспехов](ref://class/barbarian/feature/unarmored_defense)",
+        "[Мастерство оружия](ref://glossary/weapon_mastery)"
+      ],
+      "rages": 2,
+      "rage_damage": 2,
+      "weapon_masteries": 2
+    },
+    {
+      "level": 2,
+      "proficiency_bonus": 2,
+      "features": [
+        "[Безрассудная атака](ref://class/barbarian/feature/reckless_attack)",
+        "[Чувство опасности](ref://class/barbarian/feature/danger_sense)"
+      ],
+      "rages": 2,
+      "rage_damage": 2,
+      "weapon_masteries": 2
+    },
+    {
+      "level": 3,
+      "proficiency_bonus": 2,
+      "features": [
+        "[Подкласс варвара](ref://class/barbarian/subclass)",
+        "[Приращение знания](ref://class/barbarian/feature/primal_knowledge)"
+      ],
+      "rages": 3,
+      "rage_damage": 2,
+      "weapon_masteries": 2
+    },
+    {
+      "level": 4,
+      "proficiency_bonus": 2,
+      "features": [
+        "[Увеличение характеристик](ref://glossary/feat/ability_score_improvement)"
+      ],
+      "rages": 3,
+      "rage_damage": 2,
+      "weapon_masteries": 3
+    },
+    {
+      "level": 5,
+      "proficiency_bonus": 3,
+      "features": [
+        "[Быстрое перемещение](ref://class/barbarian/feature/fast_movement)",
+        "[Дополнительная атака](ref://class/barbarian/feature/extra_attack)"
+      ],
+      "rages": 3,
+      "rage_damage": 2,
+      "weapon_masteries": 3
+    },
+    {
+      "level": 6,
+      "proficiency_bonus": 3,
+      "features": [
+        "[Умение подкласса](ref://class/barbarian/subclass)"
+      ],
+      "rages": 4,
+      "rage_damage": 2,
+      "weapon_masteries": 3
+    },
+    {
+      "level": 7,
+      "proficiency_bonus": 3,
+      "features": [
+        "[Дикий инстинкт](ref://class/barbarian/feature/feral_instinct)",
+        "[Инстинктивное перемещение](ref://class/barbarian/feature/instinctive_pounce)"
+      ],
+      "rages": 4,
+      "rage_damage": 2,
+      "weapon_masteries": 3
+    },
+    {
+      "level": 8,
+      "proficiency_bonus": 3,
+      "features": [
+        "[Увеличение характеристик](ref://glossary/feat/ability_score_improvement)"
+      ],
+      "rages": 4,
+      "rage_damage": 2,
+      "weapon_masteries": 3
+    },
+    {
+      "level": 9,
+      "proficiency_bonus": 4,
+      "features": [
+        "[Дикий удар](ref://class/barbarian/feature/brutal_strike)"
+      ],
+      "rages": 4,
+      "rage_damage": 3,
+      "weapon_masteries": 3
+    },
+    {
+      "level": 10,
+      "proficiency_bonus": 4,
+      "features": [
+        "[Умение подкласса](ref://class/barbarian/subclass)"
+      ],
+      "rages": 4,
+      "rage_damage": 3,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 11,
+      "proficiency_bonus": 4,
+      "features": [
+        "[Непреклонная ярость](ref://class/barbarian/feature/relentless_rage)"
+      ],
+      "rages": 4,
+      "rage_damage": 3,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 12,
+      "proficiency_bonus": 4,
+      "features": [
+        "[Увеличение характеристик](ref://glossary/feat/ability_score_improvement)"
+      ],
+      "rages": 5,
+      "rage_damage": 3,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 13,
+      "proficiency_bonus": 5,
+      "features": [
+        "[Улучшенный дикий удар](ref://class/barbarian/feature/brutal_strike)"
+      ],
+      "rages": 5,
+      "rage_damage": 3,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 14,
+      "proficiency_bonus": 5,
+      "features": [
+        "[Умение подкласса](ref://class/barbarian/subclass)"
+      ],
+      "rages": 5,
+      "rage_damage": 3,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 15,
+      "proficiency_bonus": 5,
+      "features": [
+        "[Непрекращающаяся ярость](ref://class/barbarian/feature/persistent_rage)"
+      ],
+      "rages": 5,
+      "rage_damage": 3,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 16,
+      "proficiency_bonus": 5,
+      "features": [
+        "[Увеличение характеристик](ref://glossary/feat/ability_score_improvement)"
+      ],
+      "rages": 5,
+      "rage_damage": 4,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 17,
+      "proficiency_bonus": 6,
+      "features": [
+        "[Улучшенный дикий удар (2 эффекта)](ref://class/barbarian/feature/brutal_strike)"
+      ],
+      "rages": 6,
+      "rage_damage": 4,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 18,
+      "proficiency_bonus": 6,
+      "features": [
+        "[Несгибаемая сила](ref://class/barbarian/feature/indomitable_might)"
+      ],
+      "rages": 6,
+      "rage_damage": 4,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 19,
+      "proficiency_bonus": 6,
+      "features": [
+        "[Эпический дар](ref://glossary/feat/epic_boon)"
+      ],
+      "rages": 6,
+      "rage_damage": 4,
+      "weapon_masteries": 4
+    },
+    {
+      "level": 20,
+      "proficiency_bonus": 6,
+      "features": [
+        "[Воплощение мощи](ref://class/barbarian/feature/primal_champion)"
+      ],
+      "rages": 6,
+      "rage_damage": 4,
+      "weapon_masteries": 4
+    }
+  ],
+  "primary_ability": "[Сила](ref://glossary/attribute/strength)",
+  "hit_dice": "1d12",
+  "hp_at_1st_level": "12 + модификатор [Телосложения](ref://glossary/attribute/constitution)",
+  "hp_at_higher_levels": "1d12 (или 7) + модификатор [Телосложения](ref://glossary/attribute/constitution) за каждый уровень варвара после 1-го",
+  "saving_throw_proficiencies": [
+    "[Сила](ref://glossary/attribute/strength)",
+    "[Телосложение](ref://glossary/attribute/constitution)"
+  ],
+  "skill_proficiencies": {
+    "choose": 2,
+    "from": [
+      "[Атлетика](ref://glossary/skill/athletics)",
+      "[Восприятие](ref://glossary/skill/perception)",
+      "[Выживание](ref://glossary/skill/survival)",
+      "[Запугивание](ref://glossary/skill/intimidation)",
+      "[Природа](ref://glossary/skill/nature)",
+      "[Уход за животными](ref://glossary/skill/animal_handling)"
+    ]
+  },
+  "weapon_proficiencies": [
+    "[Простое оружие](ref://glossary/item_type/simple_weapon)",
+    "[Воинское оружие](ref://glossary/item_type/martial_weapon)"
+  ],
+  "armor_proficiencies": [
+    "[Легкий доспех](ref://glossary/item_type/light_armor)",
+    "[Средний доспех](ref://glossary/item_type/medium_armor)",
+    "[Щиты](ref://glossary/item_type/shield)"
+  ],
+  "starting_equipment": {
+    "options": [
+      "А) [Секира](ref://glossary/item/greataxe), 4 [Ручных топора](ref://glossary/item/handaxe), [Набор путешественника](ref://glossary/item/explorers_pack) и 15 [ЗМ](ref://glossary/currency/gp)",
+      "Б) 75 [ЗМ](ref://glossary/currency/gp)"
+    ]
+  },
+  "multiclassing": {
+    "prerequisites": [],
+    "proficiencies": [
+      "[Щиты](ref://glossary/item_type/shield)",
+      "[Воинское оружие](ref://glossary/item_type/martial_weapon)"
+    ]
+  },
+  "subclasses": [],
+  "features": [
+    {
+      "name": "Ярость",
+      "level": 1,
+      "description": "Как [Бонусное действие](ref://glossary/action/bonus_action) вы можете войти в [Ярость](ref://class/barbarian/feature/rage), если на вас не надета [Тяжелый доспех](ref://glossary/item_type/heavy_armor).\n\nНаходясь в Ярости, вы получаете следующие преимущества:\n- **Проверки и спасброски Силы:** Вы совершаете проверки [Силы](ref://glossary/attribute/strength) и [Спасброски](ref://glossary/saving_throw) [Силы](ref://glossary/attribute/strength) с [Преимуществом](ref://glossary/advantage).\n- **Бонус к урону Ярости:** Когда вы совершаете урон атакой оружием с использованием [Силы](ref://glossary/attribute/strength), вы получаете бонус к урону, указанный в колонке «Урон Ярости» таблицы Варвара.\n- **Сопротивление урону:** Вы получаете [Сопротивление](ref://glossary/resistance) к [Дробящему](ref://glossary/damage/bludgeoning), [Колющему](ref://glossary/damage/piercing) и [Рубящему](ref://glossary/damage/slashing) урону.\n- **Невозможность колдовать:** Вы не можете заклинать или концентрироваться на заклинаниях.\n\nЯрость длится 1 минуту. Она заканчивается раньше, если вы надели [Тяжелый доспех](ref://glossary/item_type/heavy_armor), получили состояние [Недееспособный](ref://glossary/condition/incapacitated), или если вы завершите её в свой ход как [Бонусное действие](ref://glossary/action/bonus_action). Вы также можете продлить Ярость на 1 минуту, если совершите атаку по враждебному существу, заставите врага сделать спасбросок или потратите [Бонусное действие](ref://glossary/action/bonus_action) для поддержания Ярости."
+    },
+    {
+      "name": "Защита без доспехов",
+      "level": 1,
+      "description": "Пока вы не носите никакой брони, ваш Класс Доспеха (КД) равен 10 + модификатор [Ловкости](ref://glossary/attribute/dexterity) + модификатор [Телосложения](ref://glossary/attribute/constitution). Вы можете использовать [Щит](ref://glossary/item_type/shield) и при этом получать это преимущество."
+    },
+    {
+      "name": "Мастерство оружия",
+      "level": 1,
+      "description": "Ваша подготовка с оружием позволяет вам использовать свойства [Мастерства Оружия](ref://glossary/weapon_mastery) двух типов [Простого](ref://glossary/item_type/simple_weapon) или [Воинского](ref://glossary/item_type/martial_weapon) оружия на ваш выбор, которым вы владеете. Вы можете менять свой выбор после [Длинного Отдыха](ref://glossary/rest/long_rest)."
+    },
+    {
+      "name": "Безрассудная атака",
+      "level": 2,
+      "description": "Вы можете отбросить всякую заботу о защите, чтобы атаковать с бешеной свирепостью. Когда вы совершаете бросок атаки в свой ход, вы можете объявить [Безрассудную атаку](ref://class/barbarian/feature/reckless_attack). Это дает вам [Преимущество](ref://glossary/advantage) на броски атаки в ближнем бою с использованием [Силы](ref://glossary/attribute/strength) во время этого хода, но броски атаки по вам также совершаются с [Преимуществом](ref://glossary/advantage) до начала вашего следующего хода."
+    },
+    {
+      "name": "Чувство опасности",
+      "level": 2,
+      "description": "Вы получаете [Преимущество](ref://glossary/advantage) на [Спасброски](ref://glossary/saving_throw) [Ловкости](ref://glossary/attribute/dexterity), за исключением случаев, когда вы находитесь в состоянии [Недееспособный](ref://glossary/condition/incapacitated)."
+    },
+    {
+      "name": "Подкласс варвара",
+      "level": 3,
+      "description": "Вы выбираете [Подкласс Варвара](ref://class/barbarian/subclass), который отражает природу вашей ярости."
+    },
+    {
+      "name": "Приращение знания",
+      "level": 3,
+      "description": "Вы получаете владение еще одним навыком по вашему выбору из списка навыков Варвара 1-го уровня. Кроме того, пока ваша [Ярость](ref://class/barbarian/feature/rage) активна, когда вы делаете проверку навыка для одного из следующих навыков, вы можете сделать её как проверку [Силы](ref://glossary/attribute/strength): [Акробатика](ref://glossary/skill/acrobatics), [Восприятие](ref://glossary/skill/perception), [Запугивание](ref://glossary/skill/intimidation), [Проницательность](ref://glossary/skill/insight), [Скрытность](ref://glossary/skill/stealth), [Уход за животными](ref://glossary/skill/animal_handling)."
+    },
+    {
+      "name": "Увеличение характеристик",
+      "level": 4,
+      "description": "Вы получаете черту [Увеличение Характеристик](ref://glossary/feat/ability_score_improvement) или другую [Черту](ref://glossary/feat) на ваш выбор, для которой вы подходите."
+    },
+    {
+      "name": "Быстрое перемещение",
+      "level": 5,
+      "description": "Ваша скорость увеличивается на 10 футов, пока вы не носите [Тяжелый доспех](ref://glossary/item_type/heavy_armor)."
+    },
+    {
+      "name": "Дополнительная атака",
+      "level": 5,
+      "description": "Вы можете атаковать дважды вместо одного раза, когда принимаете действие [Атака](ref://glossary/action/attack) в свой ход."
+    },
+    {
+      "name": "Дикий инстинкт",
+      "level": 7,
+      "description": "Ваши инстинкты настолько обострены, что вы получаете [Преимущество](ref://glossary/advantage) на броски [Инициативы](ref://glossary/initiative). Дополнительно, если вы застигнуты [Врасплох](ref://glossary/condition/surprised), вы можете в свой первый ход войти в [Ярость](ref://class/barbarian/feature/rage) и действовать нормально."
+    },
+    {
+      "name": "Инстинктивное перемещение",
+      "level": 7,
+      "description": "В рамках [Бонусного действия](ref://glossary/action/bonus_action), которое вы используете для входа в [Ярость](ref://class/barbarian/feature/rage), вы можете переместиться на расстояние до половины вашей Скорости."
+    },
+    {
+      "name": "Дикий удар",
+      "level": 9,
+      "description": "Если вы используете [Безрассудную атаку](ref://class/barbarian/feature/reckless_attack), вы можете отказаться от [Преимущества](ref://glossary/advantage) на один бросок атаки с использованием [Силы](ref://glossary/attribute/strength) в этот ход. Если эта атака попадает, она наносит дополнительно 1d10 урона того же типа, и вы можете применить один из следующих эффектов:\n- **Мощный удар (Forceful Blow):** Цель отталкивается на 15 футов от вас. Вы можете переместиться на расстояние до половины вашей Скорости к цели без провоцирования атак по возможности.\n- **Подсекающий удар (Hamstring Blow):** Скорость цели уменьшается на 15 футов до начала вашего следующего хода."
+    },
+    {
+      "name": "Непреклонная ярость",
+      "level": 11,
+      "description": "Ваша [Ярость](ref://class/barbarian/feature/rage) позволяет вам продолжать сражаться, несмотря на смертельные раны. Если ваши [Хиты](ref://glossary/hit_points) опускаются до 0, пока вы находитесь в состоянии Ярости, вы можете сделать [Спасбросок](ref://glossary/saving_throw) [Телосложения](ref://glossary/attribute/constitution) СЛ 10. В случае успеха ваши Хиты становятся равны 1. СЛ увеличивается на 5 при каждом последующем использовании этого умения до завершения [Короткого Отдыха](ref://glossary/rest/short_rest) или [Длинного Отдыха](ref://glossary/rest/long_rest)."
+    },
+    {
+      "name": "Улучшенный дикий удар",
+      "level": 13,
+      "description": "Вы получаете два новых параметра для использования с эффектом [Дикий удар](ref://class/barbarian/feature/brutal_strike):\n- **Ошеломляющий удар (Staggering Blow):** Цель получает [Помеху](ref://glossary/disadvantage) на следующий спасбросок до начала вашего следующего хода и не может совершать провоцированные атаки.\n- **Ослепляющий удар / Разрушение брони (Sundering Blow):** Следующая атака по этой цели от другого существа получает +2 к броску атаки."
+    },
+    {
+      "name": "Непрекращающаяся ярость",
+      "level": 15,
+      "description": "Ваша [Ярость](ref://class/barbarian/feature/rage) настолько сильна, что длится 10 минут без необходимости поддерживать ее атаками или уроном. Она заканчивается только если вы впадаете в состояние [Недееспособный](ref://glossary/condition/incapacitated), надеваете [Тяжелый доспех](ref://glossary/item_type/heavy_armor) или завершаете ее сами."
+    },
+    {
+      "name": "Улучшенный дикий удар (2 эффекта)",
+      "level": 17,
+      "description": "Урон от [Дикого удара](ref://class/barbarian/feature/brutal_strike) увеличивается до 2d10. Кроме того, вы можете применить два разных эффекта [Дикого удара](ref://class/barbarian/feature/brutal_strike) к одной атаке."
+    },
+    {
+      "name": "Несгибаемая сила",
+      "level": 18,
+      "description": "Если результат вашей проверки [Силы](ref://glossary/attribute/strength) или [Спасброска](ref://glossary/saving_throw) [Силы](ref://glossary/attribute/strength) меньше вашего значения [Силы](ref://glossary/attribute/strength), вы можете использовать значение характеристики вместо результата броска."
+    },
+    {
+      "name": "Эпический дар",
+      "level": 19,
+      "description": "Вы получаете [Эпический Дар](ref://glossary/feat/epic_boon) или другую [Черту](ref://glossary/feat) по вашему выбору. Рекомендуется: [Дар Непреодолимого Нападения](ref://glossary/feat/boon_of_irresistible_offense)."
+    },
+    {
+      "name": "Воплощение мощи",
+      "level": 20,
+      "description": "Вы становитесь воплощением первобытной мощи. Ваши значения [Силы](ref://glossary/attribute/strength) и [Телосложения](ref://glossary/attribute/constitution) увеличиваются на 4. Ваши максимумы для этих значений теперь равны 25."
+    }
+  ]
+}

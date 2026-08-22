@@ -1,5 +1,8 @@
 package ru.quasaris.characternexus
 
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.ui.graphics.toArgb
 import android.content.Context
 import android.os.Build
@@ -69,5 +72,15 @@ actual fun ApplySystemBarEffects(color: androidx.compose.ui.graphics.Color, dark
             window.statusBarColor = color.toArgb()
             window.navigationBarColor = color.toArgb()
         }
+    }
+}
+
+@androidx.compose.runtime.Composable
+actual fun getDynamicColorScheme(darkTheme: Boolean): ColorScheme? {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else {
+        null
     }
 }

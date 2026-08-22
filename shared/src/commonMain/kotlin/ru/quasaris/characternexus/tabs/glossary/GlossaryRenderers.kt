@@ -5,22 +5,40 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.serialization.json.JsonPrimitive
 import ru.quasaris.characternexus.backend.*
+import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.tabs.spells.SpellCardItem
 
 @Composable
 fun RichText(text: String) {
-    // For now, just basic text. In future, parse ref:// links
+    // Basic markdown-like parsing could be here. For now, just multi-line text.
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge,
         lineHeight = 24.sp,
         color = MaterialTheme.colorScheme.onSurface
     )
+}
+
+@Composable
+fun SpellCardRenderer(spell: SpellCard) {
+    var isExpanded by remember { mutableStateOf(true) }
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        SpellCardItem(
+            spell = spell,
+            isExpanded = isExpanded,
+            onToggleExpand = { isExpanded = !isExpanded },
+            isEditable = false,
+            isSelected = false
+        )
+    }
 }
 
 @Composable
@@ -74,7 +92,8 @@ fun GameTableRenderer(table: GameTable) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Row(modifier = Modifier.fillMaxWidth()) {
                 columns.forEach { col ->
-                    val value = row[col.key ?: ""]?.toString() ?: ""
+                    val element = row[col.key ?: ""]
+                    val value = if (element is JsonPrimitive) element.content else element?.toString() ?: ""
                     Text(
                         text = value,
                         modifier = Modifier

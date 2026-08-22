@@ -1,0 +1,36 @@
+{
+  "manifest_version": "1.0",
+  "id": "dragonborn_barbarian_berserker_test_1",
+  "name": "Драконорожденный Варвар Берсерк Тест 1",
+  "version": "0.0.2",
+  "system": "dnd_5.5",
+  "description": "Тестовый модуль импорта: класс Варвар, подкласс Путь Берсеркера и раса Драконорожденный.",
+  "contents": [
+    {
+      "type": "class",
+      "id": "barbarian",
+      "file": "Варвар.json"
+    },
+    {
+      "type": "subclass",
+      "id": "berserker",
+      "class_id": "barbarian",
+      "file": "Берсерк.json"
+    },
+    {
+      "type": "species",
+      "id": "dragonborn",
+      "file": "Драконорожденный.json"
+    },
+    {
+      "type": "spell",
+      "id": "starry wisp",
+      "file": "Звёздный огонёк.json"
+    },
+    {
+      "type": "feat",
+      "id": "lucky",
+      "file": "Везучий.json"
+    }
+  ]
+}

@@ -11,6 +11,8 @@ import ru.quasaris.characternexus.util.log
 @Serializable
 data class AppSettings(
     var themeMode: AppThemeMode = AppThemeMode.M3,
+    var themeBehavior: AppThemeBehavior = AppThemeBehavior.SYSTEM,
+    var m3SeedColor: String = "#6750A4",
     var exportFormat: ExportFormat = ExportFormat.WEBP,
     var exportDirectoryUri: String? = null,
     var lastCharacterId: Int = -1,
@@ -103,6 +105,8 @@ class SettingsManager {
 
     // Facade properties for backward compatibility and simpler access
     var themeMode: AppThemeMode get() = settings.themeMode; set(value) { settings.themeMode = value; save() }
+    var themeBehavior: AppThemeBehavior get() = settings.themeBehavior; set(value) { settings.themeBehavior = value; save() }
+    var m3SeedColor: String get() = settings.m3SeedColor; set(value) { settings.m3SeedColor = value; save() }
     var exportFormat: ExportFormat get() = settings.exportFormat; set(value) { settings.exportFormat = value; save() }
     var lastCharacterId: Int get() = settings.lastCharacterId; set(value) { settings.lastCharacterId = value; save() }
     var lastCharacterSeedColor: Int? get() = settings.lastCharacterSeedColor; set(value) { settings.lastCharacterSeedColor = value; save() }

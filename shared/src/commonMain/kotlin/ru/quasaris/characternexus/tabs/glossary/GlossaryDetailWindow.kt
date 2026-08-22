@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.ui.GlossaryCategory
 import ru.quasaris.characternexus.backend.*
+import ru.quasaris.characternexus.model.SpellCard
 import okio.Path
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +30,7 @@ fun GlossaryDetailWindow(
             when (category) {
                 GlossaryCategory.SPECIES -> JsonConfig.json.decodeFromString<GameSpecies>(json)
                 GlossaryCategory.FEATS -> JsonConfig.json.decodeFromString<GameFeat>(json)
+                GlossaryCategory.SPELLS -> JsonConfig.json.decodeFromString<SpellCard>(json)
                 else -> null
             }
         } catch (e: Exception) {
@@ -51,6 +53,7 @@ fun GlossaryDetailWindow(
                         text = when (content) {
                             is GameSpecies -> content.name ?: "Вид"
                             is GameFeat -> content.name ?: "Черта"
+                            is SpellCard -> content.name
                             else -> "Детали"
                         }, 
                         fontWeight = FontWeight.Black 
@@ -115,6 +118,9 @@ fun GlossaryDetailWindow(
                         FeatureRenderer(feat)
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     }
+                }
+                is SpellCard -> {
+                    SpellCardRenderer(content)
                 }
             }
             Spacer(Modifier.height(80.dp))

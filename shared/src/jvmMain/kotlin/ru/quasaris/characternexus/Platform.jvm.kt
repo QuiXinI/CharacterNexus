@@ -9,8 +9,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import ru.quasaris.characternexus.ui.buildColorSchemeFromSeed
 
 class JVMPlatform: Platform {
     override val name: String = "JVM ${System.getProperty("java.version")}"
@@ -68,4 +70,31 @@ actual var platformContext: PlatformContext
 @Composable
 actual fun ApplySystemBarEffects(color: Color, darkTheme: Boolean) {
     // No-op for Desktop
+}
+
+@Composable
+actual fun getDynamicColorScheme(darkTheme: Boolean): ColorScheme? {
+    val osName = System.getProperty("os.name").lowercase()
+    if (osName.contains("win")) {
+        try {
+            val process = Runtime.getRuntime().exec("reg query \"HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\DWM\" /v AccentColor")
+            val output = process.inputStream.bufferedReader().readText()
+            val match = Regex("AccentColor\\s+REG_DWORD\\s+0x([0-9a-fA-F]+)").find(output)
+            if (match != null) {
+                val colorHex = match.groupValues[1]
+                val colorInt = colorHex.toLong(16)
+                // Windows uses ABGR (0xAABBGGRR)
+                val a = ((colorInt shr 24) and 0xFF).toInt()
+                val b = ((colorInt shr 16) and 0xFF).toInt()
+                val g = ((colorInt shr 8) and 0xFF).toInt()
+                val r = (colorInt and 0xFF).toInt()
+                
+                val seedColor = Color(r, g, b, a)
+                return buildColorSchemeFromSeed(seedColor, darkTheme)
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+    return null
 }

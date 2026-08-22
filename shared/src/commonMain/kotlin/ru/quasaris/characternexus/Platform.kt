@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus
 
+import androidx.compose.material3.ColorScheme
 import okio.FileSystem
 import okio.Path
 import kotlinx.coroutines.CoroutineDispatcher
@@ -38,3 +39,6 @@ expect var platformContext: PlatformContext
 
 @androidx.compose.runtime.Composable
 expect fun ApplySystemBarEffects(color: androidx.compose.ui.graphics.Color, darkTheme: Boolean)
+
+@androidx.compose.runtime.Composable
+expect fun getDynamicColorScheme(darkTheme: Boolean): ColorScheme?

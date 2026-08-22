@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
@@ -67,4 +68,9 @@ actual var platformContext: PlatformContext
 
 @Composable
 actual fun ApplySystemBarEffects(color: Color, darkTheme: Boolean) {
+}
+
+@Composable
+actual fun getDynamicColorScheme(darkTheme: Boolean): ColorScheme? {
+    return null
 }

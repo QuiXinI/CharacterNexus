@@ -83,17 +83,33 @@ class SpellbookManager {
 
     fun addOrUpdateSpell(spell: SpellCard) {
         val allSpells = loadSpells()
-        val oldSpell = allSpells.find { it.id == spell.id }
         
-        if (oldSpell != null) {
-            val oldFile = getFileForSpell(oldSpell)
-            val newFile = getFileForSpell(spell)
+        // Match logic: 
+        // 1. ID match (always update)
+        // 2. Composite key match (Name + Version + English Name + Source Module ID)
+        val existingMatch = allSpells.find { it.id == spell.id }
+            ?: allSpells.find { 
+                it.name.equals(spell.name, ignoreCase = true) && 
+                it.version == spell.version && 
+                it.englishName.equals(spell.englishName, ignoreCase = true) &&
+                it.sourceModuleId == spell.sourceModuleId
+            }
+        
+        val spellToSave = if (existingMatch != null) {
+            spell.copy(id = existingMatch.id) // Preserve existing ID
+        } else {
+            spell
+        }
+
+        if (existingMatch != null) {
+            val oldFile = getFileForSpell(existingMatch)
+            val newFile = getFileForSpell(spellToSave)
             if (oldFile != newFile) {
                 platformFileSystem.delete(oldFile)
             }
         }
 
-        saveSingleSpell(spell)
+        saveSingleSpell(spellToSave)
         cachedSpells = null // Invalidate cache
     }
 
@@ -131,16 +147,38 @@ class SpellbookManager {
         bytes: ByteArray,
         onProgress: (Int, Int) -> Unit,
         onError: (String, String, (ImportAction) -> Unit) -> Unit
-    ) {
-        // Implementation for importing from JSON byte array
+    ) = withContext(ioDispatcher) {
+        try {
+            val content = bytes.decodeToString()
+            val importedSpells = json.decodeFromString<List<SpellCard>>(content)
+            val total = importedSpells.size
+            importedSpells.forEachIndexed { index, spell ->
+                addOrUpdateSpell(spell)
+                onProgress(index + 1, total)
+            }
+        } catch (e: Exception) {
+            onError("Ошибка импорта", e.message ?: "Неизвестная ошибка") { }
+        }
     }
 
     suspend fun exportSpellbook(
         path: String,
         manifest: ModuleManifest,
         spellIds: List<String>? = null
-    ) {
-        // Implementation for exporting
+    ) = withContext(ioDispatcher) {
+        try {
+            val spells = loadSpells().filter { spellIds == null || it.id in spellIds }
+            val outputPath = Path.Companion.run { path.toPath() }
+            
+            // For now, let's just export a JSON of spells
+            // In a real module, it would be a ZIP with manifest.json and contents/
+            val content = json.encodeToString(spells)
+            platformFileSystem.write(outputPath) {
+                writeUtf8(content)
+            }
+        } catch (e: Exception) {
+            e.log()
+        }
     }
 
     suspend fun exportSingleSpell(

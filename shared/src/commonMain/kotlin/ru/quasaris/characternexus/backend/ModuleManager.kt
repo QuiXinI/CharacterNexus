@@ -61,8 +61,36 @@ class ModuleManager {
         saveModules(modules)
     }
 
-    fun deleteModule(moduleId: String) {
+    fun deleteModule(moduleId: String, spellbookManager: SpellbookManager? = null) {
         val modules = getInstalledModules().toMutableList()
+        val module = modules.find { it.manifest.id == moduleId }
+        
+        module?.let { inst ->
+            inst.manifest.contents.forEach { content ->
+                val dir = when (content.type) {
+                    "spell" -> "spells"
+                    "class" -> "classes"
+                    "subclass" -> "subclasses"
+                    "species" -> "species"
+                    "feat" -> "feats"
+                    else -> null
+                }
+                
+                if (dir != null) {
+                    val file = getAppDataDir().resolve("glossary/$dir/${content.file}")
+                    if (platformFileSystem.exists(file)) {
+                        platformFileSystem.delete(file)
+                    }
+                }
+            }
+        }
+
+        // Deleting spells by sourceModuleId as requested
+        spellbookManager?.let { sm ->
+            val spellsToDelete = sm.loadSpells().filter { it.sourceModuleId == moduleId }
+            spellsToDelete.forEach { sm.deleteSpell(it.id) }
+        }
+        
         modules.removeAll { it.manifest.id == moduleId }
         saveModules(modules)
     }

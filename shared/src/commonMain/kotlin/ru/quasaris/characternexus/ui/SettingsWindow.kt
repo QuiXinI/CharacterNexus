@@ -31,10 +31,16 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.SettingsBrightness
+import androidx.compose.material.icons.filled.DarkMode
+import ru.quasaris.characternexus.getDynamicColorScheme
+import ru.quasaris.characternexus.ui.util.PayWall
 import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
 import ru.quasaris.characternexus.generated.BuildConstants
@@ -45,13 +51,12 @@ private const val SHOW_DEBUG_SETTINGS = true
 @Composable
 fun SettingsWindow(
     onOpenDrawer: () -> Unit,
-    onThemeModeChange: (AppThemeMode) -> Unit,
     settingsViewModel: SettingsViewModel,
     hazeState: HazeState? = null,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {}
 ) {
-    val settingsManager = remember { SettingsManager() }
-    var themeMode by remember { mutableStateOf(settingsManager.themeMode) }
+    val themeMode by settingsViewModel.themeMode.collectAsState()
+    val isPremium by settingsViewModel.isPremium.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
 
     val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
@@ -85,8 +90,6 @@ fun SettingsWindow(
                 TextButton(
                     onClick = {
                         settingsViewModel.resetToDefaults()
-                        themeMode = AppThemeMode.M3
-                        onThemeModeChange(AppThemeMode.M3)
                         showResetDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -143,36 +146,110 @@ fun SettingsWindow(
                     fontSize = 16.sp,
                     color = colorScheme.onSurface
                 )
+                
+                val cornerRadius = 16.dp
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy((-9).dp)
+                ) {
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        SegmentedButton(
+                            selected = themeMode == AppThemeMode.STOCK,
+                            onClick = { 
+                                settingsViewModel.updateThemeMode(AppThemeMode.STOCK)
+                            },
+                            shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp),
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Stock") }
+                        SegmentedButton(
+                            selected = themeMode == AppThemeMode.M3,
+                            onClick = { 
+                                settingsViewModel.updateThemeMode(AppThemeMode.M3)
+                            },
+                            shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp),
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Material You") }
+                    }
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        PayWall(isLocked = !isPremium, modifier = Modifier.weight(1f)) {
+                            SegmentedButton(
+                                selected = themeMode == AppThemeMode.OFF,
+                                onClick = { 
+                                    settingsViewModel.updateThemeMode(AppThemeMode.OFF)
+                                },
+                                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("BLACK") }
+                        }
+                        PayWall(isLocked = !isPremium, modifier = Modifier.weight(1f)) {
+                            SegmentedButton(
+                                selected = themeMode == AppThemeMode.CHARACTER,
+                                onClick = { 
+                                    settingsViewModel.updateThemeMode(AppThemeMode.CHARACTER)
+                                },
+                                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Персонаж") }
+                        }
+                    }
+                }
+
+                if (themeMode == AppThemeMode.M3) {
+                    val behavior by settingsViewModel.themeBehavior.collectAsState()
+                    val darkTheme = if (behavior == AppThemeBehavior.SYSTEM) isSystemInDarkTheme() else behavior == AppThemeBehavior.DARK
+                    val dynamicScheme = getDynamicColorScheme(darkTheme)
+                    
+                    if (dynamicScheme == null) {
+                        val m3SeedColor by settingsViewModel.m3SeedColor.collectAsState()
+                        var hexText by remember(m3SeedColor) { mutableStateOf(m3SeedColor) }
+                        
+                        OutlinedTextField(
+                            value = hexText,
+                            onValueChange = { 
+                                hexText = it
+                                if (it.length == 7 && it.startsWith("#")) {
+                                    settingsViewModel.updateM3SeedColor(it)
+                                }
+                            },
+                            label = { Text("HEX цвет темы (напр. #6750A4)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Поведение темы",
+                    fontSize = 16.sp,
+                    color = colorScheme.onSurface
+                )
+                
+                val themeBehavior by settingsViewModel.themeBehavior.collectAsState()
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
-                        selected = themeMode == AppThemeMode.M3,
-                        onClick = { 
-                            themeMode = AppThemeMode.M3
-                            settingsManager.themeMode = AppThemeMode.M3
-                            onThemeModeChange(AppThemeMode.M3)
-                        },
+                        selected = themeBehavior == AppThemeBehavior.LIGHT && themeMode != AppThemeMode.OFF,
+                        onClick = { settingsViewModel.updateThemeBehavior(AppThemeBehavior.LIGHT) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                        modifier = Modifier.weight(1.4f)
-                    ) { Text("Material You") }
+                        enabled = themeMode != AppThemeMode.OFF,
+                        icon = { Icon(Icons.Default.LightMode, null) }
+                    ) { Text("Светлая") }
                     SegmentedButton(
-                        selected = themeMode == AppThemeMode.OFF,
-                        onClick = { 
-                            themeMode = AppThemeMode.OFF
-                            settingsManager.themeMode = AppThemeMode.OFF
-                            onThemeModeChange(AppThemeMode.OFF)
-                        },
+                        selected = themeBehavior == AppThemeBehavior.SYSTEM && themeMode != AppThemeMode.OFF,
+                        onClick = { settingsViewModel.updateThemeBehavior(AppThemeBehavior.SYSTEM) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                    ) { Text("BLACK") }
+                        enabled = themeMode != AppThemeMode.OFF,
+                        icon = { Icon(Icons.Default.SettingsBrightness, null) }
+                    ) { Text("Система") }
                     SegmentedButton(
-                        selected = themeMode == AppThemeMode.CHARACTER,
-                        onClick = { 
-                            themeMode = AppThemeMode.CHARACTER
-                            settingsManager.themeMode = AppThemeMode.CHARACTER
-                            onThemeModeChange(AppThemeMode.CHARACTER)
-                        },
+                        selected = themeBehavior == AppThemeBehavior.DARK || themeMode == AppThemeMode.OFF,
+                        onClick = { settingsViewModel.updateThemeBehavior(AppThemeBehavior.DARK) },
                         shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                        modifier = Modifier.weight(1.4f)
-                    ) { Text("Персонаж") }
+                        enabled = themeMode != AppThemeMode.OFF,
+                        icon = { Icon(Icons.Default.DarkMode, null) }
+                    ) { Text("Темная") }
                 }
             }
 
@@ -185,7 +262,6 @@ fun SettingsWindow(
                 fontWeight = FontWeight.Bold
             )
 
-            val isPremium by settingsViewModel.isPremium.collectAsState()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

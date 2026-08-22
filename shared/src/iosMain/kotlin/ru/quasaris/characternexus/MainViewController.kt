@@ -32,7 +32,6 @@ fun MainViewController() = ComposeUIViewController {
     val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
 
     App(
-        initialThemeMode = settingsManager.themeMode,
         initialLastCharacterId = settingsManager.lastCharacterId,
         initialLastCharacterSeedColor = settingsManager.lastCharacterSeedColor,
         settingsViewModel = settingsViewModel,

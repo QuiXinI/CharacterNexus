@@ -13,6 +13,9 @@ import ru.quasaris.characternexus.backend.CharacterRepository
 import ru.quasaris.characternexus.backend.SettingsManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
+import ru.quasaris.characternexus.backend.ModuleManager
+import ru.quasaris.characternexus.backend.SpellbookManager
+import ru.quasaris.characternexus.backend.GlossaryImporter
 import ru.quasaris.characternexus.model.DiceRollPosition
 
 import java.io.File
@@ -55,6 +58,10 @@ fun runApp() = application {
     val settingsManager = remember { SettingsManager() }
     val settingsViewModel = remember { SettingsViewModel(settingsManager) }
     
+    val moduleManager = remember { ModuleManager() }
+    val spellbookManager = remember { SpellbookManager() }
+    val glossaryImporter = remember { GlossaryImporter(spellbookManager, moduleManager) }
+
     val characterRepository = remember {
         CharacterRepository(
             storage = FileSystemCharacterStorage(),
@@ -88,14 +95,13 @@ fun runApp() = application {
         val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
 
         App(
-            initialThemeMode = settingsManager.themeMode,
             initialLastCharacterId = settingsManager.lastCharacterId,
             initialLastCharacterSeedColor = settingsManager.lastCharacterSeedColor,
             settingsViewModel = settingsViewModel,
             characterRepository = characterRepository,
-            spellbookManager = null,
-            moduleManager = null,
-            glossaryImporter = null,
+            spellbookManager = spellbookManager,
+            moduleManager = moduleManager,
+            glossaryImporter = glossaryImporter,
             getScaleFactor = { scaleFactor },
             getRollHistorySize = { rollHistorySize },
             getCustomRollHistorySize = { customRollHistorySize },

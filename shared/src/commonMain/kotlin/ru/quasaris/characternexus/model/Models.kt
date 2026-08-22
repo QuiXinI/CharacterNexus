@@ -94,7 +94,12 @@ enum class SlotFillDirection {
 
 @Serializable
 enum class AppThemeMode {
-    M3, OFF, CHARACTER
+    STOCK, M3, OFF, CHARACTER
+}
+
+@Serializable
+enum class AppThemeBehavior {
+    LIGHT, SYSTEM, DARK
 }
 
 @Serializable
@@ -350,7 +355,8 @@ data class SpellCard(
     @SerialName("additionalLinks") val additionalLinks: List<SpellLink> = emptyList(),
     @SerialName("id") val id: String = generateUuid(),
     @SerialName("sourceModuleId") val sourceModuleId: String? = null,
-    @SerialName("sourceModuleVersion") val sourceModuleVersion: String? = null
+    @SerialName("sourceModuleVersion") val sourceModuleVersion: String? = null,
+    @SerialName("source") val source: String = ""
 ) {
     val duration: String get() = if (durationUnit.requiresValue) {
         if (durationValue.isBlank()) durationUnit.displayName else "$durationValue ${durationUnit.displayName}"
@@ -693,4 +699,14 @@ data class ModuleManifest(
 data class InstalledModule(
     val manifest: ModuleManifest,
     val installTimestamp: Long = 0L
+)
+
+@Serializable
+data class ModuleBundle(
+    val manifest: ModuleManifest,
+    val spells: List<SpellCard> = emptyList(),
+    val species: List<ru.quasaris.characternexus.backend.GameSpecies> = emptyList(),
+    val feats: List<ru.quasaris.characternexus.backend.GameFeat> = emptyList(),
+    val classes: List<ru.quasaris.characternexus.backend.GameClass> = emptyList(),
+    val subclasses: List<ru.quasaris.characternexus.backend.GameSubclass> = emptyList()
 )

@@ -69,8 +69,13 @@ fun QuasarisTheme(
     avatarColor: Int? = null,
     content: @Composable () -> Unit
 ) {
+    // This is a simplified version of the theme, delegate to the main one if possible
+    // or just update to support new modes
     val colorScheme = remember(themeMode, darkTheme, avatarColor) {
         when (themeMode) {
+            AppThemeMode.STOCK -> {
+                if (darkTheme) DarkColors else LightColors
+            }
             AppThemeMode.M3 -> {
                 if (darkTheme) DarkColors else LightColors
             }

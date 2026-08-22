@@ -13,6 +13,9 @@ import ru.quasaris.characternexus.backend.SettingsManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.CharacterRepository
 import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
+import ru.quasaris.characternexus.backend.ModuleManager
+import ru.quasaris.characternexus.backend.SpellbookManager
+import ru.quasaris.characternexus.backend.GlossaryImporter
 import ru.quasaris.characternexus.util.PlatformUtils
 
 class MainActivity : ComponentActivity() {
@@ -26,16 +29,15 @@ class MainActivity : ComponentActivity() {
         val settingsManager = SettingsManager()
         val settingsViewModel = SettingsViewModel(settingsManager)
 
+        val moduleManager = ModuleManager()
+        val spellbookManager = SpellbookManager()
+        val glossaryImporter = GlossaryImporter(spellbookManager, moduleManager)
+
         val characterRepository = CharacterRepository(
             storage = FileSystemCharacterStorage(),
             appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         )
         
-        // TODO: Initialize other managers when fully migrated to common
-        val spellbookManager = null 
-        val moduleManager = null
-        val glossaryImporter = null
-
         enableEdgeToEdge()
 
         setContent {
@@ -52,7 +54,6 @@ class MainActivity : ComponentActivity() {
             val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
 
             App(
-                initialThemeMode = settingsManager.themeMode,
                 initialLastCharacterId = settingsManager.lastCharacterId,
                 initialLastCharacterSeedColor = settingsManager.lastCharacterSeedColor,
                 settingsViewModel = settingsViewModel,

@@ -21,6 +21,7 @@ import ru.quasaris.characternexus.ui.CommonFilePicker
 @Composable
 fun ModulesWindow(
     moduleManager: ModuleManager,
+    spellbookManager: SpellbookManager,
     glossaryImporter: GlossaryImporter,
     onOpenDrawer: () -> Unit,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
@@ -44,10 +45,11 @@ fun ModulesWindow(
     var downgradeData by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var downgradeResult = remember { mutableStateOf<Boolean?>(null) }
     var showImportPicker by remember { mutableStateOf(false) }
+    var showNotAModuleError by remember { mutableStateOf(false) }
 
     CommonFilePicker(
         show = showImportPicker,
-        fileExtensions = listOf("zip", "json")
+        fileExtensions = listOf("spellbook", "sb", "databook", "db", "json")
     ) { file ->
         showImportPicker = false
         file?.let {
@@ -69,7 +71,11 @@ fun ModulesWindow(
                     onError = { _, _ -> /* Log error */ }
                 )
                 importProgress = null
-                if (success) refreshTrigger++
+                if (success) {
+                    refreshTrigger++
+                } else {
+                    showNotAModuleError = true
+                }
             }
         }
     }
@@ -129,11 +135,11 @@ fun ModulesWindow(
             showDialog = true,
             onDismiss = { moduleToDelete = null },
             onConfirm = {
-                moduleManager.deleteModule(moduleToDelete!!.manifest.id)
+                moduleManager.deleteModule(moduleToDelete!!.manifest.id, spellbookManager)
                 refreshTrigger++
             },
             title = "Удалить модуль?",
-            text = "Вы действительно хотите удалить модуль \"${moduleToDelete?.manifest?.name}\"? Сами данные в глоссарии останутся, но модуль перестанет отслеживаться.",
+            text = "Вы действительно хотите удалить модуль \"${moduleToDelete?.manifest?.name}\"? Все данные, добавленные этим модулем в глоссарий, будут безвозвратно удалены.",
             settingsViewModel = settingsViewModel
         )
     }
@@ -168,6 +174,17 @@ fun ModulesWindow(
             },
             dismissButton = {
                 TextButton(onClick = { downgradeResult.value = false }) { Text("Нет") }
+            }
+        )
+    }
+
+    if (showNotAModuleError) {
+        AlertDialog(
+            onDismissRequest = { showNotAModuleError = false },
+            title = { Text("Ошибка") },
+            text = { Text("Этот файл не является модулем") },
+            confirmButton = {
+                Button(onClick = { showNotAModuleError = false }) { Text("ОК") }
             }
         )
     }

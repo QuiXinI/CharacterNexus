@@ -52,7 +52,6 @@ fun GlossaryWindow(
     spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
     moduleManager: ru.quasaris.characternexus.backend.ModuleManager,
     onOpenDrawer: () -> Unit,
-    onNavigateToSpells: () -> Unit,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     forceBlurEnabled: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
@@ -122,11 +121,7 @@ fun GlossaryWindow(
                     is GlossaryView.Hub -> {
                         GlossaryHub(
                             onCategoryClick = { cat ->
-                                if (cat == GlossaryCategory.SPELLS) {
-                                    onNavigateToSpells()
-                                } else {
-                                    currentView = GlossaryView.Category(cat)
-                                }
+                                currentView = GlossaryView.Category(cat)
                             }
                         )
                     }
