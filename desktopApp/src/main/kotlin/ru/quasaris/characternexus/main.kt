@@ -3,6 +3,12 @@ package ru.quasaris.characternexus
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import ru.quasaris.characternexus.ui.BackNavigationManager
+import ru.quasaris.characternexus.ui.GlobalActionRegistry
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -81,6 +87,20 @@ fun runApp() = application {
         },
         title = "Character Nexus",
         icon = painterResource("icon.png"),
+        onKeyEvent = {
+            if (it.type == KeyEventType.KeyDown) {
+                when (it.key) {
+                    Key.Escape -> BackNavigationManager.pop()
+                    Key.Tab -> {
+                        GlobalActionRegistry.toggleDrawer()
+                        true
+                    }
+                    else -> false
+                }
+            } else {
+                false
+            }
+        }
     ) {
         val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
         val rollHistorySize by settingsViewModel.rollHistorySize.collectAsState()

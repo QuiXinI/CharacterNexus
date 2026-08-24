@@ -2,6 +2,7 @@ package ru.quasaris.characternexus.tabs.spells
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characternexus.model.*
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SpellFiltersArea(
     visible: Boolean,
@@ -43,10 +45,13 @@ fun SpellFiltersArea(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Row 1: Quick Toggles (K, O, R, Damage, Attack/Save)
-                Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         FilterIconButton("К", filterState.hasConcentration) { onFilterChange(filterState.copy(hasConcentration = it)) }
@@ -60,196 +65,174 @@ fun SpellFiltersArea(
                             onValueChange = { onFilterChange(filterState.copy(hasDamage = it)) }
                         )
 
-                        // Attack/Save Toggle (Sword / Shield)
-                        val colorScheme = MaterialTheme.colorScheme
-                        Surface(
-                            onClick = { 
-                                val next = when(filterState.attackOrSave) {
-                                    MagicAttackType.ATTACK -> MagicAttackType.SAVE
-                                    MagicAttackType.SAVE -> null
-                                    null -> MagicAttackType.ATTACK
-                                }
-                                onFilterChange(filterState.copy(attackOrSave = next))
-                            },
-                            shape = MaterialTheme.shapes.small,
-                            color = when(filterState.attackOrSave) {
-                                MagicAttackType.ATTACK -> colorScheme.primary
-                                MagicAttackType.SAVE -> colorScheme.errorContainer
-                                null -> colorScheme.surfaceVariant
-                            },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Image(
-                                    painter = painterResource(if (filterState.attackOrSave == MagicAttackType.ATTACK) Res.drawable.ic_sword else Res.drawable.ic_shield),
-                                    contentDescription = "Тип проверки",
-                                    modifier = Modifier.size(24.dp),
-                                    colorFilter = ColorFilter.tint(
-                                        when(filterState.attackOrSave) {
-                                            MagicAttackType.ATTACK -> colorScheme.onPrimary
-                                            MagicAttackType.SAVE -> colorScheme.onErrorContainer
-                                            null -> colorScheme.onSurfaceVariant
-                                        }
-                                    )
-                                )
-                            }
-                        }
+                        FilterIconToggleButton(
+                            iconRes = Res.drawable.ic_sword,
+                            contentDescription = "Атака",
+                            value = filterState.hasAttack,
+                            onValueChange = { onFilterChange(filterState.copy(hasAttack = it)) }
+                        )
+
+                        FilterIconToggleButton(
+                            iconRes = Res.drawable.ic_shield,
+                            contentDescription = "Спасбросок",
+                            value = filterState.hasSave,
+                            onValueChange = { onFilterChange(filterState.copy(hasSave = it)) }
+                        )
                     }
 
                     IconButton(
-                        onClick = { onFilterChange(SpellFilterState()) },
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                        onClick = { onFilterChange(SpellFilterState()) }
                     ) {
                         Icon(Icons.Default.FilterListOff, "Сбросить всё")
                     }
                 }
 
-                // Row 2: Levels and Classes
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        MultiChoiceDropdown(
-                            label = "Уровни",
-                            options = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
-                            selectedOptions = filterState.levels,
-                            onSelectionChange = { onFilterChange(filterState.copy(levels = it)) },
-                            optionLabel = { if (it == "0") "Заговор" else it }
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f)) {
-                        MultiChoiceDropdown(
-                            label = "Классы",
-                            options = CharacterClass.entries.toList(),
-                            selectedOptions = filterState.classes,
-                            onSelectionChange = { onFilterChange(filterState.copy(classes = it)) },
-                            optionLabel = { it.displayName }
-                        )
-                    }
-                }
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    maxItemsInEachRow = Int.MAX_VALUE
+                ) {
+                    val itemModifier = Modifier.widthIn(min = 160.dp).weight(1f)
 
-                // Row 3: School and Version
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        MultiChoiceDropdown(
-                            label = "Школы",
-                            options = SpellSchool.entries.toList(),
-                            selectedOptions = filterState.schools,
-                            onSelectionChange = { onFilterChange(filterState.copy(schools = it)) },
-                            optionLabel = { it.displayName }
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f)) {
-                        MultiChoiceDropdown(
-                            label = "Версии",
-                            options = SpellVersion.entries.toList(),
-                            selectedOptions = filterState.versions,
-                            onSelectionChange = { onFilterChange(filterState.copy(versions = it)) },
-                            optionLabel = { it.displayName }
-                        )
-                    }
-                }
+                    MultiChoiceDropdown(
+                        label = "Уровни",
+                        options = listOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
+                        selectedOptions = filterState.levels,
+                        onSelectionChange = { onFilterChange(filterState.copy(levels = it)) },
+                        optionLabel = { if (it == "0") "Заговор" else it },
+                        modifier = itemModifier
+                    )
 
-                // Row 4: Components
-                MultiChoiceDropdown(
-                    label = "Компоненты",
-                    options = SpellComponentFilter.entries.toList(),
-                    selectedOptions = filterState.components,
-                    onSelectionChange = { onFilterChange(filterState.copy(components = it)) },
-                    optionLabel = { 
-                        when(it) {
-                            SpellComponentFilter.VERBAL -> "Вербальный"
-                            SpellComponentFilter.SOMATIC -> "Соматический"
-                            SpellComponentFilter.MATERIAL -> "Материальный"
-                            SpellComponentFilter.MATERIAL_COST -> "Материальный (с ценой)"
-                            SpellComponentFilter.MATERIAL_CONSUMED -> "Материальный (расходуемый)"
-                            SpellComponentFilter.NO_VERBAL -> "Без вербального"
-                            SpellComponentFilter.NO_SOMATIC -> "Без соматического"
-                            SpellComponentFilter.NO_MATERIAL -> "Без материального"
-                            SpellComponentFilter.NO_MATERIAL_COST -> "Без мат. (с ценой)"
-                            SpellComponentFilter.NO_MATERIAL_CONSUMED -> "Без мат. (расходуемого)"
+                    MultiChoiceDropdown(
+                        label = "Классы",
+                        options = CharacterClass.entries.toList(),
+                        selectedOptions = filterState.classes,
+                        onSelectionChange = { onFilterChange(filterState.copy(classes = it)) },
+                        optionLabel = { it.displayName },
+                        modifier = itemModifier
+                    )
+
+                    MultiChoiceDropdown(
+                        label = "Школы",
+                        options = SpellSchool.entries.toList(),
+                        selectedOptions = filterState.schools,
+                        onSelectionChange = { onFilterChange(filterState.copy(schools = it)) },
+                        optionLabel = { it.displayName },
+                        modifier = itemModifier
+                    )
+
+                    MultiChoiceDropdown(
+                        label = "Версии",
+                        options = SpellVersion.entries.toList(),
+                        selectedOptions = filterState.versions,
+                        onSelectionChange = { onFilterChange(filterState.copy(versions = it)) },
+                        optionLabel = { it.displayName },
+                        modifier = itemModifier
+                    )
+
+                    MultiChoiceDropdown(
+                        label = "Компоненты",
+                        options = SpellComponentFilter.entries.toList(),
+                        selectedOptions = filterState.components,
+                        onSelectionChange = { onFilterChange(filterState.copy(components = it)) },
+                        optionLabel = { 
+                            when(it) {
+                                SpellComponentFilter.VERBAL -> "Вербальный"
+                                SpellComponentFilter.SOMATIC -> "Соматический"
+                                SpellComponentFilter.MATERIAL -> "Материальный"
+                                SpellComponentFilter.MATERIAL_COST -> "Материальный (с ценой)"
+                                SpellComponentFilter.MATERIAL_CONSUMED -> "Материальный (расходуемый)"
+                                SpellComponentFilter.NO_VERBAL -> "Без вербального"
+                                SpellComponentFilter.NO_SOMATIC -> "Без соматического"
+                                SpellComponentFilter.NO_MATERIAL -> "Без материального"
+                                SpellComponentFilter.NO_MATERIAL_COST -> "Без мат. (с ценой)"
+                                SpellComponentFilter.NO_MATERIAL_CONSUMED -> "Без мат. (расходуемого)"
+                            }
+                        },
+                        modifier = itemModifier
+                    )
+
+                    val isSaveActive = filterState.hasSave == true
+                    Box(modifier = itemModifier.alpha(if (isSaveActive) 1f else 0.5f)) {
+                        MultiChoiceDropdown(
+                            label = "Характеристика спаса",
+                            options = Attribute.entries.filter { it != Attribute.NONE },
+                            selectedOptions = filterState.savingThrowAttributes,
+                            onSelectionChange = { if (isSaveActive) onFilterChange(filterState.copy(savingThrowAttributes = it)) },
+                            optionLabel = { it.fullName }
+                        )
+                        if (!isSaveActive) {
+                            Box(modifier = Modifier.matchParentSize().clickable(enabled = false) {})
                         }
                     }
-                )
 
-                // Row 5: Saving Throw Attributes (Inactive if not Save)
-                val isSaveActive = filterState.attackOrSave == MagicAttackType.SAVE
-                Box(modifier = Modifier.fillMaxWidth().alpha(if (isSaveActive) 1f else 0.5f)) {
                     MultiChoiceDropdown(
-                        label = "Характеристика спасброска",
-                        options = Attribute.entries.filter { it != Attribute.NONE },
-                        selectedOptions = filterState.savingThrowAttributes,
-                        onSelectionChange = { if (isSaveActive) onFilterChange(filterState.copy(savingThrowAttributes = it)) },
-                        optionLabel = { it.fullName }
+                        label = "Вид урона",
+                        options = DamageType.entries.toList(),
+                        selectedOptions = filterState.damageTypes,
+                        onSelectionChange = { onFilterChange(filterState.copy(damageTypes = it)) },
+                        optionLabel = { it.displayName },
+                        modifier = itemModifier
                     )
-                    if (!isSaveActive) {
-                        Box(modifier = Modifier.matchParentSize().alpha(0f)) // Capture clicks
-                    }
-                }
 
-                // Row 6: Casting Time
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
-                    Box(modifier = Modifier.weight(1.5f)) {
-                        MultiChoiceDropdown(
-                            label = "Время наложения",
-                            options = CastingTimeType.entries.toList(),
-                            selectedOptions = filterState.castingTimeTypes,
-                            onSelectionChange = { onFilterChange(filterState.copy(castingTimeTypes = it)) },
-                            optionLabel = { it.displayName }
+                    MultiChoiceDropdown(
+                        label = "Время наложения",
+                        options = CastingTimeType.entries.toList(),
+                        selectedOptions = filterState.castingTimeTypes,
+                        onSelectionChange = { onFilterChange(filterState.copy(castingTimeTypes = it)) },
+                        optionLabel = { it.displayName },
+                        modifier = itemModifier
+                    )
+
+                    Column(modifier = itemModifier) {
+                        Text("Описание времени", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        OutlinedTextField(
+                            value = filterState.castingTimeQuery,
+                            onValueChange = { onFilterChange(filterState.copy(castingTimeQuery = it)) },
+                            label = null,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.small,
+                            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent
+                            )
                         )
                     }
-                    OutlinedTextField(
-                        value = filterState.castingTimeQuery,
-                        onValueChange = { onFilterChange(filterState.copy(castingTimeQuery = it)) },
-                        label = { Text("Описание") },
-                        modifier = Modifier.weight(1f),
-                        shape = MaterialTheme.shapes.small,
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedContainerColor = Color.Transparent
-                        )
-                    )
-                }
 
-                // Row 7: Duration
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+                    MultiChoiceDropdown(
+                        label = "Длительность",
+                        options = DurationUnit.entries.toList(),
+                        selectedOptions = filterState.durationUnits,
+                        onSelectionChange = { onFilterChange(filterState.copy(durationUnits = it)) },
+                        optionLabel = { it.displayName },
+                        modifier = itemModifier
+                    )
+
                     val durationRequiresValue = filterState.durationUnits.any { it.requiresValue }
-                    OutlinedTextField(
-                        value = filterState.durationQuery,
-                        onValueChange = {
-                            val onlyDigits = it.filter { c -> c.isDigit() }
-                            onFilterChange(filterState.copy(durationQuery = onlyDigits))
-                        },
-                        label = { Text("Кол-во") },
-                        modifier = Modifier.width(90.dp).alpha(if (durationRequiresValue) 1f else 0.5f),
-                        enabled = durationRequiresValue,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = MaterialTheme.shapes.small,
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedContainerColor = Color.Transparent
-                        )
-                    )
-                    Box(modifier = Modifier.weight(1f)) {
-                        MultiChoiceDropdown(
-                            label = "Длительность",
-                            options = DurationUnit.entries.toList(),
-                            selectedOptions = filterState.durationUnits,
-                            onSelectionChange = { onFilterChange(filterState.copy(durationUnits = it)) },
-                            optionLabel = { it.displayName }
+                    Column(modifier = itemModifier.alpha(if (durationRequiresValue) 1f else 0.5f)) {
+                        Text("Длит. (кол-во)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        OutlinedTextField(
+                            value = filterState.durationQuery,
+                            onValueChange = {
+                                val onlyDigits = it.filter { c -> c.isDigit() }
+                                onFilterChange(filterState.copy(durationQuery = onlyDigits))
+                            },
+                            label = null,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = durationRequiresValue,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = MaterialTheme.shapes.small,
+                            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent
+                            )
                         )
                     }
                 }
-
-                // Row 8: Damage Types
-                MultiChoiceDropdown(
-                    label = "Виды урона",
-                    options = DamageType.entries.toList(),
-                    selectedOptions = filterState.damageTypes,
-                    onSelectionChange = { onFilterChange(filterState.copy(damageTypes = it)) },
-                    optionLabel = { it.displayName }
-                )
             }
         }
     }
@@ -342,11 +325,12 @@ fun <T> MultiChoiceDropdown(
     options: List<T>,
     selectedOptions: Set<T>,
     onSelectionChange: (Set<T>) -> Unit,
-    optionLabel: (T) -> String
+    optionLabel: (T) -> String,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
         ExposedDropdownMenuBox(
             expanded = expanded,

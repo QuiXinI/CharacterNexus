@@ -98,6 +98,13 @@ fun SpellbookSelectionDialog(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { filterState = filterState.copy(isCompact = !filterState.isCompact) }) {
+                            Icon(
+                                if (filterState.isCompact) Icons.Default.ViewHeadline else Icons.Default.ViewModule,
+                                contentDescription = "Компактный режим",
+                                tint = if (filterState.isCompact) colorScheme.primary else colorScheme.onSurface
+                            )
+                        }
                         IconButton(onClick = { showFilters = !showFilters }) {
                             Icon(Icons.Default.FilterList, null, tint = if (showFilters) colorScheme.primary else colorScheme.onSurface)
                         }
@@ -177,79 +184,37 @@ fun SpellbookSelectionDialog(
                     }
                 }
 
-                LazyColumn(
+                SpellListGrid(
+                    spells = filteredSpells,
+                    filterState = filterState,
+                    expandedIds = expandedIds,
+                    onToggleExpand = { id ->
+                        expandedIds = if (id in expandedIds) expandedIds - id else expandedIds + id
+                    },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val grouped = filteredSpells.groupBy { it.level }
-                    grouped.keys.sortedBy { it.toIntOrNull() ?: Int.MAX_VALUE }.forEach { levelStr ->
-                        item {
-                            Text(
-                                text = if (levelStr == "0") "ЗАГОВОРЫ" else "$levelStr УРОВЕНЬ",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                        items(grouped[levelStr] ?: emptyList(), key = { it.id }) { spell ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val isChecked = if (isBookMode) spell.id in currentPrepared else spell.id in currentSelected
-                                Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = { checked ->
-                                        if (isBookMode) {
-                                            currentPrepared = if (checked) currentPrepared + spell.id else currentPrepared - spell.id
-                                        } else {
-                                            currentSelected = if (checked) currentSelected + spell.id else currentSelected - spell.id
-                                            // If adding to book and not in spellbook mode, also add to prepared
-                                            if (!isSpellbookEnabled) {
-                                                currentPrepared = currentSelected
-                                            }
-                                        }
-                                    }
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                SpellCardItem(
-                                    spell = spell,
-                                    isExpanded = spell.id in expandedIds,
-                                    onToggleExpand = {
-                                        expandedIds = if (spell.id in expandedIds) expandedIds - spell.id else expandedIds + spell.id
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    isSelected = isChecked,
-                                    onLongClick = {
-                                        val checked = !isChecked
-                                        if (isBookMode) {
-                                            currentPrepared = if (checked) currentPrepared + spell.id else currentPrepared - spell.id
-                                        } else {
-                                            currentSelected = if (checked) currentSelected + spell.id else currentSelected - spell.id
-                                            if (!isSpellbookEnabled) {
-                                                currentPrepared = currentSelected
-                                            }
-                                        }
-                                    },
-                                    isEditable = false,
-                                    statsMap = statsMap,
-                                    characterLevel = characterLevel,
-                                    spellAttackBonus = spellAttackBonus,
-                                    spellAttackDice = spellAttackDice,
-                                    spellSaveDc = spellSaveDc,
-                                    spellSaveDice = spellSaveDice,
-                                    onRollDamage = onRollDamage,
-                                    onRollAttack = onRollAttack,
-                                    hazeState = hazeState,
-                                    forceBlurEnabled = forceBlurEnabled,
-                                    blurCards = blurCards
-                                )
+                    selectedIds = if (isBookMode) currentPrepared else currentSelected,
+                    onToggleSelect = { id, checked ->
+                        if (isBookMode) {
+                            currentPrepared = if (checked) currentPrepared + id else currentPrepared - id
+                        } else {
+                            currentSelected = if (checked) currentSelected + id else currentSelected - id
+                            if (!isSpellbookEnabled) {
+                                currentPrepared = currentSelected
                             }
                         }
-                    }
-                }
+                    },
+                    statsMap = statsMap,
+                    characterLevel = characterLevel,
+                    spellAttackBonus = spellAttackBonus,
+                    spellAttackDice = spellAttackDice,
+                    spellSaveDc = spellSaveDc,
+                    spellSaveDice = spellSaveDice,
+                    onRollDamage = onRollDamage,
+                    onRollAttack = onRollAttack,
+                    hazeState = hazeState,
+                    forceBlurEnabled = forceBlurEnabled,
+                    blurCards = blurCards
+                )
 
                 Button(
                     onClick = { 

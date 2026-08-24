@@ -80,8 +80,35 @@ fun ModulesWindow(
         }
     }
 
+    var editingModule by remember { mutableStateOf<InstalledModule?>(null) }
+
+    if (editingModule != null) {
+        ModuleEditorWindow(
+            moduleManager = moduleManager,
+            spellbookManager = spellbookManager,
+            initialModule = editingModule!!,
+            onBack = { 
+                editingModule = null
+                refreshTrigger++
+            },
+            forceBlurEnabled = forceBlurEnabled,
+            settingsViewModel = settingsViewModel
+        )
+        return
+    }
+
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == androidx.compose.ui.graphics.Color.Black
+
+    LaunchedEffect(filteredModules) {
+        val path = mutableListOf<NavNode>()
+        filteredModules.forEach { module ->
+            path.add(NavNode("mod_${module.manifest.id}", module.manifest.name, 0) {
+                editingModule = module
+            })
+        }
+        NavigationPathManager.updatePath("modules", path)
+    }
 
     Scaffold(
         topBar = {
@@ -93,6 +120,16 @@ fun ModulesWindow(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        val newManifest = ModuleManifest(
+                            id = "module_${ru.quasaris.characternexus.util.generateUuid().take(8)}",
+                            name = "Новый модуль",
+                            version = "1.0.0"
+                        )
+                        editingModule = InstalledModule(newManifest)
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Создать")
+                    }
                     IconButton(onClick = { showImportPicker = true }) {
                         Icon(Icons.Default.FileDownload, contentDescription = "Импорт")
                     }
@@ -123,7 +160,8 @@ fun ModulesWindow(
                 items(filteredModules, key = { it.manifest.id }) { module ->
                     ModuleItem(
                         module = module,
-                        onDelete = { moduleToDelete = module }
+                        onDelete = { moduleToDelete = module },
+                        onEdit = { editingModule = module }
                     )
                 }
             }
@@ -193,7 +231,8 @@ fun ModulesWindow(
 @Composable
 fun ModuleItem(
     module: InstalledModule,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -201,6 +240,9 @@ fun ModuleItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(module.manifest.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text("Версия: ${module.manifest.version}", style = MaterialTheme.typography.bodySmall)
+                }
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, null)
                 }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)

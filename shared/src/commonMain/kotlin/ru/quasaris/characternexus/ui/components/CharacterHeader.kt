@@ -50,6 +50,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
 import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.ui.RestPopup
 
 @Composable
 fun CharacterHeader(
@@ -175,8 +176,21 @@ fun CharacterHeader(
                 }
 
                 // Rest
-                IconButton(onClick = { showRestPopup = true }) {
-                    Icon(Icons.Default.WbSunny, null, modifier = Modifier.size(32.dp), tint = colorScheme.primary)
+                Box(contentAlignment = Alignment.Center) {
+                    IconButton(onClick = { showRestPopup = !showRestPopup }) {
+                        Icon(Icons.Default.WbSunny, null, modifier = Modifier.size(32.dp), tint = colorScheme.primary)
+                    }
+
+                    if (showRestPopup) {
+                        RestPopup(
+                            onShortRest = { onShortRest() },
+                            onLongRest = { onLongRest() },
+                            onDawn = { onDawn() },
+                            onDismiss = { showRestPopup = false },
+                            hazeState = hazeState,
+                            isOled = isOled
+                        )
+                    }
                 }
 
                 // Avatar

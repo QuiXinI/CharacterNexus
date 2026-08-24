@@ -56,9 +56,46 @@ class ModuleManager {
         if (index != -1) {
             modules[index] = InstalledModule(manifest)
         } else {
-            modules.add(InstalledModule(manifest, installTimestamp = 0L)) // Add timestamp if needed
+            modules.add(InstalledModule(manifest, installTimestamp = 0L))
         }
         saveModules(modules)
+    }
+
+    fun updateModule(moduleId: String, updatedManifest: ModuleManifest) {
+        val modules = getInstalledModules().toMutableList()
+        val index = modules.indexOfFirst { it.manifest.id == moduleId }
+        if (index != -1) {
+            modules[index] = modules[index].copy(manifest = updatedManifest)
+        } else {
+            modules.add(InstalledModule(updatedManifest))
+        }
+        saveModules(modules)
+    }
+
+    fun addComponentToModule(moduleId: String, type: String, id: String, fileName: String) {
+        val modules = getInstalledModules().toMutableList()
+        val index = modules.indexOfFirst { it.manifest.id == moduleId }
+        if (index != -1) {
+            val manifest = modules[index].manifest
+            val newContents = manifest.contents.toMutableList()
+            if (newContents.none { it.id == id && it.type == type }) {
+                newContents.add(ModuleContent(type, id, fileName))
+                modules[index] = modules[index].copy(manifest = manifest.copy(contents = newContents))
+                saveModules(modules)
+            }
+        }
+    }
+
+    fun removeComponentFromModule(moduleId: String, type: String, id: String) {
+        val modules = getInstalledModules().toMutableList()
+        val index = modules.indexOfFirst { it.manifest.id == moduleId }
+        if (index != -1) {
+            val manifest = modules[index].manifest
+            val newContents = manifest.contents.toMutableList()
+            newContents.removeAll { it.id == id && it.type == type }
+            modules[index] = modules[index].copy(manifest = manifest.copy(contents = newContents))
+            saveModules(modules)
+        }
     }
 
     fun deleteModule(moduleId: String, spellbookManager: SpellbookManager? = null) {
@@ -108,7 +145,7 @@ class ModuleManager {
                     subclasses.add(subclass)
                 }
             } catch (e: Exception) {
-                // Ignore errors
+                ru.quasaris.characternexus.util.Logger.e("ModuleManager", "Error loading subclass from $file", e)
             }
         }
         return subclasses.sortedBy { it.name }

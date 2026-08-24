@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.quasaris.characternexus.backend.SpellbookManager
 import ru.quasaris.characternexus.tabs.spells.SpellCardItem
-import ru.quasaris.characternexus.tabs.spells.SpellCardEditorDialog
+import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
 import ru.quasaris.characternexus.tabs.spells.SpellFiltersArea
 import ru.quasaris.characternexus.tabs.spells.ExportModuleDialog
 import dev.chrisbanes.haze.HazeState
@@ -332,7 +332,7 @@ fun SpellbookWindow(
     }
 
     editingSpell?.let { spell ->
-        SpellCardEditorDialog(
+        SpellEditorWindow(
             spell = spell,
             onDismiss = { editingSpell = null },
             onSave = {

@@ -44,6 +44,7 @@ import ru.quasaris.characternexus.tabs.attacks.DiceIcon
 import ru.quasaris.characternexus.tabs.attacks.calculateTotalBonus
 import ru.quasaris.characternexus.tabs.attacks.calculateAttackFormulaParts
 import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup
+import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
 import sh.calvin.reorderable.*
 import kotlin.math.floor
 
@@ -977,7 +978,7 @@ fun SpellsTab(
     }
 
     editingSpell?.let { spell ->
-        SpellCardEditorDialog(
+        SpellEditorWindow(
             spell = spell,
             onDismiss = { editingSpell = null },
             onSave = { updated ->
@@ -988,9 +989,9 @@ fun SpellsTab(
                 editingSpell = null
                 refreshTrigger++
             },
-            onDelete = {
-                spellbookManager?.deleteSpell(it.id)
-                onSpellSettingsChange(spellSettings.copy(selectedSpellIds = spellSettings.selectedSpellIds - it.id))
+            onDelete = { deletedSpell ->
+                spellbookManager?.deleteSpell(deletedSpell.id)
+                onSpellSettingsChange(spellSettings.copy(selectedSpellIds = spellSettings.selectedSpellIds - deletedSpell.id))
                 editingSpell = null
                 refreshTrigger++
             },

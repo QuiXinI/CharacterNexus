@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 fun FormulaInfoWindow(
     onNavigateBack: () -> Unit
 ) {
+    BackHandler(onBack = onNavigateBack)
+    
     val colorScheme = MaterialTheme.colorScheme
 
     Scaffold(

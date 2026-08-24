@@ -76,6 +76,8 @@ fun CharacterCreationWindow(
     }
 
     val scope = rememberCoroutineScope()
+    
+    BackHandler(onBack = onNavigateBack)
     var showFilePicker by remember { mutableStateOf(false) }
     
     val characterUuid = remember { generateUuid() }

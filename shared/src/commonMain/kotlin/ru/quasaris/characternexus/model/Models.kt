@@ -385,12 +385,8 @@ data class SpellCard(
         val matchesRitual = filter.isRitual == null || isRitual == filter.isRitual
         val matchesCircle = filter.isCircle == null || isCircle == filter.isCircle
         val matchesDamage = filter.hasDamage == null || hasDamage == filter.hasDamage
-
-        val matchesAttackOrSave = when(filter.attackOrSave) {
-            MagicAttackType.ATTACK -> attackTypes.contains(MagicAttackType.ATTACK)
-            MagicAttackType.SAVE -> attackTypes.contains(MagicAttackType.SAVE)
-            null -> true
-        }
+        val matchesAttack = filter.hasAttack == null || attackTypes.contains(MagicAttackType.ATTACK) == filter.hasAttack
+        val matchesSave = filter.hasSave == null || attackTypes.contains(MagicAttackType.SAVE) == filter.hasSave
 
         val matchesComponents = if (filter.components.isEmpty()) true else {
             filter.components.all { component ->
@@ -415,7 +411,7 @@ data class SpellCard(
         return matchesSearch && matchesLevel && matchesClass && matchesSchool && matchesVersion &&
                 matchesCastingTime && matchesDuration && matchesAttackType && matchesDamageType && matchesSaveAttr &&
                 matchesConc && matchesRitual && matchesCircle && matchesDamage && matchesComponents &&
-                matchesAttackOrSave && matchesCastingTimeQuery && matchesDurationQuery
+                matchesAttack && matchesSave && matchesCastingTimeQuery && matchesDurationQuery
     }
 }
 
@@ -441,7 +437,9 @@ data class SpellFilterState(
     val hasDamage: Boolean? = null,
     val isRitual: Boolean? = null,
     val isCircle: Boolean? = null,
-    val attackOrSave: MagicAttackType? = null
+    val hasAttack: Boolean? = null,
+    val hasSave: Boolean? = null,
+    val isCompact: Boolean = false
 )
 
 @Serializable

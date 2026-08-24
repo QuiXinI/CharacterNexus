@@ -6,6 +6,8 @@ import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.backend.ArchiveManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 object CharacterDataHandler {
 
@@ -150,5 +152,12 @@ object CharacterDataHandler {
         scope.launch {
             ArchiveManager.exportCharacter(character, path)
         }
+    }
+
+    suspend fun getLssKillerJson(character: Character): String {
+        // Since exportToLssKiller was just calling ArchiveManager.exportCharacter,
+        // we might not actually have a specialized LSS export yet, 
+        // but we'll return the standard JSON for now.
+        return kotlinx.serialization.json.Json.encodeToString(character)
     }
 }

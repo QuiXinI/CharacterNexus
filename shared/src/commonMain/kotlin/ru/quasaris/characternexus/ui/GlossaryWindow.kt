@@ -26,6 +26,7 @@ import okio.use
 import okio.buffer
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.tabs.glossary.*
+import ru.quasaris.characternexus.tabs.spells.*
 import kotlinx.serialization.json.*
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.getAppDataDir
@@ -57,6 +58,30 @@ fun GlossaryWindow(
     settingsViewModel: SettingsViewModel? = null,
 ) {
     var currentView by remember { mutableStateOf<GlossaryView>(GlossaryView.Hub) }
+    var detailTitle by remember { mutableStateOf("") }
+    
+    LaunchedEffect(currentView) {
+        val path = mutableListOf<NavNode>()
+        
+        when (val view = currentView) {
+            is GlossaryView.Hub -> {
+                detailTitle = ""
+                GlossaryCategory.entries.forEach { cat ->
+                    path.add(NavNode("cat_${cat.name}", cat.title, 0) { currentView = GlossaryView.Category(cat) })
+                }
+            }
+            is GlossaryView.Category -> {
+                detailTitle = ""
+                path.add(NavNode("cat", view.category.title, 0))
+            }
+            is GlossaryView.Detail -> {
+                path.add(NavNode("cat", view.category.title, 0) { currentView = GlossaryView.Category(view.category) })
+                // Item name reported by detail window
+            }
+        }
+        NavigationPathManager.updatePath("glossary", path)
+    }
+
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
@@ -76,26 +101,14 @@ fun GlossaryWindow(
                         text = when (val view = currentView) {
                             is GlossaryView.Hub -> "Глоссарий"
                             is GlossaryView.Category -> view.category.title
-                            is GlossaryView.Detail -> "" // Title handled in Detail views
+                            is GlossaryView.Detail -> detailTitle
                         }, 
                         fontWeight = FontWeight.Black 
                     ) 
                 },
                 navigationIcon = {
-                    if (currentView is GlossaryView.Hub) {
-                        IconButton(onClick = onOpenDrawer) {
-                            Icon(Icons.Default.Menu, contentDescription = "Меню")
-                        }
-                    } else {
-                        IconButton(onClick = { 
-                            currentView = when (val view = currentView) {
-                                is GlossaryView.Detail -> GlossaryView.Category(view.category)
-                                is GlossaryView.Category -> GlossaryView.Hub
-                                else -> GlossaryView.Hub
-                            }
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                        }
+                    IconButton(onClick = onOpenDrawer) {
+                        Icon(Icons.Default.Menu, contentDescription = "Меню")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -129,7 +142,11 @@ fun GlossaryWindow(
                         GlossaryCategoryList(
                             category = view.category,
                             moduleManager = moduleManager,
-                            onItemClick = { file -> currentView = GlossaryView.Detail(view.category, file) }
+                            spellbookManager = spellbookManager,
+                            onItemClick = { file -> currentView = GlossaryView.Detail(view.category, file) },
+                            onBack = { currentView = GlossaryView.Hub },
+                            hazeState = if (forceBlurEnabled) null else null, // Placeholder if needed
+                            settingsViewModel = settingsViewModel
                         )
                     }
                     is GlossaryView.Detail -> {
@@ -137,12 +154,14 @@ fun GlossaryWindow(
                             ClassDetailWindow(
                                 classFile = view.file,
                                 moduleManager = moduleManager,
+                                onTitleChange = { detailTitle = it },
                                 onBack = { currentView = GlossaryView.Category(GlossaryCategory.CLASSES) }
                             )
                         } else {
                             GlossaryDetailWindow(
                                 file = view.file,
                                 category = view.category,
+                                onTitleChange = { detailTitle = it },
                                 onBack = { currentView = GlossaryView.Category(view.category) }
                             )
                         }
@@ -213,8 +232,17 @@ fun GlossaryHub(onCategoryClick: (GlossaryCategory) -> Unit) {
 fun GlossaryCategoryList(
     category: GlossaryCategory,
     moduleManager: ru.quasaris.characternexus.backend.ModuleManager,
-    onItemClick: (Path) -> Unit
+    spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
+    onItemClick: (Path) -> Unit,
+    onBack: () -> Unit,
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null
 ) {
+    if (category == GlossaryCategory.SPELLS) {
+        SpellGlossaryList(spellbookManager, onBack, hazeState)
+        return
+    }
+
     var searchQuery by remember { mutableStateOf("") }
     val colorScheme = MaterialTheme.colorScheme
     
@@ -235,11 +263,23 @@ fun GlossaryCategoryList(
                 
                 GlossaryListItem(id, name, file, subclasses)
             } catch (e: Exception) {
+                ru.quasaris.characternexus.util.Logger.e("Glossary", "Error loading glossary item from $file", e)
                 null
             }
         }.filter { 
             it.name.contains(searchQuery, ignoreCase = true)
         }.sortedBy { it.name }
+    }
+    
+    LaunchedEffect(items, category) {
+        if (category == GlossaryCategory.CLASSES) {
+            val path = mutableListOf<NavNode>()
+            path.add(NavNode("cat", category.title, 0) { onBack() })
+            items.forEach { item ->
+                path.add(NavNode("item_${item.id}", item.name, 1) { onItemClick(item.file) })
+            }
+            NavigationPathManager.updatePath("glossary", path)
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -299,3 +339,76 @@ fun GlossaryCategoryList(
 }
 
 data class GlossaryListItem(val id: String, val name: String, val file: okio.Path, val subclasses: List<String> = emptyList())
+
+@Composable
+fun SpellGlossaryList(
+    spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
+    onBack: () -> Unit,
+    hazeState: dev.chrisbanes.haze.HazeState? = null
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var filterState by remember { mutableStateOf(SpellFilterState()) }
+    var showFilters by remember { mutableStateOf(false) }
+    var expandedIds by remember { mutableStateOf(setOf<String>()) }
+
+    val allSpells = remember { spellbookManager.loadSpells() }
+    val filteredSpells = remember(allSpells, searchQuery, filterState) {
+        allSpells.filter { it.matches(filterState, searchQuery) }
+    }
+
+    val colorScheme = MaterialTheme.colorScheme
+
+    LaunchedEffect(filteredSpells) {
+        // No path mirroring for spells as requested
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Поиск...") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                shape = RoundedCornerShape(12.dp),
+                singleLine = true
+            )
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = { filterState = filterState.copy(isCompact = !filterState.isCompact) }) {
+                Icon(
+                    if (filterState.isCompact) Icons.Default.ViewHeadline else Icons.Default.ViewModule,
+                    contentDescription = "Компактный режим",
+                    tint = if (filterState.isCompact) colorScheme.primary else colorScheme.onSurface
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = { showFilters = !showFilters }) {
+                Icon(
+                    Icons.Default.FilterList,
+                    null,
+                    tint = if (showFilters) colorScheme.primary else colorScheme.onSurface
+                )
+            }
+        }
+
+        SpellFiltersArea(
+            visible = showFilters,
+            filterState = filterState,
+            onFilterChange = { filterState = it }
+        )
+
+        SpellListGrid(
+            spells = filteredSpells,
+            filterState = filterState,
+            expandedIds = expandedIds,
+            onToggleExpand = { id ->
+                expandedIds = if (id in expandedIds) expandedIds - id else expandedIds + id
+            },
+            modifier = Modifier.weight(1f),
+            hazeState = hazeState
+        )
+    }
+}

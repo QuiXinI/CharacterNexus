@@ -30,7 +30,8 @@ fun AvatarPopup(
     hasImage: Boolean,
     onSettingsClick: () -> Unit,
     onImagePickerClick: () -> Unit,
-    onDownloadClick: () -> Unit,
+    onExportSheetClick: () -> Unit,
+    onExportPortraitClick: () -> Unit = {},
     onDeleteClick: () -> Unit,
     onDismiss: () -> Unit,
     hazeState: HazeState? = null,
@@ -79,15 +80,24 @@ fun AvatarPopup(
                             onDismiss()
                         }
                     )
+
+                    AvatarPopupItem(
+                        icon = Icons.Default.Download,
+                        text = "Экспортировать лист",
+                        onClick = {
+                            onExportSheetClick()
+                            onDismiss()
+                        }
+                    )
                     
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp), color = colorScheme.outlineVariant.copy(alpha = 0.3f))
 
                     if (hasImage) {
                         AvatarPopupItem(
-                            icon = Icons.Default.Download,
-                            text = "Экспортировать",
+                            icon = Icons.Default.Portrait,
+                            text = "Экспортировать портрет",
                             onClick = {
-                                onDownloadClick()
+                                onExportPortraitClick()
                                 onDismiss()
                             }
                         )

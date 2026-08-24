@@ -128,4 +128,18 @@ class CharacterRepository(
     fun updateCharacters(characters: List<Character>) {
         characters.forEach { updateCharacter(it) }
     }
+
+    fun updateSummariesOrder(uuids: List<String>) {
+        val currentSummaries = _charactersSummaryState.value.toMutableList()
+        val sortedSummaries = uuids.mapNotNull { uuid -> currentSummaries.find { it.uuid == uuid } }
+        
+        // In case some were missing from the list, add them to the end
+        val missingSummaries = currentSummaries.filter { summary -> uuids.none { it == summary.uuid } }
+        val finalSummaries = sortedSummaries + missingSummaries
+        
+        _charactersSummaryState.value = finalSummaries
+        appScope.launch {
+            storage.saveSummaries(finalSummaries)
+        }
+    }
 }

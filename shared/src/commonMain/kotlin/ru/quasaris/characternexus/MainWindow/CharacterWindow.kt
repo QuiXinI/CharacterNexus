@@ -167,10 +167,14 @@ fun CreateWindow(
         }
     }
 
-    var showExportPicker by remember { mutableStateOf(false) }
-    CommonFilePicker(show = showExportPicker, fileExtensions = listOf(ArchiveManager.EXPORT_EXTENSION)) { file ->
-        showExportPicker = false
-        file?.let {
+    var showExportSheetSaver by remember { mutableStateOf(false) }
+    ru.quasaris.characternexus.ui.CommonFileSaver(
+        show = showExportSheetSaver,
+        fileName = "${name}_Sheet",
+        fileExtension = ArchiveManager.EXPORT_EXTENSION
+    ) { saver ->
+        showExportSheetSaver = false
+        saver?.let {
             val currentChar = CharacterDataHandler.createCharacter(
                 charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
                 strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
@@ -179,16 +183,41 @@ fun CreateWindow(
                 characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, hitDiceMap, defaultHitDie,
                 hpLevelData, manualHPLevelData, isMulticlassHP, isManualHP, manualMaxHp, manualMaxHitDice, hpBonusesAtLevel, hpBonusesTotal
             )
-            CoroutineScope(ioDispatcher).launch {
-                ArchiveManager.exportCharacter(currentChar, it.path)
+            scope.launch {
+                val bytes = ArchiveManager.getExportBundleBytes(listOf(currentChar.copy(uuid = characterUuid)))
+                it.save(bytes)
             }
         }
     }
 
-    var showExportToLssPicker by remember { mutableStateOf(false) }
-    CommonFilePicker(show = showExportToLssPicker, fileExtensions = listOf("json")) { file ->
-        showExportToLssPicker = false
-        file?.let {
+    var showExportPortraitSaver by remember { mutableStateOf(false) }
+    ru.quasaris.characternexus.ui.CommonFileSaver(
+        show = showExportPortraitSaver,
+        fileName = "${name}_Portrait",
+        fileExtension = "webp"
+    ) { saver ->
+        showExportPortraitSaver = false
+        saver?.let {
+            scope.launch {
+                characterImageData?.let { imageId ->
+                    val portraitFile = ImageManager.getPortraitFile(imageId, characterUuid)
+                    if (platformFileSystem.exists(portraitFile)) {
+                        val bytes = platformFileSystem.read(portraitFile) { readByteArray() }
+                        it.save(bytes)
+                    }
+                }
+            }
+        }
+    }
+
+    var showExportToLssSaver by remember { mutableStateOf(false) }
+    ru.quasaris.characternexus.ui.CommonFileSaver(
+        show = showExportToLssSaver,
+        fileName = "${name}_LSS",
+        fileExtension = "json"
+    ) { saver ->
+        showExportToLssSaver = false
+        saver?.let {
             val currentChar = CharacterDataHandler.createCharacter(
                 charId, name, level, experience, strength, dexterity, constitution, intelligence, wisdom, charisma,
                 strProf, dexProf, conProf, intProf, wisProf, chaProf, maxHp, currentHp, tempHp,
@@ -197,8 +226,10 @@ fun CreateWindow(
                 characterImageData, skilledProficiencies, skilledExpertise, themeSeedColorArgb, hitDiceEntries, hitDiceMap, defaultHitDie,
                 hpLevelData, manualHPLevelData, isMulticlassHP, isManualHP, manualMaxHp, manualMaxHitDice, hpBonusesAtLevel, hpBonusesTotal
             )
-            val scope = CoroutineScope(ioDispatcher)
-            CharacterDataHandler.exportToLssKiller(it.path, currentChar, scope)
+            scope.launch {
+                val jsonString = CharacterDataHandler.getLssKillerJson(currentChar)
+                it.save(jsonString.encodeToByteArray())
+            }
         }
     }
 
@@ -368,7 +399,8 @@ fun CreateWindow(
                                 isLevelPanelVisible = false; isHealthPanelVisible = false; isConditionsPanelVisible = false
                             },
                             onImagePickerClick = { showImagePicker = true },
-                            onDownloadClick = { showExportToLssPicker = true },
+                            onExportSheetClick = { showExportSheetSaver = true },
+                            onExportPortraitClick = { showExportPortraitSaver = true },
                             onShortRest = {
                                 isRestPanelVisible = !isRestPanelVisible
                                 isArmorClassPanelVisible = false; isInitiativePanelVisible = false

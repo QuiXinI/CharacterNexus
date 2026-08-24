@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
@@ -17,9 +18,14 @@ import ru.quasaris.characternexus.tabs.spells.SpellCardItem
 
 @Composable
 fun RichText(text: String) {
-    // Basic markdown-like parsing could be here. For now, just multi-line text.
+    // Basic cleanup of refs for display if they aren't parsed yet
+    val displayState = remember(text) {
+        text.replace(Regex("\\[(.*?)\\]\\(ref://.*?\\)"), "$1")
+            .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1") // Simple bold removal for now
+    }
+    
     Text(
-        text = text,
+        text = displayState,
         style = MaterialTheme.typography.bodyLarge,
         lineHeight = 24.sp,
         color = MaterialTheme.colorScheme.onSurface
@@ -43,10 +49,17 @@ fun SpellCardRenderer(spell: SpellCard) {
 
 @Composable
 fun GameTableRenderer(table: GameTable) {
-    val columns = table.schema?.columns
-    val rows = table.rows
+    val schema = table.schema
+    val columns = schema?.columns ?: emptyList()
+    val rows = table.rows ?: emptyList()
     
-    if (columns.isNullOrEmpty() || rows.isNullOrEmpty()) return
+    if (columns.isEmpty() || rows.isEmpty()) {
+        // Fallback for simple data or missing schema
+        if (rows.isNotEmpty()) {
+            Text("Данные таблицы (схема отсутствует)", style = MaterialTheme.typography.labelSmall)
+        }
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -93,7 +106,14 @@ fun GameTableRenderer(table: GameTable) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 columns.forEach { col ->
                     val element = row[col.key ?: ""]
-                    val value = if (element is JsonPrimitive) element.content else element?.toString() ?: ""
+                    val value = when (element) {
+                        is JsonPrimitive -> element.content
+                        is JsonArray -> element.joinToString("\n") { 
+                            if (it is JsonPrimitive) it.content.replace(Regex("\\[(.*?)\\]\\(ref://.*?\\)"), "$1") 
+                            else it.toString() 
+                        }
+                        else -> element?.toString() ?: ""
+                    }
                     Text(
                         text = value,
                         modifier = Modifier

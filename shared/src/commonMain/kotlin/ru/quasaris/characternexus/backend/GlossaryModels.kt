@@ -33,6 +33,23 @@ data class GameTable(
 )
 
 @Serializable
+data class SkillProficiencyInfo(
+    @SerialName("choose") val choose: Int? = null,
+    @SerialName("from") val from: List<String>? = null
+)
+
+@Serializable
+data class StartingEquipmentInfo(
+    @SerialName("options") val options: List<String>? = null
+)
+
+@Serializable
+data class MulticlassingInfo(
+    @SerialName("prerequisites") val prerequisites: List<String>? = null,
+    @SerialName("proficiencies") val proficiencies: List<String>? = null
+)
+
+@Serializable
 data class GameClass(
     @SerialName("id") val id: String? = null,
     @SerialName("name") val name: String? = null,
@@ -40,7 +57,17 @@ data class GameClass(
     @SerialName("description") val description: String? = null,
     @SerialName("primary_ability") val primaryAbility: String? = null,
     @SerialName("hit_die") val hitDie: String? = null,
-    @SerialName("progression_table") val progressionTable: GameTable? = null,
+    @SerialName("hit_dice") val hitDice: String? = null,
+    @SerialName("hp_at_1st_level") val hpAt1stLevel: String? = null,
+    @SerialName("hp_at_higher_levels") val hpAtHigherLevels: String? = null,
+    @SerialName("headers") val headers: List<TableSchemaColumn>? = null,
+    @SerialName("progression_table") val progressionTable: List<Map<String, JsonElement>>? = null,
+    @SerialName("saving_throw_proficiencies") val savingThrowProficiencies: List<String>? = null,
+    @SerialName("skill_proficiencies") val skillProficiencies: SkillProficiencyInfo? = null,
+    @SerialName("weapon_proficiencies") val weaponProficiencies: List<String>? = null,
+    @SerialName("armor_proficiencies") val armorProficiencies: List<String>? = null,
+    @SerialName("starting_equipment") val startingEquipment: StartingEquipmentInfo? = null,
+    @SerialName("multiclassing") val multiclassing: MulticlassingInfo? = null,
     @SerialName("features") val features: List<GameFeature>? = null
 )
 

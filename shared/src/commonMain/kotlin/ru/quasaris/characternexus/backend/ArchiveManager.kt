@@ -1,6 +1,7 @@
 package ru.quasaris.characternexus.backend
 
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okio.Path.Companion.toPath
@@ -14,6 +15,20 @@ import ru.quasaris.characternexus.util.ZipUtils
 import ru.quasaris.characternexus.util.Logger
 import okio.ByteString.Companion.decodeBase64
 import kotlinx.serialization.json.*
+
+@Serializable
+data class CharacterManifest(
+    val characters: List<ManifestEntry>,
+    val exportDate: String,
+    val version: Int = 1
+)
+
+@Serializable
+data class ManifestEntry(
+    val uuid: String,
+    val name: String,
+    val folder: String
+)
 
 data class ImportResult(
     val character: Character,
@@ -30,33 +45,56 @@ object ArchiveManager {
         encodeDefaults = true
     }
 
-    suspend fun exportCharacter(character: Character, targetPath: String) = withContext(ioDispatcher) {
+    suspend fun exportCharacter(character: Character, targetPath: String) = exportCharactersBundle(listOf(character), targetPath)
+
+    suspend fun getExportBundleBytes(characters: List<Character>): ByteArray = withContext(ioDispatcher) {
+        val files = mutableMapOf<String, ByteArray>()
+        val manifestEntries = mutableListOf<ManifestEntry>()
+
+        characters.forEach { character ->
+            val folderName = "${character.name.filter { it.isLetterOrDigit() }}_${character.uuid.take(4)}"
+            val prefix = if (characters.size > 1) "$folderName/" else ""
+            
+            manifestEntries.add(ManifestEntry(character.uuid, character.name, folderName))
+
+            val charJson = json.encodeToString(character)
+            files["${prefix}character.json"] = charJson.encodeToByteArray()
+
+            character.imageData?.let { imageId ->
+                val portraitFile = ImageManager.getPortraitFile(imageId, character.uuid)
+                val originalFile = ImageManager.getOriginalFile(imageId, character.uuid)
+
+                if (platformFileSystem.exists(portraitFile)) {
+                    files["${prefix}portrait.webp"] = platformFileSystem.read(portraitFile) { readByteArray() }
+                }
+                if (platformFileSystem.exists(originalFile)) {
+                    files["${prefix}original.webp"] = platformFileSystem.read(originalFile) { readByteArray() }
+                }
+            }
+        }
+
+        if (characters.size > 1) {
+            val manifest = CharacterManifest(
+                characters = manifestEntries,
+                exportDate = "" // Could add current date if needed
+            )
+            files["manifest.json"] = json.encodeToString(manifest).encodeToByteArray()
+        }
+
+        ZipUtils.zip(files)
+    }
+
+    suspend fun exportCharactersBundle(characters: List<Character>, targetPath: String) = withContext(ioDispatcher) {
         try {
             val path = targetPath.toPath()
             val isJson = targetPath.endsWith(".json", ignoreCase = true)
 
-            if (isJson) {
+            if (isJson && characters.size == 1) {
                 platformFileSystem.write(path) {
-                    writeUtf8(json.encodeToString(character))
+                    writeUtf8(json.encodeToString(characters.first()))
                 }
             } else {
-                val charJson = json.encodeToString(character)
-                val files = mutableMapOf<String, ByteArray>()
-                files["character.json"] = charJson.encodeToByteArray()
-
-                character.imageData?.let { imageId ->
-                    val portraitFile = ImageManager.getPortraitFile(imageId, character.uuid)
-                    val originalFile = ImageManager.getOriginalFile(imageId, character.uuid)
-
-                    if (platformFileSystem.exists(portraitFile)) {
-                        files["portrait.webp"] = platformFileSystem.read(portraitFile) { readByteArray() }
-                    }
-                    if (platformFileSystem.exists(originalFile)) {
-                        files["original.webp"] = platformFileSystem.read(originalFile) { readByteArray() }
-                    }
-                }
-
-                val zipBytes = ZipUtils.zip(files)
+                val zipBytes = getExportBundleBytes(characters)
                 platformFileSystem.write(path) {
                     write(zipBytes)
                 }
@@ -66,92 +104,93 @@ object ArchiveManager {
         }
     }
 
-    suspend fun importCharacter(bytes: ByteArray): ImportResult? = withContext(ioDispatcher) {
-        var character: Character? = null
-        var portraitBytes: ByteArray? = null
-        var originalBytes: ByteArray? = null
+    suspend fun importCharacter(bytes: ByteArray): ImportResult? = importCharacters(bytes).firstOrNull()
 
-        val firstBytesHex = bytes.take(64).joinToString(" ") { it.toInt().and(0xFF).toString(16).padStart(2, '0').uppercase() }
-        Logger.d("ArchiveManager", "Starting import, bytes size: ${bytes.size}")
-        Logger.d("ArchiveManager", "First 64 bytes: $firstBytesHex")
-
+    suspend fun importCharacters(bytes: ByteArray): List<ImportResult> = withContext(ioDispatcher) {
+        val results = mutableListOf<ImportResult>()
+        
         try {
-            // First, attempt to unzip
             var unzippedFiles: Map<String, ByteArray>? = null
             try {
                 val files = ZipUtils.unzip(bytes)
                 if (files.isNotEmpty()) {
                     unzippedFiles = files
-                    Logger.d("ArchiveManager", "Successfully unzipped, found ${files.size} entries: ${files.keys}")
                 }
             } catch (e: Exception) {
                 Logger.d("ArchiveManager", "Unzip attempt failed: ${e.message}")
             }
 
             if (unzippedFiles != null && unzippedFiles.isNotEmpty()) {
-                val charJsonBytes = unzippedFiles.entries.find { it.key.equals("character.json", ignoreCase = true) || it.key.endsWith("/character.json", ignoreCase = true) }?.value
-                
-                if (charJsonBytes != null) {
-                    val jsonString = decodeSmart(charJsonBytes)
-                    character = parseCharacterContent(jsonString)
-                    Logger.d("ArchiveManager", "character.json found and parsed from ZIP")
-                } else {
-                    Logger.e("ArchiveManager", "character.json NOT found in ZIP. Available files: ${unzippedFiles.keys}")
+                // Group files by directory
+                val groups = unzippedFiles.keys.groupBy { 
+                    val parts = it.split("/")
+                    if (parts.size > 1) parts.dropLast(1).joinToString("/") else ""
                 }
-                
-                portraitBytes = unzippedFiles.entries.find { it.key.equals("portrait.webp", ignoreCase = true) || it.key.endsWith("/portrait.webp", ignoreCase = true) }?.value
-                originalBytes = unzippedFiles.entries.find { it.key.equals("original.webp", ignoreCase = true) || it.key.endsWith("/original.webp", ignoreCase = true) }?.value
+
+                if (groups.size > 1 || (groups.keys.first().isNotEmpty())) {
+                    // Multi-character or single character in a folder
+                    groups.forEach { (_, fileKeys) ->
+                        val charJsonBytes = unzippedFiles[fileKeys.find { it.endsWith("character.json", ignoreCase = true) }]
+                        if (charJsonBytes != null) {
+                            val jsonString = decodeSmart(charJsonBytes)
+                            val character = parseCharacterContent(jsonString)
+                            if (character != null) {
+                                val portraitBytes = unzippedFiles[fileKeys.find { it.endsWith("portrait.webp", ignoreCase = true) }]
+                                val originalBytes = unzippedFiles[fileKeys.find { it.endsWith("original.webp", ignoreCase = true) }]
+                                results.add(createImportResult(character, portraitBytes, originalBytes))
+                            }
+                        }
+                    }
+                } else {
+                    // Legacy single character at root
+                    val charJsonBytes = unzippedFiles.entries.find { it.key.equals("character.json", ignoreCase = true) }?.value
+                    if (charJsonBytes != null) {
+                        val jsonString = decodeSmart(charJsonBytes)
+                        val character = parseCharacterContent(jsonString)
+                        if (character != null) {
+                            val portraitBytes = unzippedFiles.entries.find { it.key.equals("portrait.webp", ignoreCase = true) }?.value
+                            val originalBytes = unzippedFiles.entries.find { it.key.equals("original.webp", ignoreCase = true) }?.value
+                            results.add(createImportResult(character, portraitBytes, originalBytes))
+                        }
+                    }
+                }
             } else {
-                Logger.d("ArchiveManager", "Treating as plain JSON (no unzipped files)")
                 // Handle plain JSON
                 try {
                     val jsonString = decodeSmart(bytes)
-                    // Basic sanity check: character JSON must start with {
                     if (jsonString.trim().startsWith("{")) {
-                        character = parseCharacterContent(jsonString)
-                        
-                        // Handle Base64 image in legacy JSON
+                        val character = parseCharacterContent(jsonString)
                         character?.let { char ->
+                            var portraitBytes: ByteArray? = null
                             if (char.imageData != null && char.imageData.length > 100) {
-                                Logger.d("ArchiveManager", "Base64 image detected in JSON")
                                 try {
                                     portraitBytes = char.imageData.decodeBase64()?.toByteArray()
-                                    // Don't null it yet, we'll replace it with a fresh UUID below
-                                } catch (e: Exception) {
-                                    Logger.e("ArchiveManager", "Failed to decode Base64 image")
-                                }
+                                } catch (e: Exception) {}
                             }
+                            results.add(createImportResult(char, portraitBytes, null))
                         }
-                    } else {
-                        Logger.e("ArchiveManager", "File does not look like JSON (doesn't start with {)")
                     }
-                } catch (e: Exception) {
-                    Logger.e("ArchiveManager", "Failed to process as plain JSON", e)
-                }
-            }
-
-            character?.let { char ->
-                // ALWAYS generate new unique IDs for imported characters to avoid silent overwrites
-                val newUuid = generateUuid()
-                val newId = (0..Int.MAX_VALUE).random()
-                Logger.d("ArchiveManager", "Assigning new identity: name=${char.name}, new_uuid=$newUuid, new_id=$newId")
-                
-                val freshChar = char.copy(
-                    uuid = newUuid,
-                    id = newId,
-                    imageData = if (portraitBytes != null || originalBytes != null) generateUuid() else null
-                )
-
-                return@withContext ImportResult(
-                    character = freshChar,
-                    portraitBytes = portraitBytes,
-                    originalBytes = originalBytes
-                )
+                } catch (e: Exception) {}
             }
         } catch (e: Exception) {
-            Logger.e("ArchiveManager", "Critical failure in importCharacter", e)
+            Logger.e("ArchiveManager", "Critical failure in importCharacters", e)
         }
-        null
+        results
+    }
+
+    private fun createImportResult(char: Character, portraitBytes: ByteArray?, originalBytes: ByteArray?): ImportResult {
+        val newUuid = generateUuid()
+        val newId = (0..Int.MAX_VALUE).random()
+        val freshChar = char.copy(
+            uuid = newUuid,
+            id = newId,
+            imageData = if (portraitBytes != null || originalBytes != null) generateUuid() else null
+        )
+        return ImportResult(
+            character = freshChar,
+            portraitBytes = portraitBytes,
+            originalBytes = originalBytes
+        )
     }
 
     /**

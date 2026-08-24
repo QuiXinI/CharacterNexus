@@ -39,7 +39,8 @@ fun CharacterIdentitySection(
     activeSpeedValue: String,
     onSpeedClick: () -> Unit,
     onImagePickerClick: () -> Unit,
-    onDownloadClick: () -> Unit,
+    onExportSheetClick: () -> Unit,
+    onExportPortraitClick: () -> Unit = {},
     onShortRest: () -> Unit = {},
     onLongRest: () -> Unit = {},
     onDawn: () -> Unit = {},
@@ -82,9 +83,13 @@ fun CharacterIdentitySection(
             onDismissAvatarMenu()
             onImagePickerClick()
         },
-        onDownloadClick = {
+        onExportSheetClick = {
             onDismissAvatarMenu()
-            onDownloadClick()
+            onExportSheetClick()
+        },
+        onExportPortraitClick = {
+            onDismissAvatarMenu()
+            onExportPortraitClick()
         },
         onShortRest = onShortRest,
         onLongRest = onLongRest,

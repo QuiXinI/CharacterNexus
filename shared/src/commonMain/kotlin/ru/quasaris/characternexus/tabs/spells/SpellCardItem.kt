@@ -78,7 +78,8 @@ fun SpellCardItem(
     isEditMode: Boolean = false,
     collapseOnEdit: Boolean = true,
     isDragging: Boolean = false,
-    isAnyItemDragging: Boolean = false
+    isAnyItemDragging: Boolean = false,
+    isCompact: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val internalHazeState = remember { HazeState() }
@@ -138,7 +139,7 @@ fun SpellCardItem(
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.hazeSource(state = internalHazeState).padding(12.dp)) {
+        Column(modifier = Modifier.hazeSource(state = internalHazeState).padding(if (isCompact) 8.dp else 12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -154,7 +155,7 @@ fun SpellCardItem(
                                 }
                             }
                         },
-                        style = MaterialTheme.typography.titleMedium,
+                        style = if (isCompact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = colorScheme.onSurface
                     )
@@ -179,6 +180,15 @@ fun SpellCardItem(
                         else -> null
                     }
                     if (mText != null) ComponentMarker(mText)
+
+                    if (isCompact) {
+                        if (spell.hasConcentration) {
+                            Icon(Icons.Default.SelfImprovement, contentDescription = "Концентрация", modifier = Modifier.size(20.dp), tint = colorScheme.error)
+                        }
+                        if (spell.duration.isNotBlank() && spell.durationUnit != DurationUnit.INSTANT) {
+                            Icon(Icons.Default.AccessTime, contentDescription = "Длительность", modifier = Modifier.size(20.dp), tint = colorScheme.primary)
+                        }
+                    }
                     
                     if (isEditable) {
                         IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
@@ -193,57 +203,59 @@ fun SpellCardItem(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (!isCompact) {
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val castingTimeText = if (spell.castingTimeType == CastingTimeType.OTHER && spell.castingTime.isNotBlank()) {
-                    spell.castingTime
-                } else {
-                    spell.castingTimeType.displayName
-                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val castingTimeText = if (spell.castingTimeType == CastingTimeType.OTHER && spell.castingTime.isNotBlank()) {
+                        spell.castingTime
+                    } else {
+                        spell.castingTimeType.displayName
+                    }
 
-                if (castingTimeText.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
-                        Text(
-                            text = "Время: $castingTimeText",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.onSurfaceVariant
-                        )
+                    if (castingTimeText.isNotBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
+                            Text(
+                                text = "Время: $castingTimeText",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
-            }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (spell.duration.isNotBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
-                        Text(
-                            text = "Длительность: ${spell.duration}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.onSurfaceVariant
-                        )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (spell.duration.isNotBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
+                            Text(
+                                text = "Длительность: ${spell.duration}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                }
-                
-                if (spell.hasConcentration) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Default.SelfImprovement, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.error)
-                        Text("Конц.", style = MaterialTheme.typography.bodySmall, color = colorScheme.error)
+                    
+                    if (spell.hasConcentration) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Default.SelfImprovement, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.error)
+                            Text("Конц.", style = MaterialTheme.typography.bodySmall, color = colorScheme.error)
+                        }
                     }
                 }
             }
 
             val hasActionArea = spell.hasDamage || spell.attackTypes.isNotEmpty()
-            if (hasActionArea && (!isEditMode || !collapseOnEdit)) {
+            if (hasActionArea && (!isEditMode || !collapseOnEdit) && !isCompact) {
                 val isOled = colorScheme.background == Color.Black
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -407,7 +419,7 @@ fun SpellCardItem(
                 }
             }
 
-            AnimatedVisibility(visible = isExpanded && (!isEditMode || !collapseOnEdit)) {
+            AnimatedVisibility(visible = isExpanded && (!isEditMode || !collapseOnEdit) && !isCompact) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
                     HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(8.dp))

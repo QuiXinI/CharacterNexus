@@ -7,19 +7,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -33,6 +29,7 @@ import ru.quasaris.characternexus.backend.LssAvatarService
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.cropper.AvatarCropperWindow
 import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.ui.components.ReorderableAdaptiveGrid
 import ru.quasaris.characternexus.util.decodeImageBitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import ru.quasaris.characternexus.util.ImageProcessor
@@ -46,6 +43,8 @@ fun MenuWindow(
     onCharacterClick: (String) -> Unit,
     onImportCharacter: (Character) -> Unit,
     onDeleteCharacters: (List<String>) -> Unit,
+    onReorderCharacters: (List<String>) -> Unit,
+    getFullCharacter: suspend (String) -> Character?,
     onOpenDrawer: () -> Unit,
     modifier: Modifier = Modifier,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
@@ -73,13 +72,62 @@ fun MenuWindow(
     var lssAvatarToDownload by remember { mutableStateOf<Character?>(null) }
     var importErrorMessage by remember { mutableStateOf<String?>(null) }
     var showFilePicker by remember { mutableStateOf(false) }
+    var showExportSaver by remember { mutableStateOf(false) }
+    var exportUuids by remember { mutableStateOf<List<String>>(emptyList()) }
     
-    var pendingImportResult by remember { mutableStateOf<ru.quasaris.characternexus.backend.ImportResult?>(null) }
+    val pendingImportResults = remember { mutableStateListOf<ru.quasaris.characternexus.backend.ImportResult>() }
     var imageToCrop by remember { mutableStateOf<ImageBitmap?>(null) }
 
-    val isAnyFullscreenDialogOpen = imageToCrop != null || lssAvatarToDownload != null || importErrorMessage != null
+    val isAnyFullscreenDialogOpen = imageToCrop != null || lssAvatarToDownload != null || importErrorMessage != null || pendingImportResults.isNotEmpty()
     LaunchedEffect(isAnyFullscreenDialogOpen) {
         onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
+    }
+
+    fun processNextImport() {
+        if (pendingImportResults.isEmpty()) return
+        val next = pendingImportResults.first()
+        val portraitBytes = next.portraitBytes ?: next.originalBytes
+        
+        if (portraitBytes != null) {
+            try {
+                imageToCrop = decodeImageBitmap(portraitBytes)
+            } catch (e: Exception) {
+                onImportCharacter(next.character)
+                pendingImportResults.removeAt(0)
+                processNextImport()
+            }
+        } else if (next.character.avatarUrl != null && next.character.imageData == null) {
+            if (autoDownload) {
+                scope.launch {
+                    val avatarBytes = LssAvatarService.downloadAvatar(next.character)
+                    if (avatarBytes != null) {
+                        try {
+                            imageToCrop = decodeImageBitmap(avatarBytes)
+                            pendingImportResults[0] = next.copy(portraitBytes = avatarBytes, originalBytes = avatarBytes)
+                        } catch (e: Exception) {
+                            onImportCharacter(next.character)
+                            pendingImportResults.removeAt(0)
+                            processNextImport()
+                        }
+                    } else {
+                        onImportCharacter(next.character)
+                        pendingImportResults.removeAt(0)
+                        processNextImport()
+                    }
+                }
+            } else if (pendingImportResults.size == 1) {
+                lssAvatarToDownload = next.character
+                pendingImportResults.clear()
+            } else {
+                onImportCharacter(next.character)
+                pendingImportResults.removeAt(0)
+                processNextImport()
+            }
+        } else {
+            onImportCharacter(next.character)
+            pendingImportResults.removeAt(0)
+            processNextImport()
+        }
     }
 
     CommonFilePicker(show = showFilePicker, fileExtensions = listOf("charbook", "lsskiller", "json")) { file ->
@@ -89,45 +137,12 @@ fun MenuWindow(
         scope.launch {
             try {
                 val bytes = file.readBytes()
-                val result = ArchiveManager.importCharacter(bytes)
+                val results = ArchiveManager.importCharacters(bytes)
                 
-                if (result != null) {
-                    val importedCharacter = result.character
-                    val portraitBytes = result.portraitBytes ?: result.originalBytes
-                    
-                    if (portraitBytes != null) {
-                        // Image present, go to cropper
-                        try {
-                            imageToCrop = decodeImageBitmap(portraitBytes)
-                            pendingImportResult = result
-                        } catch (e: Exception) {
-                            // If decoding fails, just import without image
-                            onImportCharacter(importedCharacter)
-                        }
-                    } else if (importedCharacter.avatarUrl != null && importedCharacter.imageData == null) {
-                        // LSS Avatar handling
-                        if (autoDownload) {
-                            val avatarBytes = LssAvatarService.downloadAvatar(importedCharacter)
-                            if (avatarBytes != null) {
-                                try {
-                                    imageToCrop = decodeImageBitmap(avatarBytes)
-                                    pendingImportResult = ImportResult(
-                                        character = importedCharacter,
-                                        portraitBytes = avatarBytes,
-                                        originalBytes = avatarBytes
-                                    )
-                                } catch (e: Exception) {
-                                    onImportCharacter(importedCharacter)
-                                }
-                            } else {
-                                onImportCharacter(importedCharacter)
-                            }
-                        } else {
-                            lssAvatarToDownload = importedCharacter
-                        }
-                    } else {
-                        onImportCharacter(importedCharacter)
-                    }
+                if (results.isNotEmpty()) {
+                    pendingImportResults.clear()
+                    pendingImportResults.addAll(results)
+                    processNextImport()
                 } else {
                     importErrorMessage = "Не удалось распознать файл. Пожалуйста, выберите другой файл персонажа."
                 }
@@ -137,8 +152,31 @@ fun MenuWindow(
         }
     }
 
-    if (imageToCrop != null && pendingImportResult != null) {
-        val result = pendingImportResult!!
+    CommonFileSaver(
+        show = showExportSaver,
+        fileName = "CharactersBundle",
+        fileExtension = ArchiveManager.EXPORT_EXTENSION
+    ) { saver ->
+        showExportSaver = false
+        if (saver == null) return@CommonFileSaver
+        
+        scope.launch {
+            val charsToExport = mutableListOf<Character>()
+            exportUuids.forEach { uuid ->
+                val fullChar = getFullCharacter(uuid)
+                if (fullChar != null) {
+                    charsToExport.add(fullChar)
+                }
+            }
+            if (charsToExport.isNotEmpty()) {
+                val bytes = ArchiveManager.getExportBundleBytes(charsToExport)
+                saver.save(bytes)
+            }
+        }
+    }
+
+    if (imageToCrop != null && pendingImportResults.isNotEmpty()) {
+        val result = pendingImportResults.first()
         AvatarCropperWindow(
             imageBitmap = imageToCrop!!,
             onCrop = { cropped ->
@@ -153,13 +191,15 @@ fun MenuWindow(
                     )
                     onImportCharacter(char)
                     imageToCrop = null
-                    pendingImportResult = null
+                    pendingImportResults.removeAt(0)
+                    processNextImport()
                 }
             },
             onDismiss = {
                 onImportCharacter(result.character.copy(imageData = null))
                 imageToCrop = null
-                pendingImportResult = null
+                pendingImportResults.removeAt(0)
+                processNextImport()
             }
         )
     }
@@ -192,11 +232,11 @@ fun MenuWindow(
                         if (avatarBytes != null) {
                             try {
                                 imageToCrop = decodeImageBitmap(avatarBytes)
-                                pendingImportResult = ImportResult(
+                                pendingImportResults.add(ImportResult(
                                     character = char,
                                     portraitBytes = avatarBytes,
                                     originalBytes = avatarBytes
-                                )
+                                ))
                             } catch (e: Exception) {
                                 onImportCharacter(char)
                             }
@@ -269,17 +309,42 @@ fun MenuWindow(
                         if (selectedIds.isNotEmpty()) selectedIds.clear()
                     }
             ) {
-                LazyColumn(
+                ReorderableAdaptiveGrid(
+                    items = characters,
+                    key = { it.uuid },
+                    onReorder = { newList ->
+                        onReorderCharacters(newList.map { it.uuid })
+                    },
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    items(characters, key = { it.uuid }) { character ->
-                        val isSelected = character.uuid in selectedIds
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    isReorderEnabled = selectedIds.isNotEmpty()
+                ) { character, isDragging, dragModifier ->
+                    val isSelected = character.uuid in selectedIds
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (selectedIds.isNotEmpty()) {
+                            Icon(
+                                imageVector = Icons.Default.DragHandle,
+                                contentDescription = "Drag",
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(32.dp)
+                                    .then(dragModifier),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            )
+                        }
+
                         CharacterCard(
                             character = character,
                             isSelected = isSelected,
                             useOldAvatarStyle = useOldAvatarStyle,
+                            modifier = Modifier.weight(1f).graphicsLayer {
+                                alpha = if (isDragging) 0.5f else 1f
+                                scaleX = if (isDragging) 1.05f else 1f
+                                scaleY = if (isDragging) 1.05f else 1f
+                            },
                             onClick = {
                                 performClickHaptic()
                                 if (selectedIds.isNotEmpty()) {
@@ -331,45 +396,49 @@ fun MenuWindow(
                 .padding(16.dp)
                 .padding(bottom = 8.dp)
         ) {
-            Button(
-                onClick = {
-                    PlatformUtils.performHapticFeedback(HapticType.ERROR)
-                    onDeleteCharacters(selectedIds.toList())
-                    selectedIds.clear()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .outerShadow(RoundedCornerShape(12.dp), blur = 6.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorScheme.error,
-                    contentColor = colorScheme.onError
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.wrapContentWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Button(
+                    onClick = {
+                        exportUuids = selectedIds.toList()
+                        showExportSaver = true
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .outerShadow(RoundedCornerShape(12.dp), blur = 6.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.secondaryContainer,
+                        contentColor = colorScheme.onSecondaryContainer
+                    )
                 ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Удалить",
-                        modifier = Modifier.size(20.dp)
+                    Icon(Icons.Default.Share, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Экспорт", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                }
+
+                Button(
+                    onClick = {
+                        PlatformUtils.performHapticFeedback(HapticType.ERROR)
+                        onDeleteCharacters(selectedIds.toList())
+                        selectedIds.clear()
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .outerShadow(RoundedCornerShape(12.dp), blur = 6.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.error,
+                        contentColor = colorScheme.onError
                     )
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-
-                    val buttonText = if (selectedIds.size > 1) {
-                        "Удалить персонажей (${selectedIds.size})"
-                    } else {
-                        "Удалить персонажа"
-                    }
-
-                    Text(
-                        text = buttonText,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text("Удалить", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }

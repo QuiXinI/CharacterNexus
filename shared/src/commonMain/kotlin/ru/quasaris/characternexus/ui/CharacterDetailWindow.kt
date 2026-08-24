@@ -93,6 +93,8 @@ fun CharacterDetailWindow(
     val scope = rememberCoroutineScope()
     val colorScheme = MaterialTheme.colorScheme
 
+    BackHandler(onBack = onNavigateBack)
+
     LaunchedEffect(state.level) {
         state.nextLevelExp = getNextLevelThreshold(state.level)
     }
@@ -101,13 +103,38 @@ fun CharacterDetailWindow(
         state.syncHPAndHitDice()
     }
 
-    var showExportPicker by remember { mutableStateOf(false) }
-    CommonFilePicker(show = showExportPicker, fileExtensions = listOf(ArchiveManager.EXPORT_EXTENSION)) { file ->
-        showExportPicker = false
-        file?.let {
+    var showExportSheetSaver by remember { mutableStateOf(false) }
+    CommonFileSaver(
+        show = showExportSheetSaver,
+        fileName = "${character.name}_Sheet",
+        fileExtension = ArchiveManager.EXPORT_EXTENSION
+    ) { saver ->
+        showExportSheetSaver = false
+        saver?.let {
             val currentCharacterState = state.toCharacter(character)
             scope.launch {
-                ArchiveManager.exportCharacter(currentCharacterState, it.path)
+                val bytes = ArchiveManager.getExportBundleBytes(listOf(currentCharacterState))
+                it.save(bytes)
+            }
+        }
+    }
+
+    var showExportPortraitSaver by remember { mutableStateOf(false) }
+    CommonFileSaver(
+        show = showExportPortraitSaver,
+        fileName = "${character.name}_Portrait",
+        fileExtension = "webp"
+    ) { saver ->
+        showExportPortraitSaver = false
+        saver?.let {
+            scope.launch {
+                character.imageData?.let { imageId ->
+                    val portraitFile = ImageManager.getPortraitFile(imageId, character.uuid)
+                    if (platformFileSystem.exists(portraitFile)) {
+                        val bytes = platformFileSystem.read(portraitFile) { readByteArray() }
+                        it.save(bytes)
+                    }
+                }
             }
         }
     }
@@ -366,7 +393,8 @@ fun CharacterDetailWindow(
                     onShowTabSheet = { showTabSheet = true; rootFocusRequester.requestFocus() },
                     onShowSpellSettings = { state.showSpellSettings = true; rootFocusRequester.requestFocus() },
                     onImagePickerClick = { showImagePicker = true; rootFocusRequester.requestFocus() },
-                    onDownloadClick = { showExportPicker = true; rootFocusRequester.requestFocus() },
+                    onExportSheetClick = { showExportSheetSaver = true; rootFocusRequester.requestFocus() },
+                    onExportPortraitClick = { showExportPortraitSaver = true; rootFocusRequester.requestFocus() },
                     rootFocusRequester = rootFocusRequester,
                     settingsViewModel = settingsViewModel
                 )
@@ -457,7 +485,8 @@ fun CharacterDetailTopBar(
     onShowTabSheet: () -> Unit,
     onShowSpellSettings: () -> Unit,
     onImagePickerClick: () -> Unit,
-    onDownloadClick: () -> Unit,
+    onExportSheetClick: () -> Unit,
+    onExportPortraitClick: () -> Unit,
     rootFocusRequester: FocusRequester,
     settingsViewModel: SettingsViewModel? = null
 ) {
@@ -535,7 +564,8 @@ fun CharacterDetailTopBar(
                 showAvatarMenu = state.showAvatarMenu,
                 onDismissAvatarMenu = { state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
                 onImagePickerClick = { onImagePickerClick(); state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
-                onDownloadClick = { onDownloadClick(); state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
+                onExportSheetClick = { onExportSheetClick(); state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
+                onExportPortraitClick = { onExportPortraitClick(); state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
                 onDeletePortraitClick = { state.characterImageData = null; state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
                 onSettingsClick = { state.showCharacterSettings = true; state.showAvatarMenu = false; rootFocusRequester.requestFocus() },
                 onNavigateBack = onNavigateBack,
@@ -548,6 +578,8 @@ fun CharacterDetailTopBar(
                 },
                 onLongRest = { handleRestoration("long"); rootFocusRequester.requestFocus() },
                 onDawn = { handleRestoration("dawn"); rootFocusRequester.requestFocus() },
+                showRestPopup = state.showRestPopup,
+                onShowRestPopupChange = { state.showRestPopup = it; rootFocusRequester.requestFocus() },
                 hazeState = popupHazeState ?: hazeState,
                 blurPopups = blurPopups,
                 settingsViewModel = settingsViewModel
