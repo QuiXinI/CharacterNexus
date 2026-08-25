@@ -130,7 +130,7 @@ fun MenuWindow(
         }
     }
 
-    CommonFilePicker(show = showFilePicker, fileExtensions = listOf("charbook", "lsskiller", "json")) { file ->
+    CommonFilePicker(show = showFilePicker, fileExtensions = listOf("cb", "charbook", "lsskiller", "json")) { file ->
         showFilePicker = false
         if (file == null) return@CommonFilePicker
         

@@ -37,7 +37,7 @@ data class ImportResult(
 )
 
 object ArchiveManager {
-    const val EXPORT_EXTENSION = "charbook"
+    const val EXPORT_EXTENSION = "cb"
     
     private val json = Json {
         ignoreUnknownKeys = true
