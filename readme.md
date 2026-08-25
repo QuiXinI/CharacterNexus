@@ -1,4 +1,4 @@
-# Character Nexus <img src="./androidApp/src/main/res/drawable/d20.webp" height="26" alt="d20">
+# Character Nexus <img src="./androidApp/src/main/res/drawable/d20.webp" height="32" alt="d20">
 
 ![Kotlin Multiplatform](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Compose Multiplatform](https://img.shields.io/badge/Compose-Multiplatform-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
