@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
@@ -39,7 +40,7 @@ fun ClassEditorWindow(
     
     var className by remember { mutableStateOf(initialClass?.name ?: initialSubclass?.name ?: "") }
     var classId by remember { mutableStateOf(initialClass?.id ?: initialSubclass?.id ?: "") }
-    var description by remember { mutableStateOf(initialClass?.description ?: initialSubclass?.description ?: "") }
+    var description by remember { mutableStateOf(initialClass?.descriptionText ?: initialSubclass?.descriptionText ?: "") }
     var hitDie by remember { mutableStateOf(initialClass?.hitDie ?: "8") }
     var primaryAbility by remember { mutableStateOf(initialClass?.primaryAbility ?: "") }
     
@@ -92,14 +93,14 @@ fun ClassEditorWindow(
                                 id = classId,
                                 classId = parentClassId,
                                 name = className,
-                                description = description,
+                                description = JsonPrimitive(description),
                                 features = features.toList()
                             ))
                         } else {
                             JsonConfig.json.encodeToJsonElement(GameClass(
                                 id = classId,
                                 name = className,
-                                description = description,
+                                description = JsonPrimitive(description),
                                 hitDie = hitDie,
                                 primaryAbility = primaryAbility,
                                 features = features.toList()
@@ -292,7 +293,7 @@ fun FeatureEditorDialog(
     val colorScheme = MaterialTheme.colorScheme
     var name by remember { mutableStateOf(feature.name ?: "") }
     var level by remember { mutableStateOf(feature.level?.toString() ?: "1") }
-    var desc by remember { mutableStateOf(feature.description ?: "") }
+    var desc by remember { mutableStateOf(feature.descriptionText) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -326,7 +327,7 @@ fun FeatureEditorDialog(
         },
         confirmButton = {
             Button(onClick = { 
-                onSave(feature.copy(name = name, level = level.toIntOrNull() ?: 1, description = desc)) 
+                onSave(feature.copy(name = name, level = level.toIntOrNull() ?: 1, description = JsonPrimitive(desc))) 
             }) {
                 Text("ОК")
             }

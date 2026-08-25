@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.RectangleShape
+import ru.quasaris.characternexus.ui.outerShadow
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.ui.MorphingPolygonShape
 import ru.quasaris.characternexus.ui.quasarisTheme
@@ -152,8 +154,8 @@ fun CharacterCreationWindow(
             },
             bottomBar = {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 8.dp,
+                    modifier = Modifier.fillMaxWidth().outerShadow(RectangleShape, blur = 8.dp),
+                    shadowElevation = 0.dp,
                     color = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                 ) {
                     // ...

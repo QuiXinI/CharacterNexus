@@ -105,24 +105,24 @@ compose.desktop {
  * 1. debug: ./gradlew :desktopApp:run -PbuildProfile=debug
  * 2. release zip: ./gradlew :desktopApp:packagePortableZip -PbuildProfile=release
  */
-
 tasks.register<Zip>("packagePortableZip") {
     group = "compose desktop"
     description = "Packages the portable application into a ZIP file (Release only)"
 
-    // Отключаем для дебага полностью
-    onlyIf { isRelease }
+    // Отключаем выполнение для не-release сборки без создания лямбды-захвата
+    enabled = isRelease
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     val archiveName = "portable-${platformName}-${buildProfile}-${appVersion}.zip"
     archiveFileName.set(archiveName)
     destinationDirectory.set(rootBuildsDir)
-    
+
     from(layout.buildDirectory.dir("compose/binaries/$appVariant/app"))
     includeEmptyDirs = false
 
-    dependsOn(tasks.matching { it.name == "createReleaseDistributable" })
+    // Безопасное связывание задач по имени без захвата TaskContainer
+    dependsOn("createReleaseDistributable")
 }
 
 tasks.register<Copy>("copyPortableFolder") {

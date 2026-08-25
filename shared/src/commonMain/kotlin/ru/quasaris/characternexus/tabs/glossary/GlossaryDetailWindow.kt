@@ -15,6 +15,7 @@ import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.ui.GlossaryCategory
 import ru.quasaris.characternexus.ui.NavNode
 import ru.quasaris.characternexus.ui.NavigationPathManager
+import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.SpellCard
 import okio.Path
@@ -27,6 +28,7 @@ fun GlossaryDetailWindow(
     onTitleChange: (String) -> Unit,
     onBack: () -> Unit
 ) {
+    BackHandler(onBack = onBack)
     val content = remember(file) {
         try {
             val json = platformFileSystem.read(file) { readUtf8() }

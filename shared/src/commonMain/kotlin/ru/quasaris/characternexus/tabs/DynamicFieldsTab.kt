@@ -51,6 +51,7 @@ import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
+import ru.quasaris.characternexus.ui.BackHandler
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -951,6 +952,7 @@ fun DynamicFieldFullscreenDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         DialogDimStyle(0f)
+        BackHandler(onBack = onDismiss)
         val focusManager = LocalFocusManager.current
         val focusRequester = remember { FocusRequester() }
         val colorScheme = MaterialTheme.colorScheme

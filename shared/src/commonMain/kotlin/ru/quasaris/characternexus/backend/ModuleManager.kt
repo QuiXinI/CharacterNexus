@@ -141,14 +141,33 @@ class ModuleManager {
             try {
                 val jsonContent = platformFileSystem.read(file) { readUtf8() }
                 val subclass = JsonConfig.json.decodeFromString<GameSubclass>(jsonContent)
+                // Filter out linked subclasses from the main list if needed? 
+                // Or just show everything that belongs to the class.
+                // Maneuvers have class_id: Fighter, so they will show up in the subclasses list.
+                // The user wants them to be "part of" the Battle Master.
                 if (subclass.classId == classId) {
-                    subclasses.add(subclass)
+                    subclasses.add(subclass.copy(id = subclass.id ?: file.name.removeSuffix(".json")))
                 }
             } catch (e: Exception) {
                 ru.quasaris.characternexus.util.Logger.e("ModuleManager", "Error loading subclass from $file", e)
             }
         }
         return subclasses.sortedBy { it.name }
+    }
+
+    fun getSubclassById(id: String): GameSubclass? {
+        val baseDir = getAppDataDir().resolve("glossary/subclasses")
+        val file = baseDir.resolve("$id.json")
+        if (!platformFileSystem.exists(file)) return null
+        
+        return try {
+            val jsonContent = platformFileSystem.read(file) { readUtf8() }
+            JsonConfig.json.decodeFromString<GameSubclass>(jsonContent).let { 
+                it.copy(id = it.id ?: id)
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**

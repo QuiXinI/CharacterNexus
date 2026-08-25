@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
+import ru.quasaris.characternexus.ui.outerShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
@@ -179,10 +180,10 @@ fun CharacterHeader(
                     ) {
                         if (hasInspiration && !isOled) {
                             Surface(
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(24.dp).outerShadow(CircleShape, blur = 12.dp),
                                 color = colorScheme.primary.copy(alpha = 0.3f),
                                 shape = CircleShape,
-                                shadowElevation = 12.dp,
+                                shadowElevation = 0.dp,
                                 tonalElevation = 8.dp
                             ) {}
                         }

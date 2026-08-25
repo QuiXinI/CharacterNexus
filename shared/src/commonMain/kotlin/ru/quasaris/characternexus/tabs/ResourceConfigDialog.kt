@@ -34,6 +34,7 @@ import org.jetbrains.compose.resources.painterResource
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import characternexus.shared.generated.resources.*
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
+import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.util.PayWall
 
@@ -103,6 +104,7 @@ fun ResourceConfigDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         DialogDimStyle(0f)
+        BackHandler(onBack = onDismiss)
         CompositionLocalProvider(LocalTextToolbar provides emptyTextToolbar) {
             val colorScheme = MaterialTheme.colorScheme
 

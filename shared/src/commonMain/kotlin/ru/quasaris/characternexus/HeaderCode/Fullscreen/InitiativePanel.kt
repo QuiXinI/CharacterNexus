@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.ui.DialogDimStyle
+import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
@@ -51,7 +52,9 @@ fun InitiativeDialog(
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
-        Scaffold(
+    BackHandler(onBack = onDismiss)
+
+    Scaffold(
             modifier = Modifier
                 .blur(if (isSubDialogOpen && forceBlurEnabled && !isOled) 24.dp else 0.dp)
                 .run {

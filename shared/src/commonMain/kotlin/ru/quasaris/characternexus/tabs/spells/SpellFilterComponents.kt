@@ -5,6 +5,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterListOff
 import androidx.compose.material3.*
@@ -28,20 +30,25 @@ import ru.quasaris.characternexus.model.*
 fun SpellFiltersArea(
     visible: Boolean,
     filterState: SpellFilterState,
-    onFilterChange: (SpellFilterState) -> Unit
+    onFilterChange: (SpellFilterState) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
         visible = visible,
         enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut()
+        exit = shrinkVertically() + fadeOut(),
+        modifier = modifier
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ) {
+            val scrollState = rememberScrollState()
             Column(
                 modifier = Modifier
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Row 1: Quick Toggles (K, O, R, Damage, Attack/Save)
@@ -93,7 +100,7 @@ fun SpellFiltersArea(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     maxItemsInEachRow = Int.MAX_VALUE
                 ) {
-                    val itemModifier = Modifier.widthIn(min = 160.dp).weight(1f)
+                    val itemModifier = Modifier.widthIn(min = 130.dp).weight(1f)
 
                     MultiChoiceDropdown(
                         label = "Уровни",
@@ -186,7 +193,7 @@ fun SpellFiltersArea(
                     )
 
                     Column(modifier = itemModifier) {
-                        Text("Описание времени", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Text("Описание времени наложения", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         OutlinedTextField(
                             value = filterState.castingTimeQuery,
                             onValueChange = { onFilterChange(filterState.copy(castingTimeQuery = it)) },

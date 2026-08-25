@@ -100,13 +100,9 @@ fun ModulesWindow(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == androidx.compose.ui.graphics.Color.Black
 
-    LaunchedEffect(filteredModules) {
+    LaunchedEffect(Unit) {
         val path = mutableListOf<NavNode>()
-        filteredModules.forEach { module ->
-            path.add(NavNode("mod_${module.manifest.id}", module.manifest.name, 0) {
-                editingModule = module
-            })
-        }
+        path.add(NavNode("hub", "Модули", 0))
         NavigationPathManager.updatePath("modules", path)
     }
 

@@ -549,68 +549,48 @@ class CharacterDetailState(
     }
 
     fun syncIdentity() {
-        if (classes.isEmpty()) return
-
-        val totalLevel = classes.sumOf { it.level }
-        level = totalLevel.toString()
-
-        characterClass = classes.joinToString(" / ") {
-            if (it.subclass.isNotBlank()) "${it.className.displayName} (${it.subclass}) ${it.level}"
-            else "${it.className.displayName} ${it.level}"
-        }
-
-        // Sync HP Level Data
-        val newHpLevelData = mutableListOf<HPLevelEntry>()
-        var currentLvl = 1
-        classes.forEach { entry ->
-            val die = when (entry.className) {
-                CharacterClass.BARBARIAN -> 12
-                CharacterClass.FIGHTER -> 10
-                CharacterClass.ARTIFICER -> 8
-                CharacterClass.WIZARD -> 6
-                else -> 8
-            }
-            for (i in 1..entry.level) {
-                // Try to preserve existing roll results if the level and hit die match
-                val existing = hpLevelData.getOrNull(currentLvl - 1)
-                newHpLevelData.add(
-                    HPLevelEntry(
-                        level = currentLvl,
-                        hitDie = die,
-                        rollResult = if (existing?.hitDie == die) existing.rollResult else null,
-                        manualValue = if (existing?.hitDie == die) existing.manualValue else null
-                    )
-                )
-                currentLvl++
+        if (!isMulticlassHP) {
+            // In single class mode, ensure the 'classes' list has exactly one entry for toSummary()
+            val currentLvl = level.toIntOrNull() ?: 1
+            if (classes.isEmpty() || classes.size > 1) {
+                 classes = listOf(ClassEntry(className = characterClass, level = currentLvl))
+            } else {
+                 val first = classes[0]
+                 if (first.className != characterClass || first.level != currentLvl) {
+                     classes = listOf(first.copy(className = characterClass, level = currentLvl))
+                 }
             }
         }
-        hpLevelData = newHpLevelData
-
-        // Sync Spell Settings
-        var fullLevels = 0
-        var halfLevels = 0
-        var thirdLevels = 0
         
-        classes.forEach { entry ->
-            when (entry.className) {
-                CharacterClass.WIZARD -> fullLevels += entry.level
-                CharacterClass.ARTIFICER -> halfLevels += entry.level
-                else -> {} // Fighter/Barbarian no slots by default
-            }
+        // characterClass and level are managed independently in the UI now.
+        // We just ensure the summary field matches the classes list format for card rendering.
+        if (isMulticlassHP) {
+            characterClass = classes.joinToString(" / ") { "${it.className} ${it.level}" }
+        } else {
+            val first = classes.firstOrNull()
+            characterClass = first?.className ?: ""
         }
+    }
 
-        spellSettings = spellSettings.copy(
-            fullCasterLevel = fullLevels,
-            halfCasterLevel = halfLevels,
-            thirdCasterLevel = thirdLevels,
-            isMulticlass = classes.size > 1,
-            casterType = if (classes.size == 1) {
-                when (classes[0].className) {
-                    CharacterClass.WIZARD -> CasterType.FULL
-                    CharacterClass.ARTIFICER -> CasterType.HALF
-                    else -> CasterType.NONE
-                }
-            } else spellSettings.casterType
-        )
+    fun syncHPDataExpansion() {
+        val targetLevel = level.toIntOrNull() ?: 1
+        
+        // Expand hpLevelData if needed
+        if (hpLevelData.size < targetLevel) {
+            val newList = hpLevelData.toMutableList()
+            for (i in newList.size + 1..targetLevel) {
+                newList.add(HPLevelEntry(level = i, hitDie = defaultHitDie))
+            }
+            hpLevelData = newList
+        }
+        
+        // Expand manualHPLevelData if needed
+        if (manualHPLevelData.size < targetLevel) {
+            val newList = manualHPLevelData.toMutableList()
+            for (i in newList.size + 1..targetLevel) {
+                newList.add(HPLevelEntry(level = i, hitDie = defaultHitDie))
+            }
+            manualHPLevelData = newList
+        }
     }
 }

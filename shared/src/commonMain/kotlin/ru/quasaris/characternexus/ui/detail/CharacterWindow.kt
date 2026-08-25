@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.RectangleShape
+import ru.quasaris.characternexus.ui.outerShadow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import ru.quasaris.characternexus.backend.*
@@ -216,9 +218,9 @@ fun CharacterWindow(
             Column(modifier = Modifier.background(colorScheme.background)) {
                 Surface(
                     tonalElevation = 1.dp,
-                    shadowElevation = 6.dp,
+                    shadowElevation = 0.dp,
                     color = colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().outerShadow(RectangleShape, blur = 6.dp)
                 ) {
                     Column {
                         CharacterHeader(

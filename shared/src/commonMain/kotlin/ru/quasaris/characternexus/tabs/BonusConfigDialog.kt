@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import ru.quasaris.characternexus.ui.DialogDimStyle
+import ru.quasaris.characternexus.ui.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -79,6 +80,7 @@ fun BonusConfigDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         DialogDimStyle(0f)
+        BackHandler(onBack = onDismiss)
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 

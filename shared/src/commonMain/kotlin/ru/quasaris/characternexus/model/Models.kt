@@ -40,7 +40,7 @@ data class SpeedEntry(
 @Serializable
 data class ClassEntry(
     val id: String = generateUuid(),
-    val className: CharacterClass = CharacterClass.FIGHTER,
+    val className: String = "",
     val subclass: String = "",
     val level: Int = 1
 )
@@ -535,7 +535,8 @@ data class HPLevelEntry(
     val level: Int,
     val hitDie: Int,
     val rollResult: Int? = null,
-    val manualValue: Int? = null
+    val manualValue: Int? = null,
+    val className: String? = null
 )
 
 @Serializable
@@ -651,20 +652,31 @@ data class Character(
     val race: String = "",
     val classes: List<ClassEntry> = emptyList()
 ) {
-    fun toSummary(): CharacterSummary = CharacterSummary(
-        uuid = uuid,
-        id = id,
-        name = name,
-        characterClass = characterClass,
-        level = level,
-        currentHp = currentHp,
-        maxHp = maxHp,
-        tempHp = tempHp,
-        imageData = imageData,
-        themeSeedColorArgb = themeSeedColorArgb,
-        experience = experience,
-        order = order
-    )
+    fun toSummary(): CharacterSummary {
+        val displayClass = if (isMulticlassHP) {
+            classes.joinToString(" • ") { "${it.className} ${it.level}" }
+        } else {
+            val firstClass = classes.firstOrNull()
+            val baseClass = firstClass?.className ?: characterClass
+            val subclass = firstClass?.subclass ?: ""
+            if (subclass.isNotBlank()) "$baseClass • $subclass" else baseClass
+        }
+
+        return CharacterSummary(
+            uuid = uuid,
+            id = id,
+            name = name,
+            characterClass = displayClass,
+            level = level,
+            currentHp = currentHp,
+            maxHp = maxHp,
+            tempHp = tempHp,
+            imageData = imageData,
+            themeSeedColorArgb = themeSeedColorArgb,
+            experience = experience,
+            order = order
+        )
+    }
 }
 
 @Serializable

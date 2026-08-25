@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -43,7 +42,8 @@ fun LevelPanel(
     prof: String,
     onProfChange: (String) -> Unit,
     nextExp: String,
-    stats: Map<String, String>
+    stats: Map<String, String>,
+    standalone: Boolean = true
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
@@ -57,6 +57,67 @@ fun LevelPanel(
     var etv by remember { mutableStateOf(TextFieldValue(exp, selection = TextRange(exp.length))) }
     var ptv by remember { mutableStateOf(TextFieldValue(prof, selection = TextRange(prof.length))) }
     var isPFocused by remember { mutableStateOf(false) }
+
+    var showExpAdjustmentDialog by remember { mutableStateOf(false) }
+    var adjustmentValue by remember { mutableStateOf("") }
+
+    if (showExpAdjustmentDialog) {
+        AlertDialog(
+            onDismissRequest = { showExpAdjustmentDialog = false },
+            title = { Text("Изменение опыта") },
+            text = {
+                OutlinedTextField(
+                    value = adjustmentValue,
+                    onValueChange = { s ->
+                        if (s.isEmpty() || s == "-" || s.all { it.isDigit() || (it == '-' && s.indexOf(it) == 0) }) {
+                            adjustmentValue = s
+                        }
+                    },
+                    label = { Text("Значение") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            val valInt = adjustmentValue.toIntOrNull() ?: 0
+                            val currentExp = localExp.toLongOrNull() ?: 0L
+                            val newExp = (currentExp - valInt).coerceAtLeast(0L)
+                            localExp = newExp.toString()
+                            etv = TextFieldValue(localExp, selection = TextRange(localExp.length))
+                            showExpAdjustmentDialog = false
+                            adjustmentValue = ""
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.error)
+                    ) {
+                        Text("Уменьшить")
+                    }
+                    TextButton(
+                        onClick = {
+                            val valInt = adjustmentValue.toIntOrNull() ?: 0
+                            val currentExp = localExp.toLongOrNull() ?: 0L
+                            val newExp = (currentExp + valInt).coerceAtLeast(0L)
+                            localExp = newExp.toString()
+                            etv = TextFieldValue(localExp, selection = TextRange(localExp.length))
+                            showExpAdjustmentDialog = false
+                            adjustmentValue = ""
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = colorScheme.primary)
+                    ) {
+                        Text("Добавить")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExpAdjustmentDialog = false; adjustmentValue = "" }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
 
     // Update local states when props change (sync from outside)
     LaunchedEffect(level) { 
@@ -166,21 +227,17 @@ fun LevelPanel(
         colorScheme.onSurface.copy(alpha = 0.38f)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-            .border(androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
-    ) {
-        Text(
-            text = "Уровень и Опыт",
-            modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Black,
-            color = colorScheme.primary
-        )
-        
+    val content: @Composable ColumnScope.() -> Unit = {
+        if (standalone) {
+            Text(
+                text = "Уровень и Опыт",
+                modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                color = colorScheme.primary
+            )
+        }
+
         // Character Level Row
         Row(modifier = Modifier.fillMaxWidth().height(48.dp).clickable { ltv = ltv.copy(selection = TextRange(ltv.text.length)); fl.requestFocus() }, verticalAlignment = Alignment.CenterVertically) {
             Text("Уровень персонажа", modifier = Modifier.padding(start = 16.dp).weight(1f), fontSize = 14.sp, color = colorScheme.onSurfaceVariant)
@@ -273,26 +330,58 @@ fun LevelPanel(
         }
         
         Spacer(Modifier.height(8.dp))
-        
-        // Level Up/Down Button
-        Button(
-            onClick = { 
-                if (buttonEnabled) {
-                    localLevel = targetLvl.toString()
-                    ltv = TextFieldValue(targetLvl.toString(), selection = TextRange(targetLvl.toString().length))
-                } 
-            }, 
-            enabled = buttonEnabled, 
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).height(40.dp), 
-            shape = RoundedCornerShape(8.dp), 
-            colors = ButtonDefaults.buttonColors(
-                containerColor = finalContainerColor,
-                contentColor = finalContentColor,
-                disabledContainerColor = finalContainerColor,
-                disabledContentColor = finalContentColor
-            )
-        ) { 
-            Text(buttonText, fontSize = 14.sp) 
+
+        // Action Buttons Row
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp).height(40.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { showExpAdjustmentDialog = true },
+                modifier = Modifier.weight(0.4f).fillMaxHeight(),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text("Добавить опыт", fontSize = 12.sp)
+            }
+
+            Button(
+                onClick = {
+                    if (buttonEnabled) {
+                        localLevel = targetLvl.toString()
+                        ltv = TextFieldValue(targetLvl.toString(), selection = TextRange(targetLvl.toString().length))
+                    }
+                },
+                enabled = buttonEnabled,
+                modifier = Modifier.weight(0.6f).fillMaxHeight(),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = finalContainerColor,
+                    contentColor = finalContentColor,
+                    disabledContainerColor = finalContainerColor,
+                    disabledContentColor = finalContentColor
+                )
+            ) {
+                Text(buttonText, fontSize = 14.sp)
+            }
         }
+    }
+
+    if (standalone) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                .border(
+                    androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        colorScheme.outlineVariant.copy(alpha = 0.2f)
+                    ), RoundedCornerShape(16.dp)
+                ),
+            content = content
+        )
+    } else {
+        Column(modifier = Modifier.fillMaxWidth(), content = content)
     }
 }

@@ -37,8 +37,6 @@ fun TabNavigationBar(
     onShowTabSheet: () -> Unit,
     isEditMode: Boolean,
     onToggleEditMode: () -> Unit,
-    isAdvancedMode: Boolean,
-    onToggleAdvancedMode: () -> Unit,
     hasContentToEdit: Boolean,
     collapsibleTabs: List<CharacterTab>,
     anyCollapsed: Boolean,
@@ -70,17 +68,8 @@ fun TabNavigationBar(
                         tint = colorScheme.primary
                     )
                 }
-            } else if (currentTab == CharacterTab.STATS) {
-                IconButton(
-                    onClick = onToggleAdvancedMode,
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isAdvancedMode) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
-                        contentDescription = "Toggle Advanced Mode",
-                        tint = colorScheme.primary
-                    )
-                }
+            } else {
+                // Empty box for spacing
             }
         }
 

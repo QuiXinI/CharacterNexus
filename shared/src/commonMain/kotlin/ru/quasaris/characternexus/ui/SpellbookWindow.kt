@@ -233,7 +233,8 @@ fun SpellbookWindow(
                 SpellFiltersArea(
                     visible = showFilters,
                     filterState = filterState,
-                    onFilterChange = { filterState = it }
+                    onFilterChange = { filterState = it },
+                    modifier = Modifier.weight(1f, fill = false)
                 )
 
                 OutlinedTextField(

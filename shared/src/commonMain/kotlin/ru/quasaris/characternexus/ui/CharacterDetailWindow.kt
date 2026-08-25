@@ -44,6 +44,8 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeSource
 import ru.quasaris.characternexus.tabs.spells.SpellsTab
 import ru.quasaris.characternexus.backend.SpellbookManager
+import ru.quasaris.characternexus.ui.outerShadow
+import androidx.compose.ui.graphics.RectangleShape
 import characternexus.shared.generated.resources.Res
 import characternexus.shared.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
@@ -326,26 +328,30 @@ fun CharacterDetailWindow(
                                 }
                                 KeybindAction.TOGGLE_EXPANSION -> {
                                     val tab = tabs[pagerState.currentPage % tabs.size]
-                                    val currentList = when (tab) {
-                                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
-                                        CharacterTab.INVENTORY -> state.inventory
-                                        CharacterTab.SPELLS -> state.spells
-                                        CharacterTab.NOTES -> state.notes
-                                        else -> emptyList()
-                                    }
-                                    if (currentList.isNotEmpty()) {
-                                        val anyCollapsed = currentList.any { !it.isExpanded }
-                                        val newState = if (anyCollapsed) {
-                                            currentList.map { it.copy(isExpanded = true) }
-                                        } else {
-                                            currentList.map { it.copy(isExpanded = false) }
+                                    if (tab == CharacterTab.STATS) {
+                                        state.isAdvancedMode = !state.isAdvancedMode
+                                    } else {
+                                        val currentList = when (tab) {
+                                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
+                                            CharacterTab.INVENTORY -> state.inventory
+                                            CharacterTab.SPELLS -> state.spells
+                                            CharacterTab.NOTES -> state.notes
+                                            else -> emptyList()
                                         }
-                                        when (tab) {
-                                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
-                                            CharacterTab.INVENTORY -> state.inventory = newState
-                                            CharacterTab.SPELLS -> state.spells = newState
-                                            CharacterTab.NOTES -> state.notes = newState
-                                            else -> {}
+                                        if (currentList.isNotEmpty()) {
+                                            val anyCollapsed = currentList.any { !it.isExpanded }
+                                            val newState = if (anyCollapsed) {
+                                                currentList.map { it.copy(isExpanded = true) }
+                                            } else {
+                                                currentList.map { it.copy(isExpanded = false) }
+                                            }
+                                            when (tab) {
+                                                CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
+                                                CharacterTab.INVENTORY -> state.inventory = newState
+                                                CharacterTab.SPELLS -> state.spells = newState
+                                                CharacterTab.NOTES -> state.notes = newState
+                                                else -> {}
+                                            }
                                         }
                                     }
                                     true
@@ -493,9 +499,9 @@ fun CharacterDetailTopBar(
     // Единый Surface обёртывает Хедер, Табы и Выпадающие Панели!
     Surface(
         tonalElevation = 1.dp,
-        shadowElevation = 6.dp, // <--- Эта тень автоматически отбрасывается ВНИЗ под текущую границу всего блока!
+        shadowElevation = 0.dp,
         color = colorScheme.surface,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().outerShadow(RectangleShape, blur = 6.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             CharacterHeader(
@@ -593,11 +599,6 @@ fun CharacterDetailTopBar(
                     state.isEditMode = !state.isEditMode
                     rootFocusRequester.requestFocus()
                 },
-                isAdvancedMode = state.isAdvancedMode,
-                onToggleAdvancedMode = { 
-                    state.isAdvancedMode = !state.isAdvancedMode
-                    rootFocusRequester.requestFocus()
-                },
                 hasContentToEdit = when(currentTab) {
                     CharacterTab.ATTACKS -> state.attacks.isNotEmpty()
                     CharacterTab.NOTES -> state.notes.isNotEmpty()
@@ -608,12 +609,14 @@ fun CharacterDetailTopBar(
                     else -> false
                 },
                 collapsibleTabs = listOf(
+                    CharacterTab.STATS,
                     CharacterTab.SKILLS_FEATS,
                     CharacterTab.INVENTORY,
                     CharacterTab.SPELLS,
                     CharacterTab.NOTES
                 ),
                 anyCollapsed = when (currentTab) {
+                    CharacterTab.STATS -> !state.isAdvancedMode
                     CharacterTab.SKILLS_FEATS -> state.skillsAndTraits.any { !it.isExpanded }
                     CharacterTab.INVENTORY -> state.inventory.any { !it.isExpanded }
                     CharacterTab.SPELLS -> state.spells.any { !it.isExpanded }
@@ -621,25 +624,29 @@ fun CharacterDetailTopBar(
                     else -> false
                 },
                 onToggleAllExpansion = {
-                    val currentList = when (currentTab) {
-                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
-                        CharacterTab.INVENTORY -> state.inventory
-                        CharacterTab.SPELLS -> state.spells
-                        CharacterTab.NOTES -> state.notes
-                        else -> emptyList()
-                    }
-                    val anyCollapsed = currentList.any { !it.isExpanded }
-                    val newState = if (anyCollapsed) {
-                        currentList.map { it.copy(isExpanded = true) }
+                    if (currentTab == CharacterTab.STATS) {
+                        state.isAdvancedMode = !state.isAdvancedMode
                     } else {
-                        currentList.map { it.copy(isExpanded = false) }
-                    }
-                    when (currentTab) {
-                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
-                        CharacterTab.INVENTORY -> state.inventory = newState
-                        CharacterTab.SPELLS -> state.spells = newState
-                        CharacterTab.NOTES -> state.notes = newState
-                        else -> {}
+                        val currentList = when (currentTab) {
+                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
+                            CharacterTab.INVENTORY -> state.inventory
+                            CharacterTab.SPELLS -> state.spells
+                            CharacterTab.NOTES -> state.notes
+                            else -> emptyList()
+                        }
+                        val anyCollapsed = currentList.any { !it.isExpanded }
+                        val newState = if (anyCollapsed) {
+                            currentList.map { it.copy(isExpanded = true) }
+                        } else {
+                            currentList.map { it.copy(isExpanded = false) }
+                        }
+                        when (currentTab) {
+                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
+                            CharacterTab.INVENTORY -> state.inventory = newState
+                            CharacterTab.SPELLS -> state.spells = newState
+                            CharacterTab.NOTES -> state.notes = newState
+                            else -> {}
+                        }
                     }
                     rootFocusRequester.requestFocus()
                 },

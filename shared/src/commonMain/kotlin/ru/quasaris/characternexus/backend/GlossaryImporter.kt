@@ -141,7 +141,7 @@ class GlossaryImporter(
                 obj.containsKey("prerequisites") -> {
                     saveItem("feats", extractId(content), content); true
                 }
-                obj.containsKey("primary_ability") -> {
+                obj.containsKey("primary_ability") || obj.containsKey("class_tab") -> {
                     saveItem("classes", extractId(content), content); true
                 }
                 obj.containsKey("class_id") -> {

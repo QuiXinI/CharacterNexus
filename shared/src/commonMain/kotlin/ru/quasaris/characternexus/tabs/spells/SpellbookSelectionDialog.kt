@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.backend.SpellbookManager
 import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.tabs.spells.SpellFiltersArea
@@ -69,6 +70,7 @@ fun SpellbookSelectionDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        BackHandler(onBack = onDismiss)
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 

@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.RectangleShape
+import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.quasarisTheme
 import ru.quasaris.characternexus.backend.ArchiveManager
 import ru.quasaris.characternexus.*
@@ -350,9 +352,9 @@ fun CreateWindow(
             Column(modifier = Modifier.background(colorScheme.background)) {
                 Surface(
                     tonalElevation = 1.dp,
-                    shadowElevation = 6.dp,
+                    shadowElevation = 0.dp,
                     color = colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().outerShadow(RectangleShape, blur = 6.dp)
                 ) {
                     Column {
                         CharacterIdentitySection(

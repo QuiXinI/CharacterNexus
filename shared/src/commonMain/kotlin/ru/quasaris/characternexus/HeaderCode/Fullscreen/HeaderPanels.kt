@@ -30,6 +30,7 @@ import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusField
 import ru.quasaris.characternexus.tabs.attacks.AddBonusButton
 import ru.quasaris.characternexus.HeaderCode.getFullFormula
+import ru.quasaris.characternexus.ui.BackHandler
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -109,7 +110,9 @@ fun EditVariantDialog(
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
-        Scaffold(
+    BackHandler(onBack = onDismiss)
+
+    Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(title, fontWeight = FontWeight.Bold) },

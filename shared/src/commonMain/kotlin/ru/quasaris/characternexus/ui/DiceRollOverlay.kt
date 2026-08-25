@@ -24,7 +24,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -96,7 +96,7 @@ fun DiceRollOverlay(
                             .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
                             .background(colorScheme.surface.copy(alpha = 0.4f))
                     } else {
-                        this.shadow(8.dp, RoundedCornerShape(24.dp))
+                        this.outerShadow(shape = RoundedCornerShape(24.dp), blur = 8.dp)
                             .background(
                                 color = when {
                                     isOled -> Color.Black

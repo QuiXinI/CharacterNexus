@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import ru.quasaris.characternexus.ui.DialogDimStyle
+import ru.quasaris.characternexus.ui.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -51,7 +52,9 @@ fun SpeedDialog(
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
-        Scaffold(
+    BackHandler(onBack = onDismiss)
+
+    Scaffold(
             modifier = Modifier
                 .blur(if (isSubDialogOpen && forceBlurEnabled && !isOled) 24.dp else 0.dp)
                 .run {

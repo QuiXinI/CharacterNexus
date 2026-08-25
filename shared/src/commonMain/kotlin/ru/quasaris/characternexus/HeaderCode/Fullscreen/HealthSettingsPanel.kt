@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.ui.DialogDimStyle
+import ru.quasaris.characternexus.ui.BackHandler
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
@@ -70,7 +71,9 @@ fun HealthSettingsDialog(
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
 
-        Scaffold(
+    BackHandler(onBack = onDismiss)
+
+    Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text("Настройки Хитов", fontWeight = FontWeight.Black) },
@@ -163,25 +166,47 @@ fun HealthSettingsContent(
     }
     val warningColor = if (isDarkMode) Color(0xFFEF9A9A) else Color(0xFFD32F2F)
 
-    data class HPGroupState(val countText: String, val hitDie: Int)
+    var lastSavedManual by remember { mutableStateOf(isManual) }
+    var lastSavedMaxHp by remember { mutableStateOf(manualMaxHp) }
+    var lastSavedMulticlass by remember { mutableStateOf(isMulticlass) }
+    var lastSavedHitDie by remember { mutableStateOf(currentHitDie) }
+    var lastSavedLevelData by remember { mutableStateOf(hpLevelData) }
+    var lastSavedManualLevelData by remember { mutableStateOf(manualHPLevelData) }
+    var lastSavedMaxHD by remember { mutableStateOf(manualMaxHitDice) }
+    var lastSavedBonusesAtLevel by remember { mutableStateOf(hpBonusesAtLevel) }
+    var lastSavedBonusesTotal by remember { mutableStateOf(hpBonusesTotal) }
+
+    val isDirty = isManual != lastSavedManual ||
+            manualMaxHp != lastSavedMaxHp ||
+            isMulticlass != lastSavedMulticlass ||
+            currentHitDie != lastSavedHitDie ||
+            hpLevelData != lastSavedLevelData ||
+            manualHPLevelData != lastSavedManualLevelData ||
+            manualMaxHitDice != lastSavedMaxHD ||
+            hpBonusesAtLevel != lastSavedBonusesAtLevel ||
+            hpBonusesTotal != lastSavedBonusesTotal
+
+    data class HPGroupState(val className: String, val countText: String, val hitDie: Int)
 
     val localGroups = remember(manualHPLevelData, currentHitDie) {
         val initial = mutableListOf<HPGroupState>()
         if (manualHPLevelData.isNotEmpty()) {
+            var currentClass = manualHPLevelData[0].className ?: ""
             var currentDie = manualHPLevelData[0].hitDie
             var currentCount = 0
             manualHPLevelData.forEach {
-                if (it.hitDie == currentDie) {
+                if (it.className == currentClass && it.hitDie == currentDie) {
                     currentCount++
                 } else {
-                    initial.add(HPGroupState(currentCount.toString(), currentDie))
+                    initial.add(HPGroupState(currentClass, currentCount.toString(), currentDie))
+                    currentClass = it.className ?: ""
                     currentDie = it.hitDie
                     currentCount = 1
                 }
             }
-            if (currentCount > 0) initial.add(HPGroupState(currentCount.toString(), currentDie))
+            if (currentCount > 0) initial.add(HPGroupState(currentClass, currentCount.toString(), currentDie))
         } else {
-            initial.add(HPGroupState("", currentHitDie))
+            initial.add(HPGroupState("", "", currentHitDie))
         }
         mutableStateListOf(*initial.toTypedArray())
     }
@@ -193,7 +218,7 @@ fun HealthSettingsContent(
             val count = if (group.countText.isBlank() && !isMulticlass) level else group.countText.toIntOrNull() ?: 0
             for (i in 1..count) {
                 processed++
-                newList.add(HPLevelEntry(level = processed, hitDie = group.hitDie))
+                newList.add(HPLevelEntry(level = processed, hitDie = group.hitDie, className = group.className))
             }
         }
         onManualHPLevelDataChange(newList)
@@ -293,85 +318,108 @@ fun HealthSettingsContent(
                     }
 
                     localGroups.forEachIndexed { groupIdx, group ->
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedTextField(
-                                value = group.countText,
-                                onValueChange = { s ->
-                                    val filtered = s.filter { it.isDigit() }
-                                    localGroups[groupIdx] = group.copy(countText = filtered)
-                                    syncToModel()
-                                },
-                                readOnly = false,
-                                label = { Text("Уровней") },
-                                placeholder = {
-                                    if (!isMulticlass) {
-                                        Text("$level (по умолчанию)")
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp),
-                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                                colors = if (isWarning) OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = warningColor,
-                                    unfocusedBorderColor = warningColor.copy(alpha = 0.7f),
-                                    cursorColor = colorScheme.primary,
-                                    focusedLabelColor = warningColor,
-                                    unfocusedLabelColor = warningColor.copy(alpha = 0.7f)
-                                ) else OutlinedTextFieldDefaults.colors()
-                            )
-
-                            var expanded by remember { mutableStateOf(false) }
-                            Box(modifier = Modifier.weight(1f)) {
+                            if (isMulticlass) {
                                 OutlinedTextField(
-                                    value = "d${group.hitDie}",
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    label = { Text("Кость") },
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                    value = group.className,
+                                    onValueChange = { s ->
+                                        localGroups[groupIdx] = group.copy(className = s)
+                                        syncToModel()
+                                    },
+                                    label = { Text("Название класса") },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(8.dp)
                                 )
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .clickable { expanded = true }
-                                )
-                                
-                                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                                    listOf(4, 6, 8, 10, 12, 20).forEach { option ->
-                                        DropdownMenuItem(
-                                            text = { Text("d$option") },
-                                            onClick = {
-                                                localGroups[groupIdx] = group.copy(hitDie = option)
-                                                syncToModel()
-                                                expanded = false
-                                            }
-                                        )
-                                    }
-                                }
                             }
                             
-                            if (localGroups.size > 1) {
-                                IconButton(onClick = {
-                                    localGroups.removeAt(groupIdx)
-                                    syncToModel()
-                                }) {
-                                    Icon(Icons.Default.Delete, null, tint = colorScheme.error)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = group.countText,
+                                    onValueChange = { s ->
+                                        val filtered = s.filter { it.isDigit() }
+                                        localGroups[groupIdx] = group.copy(countText = filtered)
+                                        syncToModel()
+                                    },
+                                    readOnly = false,
+                                    label = { Text("Уровней") },
+                                    placeholder = {
+                                        if (!isMulticlass) {
+                                            Text("$level (по умолчанию)")
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                                    colors = if (isWarning) OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = warningColor,
+                                        unfocusedBorderColor = warningColor.copy(alpha = 0.7f),
+                                        cursorColor = colorScheme.primary,
+                                        focusedLabelColor = warningColor,
+                                        unfocusedLabelColor = warningColor.copy(alpha = 0.7f)
+                                    ) else OutlinedTextFieldDefaults.colors()
+                                )
+
+                                var expanded by remember { mutableStateOf(false) }
+                                Box(modifier = Modifier.weight(1f)) {
+                                    OutlinedTextField(
+                                        value = "d${group.hitDie}",
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Кость") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .clickable { expanded = true }
+                                    )
+                                    
+                                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                        listOf(4, 6, 8, 10, 12, 20).forEach { option ->
+                                            DropdownMenuItem(
+                                                text = { Text("d$option") },
+                                                onClick = {
+                                                    localGroups[groupIdx] = group.copy(hitDie = option)
+                                                    syncToModel()
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                
+                                if (localGroups.size > 1) {
+                                    IconButton(onClick = {
+                                        localGroups.removeAt(groupIdx)
+                                        syncToModel()
+                                    }) {
+                                        Icon(Icons.Default.Delete, null, tint = colorScheme.error)
+                                    }
                                 }
                             }
                         }
                     }
                     
                     if (isMulticlass) {
-                        TextButton(onClick = {
-                            localGroups.add(HPGroupState("", currentHitDie))
-                            syncToModel()
-                        }) {
+                        OutlinedButton(
+                            onClick = {
+                                localGroups.add(HPGroupState("", "", currentHitDie))
+                                syncToModel()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
                             Icon(Icons.Default.Add, null)
+                            Spacer(Modifier.width(8.dp))
                             Text("Добавить другую кость хитов")
                         }
                     }
@@ -626,6 +674,28 @@ fun HealthSettingsContent(
                     }
                     AddBonusButton {
                         onHpBonusesTotalChange(hpBonusesTotal + AttackBonus())
+                    }
+                }
+
+                if (isDirty) {
+                    Button(
+                        onClick = {
+                            lastSavedManual = isManual
+                            lastSavedMaxHp = manualMaxHp
+                            lastSavedMulticlass = isMulticlass
+                            lastSavedHitDie = currentHitDie
+                            lastSavedLevelData = hpLevelData
+                            lastSavedManualLevelData = manualHPLevelData
+                            lastSavedMaxHD = manualMaxHitDice
+                            lastSavedBonusesAtLevel = hpBonusesAtLevel
+                            lastSavedBonusesTotal = hpBonusesTotal
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Check, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Сохранить")
                     }
                 }
 

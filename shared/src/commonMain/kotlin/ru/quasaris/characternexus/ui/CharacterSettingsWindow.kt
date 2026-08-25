@@ -15,15 +15,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.HeaderCode.Fullscreen.HealthSettingsContent
+import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.*
+import ru.quasaris.characternexus.HeaderCode.LevelPanel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +41,7 @@ fun CharacterSettingsWindow(
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         DialogDimStyle(0f)
+        BackHandler(onBack = onDismiss)
         val colorScheme = MaterialTheme.colorScheme
         val isOled = colorScheme.background == Color.Black
         var selectedTabIndex by remember { mutableStateOf(0) }
@@ -80,7 +84,7 @@ fun CharacterSettingsWindow(
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                 when (selectedTabIndex) {
-                    0 -> IdentitySettingsSection(state)
+                    0 -> IdentitySettingsSection(state, statsMap)
                     1 -> HealthSettingsContent(
                         isManual = state.isManualHP,
                         onManualChange = { state.isManualHP = it },
@@ -109,10 +113,29 @@ fun CharacterSettingsWindow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IdentitySettingsSection(state: CharacterDetailState) {
+fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, String>) {
     val colorScheme = MaterialTheme.colorScheme
-    
+
+    var lastSavedName by remember { mutableStateOf(state.name) }
+    var lastSavedRace by remember { mutableStateOf(state.race) }
+    var lastSavedLevel by remember { mutableStateOf(state.level) }
+    var lastSavedExperience by remember { mutableStateOf(state.experience) }
+    var lastSavedProficiency by remember { mutableStateOf(state.proficiencyBonus) }
+    var lastSavedMulticlass by remember { mutableStateOf(state.isMulticlassHP) }
+    var lastSavedClasses by remember { mutableStateOf(state.classes) }
+    var lastSavedBaseClass by remember { mutableStateOf(state.characterClass) }
+
+    val isDirty = state.name != lastSavedName ||
+            state.race != lastSavedRace ||
+            state.level != lastSavedLevel ||
+            state.experience != lastSavedExperience ||
+            state.proficiencyBonus != lastSavedProficiency ||
+            state.isMulticlassHP != lastSavedMulticlass ||
+            state.classes != lastSavedClasses ||
+            state.characterClass != lastSavedBaseClass
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -121,7 +144,7 @@ fun IdentitySettingsSection(state: CharacterDetailState) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         SectionHeader("Основная информация")
-        
+
         OutlinedTextField(
             value = state.name,
             onValueChange = { state.name = it },
@@ -138,122 +161,212 @@ fun IdentitySettingsSection(state: CharacterDetailState) {
             shape = RoundedCornerShape(12.dp)
         )
 
-        Spacer(Modifier.height(8.dp))
-        SectionHeader("Классы и уровни")
+        SectionHeader("Уровень и Опыт")
 
-        state.classes.forEachIndexed { index, entry ->
-            ClassEntryRow(
-                entry = entry,
-                onUpdate = { updated ->
+        LevelPanel(
+            level = state.level,
+            onLevelChange = {
+                state.level = it
+                state.syncHPDataExpansion()
+                state.syncIdentity()
+            },
+            exp = state.experience,
+            onExpChange = { state.experience = it },
+            prof = state.proficiencyBonus,
+            onProfChange = { state.proficiencyBonus = it },
+            nextExp = state.nextLevelExp,
+            stats = statsMap,
+            standalone = false
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Мультикласс", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (state.isMulticlassHP) "Активен ручной выбор классов" else "Один основной класс",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = state.isMulticlassHP,
+                    onCheckedChange = {
+                        state.isMulticlassHP = it
+                        if (it && state.classes.isEmpty()) {
+                            state.classes = listOf(ClassEntry(className = state.characterClass, level = state.level.toIntOrNull() ?: 1))
+                        }
+                        state.syncIdentity()
+                    },
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+        }
+
+        if (!state.isMulticlassHP) {
+            SectionHeader("Класс")
+            
+            val firstClass = state.classes.firstOrNull() ?: ClassEntry()
+            
+            OutlinedTextField(
+                value = state.characterClass,
+                onValueChange = { 
+                    state.characterClass = it
+                    state.classes = listOf(firstClass.copy(className = it))
+                    state.syncIdentity()
+                },
+                label = { Text("Класс") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+            
+            OutlinedTextField(
+                value = firstClass.subclass,
+                onValueChange = { 
+                    state.classes = listOf(firstClass.copy(subclass = it))
+                    state.syncIdentity()
+                },
+                label = { Text("Подкласс") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+        } else {
+            SectionHeader("Список классов")
+
+            state.classes.forEachIndexed { index, entry ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = entry.className,
+                                onValueChange = { s ->
+                                    val newList = state.classes.toMutableList()
+                                    newList[index] = entry.copy(className = s)
+                                    state.classes = newList
+                                    state.syncIdentity()
+                                },
+                                label = { Text("Класс") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+
+                            if (state.classes.size > 1) {
+                                IconButton(onClick = {
+                                    val newList = state.classes.toMutableList()
+                                    newList.removeAt(index)
+                                    state.classes = newList
+                                    state.syncIdentity()
+                                }) {
+                                    Icon(Icons.Default.Delete, null, tint = colorScheme.error)
+                                }
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = entry.subclass,
+                                onValueChange = { s ->
+                                    val newList = state.classes.toMutableList()
+                                    newList[index] = entry.copy(subclass = s)
+                                    state.classes = newList
+                                    state.syncIdentity()
+                                },
+                                label = { Text("Подкласс") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+
+                            val totalLvl = state.level.toIntOrNull() ?: 1
+                            val placeholder = if (index == 0) {
+                                totalLvl.toString()
+                            } else {
+                                val otherSum = state.classes.filterIndexed { i, _ -> i != index }.sumOf { it.level }
+                                (totalLvl - otherSum).coerceAtLeast(0).toString()
+                            }
+
+                            OutlinedTextField(
+                                value = if (entry.level == 0) "" else entry.level.toString(),
+                                onValueChange = { s ->
+                                    val filtered = s.filter { it.isDigit() }
+                                    val valInt = filtered.toIntOrNull() ?: 0
+                                    val newList = state.classes.toMutableList()
+                                    newList[index] = entry.copy(level = valInt)
+                                    state.classes = newList
+                                    state.syncIdentity()
+                                },
+                                label = { Text("Уровень") },
+                                placeholder = { Text(placeholder) },
+                                modifier = Modifier.width(100.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            )
+                        }
+                    }
+                }
+            }
+
+            OutlinedButton(
+                onClick = {
                     val newList = state.classes.toMutableList()
-                    newList[index] = updated
+                    newList.add(ClassEntry(className = "", level = 1))
                     state.classes = newList
                     state.syncIdentity()
                 },
-                onDelete = {
-                    val newList = state.classes.toMutableList()
-                    newList.removeAt(index)
-                    state.classes = newList
-                    state.syncIdentity()
-                }
-            )
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Добавить класс")
+            }
         }
 
-        Button(
-            onClick = {
-                state.classes = state.classes + ClassEntry()
-                state.syncIdentity()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.Add, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Добавить класс")
+        if (isDirty) {
+            Button(
+                onClick = {
+                    lastSavedName = state.name
+                    lastSavedRace = state.race
+                    lastSavedLevel = state.level
+                    lastSavedExperience = state.experience
+                    lastSavedProficiency = state.proficiencyBonus
+                    lastSavedMulticlass = state.isMulticlassHP
+                    lastSavedClasses = state.classes
+                    lastSavedBaseClass = state.characterClass
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Check, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Сохранить")
+            }
         }
 
         Spacer(Modifier.height(32.dp))
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ClassEntryRow(
-    entry: ClassEntry,
-    onUpdate: (ClassEntry) -> Unit,
-    onDelete: () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                var expanded by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = entry.className.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Класс") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    Box(modifier = Modifier.matchParentSize().clickable { expanded = true })
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        listOf(
-                            CharacterClass.BARBARIAN,
-                            CharacterClass.FIGHTER,
-                            CharacterClass.ARTIFICER,
-                            CharacterClass.WIZARD
-                        ).forEach { cls ->
-                            DropdownMenuItem(
-                                text = { Text(cls.displayName) },
-                                onClick = {
-                                    onUpdate(entry.copy(className = cls))
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = if (entry.level == 0) "" else entry.level.toString(),
-                    onValueChange = { s ->
-                        val v = s.filter { it.isDigit() }.toIntOrNull() ?: 0
-                        onUpdate(entry.copy(level = v))
-                    },
-                    label = { Text("Ур") },
-                    modifier = Modifier.width(70.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, null, tint = colorScheme.error)
-                }
-            }
-
-            OutlinedTextField(
-                value = entry.subclass,
-                onValueChange = { onUpdate(entry.copy(subclass = it)) },
-                label = { Text("Подкласс") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
-            )
-        }
-    }
-}
+// DELETE or keep if needed, but I'll remove as per plan to simplify

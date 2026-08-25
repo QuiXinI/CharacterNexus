@@ -277,8 +277,9 @@ fun App(
                                         selected = currentRoute == "glossary",
                                         onClick = {
                                             scope.launch { drawerState.close() }
-                                            if (currentRoute != "glossary") {
-                                                navController.navigate("glossary")
+                                            NavigationPathManager.clear()
+                                            navController.navigate("glossary") {
+                                                popUpTo("glossary") { inclusive = true }
                                             }
                                         },
                                         icon = { Icon(Icons.Default.HistoryEdu, null) },
@@ -286,11 +287,12 @@ fun App(
                                     )
                                     
                                     if (NavigationPathManager.currentSection == "glossary") {
-                                        NavigationPathManager.path.forEach { node ->
+                                        val fullPath = NavigationPathManager.path
+                                        fullPath.dropLast(1).forEach { node ->
                                             if (node.level == 0 && (node.id == "hub" || node.id == "modules")) return@forEach
                                             
                                             NavigationDrawerItem(
-                                                label = { Text(node.label, fontWeight = if (node == NavigationPathManager.path.last()) FontWeight.Bold else FontWeight.Normal) },
+                                                label = { Text(node.label, fontWeight = FontWeight.Normal) },
                                                 selected = false,
                                                 onClick = {
                                                     scope.launch { drawerState.close() }
@@ -309,8 +311,9 @@ fun App(
                                         selected = currentRoute == "modules",
                                         onClick = {
                                             scope.launch { drawerState.close() }
-                                            if (currentRoute != "modules") {
-                                                navController.navigate("modules")
+                                            NavigationPathManager.clear()
+                                            navController.navigate("modules") {
+                                                popUpTo("modules") { inclusive = true }
                                             }
                                         },
                                         icon = { Icon(Icons.Default.Extension, null) },
@@ -318,11 +321,12 @@ fun App(
                                     )
 
                                     if (NavigationPathManager.currentSection == "modules") {
-                                        NavigationPathManager.path.forEach { node ->
+                                        val fullPath = NavigationPathManager.path
+                                        fullPath.dropLast(1).forEach { node ->
                                             if (node.level == 0 && (node.id == "modules" || node.id == "hub")) return@forEach
 
                                             NavigationDrawerItem(
-                                                label = { Text(node.label, fontWeight = if (node == NavigationPathManager.path.last()) FontWeight.Bold else FontWeight.Normal) },
+                                                label = { Text(node.label, fontWeight = FontWeight.Normal) },
                                                 selected = false,
                                                 onClick = {
                                                     scope.launch { drawerState.close() }

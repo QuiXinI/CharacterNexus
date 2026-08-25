@@ -66,16 +66,15 @@ fun GlossaryWindow(
         when (val view = currentView) {
             is GlossaryView.Hub -> {
                 detailTitle = ""
-                GlossaryCategory.entries.forEach { cat ->
-                    path.add(NavNode("cat_${cat.name}", cat.title, 0) { currentView = GlossaryView.Category(cat) })
-                }
             }
             is GlossaryView.Category -> {
                 detailTitle = ""
-                path.add(NavNode("cat", view.category.title, 0))
+                path.add(NavNode("hub", "Глоссарий", 0))
+                path.add(NavNode("cat", view.category.title, 1))
             }
             is GlossaryView.Detail -> {
-                path.add(NavNode("cat", view.category.title, 0) { currentView = GlossaryView.Category(view.category) })
+                path.add(NavNode("hub", "Глоссарий", 0))
+                path.add(NavNode("cat", view.category.title, 1) { currentView = GlossaryView.Category(view.category) })
                 // Item name reported by detail window
             }
         }
@@ -150,10 +149,11 @@ fun GlossaryWindow(
                         )
                     }
                     is GlossaryView.Detail -> {
-                         if (view.category == GlossaryCategory.CLASSES) {
+                        if (view.category == GlossaryCategory.CLASSES) {
                             ClassDetailWindow(
                                 classFile = view.file,
                                 moduleManager = moduleManager,
+                                spellbookManager = spellbookManager,
                                 onTitleChange = { detailTitle = it },
                                 onBack = { currentView = GlossaryView.Category(GlossaryCategory.CLASSES) }
                             )
@@ -271,16 +271,7 @@ fun GlossaryCategoryList(
         }.sortedBy { it.name }
     }
     
-    LaunchedEffect(items, category) {
-        if (category == GlossaryCategory.CLASSES) {
-            val path = mutableListOf<NavNode>()
-            path.add(NavNode("cat", category.title, 0) { onBack() })
-            items.forEach { item ->
-                path.add(NavNode("item_${item.id}", item.name, 1) { onItemClick(item.file) })
-            }
-            NavigationPathManager.updatePath("glossary", path)
-        }
-    }
+
 
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(
