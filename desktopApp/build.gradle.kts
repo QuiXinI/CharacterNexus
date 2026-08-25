@@ -82,7 +82,8 @@ compose.desktop {
             listOf(
                 "-Xms512m", "-Xmx2g",
                 "-XX:+UseParallelGC",
-                "-XX:+OptimizeStringConcat"
+                "-XX:+OptimizeStringConcat",
+                "-Dportable=true"
             )
         } else {
             listOf("-Xms256m", "-Xmx512m", "-Ddebug=true")

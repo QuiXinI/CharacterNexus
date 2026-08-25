@@ -54,7 +54,7 @@ actual object ImageProcessor {
     actual fun saveCompressedImage(bytes: ByteArray, targetPath: Path, width: Int?, height: Int?) {
     }
 
-    actual fun encodeToByteArray(bitmap: androidx.compose.ui.graphics.ImageBitmap): ByteArray {
+    actual suspend fun encodeToByteArray(bitmap: androidx.compose.ui.graphics.ImageBitmap): ByteArray {
         return ByteArray(0)
     }
 }

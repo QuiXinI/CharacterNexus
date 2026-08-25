@@ -25,6 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.getNextLevelThreshold
 import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
@@ -140,7 +143,11 @@ fun CharacterCard(
                     ) {
                         if (imageExists) {
                             AsyncImage(
-                                model = imagePath,
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(imagePath)
+                                    .memoryCacheKey("${imagePath}_${character.imageData}")
+                                    .crossfade(true)
+                                    .build(),
                                 contentDescription = "Иконка",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
@@ -195,7 +202,11 @@ fun CharacterCard(
                     ) {
                         if (imageExists) {
                             AsyncImage(
-                                model = imagePath,
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(imagePath)
+                                    .memoryCacheKey("${imagePath}_${character.imageData}")
+                                    .crossfade(true)
+                                    .build(),
                                 contentDescription = "Иконка",
                                 modifier = Modifier
                                     .requiredSize(amplifiedSize)

@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.IntSize
 import ru.quasaris.characternexus.util.HapticType
 import ru.quasaris.characternexus.util.PlatformUtils
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.ui.*
 import androidx.compose.animation.animateContentSize
@@ -253,7 +256,11 @@ fun CharacterHeader(
 
                             if (imageFile != null) {
                                 AsyncImage(
-                                    model = imageFile,
+                                    model = ImageRequest.Builder(LocalPlatformContext.current)
+                                        .data(imageFile)
+                                        .memoryCacheKey("${imageFile}_$characterImageData")
+                                        .crossfade(true)
+                                        .build(),
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop

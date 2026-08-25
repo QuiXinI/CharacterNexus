@@ -25,7 +25,10 @@ actual val platformFileSystem: FileSystem = FileSystem.SYSTEM
 actual fun getAppDataDir(): Path {
     val isPortable = System.getProperty("portable") == "true" || File("data").exists()
     val appDir = if (isPortable) {
-        File("data")
+        val rootDir = System.getProperty("compose.application.resources.dir")?.let {
+            File(it).parentFile
+        } ?: File(".")
+        File(rootDir, "data")
     } else {
         val userHome = System.getProperty("user.home")
         File(userHome, ".characternexus")
@@ -37,7 +40,10 @@ actual fun getAppDataDir(): Path {
 actual fun getCacheDir(): Path {
     val isPortable = System.getProperty("portable") == "true" || File("data").exists()
     val cacheDir = if (isPortable) {
-        File("data/cache")
+        val rootDir = System.getProperty("compose.application.resources.dir")?.let {
+            File(it).parentFile
+        } ?: File(".")
+        File(rootDir, "data/cache")
     } else {
         val tempDir = System.getProperty("java.io.tmpdir")
         File(tempDir, "characternexus_cache")

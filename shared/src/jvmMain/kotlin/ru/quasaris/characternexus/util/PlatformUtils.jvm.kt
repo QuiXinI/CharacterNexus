@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import ru.quasaris.characternexus.backend.cropper.ImageCropState
 import org.jetbrains.skia.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 actual object PlatformUtils {
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
@@ -75,9 +77,9 @@ actual object ImageProcessor {
         }
     }
 
-    actual fun encodeToByteArray(bitmap: ImageBitmap): ByteArray {
+    actual suspend fun encodeToByteArray(bitmap: ImageBitmap): ByteArray = withContext(Dispatchers.IO) {
         val skiaImage = Image.makeFromBitmap(bitmap.asSkiaBitmap())
-        return skiaImage.encodeToData(EncodedImageFormat.WEBP, 90)?.bytes ?: byteArrayOf()
+        skiaImage.encodeToData(EncodedImageFormat.WEBP, 90)?.bytes ?: byteArrayOf()
     }
 
     actual fun crop(bitmap: ImageBitmap, state: ImageCropState): ImageBitmap {

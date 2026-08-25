@@ -45,6 +45,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -213,7 +216,11 @@ fun CharacterHeader(
                     ) {
                         if (characterImageData != null) {
                             AsyncImage(
-                                model = characterImageData,
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(characterImageData)
+                                    .memoryCacheKey("${characterImageData}_version")
+                                    .crossfade(true)
+                                    .build(),
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop

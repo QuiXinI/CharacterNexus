@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import java.io.ByteArrayOutputStream
 import ru.quasaris.characternexus.backend.cropper.ImageCropState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 actual object PlatformUtils {
     lateinit var androidContext: Context
@@ -136,11 +138,11 @@ actual object ImageProcessor {
         }
     }
 
-    actual fun encodeToByteArray(bitmap: ImageBitmap): ByteArray {
+    actual suspend fun encodeToByteArray(bitmap: ImageBitmap): ByteArray = withContext(Dispatchers.Default) {
         val stream = ByteArrayOutputStream()
         @Suppress("DEPRECATION")
         bitmap.asAndroidBitmap().compress(Bitmap.CompressFormat.WEBP, 80, stream)
-        return stream.toByteArray()
+        stream.toByteArray()
     }
 
     actual fun crop(bitmap: ImageBitmap, state: ImageCropState): ImageBitmap {

@@ -26,6 +26,9 @@ import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import ru.quasaris.characternexus.util.PlatformUtils
 import ru.quasaris.characternexus.util.log
 
@@ -114,7 +117,11 @@ fun BioTab(
                     ) {
                         if (portraitPath != null) {
                             AsyncImage(
-                                model = portraitPath,
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(portraitPath)
+                                    .memoryCacheKey("${portraitPath}_$imageData")
+                                    .crossfade(true)
+                                    .build(),
                                 contentDescription = "Портрет персонажа",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
