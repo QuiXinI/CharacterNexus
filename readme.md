@@ -3,7 +3,7 @@
 ![Kotlin Multiplatform](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Compose Multiplatform](https://img.shields.io/badge/Compose-Multiplatform-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Desktop-green?style=for-the-badge)
-[![License: GPL v3](https://shields.io)](https://gnu.org)
+![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue.svg?style=for-the-badge)
 
 **Character Nexus** — это современное кроссплатформенное приложение для управления листами персонажей в **Dungeons & Dragons 5.5 | 5e**, разработанное на **Kotlin Multiplatform** и **Compose Multiplatform**.
 
