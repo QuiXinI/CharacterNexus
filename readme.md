@@ -3,7 +3,7 @@
 ![Kotlin Multiplatform](https://img.shields.io/badge/Kotlin-Multiplatform-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Compose Multiplatform](https://img.shields.io/badge/Compose-Multiplatform-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Desktop-green?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)
+![License](https://img.shields.io/badge/License-GPL-3.0-blue.svg?style=for-the-badge)
 
 **Character Nexus** — это современное кроссплатформенное приложение для управления листами персонажей в **Dungeons & Dragons 5.5 | 5e**, разработанное на **Kotlin Multiplatform** и **Compose Multiplatform**.
 
@@ -15,7 +15,7 @@
 
 ### Продвинутый лист персонажа & Движок формул
 - **Вычисление параметров на основе формул**: поддержка кастомных формул для КД (AC), Инициативы, Скорости и атак.
-- **Поддержка двуязычного синтаксиса (RU/EN)**: используйте формулы вида `[DEX]`, `[PROF]`, `[REAL PROF]`, `[ВЕРХ] / [CEIL]`, `[НИЗ] / [FLOOR]`, `[MAX]`, `[MIN]`.
+- **Поддержка двуязычного синтаксиса (RU/EN)**: используйте формулы вида `[ЛОВ] / [DEX]`, `[БМ] / [PROF]`, `[ВЕРХ] / [CEIL]`, `[НИЗ] / [FLOOR]`, `[МАКС] / [MAX]`.
 - **Автоматизация отдыха**: система короткого и длинного отдыха, восстановление ресурсов и ячеек заклинаний «на рассвете».
 - **Кости Хитов (Hit Dice)**: полноценная система учёта, расхода и восстановления костей хитов.
 - **Состояния и Истощение**: отслеживание всех стандартных состояний 5e, от эффекта *«Окровавленный»* до степеней истощения.
