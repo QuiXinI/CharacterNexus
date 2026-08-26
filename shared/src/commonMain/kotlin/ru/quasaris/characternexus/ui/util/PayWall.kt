@@ -34,6 +34,14 @@ import characternexus.shared.generated.resources.Res
 import characternexus.shared.generated.resources.ic_premium_dragon
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 
 @Composable
 fun PayWall(
@@ -127,22 +135,42 @@ fun PayWall(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             
-                            Box(
-                                modifier = Modifier
-                                    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                    .drawWithCache {
-                                        onDrawWithContent {
-                                            drawContent()
-                                            drawRect(diamondGradient, blendMode = BlendMode.SrcIn)
-                                        }
-                                    }
-                            ) {
+                            val premiumTextStyle = LocalTextStyle.current.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = "Премиум",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    style = premiumTextStyle.merge(
+                                        TextStyle(
+                                            drawStyle = Stroke(
+                                                miter = 30f,
+                                                width = 10f,
+                                                join = StrokeJoin.Round
+                                            )
+                                        )
+                                    ),
+                                    color = MaterialTheme.colorScheme.background
                                 )
+
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+                                        .drawWithCache {
+                                            onDrawWithContent {
+                                                drawContent()
+                                                drawRect(diamondGradient, blendMode = BlendMode.SrcIn)
+                                            }
+                                        }
+                                ) {
+                                    Text(
+                                        text = "Премиум",
+                                        style = premiumTextStyle,
+                                        color = Color.White
+                                    )
+                                }
                             }
 
                             Text(
