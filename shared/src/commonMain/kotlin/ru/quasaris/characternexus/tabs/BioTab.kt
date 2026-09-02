@@ -43,10 +43,14 @@ fun BioTab(
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
+    onToggleEditMode: () -> Unit = {},
+    onToggleAllExpansion: () -> Unit = {},
+    anyCollapsed: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     header: @Composable () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -87,6 +91,9 @@ fun BioTab(
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,
+        onToggleEditMode = onToggleEditMode,
+        onToggleAllExpansion = onToggleAllExpansion,
+        anyCollapsed = anyCollapsed,
         collapseOnEdit = null,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
@@ -96,6 +103,7 @@ fun BioTab(
         contentPlaceholder = "Текст раздела...",
         settingsViewModel = settingsViewModel,
         statsMap = statsMap,
+        state = state,
         header = {
             Column(
                 modifier = Modifier

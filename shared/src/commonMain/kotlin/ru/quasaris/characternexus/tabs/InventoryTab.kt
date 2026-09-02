@@ -24,17 +24,28 @@ fun InventoryTab(
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
+    onToggleEditMode: () -> Unit = {},
+    onToggleAllExpansion: () -> Unit = {},
+    anyCollapsed: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     onWalletDialogOpenChange: (Boolean) -> Unit = {},
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     header: @Composable () -> Unit = {}
 ) {
     var editingCurrency by remember { mutableStateOf<Currency?>(null) }
     
     LaunchedEffect(editingCurrency) {
         onWalletDialogOpenChange(editingCurrency != null)
+        state?.isWalletDialogOpen = editingCurrency != null
+    }
+
+    LaunchedEffect(state?.isWalletDialogOpen) {
+        if (state?.isWalletDialogOpen == false) {
+            editingCurrency = null
+        }
     }
 
     DynamicFieldsTab(
@@ -45,6 +56,9 @@ fun InventoryTab(
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,
+        onToggleEditMode = onToggleEditMode,
+        onToggleAllExpansion = onToggleAllExpansion,
+        anyCollapsed = anyCollapsed,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
@@ -53,22 +67,26 @@ fun InventoryTab(
         contentPlaceholder = "Содержимое раздела...",
         settingsViewModel = settingsViewModel,
         statsMap = statsMap,
+        state = state,
         header = {
             Column {
                 header()
                 Spacer(Modifier.height(12.dp))
                 CurrencyDisplayRow(
                     wallet = wallet,
-                    onCurrencyClick = { editingCurrency = it }
+                    onCurrencyClick = { 
+                        state?.selectedCurrency = it
+                        editingCurrency = it 
+                    }
                 )
             }
         }
     )
 
-    editingCurrency?.let { currency ->
+    if (editingCurrency != null && state == null) {
         CurrencyEditDialog(
             wallet = wallet,
-            initialCurrency = currency,
+            initialCurrency = editingCurrency!!,
             onWalletChange = onWalletChange,
             onDismiss = { editingCurrency = null },
             hazeState = hazeState,

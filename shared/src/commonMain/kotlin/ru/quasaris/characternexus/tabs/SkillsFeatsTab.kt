@@ -14,10 +14,14 @@ fun SkillsFeatsTab(
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
+    onToggleEditMode: () -> Unit = {},
+    onToggleAllExpansion: () -> Unit = {},
+    anyCollapsed: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     header: @Composable () -> Unit = {}
 ) {
     DynamicFieldsTab(
@@ -28,6 +32,9 @@ fun SkillsFeatsTab(
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,
+        onToggleEditMode = onToggleEditMode,
+        onToggleAllExpansion = onToggleAllExpansion,
+        anyCollapsed = anyCollapsed,
         addButtonText = "ДОБАВИТЬ ОСОБОЕ ПОЛЕ",
         emptyListText = "Список умений и черт пуст",
         titlePlaceholder = "Название раздела",
@@ -36,6 +43,7 @@ fun SkillsFeatsTab(
         statsMap = statsMap,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
+        state = state,
         header = header
     )
 }

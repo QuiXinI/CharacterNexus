@@ -17,6 +17,9 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import dev.chrisbanes.haze.*
 
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.hazePopover
+
 @OptIn(ExperimentalHazeApi::class)
 @Composable
 fun ResourceInfoPopover(
@@ -25,10 +28,12 @@ fun ResourceInfoPopover(
     anchorPosition: Offset,
     onDismiss: () -> Unit,
     hazeState: HazeState? = null,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
     Popup(
         onDismissRequest = onDismiss,
@@ -38,18 +43,15 @@ fun ResourceInfoPopover(
             modifier = Modifier
                 .padding(8.dp)
                 .widthIn(max = 260.dp)
-                .run {
-                    if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.clip(RoundedCornerShape(16.dp))
-                            .hazeEffect(state = hazeState) {
-                                style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.1f))))
-                                inputScale = HazeInputScale.Fixed(0.6f)
-                            }
-                    } else this
-                }
+                .hazePopover(
+                    state = hazeState,
+                    blurRadius = blurRadius,
+                    isOled = isOled,
+                    forceBlurEnabled = forceBlurEnabled
+                )
                 .clickable { onDismiss() },
             shape = RoundedCornerShape(16.dp),
-            color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = if (forceBlurEnabled) 0.1f else 1.0f),
+            color = if (isOled) Color.Black else colorScheme.surface.copy(alpha = 0.2f),
             tonalElevation = 8.dp,
             border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = if (isOled) 0.3f else 0.15f))
         ) {

@@ -61,6 +61,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.PI
 
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.hazePopover
+
 val DiceRollHazeStyle = HazeStyle(
     blurRadius = 24.dp,
     tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
@@ -429,7 +432,8 @@ fun DiceRollAdvantagePopup(
     hazeState: HazeState? = null,
     isOled: Boolean = false,
     widthMultiplier: Float = 1f,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     Popup(
         onDismissRequest = onDismiss,
@@ -441,18 +445,19 @@ fun DiceRollAdvantagePopup(
         val advBrush = Brush.linearGradient(colors = listOf(Color(0xFF00ff5e), Color(0xFF92cf80)))
         val disBrush = Brush.linearGradient(colors = listOf(Color(0xFFFF1100), Color(0xFFE18275)))
 
+        val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+
         Surface(
             modifier = modifier
                 .fillMaxWidth(widthMultiplier)
                 .outerShadow(RoundedCornerShape(12.dp), blur = 8.dp)
-                .run {
-                    if (hazeState != null && !isOled) {
-                        this.clip(RoundedCornerShape(12.dp))
-                            .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
-                    } else this
-                },
+                .hazePopover(
+                    state = hazeState,
+                    blurRadius = blurRadius,
+                    isOled = isOled
+                ),
             shape = RoundedCornerShape(12.dp),
-            color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
+            color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.2f) else colorScheme.surface,
             border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f)),
             tonalElevation = if (isOled || hazeState != null) 0.dp else 8.dp
         ) {

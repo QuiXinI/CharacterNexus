@@ -335,7 +335,8 @@ data class GlossaryListItem(val id: String, val name: String, val file: okio.Pat
 fun SpellGlossaryList(
     spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
     onBack: () -> Unit,
-    hazeState: dev.chrisbanes.haze.HazeState? = null
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var filterState by remember { mutableStateOf(SpellFilterState()) }
@@ -391,7 +392,7 @@ fun SpellGlossaryList(
             onFilterChange = { filterState = it }
         )
 
-        SpellListGrid(
+        SpellListGrid(settingsViewModel = settingsViewModel, 
             spells = filteredSpells,
             filterState = filterState,
             expandedIds = expandedIds,

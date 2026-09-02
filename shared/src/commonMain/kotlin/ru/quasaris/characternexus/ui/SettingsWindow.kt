@@ -39,6 +39,9 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DesktopWindows
 import ru.quasaris.characternexus.getDynamicColorScheme
 import ru.quasaris.characternexus.ui.util.PayWall
 import dev.chrisbanes.haze.HazeState
@@ -251,6 +254,37 @@ fun SettingsWindow(
                         icon = { Icon(Icons.Default.DarkMode, null) }
                     ) { Text("Темная") }
                 }
+            }
+
+            HorizontalDivider(color = colorScheme.outlineVariant)
+
+            Text(
+                text = "Режим интерфейса",
+                style = MaterialTheme.typography.titleMedium,
+                color = colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            val interfaceMode by settingsViewModel.interfaceMode.collectAsState()
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SegmentedButton(
+                    selected = interfaceMode == AppInterfaceMode.MOBILE,
+                    onClick = { settingsViewModel.updateInterfaceMode(AppInterfaceMode.MOBILE) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                    icon = { Icon(Icons.Default.Smartphone, null) }
+                ) { Text("Мобильный") }
+                SegmentedButton(
+                    selected = interfaceMode == AppInterfaceMode.AUTO,
+                    onClick = { settingsViewModel.updateInterfaceMode(AppInterfaceMode.AUTO) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                    icon = { Icon(Icons.Default.BrightnessAuto, null) }
+                ) { Text("Авто") }
+                SegmentedButton(
+                    selected = interfaceMode == AppInterfaceMode.DESKTOP,
+                    onClick = { settingsViewModel.updateInterfaceMode(AppInterfaceMode.DESKTOP) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                    icon = { Icon(Icons.Default.DesktopWindows, null) }
+                ) { Text("Десктоп") }
             }
 
             HorizontalDivider(color = colorScheme.outlineVariant)

@@ -212,7 +212,8 @@ fun CharacterHeader(
                             onDawn = { onDawn() },
                             onDismiss = { onShowRestPopupChange(false) },
                             hazeState = hazeState,
-                            isOled = colorScheme.background == Color.Black
+                            isOled = colorScheme.background == Color.Black,
+                            settingsViewModel = settingsViewModel
                         )
                     }
                 }
@@ -280,7 +281,8 @@ fun CharacterHeader(
                             onDeleteClick = onDeletePortraitClick,
                             onDismiss = onDismissAvatarMenu,
                             hazeState = hazeState,
-                            isOled = isOled
+                            isOled = isOled,
+                            settingsViewModel = settingsViewModel
                         )
                     }
                 }

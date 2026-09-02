@@ -30,6 +30,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import dev.chrisbanes.haze.*
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
 import androidx.compose.ui.unit.dp
@@ -50,6 +53,7 @@ fun formatFloat(value: Float): String {
     return if (value == floor(value)) value.toInt().toString() else value.toString()
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SpellSettingsDialog(
@@ -59,7 +63,11 @@ fun SpellSettingsDialog(
     onDismiss: () -> Unit,
     onSubDialogOpenChange: (Boolean) -> Unit = {},
     forceBlurEnabled: Boolean = false,
-    statsMap: Map<String, String> = emptyMap()
+    statsMap: Map<String, String> = emptyMap(),
+    isDesktop: Boolean = false,
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val focusManager = LocalFocusManager.current
     var isMagicEnabled by remember { mutableStateOf(settings.isMagicEnabled) }
@@ -72,6 +80,7 @@ fun SpellSettingsDialog(
     var showAttackBonusDialog by remember { mutableStateOf(false) }
     var showSaveDcBonusDialog by remember { mutableStateOf(false) }
     val isSubDialogOpen = showAttackBonusDialog || showSaveDcBonusDialog
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     
     LaunchedEffect(isSubDialogOpen) {
         onSubDialogOpenChange(isSubDialogOpen)
@@ -80,15 +89,7 @@ fun SpellSettingsDialog(
     val pb = getProficiencyBonus(characterLevel.toString())
     val currentAbilityModifier = remember(spellcastingAbility, statsMap) {
         if (spellcastingAbility != Attribute.NONE) {
-            val statKey = when (spellcastingAbility) {
-                Attribute.STRENGTH -> "strength"
-                Attribute.DEXTERITY -> "dexterity"
-                Attribute.CONSTITUTION -> "constitution"
-                Attribute.INTELLIGENCE -> "intelligence"
-                Attribute.WISDOM -> "wisdom"
-                Attribute.CHARISMA -> "charisma"
-                else -> ""
-            }
+            val statKey = spellcastingAbility.name.lowercase()
             calculateModifier(statsMap[statKey] ?: "10")
         } else 0
     }
@@ -141,89 +142,293 @@ fun SpellSettingsDialog(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        DialogDimStyle(0f)
-        BackHandler(onBack = onDismiss)
-        val colorScheme = MaterialTheme.colorScheme
-        val isOled = colorScheme.background == Color.Black
+    val onSave = {
+        focusManager.clearFocus()
+        onSettingsChange(
+            settings.copy(
+                isMagicEnabled = isMagicEnabled,
+                spellcastingAbility = spellcastingAbility,
+                spellAttackBonuses = spellAttackBonuses,
+                spellSaveDcBonuses = spellSaveDcBonuses,
+                spellMode = spellMode,
+                casterType = casterType,
+                isMulticlass = isMulticlass,
+                fullCasterLevel = fullCasterLevel,
+                halfCasterLevel = halfCasterLevel,
+                thirdCasterLevel = thirdCasterLevel,
+                specialSlots = specialSlots.toList(),
+                overrideSlots = overrideSlots,
+                pactSlotLevel = pactSlotLevel,
+                pactSlotsCount = pactSlotsCount,
+                isPactEnabled = isPactEnabled,
+                isSpellbookEnabled = isSpellbookEnabled,
+                usedSlots = settings.usedSlots.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
+                usedSlotsShortRest = settings.usedSlotsShortRest.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
+                usedSlotsDawn = settings.usedSlotsDawn.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
+                allowCantripUpcast = allowCantripUpcast
+            )
+        )
+        onDismiss()
+    }
 
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text("Настройки заклинаний", fontWeight = FontWeight.Black) },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            focusManager.clearFocus()
-                            onDismiss()
-                        }) {
-                            Icon(Icons.Default.Close, contentDescription = "Закрыть")
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
-                    )
-                )
-            },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background,
+    if (isDesktop) {
+        SpellSettingsDialogContent(
+            onDismiss = onDismiss,
+            forceBlurEnabled = forceBlurEnabled,
+            isMagicEnabled = isMagicEnabled,
+            onIsMagicEnabledChange = { isMagicEnabled = it },
+            isSpellbookEnabled = isSpellbookEnabled,
+            onIsSpellbookEnabledChange = { isSpellbookEnabled = it },
+            spellcastingAbility = spellcastingAbility,
+            onSpellcastingAbilityChange = { spellcastingAbility = it },
+            spellSaveDcPreview = spellSaveDcPreview,
+            currentSaveDc = currentSaveDc,
+            onSaveDcClick = { showSaveDcBonusDialog = true },
+            spellAttackBonusPreview = spellAttackBonusPreview,
+            currentAttackBonus = currentAttackBonus,
+            onAttackBonusClick = { showAttackBonusDialog = true },
+            spellMode = spellMode,
+            onSpellModeChange = { spellMode = it },
+            isMulticlass = isMulticlass,
+            onIsMulticlassChange = { isMulticlass = it },
+            fullCasterLevel = fullCasterLevel,
+            onFullCasterLevelChange = { fullCasterLevel = it },
+            halfCasterLevel = halfCasterLevel,
+            onHalfCasterLevelChange = { halfCasterLevel = it },
+            thirdCasterLevel = thirdCasterLevel,
+            onThirdCasterLevelChange = { thirdCasterLevel = it },
+            casterType = casterType,
+            onCasterTypeChange = { casterType = it },
+            overrideSlots = overrideSlots,
+            onOverrideSlotsChange = { overrideSlots = it },
+            autoSlots = autoSlots.toIntArray(),
+            isSpecialSlotsEditMode = isSpecialSlotsEditMode,
+            onIsSpecialSlotsEditModeChange = { isSpecialSlotsEditMode = it },
+            specialSlots = specialSlots,
+            isPactEnabled = isPactEnabled,
+            onIsPactEnabledChange = { isPactEnabled = it },
+            pactSlotLevel = pactSlotLevel,
+            onPactSlotLevelChange = { pactSlotLevel = it },
+            pactSlotsCount = pactSlotsCount,
+            onPactSlotsCountChange = { pactSlotsCount = it },
+            allowCantripUpcast = allowCantripUpcast,
+            onAllowCantripUpcastChange = { allowCantripUpcast = it },
+            onSave = onSave,
+            hazeState = popupHazeState ?: hazeState,
+            blurRadius = blurRadius,
+            showAttackBonusDialog = showAttackBonusDialog,
+            onShowAttackBonusDialogChange = { showAttackBonusDialog = it },
+            showSaveDcBonusDialog = showSaveDcBonusDialog,
+            onShowSaveDcBonusDialogChange = { showSaveDcBonusDialog = it },
+            spellAttackBonuses = spellAttackBonuses,
+            onSpellAttackBonusesChange = { spellAttackBonuses = it },
+            spellSaveDcBonuses = spellSaveDcBonuses,
+            onSpellSaveDcBonusesChange = { spellSaveDcBonuses = it },
+            statsMap = statsMap,
+            pb = pb,
+            currentAbilityModifier = currentAbilityModifier,
+            settingsViewModel = settingsViewModel,
+            isDesktop = isDesktop
+        )
+    } else {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            DialogDimStyle(0f)
+            SpellSettingsDialogContent(
+                onDismiss = onDismiss,
+                forceBlurEnabled = forceBlurEnabled,
+                isMagicEnabled = isMagicEnabled,
+                onIsMagicEnabledChange = { isMagicEnabled = it },
+                isSpellbookEnabled = isSpellbookEnabled,
+                onIsSpellbookEnabledChange = { isSpellbookEnabled = it },
+                spellcastingAbility = spellcastingAbility,
+                onSpellcastingAbilityChange = { spellcastingAbility = it },
+                spellSaveDcPreview = spellSaveDcPreview,
+                currentSaveDc = currentSaveDc,
+                onSaveDcClick = { showSaveDcBonusDialog = true },
+                spellAttackBonusPreview = spellAttackBonusPreview,
+                currentAttackBonus = currentAttackBonus,
+                onAttackBonusClick = { showAttackBonusDialog = true },
+                spellMode = spellMode,
+                onSpellModeChange = { spellMode = it },
+                isMulticlass = isMulticlass,
+                onIsMulticlassChange = { isMulticlass = it },
+                fullCasterLevel = fullCasterLevel,
+                onFullCasterLevelChange = { fullCasterLevel = it },
+                halfCasterLevel = halfCasterLevel,
+                onHalfCasterLevelChange = { halfCasterLevel = it },
+                thirdCasterLevel = thirdCasterLevel,
+                onThirdCasterLevelChange = { thirdCasterLevel = it },
+                casterType = casterType,
+                onCasterTypeChange = { casterType = it },
+                overrideSlots = overrideSlots,
+                onOverrideSlotsChange = { overrideSlots = it },
+                autoSlots = autoSlots.toIntArray(),
+                isSpecialSlotsEditMode = isSpecialSlotsEditMode,
+                onIsSpecialSlotsEditModeChange = { isSpecialSlotsEditMode = it },
+                specialSlots = specialSlots,
+                isPactEnabled = isPactEnabled,
+                onIsPactEnabledChange = { isPactEnabled = it },
+                pactSlotLevel = pactSlotLevel,
+                onPactSlotLevelChange = { pactSlotLevel = it },
+                pactSlotsCount = pactSlotsCount,
+                onPactSlotsCountChange = { pactSlotsCount = it },
+                allowCantripUpcast = allowCantripUpcast,
+                onAllowCantripUpcastChange = { allowCantripUpcast = it },
+                onSave = onSave,
+                hazeState = popupHazeState ?: hazeState,
+                blurRadius = blurRadius,
+                showAttackBonusDialog = showAttackBonusDialog,
+                onShowAttackBonusDialogChange = { showAttackBonusDialog = it },
+                showSaveDcBonusDialog = showSaveDcBonusDialog,
+                onShowSaveDcBonusDialogChange = { showSaveDcBonusDialog = it },
+                spellAttackBonuses = spellAttackBonuses,
+                onSpellAttackBonusesChange = { spellAttackBonuses = it },
+                spellSaveDcBonuses = spellSaveDcBonuses,
+                onSpellSaveDcBonusesChange = { spellSaveDcBonuses = it },
+                statsMap = statsMap,
+                pb = pb,
+                currentAbilityModifier = currentAbilityModifier,
+                settingsViewModel = settingsViewModel,
+                isDesktop = isDesktop
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun SpellSettingsDialogContent(
+    onDismiss: () -> Unit,
+    forceBlurEnabled: Boolean,
+    isMagicEnabled: Boolean,
+    onIsMagicEnabledChange: (Boolean) -> Unit,
+    isSpellbookEnabled: Boolean,
+    onIsSpellbookEnabledChange: (Boolean) -> Unit,
+    spellcastingAbility: Attribute,
+    onSpellcastingAbilityChange: (Attribute) -> Unit,
+    spellSaveDcPreview: String,
+    currentSaveDc: Pair<Int, List<DicePart>>,
+    onSaveDcClick: () -> Unit,
+    spellAttackBonusPreview: String,
+    currentAttackBonus: Pair<Int, List<DicePart>>,
+    onAttackBonusClick: () -> Unit,
+    spellMode: SpellMode,
+    onSpellModeChange: (SpellMode) -> Unit,
+    isMulticlass: Boolean,
+    onIsMulticlassChange: (Boolean) -> Unit,
+    fullCasterLevel: Int,
+    onFullCasterLevelChange: (Int) -> Unit,
+    halfCasterLevel: Int,
+    onHalfCasterLevelChange: (Int) -> Unit,
+    thirdCasterLevel: Int,
+    onThirdCasterLevelChange: (Int) -> Unit,
+    casterType: CasterType,
+    onCasterTypeChange: (CasterType) -> Unit,
+    overrideSlots: Map<Float, Int>,
+    onOverrideSlotsChange: (Map<Float, Int>) -> Unit,
+    autoSlots: IntArray,
+    isSpecialSlotsEditMode: Boolean,
+    onIsSpecialSlotsEditModeChange: (Boolean) -> Unit,
+    specialSlots: MutableList<SpecialSlotSettings>,
+    isPactEnabled: Boolean,
+    onIsPactEnabledChange: (Boolean) -> Unit,
+    pactSlotLevel: Float,
+    onPactSlotLevelChange: (Float) -> Unit,
+    pactSlotsCount: Int,
+    onPactSlotsCountChange: (Int) -> Unit,
+    allowCantripUpcast: Boolean,
+    onAllowCantripUpcastChange: (Boolean) -> Unit,
+    onSave: () -> Unit,
+    hazeState: HazeState? = null,
+    blurRadius: androidx.compose.ui.unit.Dp = 24.dp,
+    showAttackBonusDialog: Boolean = false,
+    onShowAttackBonusDialogChange: (Boolean) -> Unit = {},
+    showSaveDcBonusDialog: Boolean = false,
+    onShowSaveDcBonusDialogChange: (Boolean) -> Unit = {},
+    spellAttackBonuses: List<AttackBonus> = emptyList(),
+    onSpellAttackBonusesChange: (List<AttackBonus>) -> Unit = {},
+    spellSaveDcBonuses: List<AttackBonus> = emptyList(),
+    onSpellSaveDcBonusesChange: (List<AttackBonus>) -> Unit = {},
+    statsMap: Map<String, String> = emptyMap(),
+    pb: Int = 0,
+    currentAbilityModifier: Int = 0,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    isDesktop: Boolean = false
+) {
+    val focusManager = LocalFocusManager.current
+    val colorScheme = MaterialTheme.colorScheme
+    val isOled = colorScheme.background == Color.Black
+    val localHazeState = remember { HazeState() }
+    val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+    val isSubDialogOpen = showAttackBonusDialog || showSaveDcBonusDialog
+
+    BackHandler(onBack = onDismiss)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
             modifier = Modifier
-                .blur(if (isSubDialogOpen && forceBlurEnabled && !isOled) 16.dp else 0.dp)
+                .fillMaxSize()
                 .run {
-                    if (isSubDialogOpen && forceBlurEnabled && !isOled) {
-                        this.drawWithContent {
-                            drawContent()
-                            drawRect(colorScheme.surface.copy(alpha = 0.1f))
-                        }
+                    if (isSubDialogOpen && masterBlurEnabled) {
+                        this.blur(blurRadius)
                     } else this
                 }
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDrag = { change, _ ->
-                            change.consume()
-                            focusManager.clearFocus()
-                        }
+        ) {
+            Scaffold(
+                topBar = {
+                    CenterAlignedTopAppBar(
+                        title = { Text("Настройки заклинаний", fontWeight = FontWeight.Black) },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                focusManager.clearFocus()
+                                onDismiss()
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                            }
+                        },
+                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                            containerColor = if (forceBlurEnabled && !isOled && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                        )
                     )
-                }
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { focusManager.clearFocus() }
-        ) { paddingValues ->
-            Column(
+                },
+                containerColor = if (forceBlurEnabled && !isOled && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Использовать магию", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text(
-                                if (isMagicEnabled) "Магия активна" else "Магия отключена",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(checked = isMagicEnabled, onCheckedChange = { isMagicEnabled = it })
+                    .run {
+                        if (forceBlurEnabled && hazeState != null && !isOled) {
+                            this.hazeEffect(state = hazeState) {
+                                style = HazeStyle(
+                                    blurRadius = blurRadius,
+                                    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
+                                )
+                            }
+                        } else this
                     }
-                }
-
-                if (isMagicEnabled) {
+                    .hazeSource(state = localHazeState)
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDrag = { change, _ ->
+                                change.consume()
+                                focusManager.clearFocus()
+                            }
+                        )
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { focusManager.clearFocus() }
+            ) { paddingValues ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
@@ -237,424 +442,433 @@ fun SpellSettingsDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Книга заклинаний", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text("Использовать магию", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(
-                                    "Разделение на книгу и подготовку",
+                                    if (isMagicEnabled) "Магия активна" else "Магия отключена",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
                             }
-                            Switch(checked = isSpellbookEnabled, onCheckedChange = { isSpellbookEnabled = it })
+                            Switch(checked = isMagicEnabled, onCheckedChange = onIsMagicEnabledChange)
                         }
                     }
 
-                    // Characteristic Selection
-                    SectionTitle("ХАРАКТЕРИСТИКА")
-                    var expanded by remember { mutableStateOf(false) }
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = if (spellcastingAbility == Attribute.NONE) "Без характеристики" else spellcastingAbility.fullName,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Ключевая характеристика") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
+                    if (isMagicEnabled) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Attribute.entries.forEach { attr ->
-                                DropdownMenuItem(
-                                    text = { Text(if (attr == Attribute.NONE) "Без характеристики" else attr.fullName) },
-                                    onClick = {
-                                        spellcastingAbility = attr
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Bonuses with Preview
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedCard(
-                            onClick = { showSaveDcBonusDialog = true },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Спасбросок", style = MaterialTheme.typography.labelSmall, color = colorScheme.primary)
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(spellSaveDcPreview, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    if (currentSaveDc.second.isNotEmpty()) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            currentSaveDc.second.forEach { DiceIcon(it) }
-                                        }
-                                    }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Книга заклинаний", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "Разделение на книгу и подготовку",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
                                 }
+                                Switch(checked = isSpellbookEnabled, onCheckedChange = onIsSpellbookEnabledChange)
                             }
                         }
-                        OutlinedCard(
-                            onClick = { showAttackBonusDialog = true },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Бонус атаки", style = MaterialTheme.typography.labelSmall, color = colorScheme.primary)
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Text(spellAttackBonusPreview, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    if (currentAttackBonus.second.isNotEmpty()) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            currentAttackBonus.second.forEach { DiceIcon(it) }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
-                    // Spell Mode
-                    SectionTitle("РЕЖИМ ЗАКЛИНАНИЙ")
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = spellMode == SpellMode.TEXT,
-                            onClick = { spellMode = SpellMode.TEXT },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                        ) {
-                            Text("Текст")
-                        }
-                        SegmentedButton(
-                            selected = spellMode == SpellMode.HYBRID,
-                            onClick = { spellMode = SpellMode.HYBRID },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                        ) {
-                            Text("Гибрид")
-                        }
-                        SegmentedButton(
-                            selected = spellMode == SpellMode.CARDS,
-                            onClick = { spellMode = SpellMode.CARDS },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                        ) {
-                            Text("Карточки")
-                        }
-                    }
-
-                    // Caster Type / Multiclass
-                    SectionTitle("КОЛИЧЕСТВО ЯЧЕЕК")
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text("Мультикласс", modifier = Modifier.weight(1f))
-                        Switch(checked = isMulticlass, onCheckedChange = { isMulticlass = it })
-                    }
-
-                    if (isMulticlass) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            LevelInputRow("Заклинатель", fullCasterLevel) { fullCasterLevel = it }
-                            LevelInputRow("Полузаклинатель", halfCasterLevel) { halfCasterLevel = it }
-                            LevelInputRow("Особый заклинатель", thirdCasterLevel) { thirdCasterLevel = it }
-                        }
-                    } else {
-                        var casterExpanded by remember { mutableStateOf(false) }
+                        // Characteristic Selection
+                        SectionTitle("ХАРАКТЕРИСТИКА")
+                        var expanded by remember { mutableStateOf(false) }
                         ExposedDropdownMenuBox(
-                            expanded = casterExpanded,
-                            onExpandedChange = { casterExpanded = it },
+                            expanded = expanded,
+                            onExpandedChange = { expanded = it },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             OutlinedTextField(
-                                value = casterType.displayName,
+                                value = if (spellcastingAbility == Attribute.NONE) "Без характеристики" else spellcastingAbility.fullName,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text("Тип заклинателя") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = casterExpanded) },
+                                label = { Text("Ключевая характеристика") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                                 modifier = Modifier.menuAnchor().fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp)
                             )
                             ExposedDropdownMenu(
-                                expanded = casterExpanded,
-                                onDismissRequest = { casterExpanded = false }
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
                             ) {
-                                CasterType.entries.forEach { type ->
+                                Attribute.entries.forEach { attr ->
                                     DropdownMenuItem(
-                                        text = { Text(type.displayName) },
+                                        text = { Text(if (attr == Attribute.NONE) "Без характеристики" else attr.fullName) },
                                         onClick = {
-                                            casterType = type
-                                            casterExpanded = false
+                                            onSpellcastingAbilityChange(attr)
+                                            expanded = false
                                         }
                                     )
                                 }
                             }
                         }
-                    }
 
-                    // Slot Overrides Grid (3x3)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        for (row in 0 until 3) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                for (col in 1..3) {
-                                    val level = row * 3 + col
-                                    val levelFloat = level.toFloat()
-                                    val manualValue = overrideSlots[levelFloat]
-                                    val autoValue = autoSlots[level - 1]
-
-                                    val displayValue = when {
-                                        manualValue != null -> if (manualValue == 0) "" else manualValue.toString()
-                                        else -> if (autoValue == 0) "" else autoValue.toString()
-                                    }
-
-                                    OutlinedTextField(
-                                        value = displayValue,
-                                        onValueChange = { newValue ->
-                                            if (newValue.isBlank()) {
-                                                overrideSlots = overrideSlots.toMutableMap().apply { put(levelFloat, 0) }
-                                            } else {
-                                                val count = newValue.toIntOrNull()
-                                                if (count != null) {
-                                                    overrideSlots = overrideSlots.toMutableMap().apply { put(levelFloat, count) }
-                                                }
+                        // Bonuses with Preview
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedCard(
+                                onClick = onSaveDcClick,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Спасбросок", style = MaterialTheme.typography.labelSmall, color = colorScheme.primary)
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text(spellSaveDcPreview, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        if (currentSaveDc.second.isNotEmpty()) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                currentSaveDc.second.forEach { DiceIcon(it) }
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                            OutlinedCard(
+                                onClick = onAttackBonusClick,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text("Бонус атаки", style = MaterialTheme.typography.labelSmall, color = colorScheme.primary)
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text(spellAttackBonusPreview, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        if (currentAttackBonus.second.isNotEmpty()) {
+                                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                currentAttackBonus.second.forEach { DiceIcon(it) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Spell Mode
+                        SectionTitle("РЕЖИМ ЗАКЛИНАНИЙ")
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            SegmentedButton(
+                                selected = spellMode == SpellMode.TEXT,
+                                onClick = { onSpellModeChange(SpellMode.TEXT) },
+                                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                            ) {
+                                Text("Текст")
+                            }
+                            SegmentedButton(
+                                selected = spellMode == SpellMode.HYBRID,
+                                onClick = { onSpellModeChange(SpellMode.HYBRID) },
+                                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                            ) {
+                                Text("Гибрид")
+                            }
+                            SegmentedButton(
+                                selected = spellMode == SpellMode.CARDS,
+                                onClick = { onSpellModeChange(SpellMode.CARDS) },
+                                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                            ) {
+                                Text("Карточки")
+                            }
+                        }
+
+                        // Caster Type / Multiclass
+                        SectionTitle("КОЛИЧЕСТВО ЯЧЕЕК")
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Text("Мультикласс", modifier = Modifier.weight(1f))
+                            Switch(checked = isMulticlass, onCheckedChange = onIsMulticlassChange)
+                        }
+
+                        if (isMulticlass) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                LevelInputRow("Заклинатель", fullCasterLevel, onFullCasterLevelChange)
+                                LevelInputRow("Полузаклинатель", halfCasterLevel, onHalfCasterLevelChange)
+                                LevelInputRow("Особый заклинатель", thirdCasterLevel, onThirdCasterLevelChange)
+                            }
+                        } else {
+                            var casterExpanded by remember { mutableStateOf(false) }
+                            ExposedDropdownMenuBox(
+                                expanded = casterExpanded,
+                                onExpandedChange = { casterExpanded = it },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = casterType.displayName,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Тип заклинателя") },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = casterExpanded) },
+                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = casterExpanded,
+                                    onDismissRequest = { casterExpanded = false }
+                                ) {
+                                    CasterType.entries.forEach { type ->
+                                        DropdownMenuItem(
+                                            text = { Text(type.displayName) },
+                                            onClick = {
+                                                onCasterTypeChange(type)
+                                                casterExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Slot Overrides Grid (3x3)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            for (row in 0 until 3) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    for (col in 1..3) {
+                                        val level = row * 3 + col
+                                        val levelFloat = level.toFloat()
+                                        val manualValue = overrideSlots[levelFloat]
+                                        val autoValue = autoSlots[level - 1]
+
+                                        val displayValue = when {
+                                            manualValue != null -> if (manualValue == 0) "" else manualValue.toString()
+                                            else -> if (autoValue == 0) "" else autoValue.toString()
+                                        }
+
+                                        OutlinedTextField(
+                                            value = displayValue,
+                                            onValueChange = { newValue ->
+                                                if (newValue.isBlank()) {
+                                                    onOverrideSlotsChange(overrideSlots.toMutableMap().apply { put(levelFloat, 0) })
+                                                } else {
+                                                    val count = newValue.toIntOrNull()
+                                                    if (count != null) {
+                                                        onOverrideSlotsChange(overrideSlots.toMutableMap().apply { put(levelFloat, count) })
+                                                    }
+                                                }
+                                            },
+                                            label = { Text("${level}-й") },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(8.dp),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            trailingIcon = if (overrideSlots.containsKey(levelFloat)) {
+                                                {
+                                                    IconButton(onClick = {
+                                                        onOverrideSlotsChange(overrideSlots.toMutableMap().apply { remove(levelFloat) })
+                                                    }) {
+                                                        Icon(Icons.Default.Refresh, contentDescription = "Сброс", modifier = Modifier.size(16.dp))
+                                                    }
+                                                }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Special Slots Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            SectionTitle("ОСОБЫЕ ЯЧЕЙКИ")
+                            if (specialSlots.isNotEmpty()) {
+                                IconButton(onClick = { onIsSpecialSlotsEditModeChange(!isSpecialSlotsEditMode) }) {
+                                    Icon(
+                                        if (isSpecialSlotsEditMode) Icons.Default.EditOff else Icons.Default.Edit,
+                                        contentDescription = "Редактировать",
+                                        tint = if (isSpecialSlotsEditMode) colorScheme.primary else colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        // Special Slots
+                        val specialSlotPositions = remember { mutableStateMapOf<Int, Float>() }
+                        var draggedSlotIndex by remember { mutableStateOf<Int?>(null) }
+                        var draggingSlotOffset by remember { mutableStateOf(0f) }
+
+                        specialSlots.forEachIndexed { index, slot ->
+                            SpecialSlotItem(
+                                slot = slot,
+                                index = index,
+                                isEditMode = isSpecialSlotsEditMode,
+                                isDragging = draggedSlotIndex == index,
+                                onSlotChange = { updatedSlot -> specialSlots[index] = updatedSlot },
+                                onDelete = { specialSlots.removeAt(index) },
+                                onDrag = { offset ->
+                                    draggedSlotIndex = index
+                                    draggingSlotOffset += offset
+                                    
+                                    val currentPos = (specialSlotPositions[index] ?: 0f) + draggingSlotOffset
+                                    val targetIndex = specialSlotPositions.entries
+                                            .filter { it.key != index }
+                                            .find { currentPos in it.value..(it.value + 100f) } // Rough height check
+                                            ?.key
+
+                                    if (targetIndex != null) {
+                                        val item = specialSlots.removeAt(index)
+                                        specialSlots.add(targetIndex, item)
+                                        draggedSlotIndex = targetIndex
+                                        draggingSlotOffset = 0f
+                                    }
+                                },
+                                onDragEnd = {
+                                    draggedSlotIndex = null
+                                    draggingSlotOffset = 0f
+                                },
+                                modifier = Modifier.onGloballyPositioned { coords ->
+                                    specialSlotPositions[index] = coords.positionInWindow().y
+                                }
+                            )
+                        }
+                        
+                        Button(
+                            onClick = { specialSlots.add(SpecialSlotSettings(level = 0f, count = 0)) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("ДОБАВИТЬ ОСОБУЮ ЯЧЕЙКУ")
+                        }
+
+                        // Pact Slots
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            SectionTitle("ЯЧЕЙКИ ДОГОВОРА")
+                            Switch(checked = isPactEnabled, onCheckedChange = onIsPactEnabledChange)
+                        }
+
+                        AnimatedVisibility(visible = isPactEnabled) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.2f)),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    var pactLevelText by remember { mutableStateOf(formatFloat(pactSlotLevel)) }
+                                    OutlinedTextField(
+                                        value = pactLevelText,
+                                        onValueChange = { newVal ->
+                                            pactLevelText = newVal
+                                            newVal.toFloatOrNull()?.let { onPactSlotLevelChange(it) }
                                         },
-                                        label = { Text("${level}-й") },
+                                        label = { Text("Уровень") },
+                                        placeholder = {},
                                         modifier = Modifier.weight(1f),
                                         shape = RoundedCornerShape(8.dp),
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        trailingIcon = if (overrideSlots.containsKey(levelFloat)) {
-                                            {
-                                                IconButton(onClick = {
-                                                    overrideSlots = overrideSlots.toMutableMap().apply { remove(levelFloat) }
-                                                }) {
-                                                    Icon(Icons.Default.Refresh, contentDescription = "Сброс", modifier = Modifier.size(16.dp))
-                                                }
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                                    )
+                                    OutlinedTextField(
+                                        value = if (pactSlotsCount == 0) "" else pactSlotsCount.toString(),
+                                        onValueChange = { newVal ->
+                                            if (newVal.isBlank()) {
+                                                onPactSlotsCountChange(0)
+                                            } else {
+                                                val v = newVal.toIntOrNull()
+                                                if (v != null) onPactSlotsCountChange(v)
                                             }
-                                        } else null
+                                        },
+                                        label = { Text("Количество") },
+                                        placeholder = {},
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                                     )
                                 }
                             }
                         }
                     }
 
-                    // Special Slots Header
-                    Row(
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        SectionTitle("ОСОБЫЕ ЯЧЕЙКИ")
-                        if (specialSlots.isNotEmpty()) {
-                            IconButton(onClick = { isSpecialSlotsEditMode = !isSpecialSlotsEditMode }) {
-                                Icon(
-                                    if (isSpecialSlotsEditMode) Icons.Default.EditOff else Icons.Default.Edit,
-                                    contentDescription = "Редактировать",
-                                    tint = if (isSpecialSlotsEditMode) colorScheme.primary else colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    // Special Slots
-                    val specialSlotPositions = remember { mutableStateMapOf<Int, Float>() }
-                    var draggedSlotIndex by remember { mutableStateOf<Int?>(null) }
-                    var draggingSlotOffset by remember { mutableStateOf(0f) }
-
-                    specialSlots.forEachIndexed { index, slot ->
-                        SpecialSlotItem(
-                            slot = slot,
-                            index = index,
-                            isEditMode = isSpecialSlotsEditMode,
-                            isDragging = draggedSlotIndex == index,
-                            onSlotChange = { updatedSlot -> specialSlots[index] = updatedSlot },
-                            onDelete = { specialSlots.removeAt(index) },
-                            onDrag = { offset ->
-                                draggedSlotIndex = index
-                                draggingSlotOffset += offset
-                                
-                                val currentPos = (specialSlotPositions[index] ?: 0f) + draggingSlotOffset
-                                val targetIndex = specialSlotPositions.entries
-                                    .filter { it.key != index }
-                                    .find { currentPos in it.value..(it.value + 100f) } // Rough height check
-                                    ?.key
-
-                                if (targetIndex != null) {
-                                    val item = specialSlots.removeAt(index)
-                                    specialSlots.add(targetIndex, item)
-                                    draggedSlotIndex = targetIndex
-                                    draggingSlotOffset = 0f
-                                }
-                            },
-                            onDragEnd = {
-                                draggedSlotIndex = null
-                                draggingSlotOffset = 0f
-                            },
-                            modifier = Modifier.onGloballyPositioned { coords ->
-                                specialSlotPositions[index] = coords.positionInWindow().y
-                            }
-                        )
-                    }
-                    
-                    Button(
-                        onClick = { specialSlots.add(SpecialSlotSettings(level = 0f, count = 0)) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("ДОБАВИТЬ ОСОБУЮ ЯЧЕЙКУ")
-                    }
-
-                    // Pact Slots
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        SectionTitle("ЯЧЕЙКИ ДОГОВОРА")
-                        Switch(checked = isPactEnabled, onCheckedChange = { isPactEnabled = it })
-                    }
-
-                    AnimatedVisibility(visible = isPactEnabled) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.2f)),
-                            shape = RoundedCornerShape(16.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                var pactLevelText by remember { mutableStateOf(formatFloat(pactSlotLevel)) }
-                                OutlinedTextField(
-                                    value = pactLevelText,
-                                    onValueChange = { newVal ->
-                                        pactLevelText = newVal
-                                        newVal.toFloatOrNull()?.let { pactSlotLevel = it }
-                                    },
-                                    label = { Text("Уровень") },
-                                    placeholder = {},
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                                )
-                                OutlinedTextField(
-                                    value = if (pactSlotsCount == 0) "" else pactSlotsCount.toString(),
-                                    onValueChange = { newVal ->
-                                        if (newVal.isBlank()) {
-                                            pactSlotsCount = 0
-                                        } else {
-                                            val v = newVal.toIntOrNull()
-                                            if (v != null) pactSlotsCount = v
-                                        }
-                                    },
-                                    label = { Text("Количество") },
-                                    placeholder = {},
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Апкаст заговоров", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "Позволить усиливать заклинания 0 уровня",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant
                                 )
                             }
+                            Switch(checked = allowCantripUpcast, onCheckedChange = onAllowCantripUpcastChange)
                         }
                     }
-                }
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Button(
+                        onClick = onSave,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Апкаст заговоров", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text(
-                                "Позволить усиливать заклинания 0 уровня",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Switch(checked = allowCantripUpcast, onCheckedChange = { allowCantripUpcast = it })
+                        Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Button(
-                    onClick = {
-                        focusManager.clearFocus()
-                        onSettingsChange(
-                            settings.copy(
-                                isMagicEnabled = isMagicEnabled,
-                                spellcastingAbility = spellcastingAbility,
-                                spellAttackBonuses = spellAttackBonuses,
-                                spellSaveDcBonuses = spellSaveDcBonuses,
-                                spellMode = spellMode,
-                                casterType = casterType,
-                                isMulticlass = isMulticlass,
-                                fullCasterLevel = fullCasterLevel,
-                                halfCasterLevel = halfCasterLevel,
-                                thirdCasterLevel = thirdCasterLevel,
-                                specialSlots = specialSlots.toList(),
-                                overrideSlots = overrideSlots,
-                                pactSlotLevel = pactSlotLevel,
-                                pactSlotsCount = pactSlotsCount,
-                                isPactEnabled = isPactEnabled,
-                                isSpellbookEnabled = isSpellbookEnabled,
-                                usedSlots = settings.usedSlots.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
-                                usedSlotsShortRest = settings.usedSlotsShortRest.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
-                                usedSlotsDawn = settings.usedSlotsDawn.filterKeys { it in overrideSlots.keys || it == pactSlotLevel || it in specialSlots.map { s -> s.level } },
-                                allowCantripUpcast = allowCantripUpcast
-                            )
-                        )
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
-    }
 
-    if (showAttackBonusDialog) {
-        MagicBonusSettingsDialog(
-            title = "Магическая атака",
-            bonuses = spellAttackBonuses,
-            baseModifier = pb + currentAbilityModifier,
-            stats = statsMap,
-            proficiencyBonus = pb,
-            onDismiss = { showAttackBonusDialog = false },
-            onSave = {
-                spellAttackBonuses = it
-                showAttackBonusDialog = false
-            },
-            forceBlurEnabled = forceBlurEnabled
-        )
-    }
+        if (showAttackBonusDialog) {
+            MagicBonusSettingsDialog(
+                title = "Магическая атака",
+                bonuses = spellAttackBonuses,
+                baseModifier = pb + currentAbilityModifier,
+                stats = statsMap,
+                proficiencyBonus = pb,
+                onDismiss = { onShowAttackBonusDialogChange(false) },
+                onSave = {
+                    onSpellAttackBonusesChange(it)
+                    onShowAttackBonusDialogChange(false)
+                },
+                forceBlurEnabled = forceBlurEnabled,
+                isDesktop = isDesktop,
+                hazeState = localHazeState,
+                settingsViewModel = settingsViewModel,
+                isNested = true,
+                asOverlay = true
+            )
+        }
 
-    if (showSaveDcBonusDialog) {
-        MagicBonusSettingsDialog(
-            title = "Магическая сложность",
-            bonuses = spellSaveDcBonuses,
-            baseModifier = 8 + pb + currentAbilityModifier,
-            stats = statsMap,
-            proficiencyBonus = pb,
-            onDismiss = { showSaveDcBonusDialog = false },
-            onSave = {
-                spellSaveDcBonuses = it
-                showSaveDcBonusDialog = false
-            },
-            forceBlurEnabled = forceBlurEnabled
-        )
+        if (showSaveDcBonusDialog) {
+            MagicBonusSettingsDialog(
+                title = "Магическая сложность",
+                bonuses = spellSaveDcBonuses,
+                baseModifier = 8 + pb + currentAbilityModifier,
+                stats = statsMap,
+                proficiencyBonus = pb,
+                onDismiss = { onShowSaveDcBonusDialogChange(false) },
+                onSave = {
+                    onSpellSaveDcBonusesChange(it)
+                    onShowSaveDcBonusDialogChange(false)
+                },
+                forceBlurEnabled = forceBlurEnabled,
+                isDesktop = isDesktop,
+                hazeState = localHazeState,
+                settingsViewModel = settingsViewModel,
+                isNested = true,
+                asOverlay = true
+            )
+        }
     }
 }
 

@@ -103,6 +103,11 @@ enum class AppThemeBehavior {
 }
 
 @Serializable
+enum class AppInterfaceMode {
+    MOBILE, AUTO, DESKTOP
+}
+
+@Serializable
 enum class ExportFormat {
     WEBP, PNG, JPG
 }

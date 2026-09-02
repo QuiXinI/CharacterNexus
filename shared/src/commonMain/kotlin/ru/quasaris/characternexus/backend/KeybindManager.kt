@@ -22,7 +22,8 @@ enum class KeybindAction(val displayName: String) {
     TOGGLE_EDIT_MODE("Режим редактирования / Расширенный режим"),
     TOGGLE_EXPANSION("Свернуть / Развернуть всё"),
     OPEN_DRAWER("Открыть боковое меню"),
-    BACK("Назад / Закрыть окно")
+    BACK("Назад / Закрыть окно"),
+    SWITCH_FOCUS("Переключить фокус между панелями")
 }
 
 @Serializable
@@ -52,7 +53,8 @@ class KeybindManager {
         KeybindAction.TOGGLE_EDIT_MODE to Key.Z.keyCode,
         KeybindAction.TOGGLE_EXPANSION to Key.X.keyCode,
         KeybindAction.OPEN_DRAWER to Key.Tab.keyCode,
-        KeybindAction.BACK to Key.Escape.keyCode
+        KeybindAction.BACK to Key.Escape.keyCode,
+        KeybindAction.SWITCH_FOCUS to Key.F.keyCode
     )
 
     var mappings: Map<KeybindAction, Key> = loadMappings()

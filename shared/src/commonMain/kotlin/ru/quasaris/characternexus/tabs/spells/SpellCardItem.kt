@@ -30,6 +30,8 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.model.*
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -79,10 +81,12 @@ fun SpellCardItem(
     collapseOnEdit: Boolean = true,
     isDragging: Boolean = false,
     isAnyItemDragging: Boolean = false,
-    isCompact: Boolean = false
+    isCompact: Boolean = false,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val internalHazeState = remember { HazeState() }
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
     var showAttackPopup by remember { mutableStateOf(false) }
     var attackBtnSize by remember { mutableStateOf(IntSize.Zero) }
@@ -122,14 +126,11 @@ fun SpellCardItem(
             .run {
                 if (useHaze) {
                     val targetState = if (isDragging) (popupHazeState ?: hazeState!!) else hazeState!!
-                    this.clip(RoundedCornerShape(16.dp))
-                        .hazeEffect(
-                            state = targetState,
-                            style = HazeStyle(
-                                blurRadius = 24.dp,
-                                tints = listOf(HazeTint(colorScheme.surfaceContainer.copy(alpha = 0.6f)))
-                            )
-                        )
+                    this.hazePopover(
+                        state = targetState,
+                        blurRadius = blurRadius,
+                        isOled = colorScheme.background == Color.Black
+                    )
                 } else this
             },
         colors = CardDefaults.cardColors(
@@ -287,7 +288,8 @@ fun SpellCardItem(
                                 isMainDamage = true,
                                 availableSlotLevels = availableSlotLevels,
                                 remainingSlots = remainingSlots,
-                                allowCantripUpcast = allowCantripUpcast
+                                allowCantripUpcast = allowCantripUpcast,
+                                settingsViewModel = settingsViewModel
                             )
                         }
                         spell.additionalDamageFormulas.forEachIndexed { index, formula ->
@@ -356,7 +358,7 @@ fun SpellCardItem(
                                         if (showAttackPopup) {
                                             val density = LocalDensity.current
                                             val sizeDp = with(density) { attackBtnSize.toSize().let { DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
-                                            DiceRollAdvantagePopup(
+                                            DiceRollAdvantagePopup(settingsViewModel = settingsViewModel, 
                                                 onAdvantage = { onRollAttack(AdvantageType.ADVANTAGE) },
                                                 onDisadvantage = { onRollAttack(AdvantageType.DISADVANTAGE) },
                                                 onDismiss = { showAttackPopup = false },
@@ -534,7 +536,8 @@ fun SpellDamageButton(
     additionalIndex: Int = -1,
     availableSlotLevels: List<Int> = emptyList(),
     remainingSlots: Map<Int, Int> = emptyMap(),
-    allowCantripUpcast: Boolean = false
+    allowCantripUpcast: Boolean = false,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     var showPopup by remember { mutableStateOf(false) }
@@ -679,7 +682,7 @@ fun SpellDamageButton(
                 val density = LocalDensity.current
                 val sizeDp = with(density) { btnSize.toSize().let { DpSize((it.width / density.density).dp, (it.height / density.density).dp) } }
                 
-                DiceRollAdvantagePopup(
+                DiceRollAdvantagePopup(settingsViewModel = settingsViewModel, 
                     onAdvantage = { performRoll(AdvantageType.ADVANTAGE) },
                     onDisadvantage = { performRoll(AdvantageType.DISADVANTAGE) },
                     onCritical = { performRoll(AdvantageType.CRITICAL) },

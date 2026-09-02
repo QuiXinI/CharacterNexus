@@ -50,10 +50,24 @@ fun ResourceBlock(
     blurPopups: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
-    onSubDialogOpenChange: (Boolean) -> Unit = {}
+    onSubDialogOpenChange: (Boolean) -> Unit = {},
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    isNested: Boolean = false,
+    onOpenConfig: ((DynamicContentBlock.Resource) -> Unit)? = null
 ) {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     var showConfig by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(showConfig) {
+        state?.activeResourceConfig = if (showConfig) resource else null
+        state?.isResourceConfigOpen = showConfig
+    }
+    
+    LaunchedEffect(state?.isResourceConfigOpen) {
+        if (state?.isResourceConfigOpen == false) {
+            showConfig = false
+        }
+    }
     var showInfo by remember { mutableStateOf(false) }
     var infoIconPosition by remember { mutableStateOf(Offset.Zero) }
 
@@ -116,7 +130,11 @@ fun ResourceBlock(
                 indication = null
             ) {
                 performClickHaptic()
-                showConfig = true
+                if (onOpenConfig != null) {
+                    onOpenConfig(resource)
+                } else {
+                    showConfig = true
+                }
             }
             .padding(12.dp)
     ) {
@@ -270,7 +288,7 @@ fun ResourceBlock(
     val currentOnFullscreenDialogOpenChange by rememberUpdatedState(onFullscreenDialogOpenChange)
     val currentOnSubDialogOpenChange by rememberUpdatedState(onSubDialogOpenChange)
 
-    if (showConfig) {
+    if (showConfig && state == null) {
         ResourceConfigDialog(
             resource = resource,
             onDismiss = {
@@ -289,7 +307,9 @@ fun ResourceBlock(
             onFullscreenDialogOpenChange = { opened ->
                 currentOnFullscreenDialogOpenChange(opened)
                 currentOnSubDialogOpenChange(opened)
-            }
+            },
+            isNested = isNested,
+            hazeState = hazeState
         )
     }
 
@@ -300,7 +320,8 @@ fun ResourceBlock(
             anchorPosition = infoIconPosition,
             onDismiss = { showInfo = false },
             hazeState = hazeState,
-            forceBlurEnabled = blurPopups
+            forceBlurEnabled = blurPopups,
+            settingsViewModel = settingsViewModel
         )
     }
 }

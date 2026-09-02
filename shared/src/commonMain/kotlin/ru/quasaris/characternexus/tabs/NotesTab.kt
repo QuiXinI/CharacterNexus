@@ -14,10 +14,14 @@ fun NotesTab(
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
+    onToggleEditMode: () -> Unit = {},
+    onToggleAllExpansion: () -> Unit = {},
+    anyCollapsed: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     header: @Composable () -> Unit = {}
 ) {
     DynamicFieldsTab(
@@ -28,6 +32,9 @@ fun NotesTab(
         forceBlurEnabled = forceBlurEnabled,
         blurPopups = blurPopups,
         isEditMode = isEditMode,
+        onToggleEditMode = onToggleEditMode,
+        onToggleAllExpansion = onToggleAllExpansion,
+        anyCollapsed = anyCollapsed,
         addButtonText = "ДОБАВИТЬ ЗАМЕТКУ",
         emptyListText = "Список заметок пуст",
         titlePlaceholder = "Заголовок заметки",
@@ -36,6 +43,7 @@ fun NotesTab(
         statsMap = statsMap,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
+        state = state,
         header = header
     )
 }

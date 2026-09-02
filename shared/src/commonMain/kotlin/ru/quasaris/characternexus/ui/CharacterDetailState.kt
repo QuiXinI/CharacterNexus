@@ -10,6 +10,8 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.model.Character
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import ru.quasaris.characternexus.util.generateUuid
 import characternexus.shared.generated.resources.Res
 import characternexus.shared.generated.resources.*
@@ -187,9 +189,23 @@ class CharacterDetailState(
     var isWalletDialogOpen by mutableStateOf(false)
     var isSpellbookSelectionOpen by mutableStateOf(false)
 
+    var activeAttackConfigId by mutableStateOf<String?>(null)
+    var editingSpell by mutableStateOf<SpellCard?>(null)
+    var activeDynamicField by mutableStateOf<DynamicNoteState?>(null)
+    var selectedCurrency by mutableStateOf<Currency?>(null)
+    var isResourceConfigOpen by mutableStateOf(false)
+    var activeResourceConfig by mutableStateOf<DynamicContentBlock.Resource?>(null)
+    var activeBonusConfigAttribute by mutableStateOf<Attribute?>(null)
+    var activeBonusConfigSkill by mutableStateOf<String?>(null)
+
     var isArmorClassSubDialogOpen by mutableStateOf(false)
     var isInitiativeSubDialogOpen by mutableStateOf(false)
     var isSpeedSubDialogOpen by mutableStateOf(false)
+
+    // Desktop/Hover State
+    var activeSection by mutableStateOf("left") // "left" or "right"
+    var hoveredSection by mutableStateOf<String?>(null) // "left" or "right"
+    var windowWidth by mutableStateOf(0.dp)
 
     // Settings (moved from Composable to State for simplification)
     @Composable
@@ -208,11 +224,13 @@ class CharacterDetailState(
         val masterBlurEnabledVal by settingsViewModel.masterBlurEnabled.collectAsState()
         val diceFabEnabledVal by settingsViewModel.diceFabEnabled.collectAsState()
         val advantageLogicVal by settingsViewModel.advantageLogic.collectAsState()
+        val interfaceModeVal by settingsViewModel.interfaceMode.collectAsState()
 
         LaunchedEffect(
             useNewACVal, useNewInitVal, useNewCondVal, useNewSpeedVal,
             diceFabOffsetXVal, diceFabOffsetYVal, diceFabAlphaSettingVal,
-            diceFabBlurEnabledVal, masterBlurEnabledVal, diceFabEnabledVal, advantageLogicVal
+            diceFabBlurEnabledVal, masterBlurEnabledVal, diceFabEnabledVal, advantageLogicVal,
+            interfaceModeVal
         ) {
             if (useNewAC != useNewACVal) useNewAC = useNewACVal
             if (useNewInit != useNewInitVal) useNewInit = useNewInitVal
@@ -225,6 +243,7 @@ class CharacterDetailState(
             if (masterBlurEnabled != masterBlurEnabledVal) masterBlurEnabled = masterBlurEnabledVal
             if (diceFabEnabled != diceFabEnabledVal) diceFabEnabled = diceFabEnabledVal
             if (advantageLogic != advantageLogicVal) advantageLogic = advantageLogicVal
+            if (interfaceMode != interfaceModeVal) interfaceMode = interfaceModeVal
         }
     }
 
@@ -232,6 +251,7 @@ class CharacterDetailState(
     var useNewInit by mutableStateOf(true)
     var useNewCond by mutableStateOf(true)
     var useNewSpeed by mutableStateOf(true)
+    var interfaceMode by mutableStateOf(AppInterfaceMode.AUTO)
 
     var diceFabOffsetX by mutableStateOf(-40f)
     var diceFabOffsetY by mutableStateOf(-40f)
@@ -349,6 +369,13 @@ class CharacterDetailState(
 
     val initValue by derivedStateOf {
         ru.quasaris.characternexus.backend.CombatCalculations.calculateInitiative(activeInitiativeId, initiativeEntries, statsMap, exhaustion)
+    }
+
+    val isAnyPanelVisible by derivedStateOf {
+        isLevelPanelVisible || isHealthPanelVisible || 
+        isRestPanelVisible || isArmorClassPanelVisible || 
+        isInitiativePanelVisible || isConditionsPanelVisible || 
+        isSpeedPanelVisible
     }
 
     val speedValue by derivedStateOf {
@@ -548,6 +575,50 @@ class CharacterDetailState(
         }
     }
 
+    fun updateDynamicField(updated: DynamicNoteState) {
+        notes = notes.map { if (it.id == updated.id) updated else it }
+        skillsAndTraits = skillsAndTraits.map { if (it.id == updated.id) updated else it }
+        inventory = inventory.map { if (it.id == updated.id) updated else it }
+        spells = spells.map { if (it.id == updated.id) updated else it }
+    }
+
+    fun deleteDynamicField(field: DynamicNoteState) {
+        notes = notes.filter { it.id != field.id }
+        skillsAndTraits = skillsAndTraits.filter { it.id != field.id }
+        inventory = inventory.filter { it.id != field.id }
+        spells = spells.filter { it.id != field.id }
+    }
+
+    fun updateResource(updated: DynamicContentBlock.Resource) {
+        val updateNote = { note: DynamicNoteState ->
+            val blocks = DynamicContentParser.parse(note.content).toMutableList()
+            val idx = blocks.indexOfFirst { it is DynamicContentBlock.Resource && it.id == updated.id }
+            if (idx != -1) {
+                blocks[idx] = updated
+                note.copy(content = DynamicContentParser.render(blocks))
+            } else note
+        }
+        notes = notes.map { updateNote(it) }
+        skillsAndTraits = skillsAndTraits.map { updateNote(it) }
+        inventory = inventory.map { updateNote(it) }
+        spells = spells.map { updateNote(it) }
+    }
+
+    fun deleteResource(resource: DynamicContentBlock.Resource) {
+        val updateNote = { note: DynamicNoteState ->
+            val blocks = DynamicContentParser.parse(note.content).toMutableList()
+            val idx = blocks.indexOfFirst { it is DynamicContentBlock.Resource && it.id == resource.id }
+            if (idx != -1) {
+                blocks.removeAt(idx)
+                note.copy(content = DynamicContentParser.render(blocks))
+            } else note
+        }
+        notes = notes.map { updateNote(it) }
+        skillsAndTraits = skillsAndTraits.map { updateNote(it) }
+        inventory = inventory.map { updateNote(it) }
+        spells = spells.map { updateNote(it) }
+    }
+
     fun syncIdentity() {
         if (!isMulticlassHP) {
             // In single class mode, ensure the 'classes' list has exactly one entry for toSummary()
@@ -592,5 +663,33 @@ class CharacterDetailState(
             }
             manualHPLevelData = newList
         }
+    }
+
+    fun closeMajorOverlays() {
+        isLevelPanelVisible = false
+        isArmorClassPanelVisible = false
+        isInitiativePanelVisible = false
+        isSpeedPanelVisible = false
+        isConditionsPanelVisible = false
+        isHealthPanelVisible = false
+        isRestPanelVisible = false
+        showEnhancedAC = false
+        showEnhancedInit = false
+        showEnhancedSpeed = false
+        showEnhancedCond = false
+        showCharacterSettings = false
+        showHealthSettings = false
+        showSpellSettings = false
+        isBonusConfigOpen = false
+        isAttackConfigOpen = false
+        isSpellEditorOpen = false
+        isMagicBonusSettingsOpen = false
+        isFullscreenDynamicFieldOpen = false
+        isWalletDialogOpen = false
+        isSpellbookSelectionOpen = false
+        isResourceConfigOpen = false
+        showHpDialog = false
+        activeBonusConfigAttribute = null
+        activeBonusConfigSkill = null
     }
 }

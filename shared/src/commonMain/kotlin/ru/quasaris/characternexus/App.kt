@@ -83,14 +83,11 @@ fun App(
     val blurRolls = getBlurRolls()
     val blurFullscreen = getBlurFullscreen()
     val blurPopups = getBlurPopups()
-    val blurRadiusVal by settingsViewModel.blurRadius.collectAsState()
-    val customBlurRadiusVal by settingsViewModel.customBlurRadius.collectAsState()
     val rollAlpha = getRollInterfaceAlpha()
 
     val effectiveBlurRolls = masterBlurEnabled && blurRolls
     val effectiveBlurFullscreen = masterBlurEnabled && blurFullscreen
     val effectiveBlurPopups = masterBlurEnabled && blurPopups
-    val targetBlurRadius = if (blurRadiusVal >= 48) customBlurRadiusVal else blurRadiusVal
 
     val rollPassThrough = getRollPassThrough()
     val rollPosition = getRollPosition()
@@ -164,10 +161,6 @@ fun App(
                         else fullscreenDialogCount = maxOf(0, fullscreenDialogCount - 1)
                     }
                 }
-                val blurRadius by animateDpAsState(
-                    targetValue = if (isFullscreenDialogOpen && effectiveBlurFullscreen && !isOled) targetBlurRadius.dp else 0.dp,
-                    animationSpec = tween(durationMillis = 300)
-                )
 
                 val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                 val scope = rememberCoroutineScope()
@@ -194,7 +187,6 @@ fun App(
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
                             .hazeSource(state = hazeState)
-                            .blur(blurRadius)
                     )
 
                     // Layer 2: Main UI Source (for popups, FAB and dragged items)
@@ -202,7 +194,6 @@ fun App(
                         modifier = Modifier
                             .fillMaxSize()
                             .hazeSource(state = overlayHazeState)
-                            .blur(blurRadius)
                     ) {
                         ModalNavigationDrawer(
                             drawerState = drawerState,
@@ -544,6 +535,7 @@ fun App(
                         }
                     }
 
+                    // OVERLAYS - Moved outside hazeSource for overlayHazeState to avoid StackOverflow loop
                     val density = LocalDensity.current
                     val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
                     val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true

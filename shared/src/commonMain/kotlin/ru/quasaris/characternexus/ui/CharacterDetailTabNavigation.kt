@@ -35,13 +35,7 @@ import ru.quasaris.characternexus.model.*
 fun TabNavigationBar(
     currentTab: CharacterTab,
     onShowTabSheet: () -> Unit,
-    isEditMode: Boolean,
-    onToggleEditMode: () -> Unit,
-    hasContentToEdit: Boolean,
-    collapsibleTabs: List<CharacterTab>,
-    anyCollapsed: Boolean,
-    onToggleAllExpansion: () -> Unit,
-    onShowSpellSettings: () -> Unit
+    actions: @Composable () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
@@ -49,29 +43,12 @@ fun TabNavigationBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp)
-            .background(colorScheme.surface),
+            .background(colorScheme.surface)
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (currentTab == CharacterTab.SPELLS) {
-                IconButton(
-                    onClick = onShowSpellSettings,
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.AutoFixHigh,
-                        contentDescription = "Spell Settings",
-                        tint = colorScheme.primary
-                    )
-                }
-            } else {
-                // Empty box for spacing
-            }
-        }
+        Box(modifier = Modifier.weight(1f))
 
         Surface(
             color = colorScheme.primary.copy(alpha = 0.1f),
@@ -103,33 +80,131 @@ fun TabNavigationBar(
             }
         }
 
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (currentTab in collapsibleTabs) {
-                    IconButton(onClick = onToggleAllExpansion) {
-                        Icon(
-                            imageVector = if (anyCollapsed) Icons.Default.UnfoldMore else Icons.Default.UnfoldLess,
-                            contentDescription = "Toggle All Expansion",
-                            tint = colorScheme.primary
-                        )
-                    }
-                }
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            actions()
+        }
+    }
+}
 
-                if (hasContentToEdit) {
-                    IconButton(
-                        onClick = onToggleEditMode,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Icon(
-                            if (isEditMode) Icons.Default.EditOff else Icons.Default.Edit,
-                            contentDescription = "Toggle Edit Mode",
-                            tint = if (isEditMode) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
+@Composable
+fun TabActions(
+    tab: CharacterTab,
+    state: CharacterDetailState,
+    onShowSpellSettings: (() -> Unit)? = null,
+    isDesktop: Boolean = false
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
+    ) {
+        if (tab == CharacterTab.SPELLS && onShowSpellSettings != null) {
+            IconButton(onClick = onShowSpellSettings) {
+                Icon(Icons.Default.AutoFixHigh, contentDescription = "Spell Settings", tint = colorScheme.primary)
+            }
+        }
+
+        if (tab == CharacterTab.STATS && !isDesktop) {
+            IconButton(onClick = { state.isAdvancedMode = !state.isAdvancedMode }) {
+                Icon(
+                    imageVector = Icons.Default.UnfoldMore,
+                    contentDescription = "Toggle Skills",
+                    tint = colorScheme.primary
+                )
+            }
+        }
+
+        val supportExpansion = tab in listOf(
+            CharacterTab.BIO, CharacterTab.SKILLS_FEATS, 
+            CharacterTab.INVENTORY, CharacterTab.SPELLS, CharacterTab.NOTES
+        )
+        
+        if (supportExpansion) {
+            val anyCollapsed = when(tab) {
+                CharacterTab.BIO -> state.bioLongSections.any { !it.isExpanded }
+                CharacterTab.SKILLS_FEATS -> state.skillsAndTraits.any { !it.isExpanded }
+                CharacterTab.INVENTORY -> state.inventory.any { !it.isExpanded }
+                CharacterTab.SPELLS -> state.spells.any { !it.isExpanded }
+                CharacterTab.NOTES -> state.notes.any { !it.isExpanded }
+                else -> false
+            }
+            
+            IconButton(onClick = {
+                when(tab) {
+                    CharacterTab.BIO -> state.bioLongSections = state.bioLongSections.map { it.copy(isExpanded = anyCollapsed) }
+                    CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = state.skillsAndTraits.map { it.copy(isExpanded = anyCollapsed) }
+                    CharacterTab.INVENTORY -> state.inventory = state.inventory.map { it.copy(isExpanded = anyCollapsed) }
+                    CharacterTab.SPELLS -> state.spells = state.spells.map { it.copy(isExpanded = anyCollapsed) }
+                    CharacterTab.NOTES -> state.notes = state.notes.map { it.copy(isExpanded = anyCollapsed) }
+                    else -> {}
                 }
+            }) {
+                Icon(
+                    imageVector = if (anyCollapsed) Icons.Default.UnfoldMore else Icons.Default.UnfoldLess,
+                    contentDescription = "Toggle All Expansion",
+                    tint = colorScheme.primary
+                )
+            }
+        }
+
+        val showEdit = tab != CharacterTab.STATS
+        
+        if (showEdit) {
+            IconButton(onClick = { state.isEditMode = !state.isEditMode }) {
+                Icon(
+                    if (state.isEditMode) Icons.Default.EditOff else Icons.Default.Edit,
+                    contentDescription = "Toggle Edit Mode",
+                    tint = if (state.isEditMode) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TabControlHeader(
+    isEditMode: Boolean,
+    onToggleEditMode: () -> Unit,
+    hasContentToEdit: Boolean = true,
+    isCollapsible: Boolean = false,
+    anyCollapsed: Boolean = false,
+    onToggleAllExpansion: () -> Unit = {},
+    onShowSpellSettings: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
+    ) {
+        if (onShowSpellSettings != null) {
+            IconButton(onClick = onShowSpellSettings) {
+                Icon(Icons.Default.AutoFixHigh, contentDescription = "Spell Settings", tint = colorScheme.primary)
+            }
+        }
+
+        if (isCollapsible) {
+            IconButton(onClick = onToggleAllExpansion) {
+                Icon(
+                    imageVector = if (anyCollapsed) Icons.Default.UnfoldMore else Icons.Default.UnfoldLess,
+                    contentDescription = "Toggle All Expansion",
+                    tint = colorScheme.primary
+                )
+            }
+        }
+
+        if (hasContentToEdit) {
+            IconButton(onClick = onToggleEditMode) {
+                Icon(
+                    if (isEditMode) Icons.Default.EditOff else Icons.Default.Edit,
+                    contentDescription = "Toggle Edit Mode",
+                    tint = if (isEditMode) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.6f)
+                )
             }
         }
     }

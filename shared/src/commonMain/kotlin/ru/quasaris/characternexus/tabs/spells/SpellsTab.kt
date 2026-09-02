@@ -44,6 +44,7 @@ import ru.quasaris.characternexus.tabs.attacks.DiceIcon
 import ru.quasaris.characternexus.tabs.attacks.calculateTotalBonus
 import ru.quasaris.characternexus.tabs.attacks.calculateAttackFormulaParts
 import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup
+import ru.quasaris.characternexus.ui.TabControlHeader
 import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
 import sh.calvin.reorderable.*
 import kotlin.math.floor
@@ -61,6 +62,10 @@ fun SpellsTab(
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
+    onToggleEditMode: () -> Unit = {},
+    onToggleAllExpansion: () -> Unit = {},
+    anyCollapsed: Boolean = false,
+    onShowSpellSettings: () -> Unit = {},
     settingsViewModel: SettingsViewModel? = null,
     onRoll: (RollResult) -> Unit = {},
     statsMap: Map<String, String> = emptyMap(),
@@ -72,6 +77,7 @@ fun SpellsTab(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     onSpellbookSelectionOpenChange: (Boolean) -> Unit = {},
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     header: @Composable () -> Unit = {}
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
@@ -85,6 +91,14 @@ fun SpellsTab(
     LaunchedEffect(editingSpell, showMagicBonusSettings) {
         onSpellEditorOpenChange(editingSpell != null)
         onMagicBonusSettingsOpenChange(showMagicBonusSettings)
+        state?.editingSpell = editingSpell
+        state?.isSpellEditorOpen = editingSpell != null
+    }
+
+    LaunchedEffect(state?.isSpellEditorOpen) {
+        if (state?.isSpellEditorOpen == false) {
+            editingSpell = null
+        }
     }
 
     var showSelectionDialog by remember { mutableStateOf(false) }
@@ -782,7 +796,8 @@ fun SpellsTab(
                                                             isEditMode = isListEditMode,
                                                             collapseOnEdit = collapseSpellsOnEdit,
                                                             isDragging = isDragging,
-                                                            isAnyItemDragging = draggingIndex != null
+                                                            isAnyItemDragging = draggingIndex != null,
+                                                            settingsViewModel = settingsViewModel
                                                         )
                                                     }
                                                 }
@@ -977,9 +992,9 @@ fun SpellsTab(
         )
     }
 
-    editingSpell?.let { spell ->
+    if (editingSpell != null && state == null) {
         SpellEditorWindow(
-            spell = spell,
+            spell = editingSpell!!,
             onDismiss = { editingSpell = null },
             onSave = { updated ->
                 spellbookManager?.addOrUpdateSpell(updated)
@@ -997,57 +1012,6 @@ fun SpellsTab(
             },
             forceBlurEnabled = forceBlurEnabled,
             settingsViewModel = settingsViewModel
-        )
-    }
-
-    if (showSelectionDialog && spellbookManager != null) {
-        SpellbookSelectionDialog(
-            spellbookManager = spellbookManager,
-            selectedIds = spellSettings.selectedSpellIds,
-            preparedIds = spellSettings.preparedSpellIds,
-            isSpellbookEnabled = spellSettings.isSpellbookEnabled,
-            onDismiss = { showSelectionDialog = false },
-            onSave = { newIds, newPrepared ->
-                onSpellSettingsChange(spellSettings.copy(
-                    selectedSpellIds = newIds,
-                    preparedSpellIds = newPrepared
-                ))
-                refreshTrigger++
-            },
-            hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled,
-            blurCards = blurCards,
-            statsMap = statsMap,
-            characterLevel = characterLevel,
-            spellAttackBonus = spellAttackBonus,
-            spellAttackDice = spellAttackDice,
-            spellSaveDc = spellSaveDc,
-            spellSaveDice = spellSaveDice,
-            onRollDamage = { formula, title, advantage ->
-                onRoll(DiceRoller.roll(
-                    title = title,
-                    baseModifier = 0,
-                    bonuses = listOf(SimpleBonus(formula = formula, name = "Урон")),
-                    isDamage = true,
-                    stats = statsMap,
-                    exhaustion = 0,
-                    sourceType = RollSourceType.OTHER,
-                    advantageType = advantage,
-                    advantageLogic = advantageLogic
-                ))
-            },
-            onRollAttack = { advantage ->
-                onRoll(DiceRoller.roll(
-                    title = "Атака заклинанием",
-                    baseModifier = spellAttackBase,
-                    bonuses = spellSettings.spellAttackBonuses,
-                    stats = statsMap,
-                    exhaustion = exhaustion,
-                    sourceType = RollSourceType.ATTACK,
-                    advantageType = advantage,
-                    advantageLogic = advantageLogic
-                ))
-            }
         )
     }
 }

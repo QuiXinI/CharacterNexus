@@ -43,17 +43,22 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.LocalHazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.*
+import ru.quasaris.characternexus.ui.CharacterDetailState
 import ru.quasaris.characternexus.tabs.attacks.calculateAttackFormulaParts
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup
+import ru.quasaris.characternexus.ui.TabControlHeader
 import sh.calvin.reorderable.*
 
 val AttackInfoHazeStyle = HazeStyle(
     blurRadius = 20.dp,
     tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
 )
+
 
 @Composable
 fun AttacksTab(
@@ -69,10 +74,12 @@ fun AttacksTab(
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     isEditMode: Boolean = false,
+    onToggleEditMode: () -> Unit = {},
     settingsViewModel: SettingsViewModel? = null,
     spellSettings: SpellSettings = SpellSettings(),
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     onAttackConfigOpenChange: (Boolean) -> Unit = {},
+    state: CharacterDetailState? = null,
     header: @Composable () -> Unit = {}
 ) {
     val currentHazeState = hazeState ?: remember { HazeState() }
@@ -81,6 +88,14 @@ fun AttacksTab(
     
     LaunchedEffect(editingAttack) {
         onAttackConfigOpenChange(editingAttack != null)
+        state?.activeAttackConfigId = editingAttack?.id
+        state?.isAttackConfigOpen = editingAttack != null
+    }
+
+    LaunchedEffect(state?.isAttackConfigOpen) {
+        if (state?.isAttackConfigOpen == false) {
+            editingAttack = null
+        }
     }
 
     var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
@@ -104,58 +119,60 @@ fun AttacksTab(
             .fillMaxSize()
             .imePadding()
     ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().clipToBounds(),
-            contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item { 
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    header() 
-                }
-            }
-
-            if (attacks.isEmpty()) {
-                item {
-                    Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            "Список атак пуст",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds(),
+                contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item { 
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        header() 
                     }
                 }
-            } else {
-                itemsIndexed(items, key = { _, attack -> attack.id }) { index, attack ->
-                    ReorderableItem(reorderableState, key = attack.id) { isDragging ->
-                        val dragModifier = if (isEditMode) Modifier.draggableHandle() else Modifier
 
-                        AttackItem(
-                            attack = attack,
-                            isEditMode = isEditMode,
-                            isDragging = isDragging,
-                            isAnyItemDragging = reorderableState.isAnyItemDragging,
-                            proficiencyBonus = proficiencyBonus,
-                            attributeModifiers = attributeModifiers,
-                            onClick = { if (!isEditMode) editingAttack = attack },
-                            onDelete = { attackToDeleteIndex = index },
-                            onRoll = onRoll,
-                            stats = stats,
-                            exhaustion = exhaustion,
-                            hazeState = currentHazeState,
-                            popupHazeState = popupHazeState,
-                            forceBlurEnabled = forceBlurEnabled,
-                            blurPopups = blurPopups,
-                            dragModifier = dragModifier,
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp)
-                                .animateItem(),
-                            spellSettings = spellSettings,
-                            advantageLogic = advantageLogic,
-                            settingsViewModel = settingsViewModel,
-                            collapseActionsOnEdit = collapseActionsOnEdit
-                        )
+                if (attacks.isEmpty()) {
+                    item {
+                        Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                "Список атак пуст",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(items, key = { _, attack -> attack.id }) { index, attack ->
+                        ReorderableItem(reorderableState, key = attack.id) { isDragging ->
+                            val dragModifier = if (isEditMode) Modifier.draggableHandle() else Modifier
+
+                            AttackItem(
+                                attack = attack,
+                                isEditMode = isEditMode,
+                                isDragging = isDragging,
+                                isAnyItemDragging = reorderableState.isAnyItemDragging,
+                                proficiencyBonus = proficiencyBonus,
+                                attributeModifiers = attributeModifiers,
+                                onClick = { if (!isEditMode) editingAttack = attack },
+                                onDelete = { attackToDeleteIndex = index },
+                                onRoll = onRoll,
+                                stats = stats,
+                                exhaustion = exhaustion,
+                                hazeState = currentHazeState,
+                                popupHazeState = popupHazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurPopups = blurPopups,
+                                dragModifier = dragModifier,
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp)
+                                    .animateItem(),
+                                spellSettings = spellSettings,
+                                advantageLogic = advantageLogic,
+                                settingsViewModel = settingsViewModel,
+                                collapseActionsOnEdit = collapseActionsOnEdit
+                            )
+                        }
                     }
                 }
             }
@@ -188,9 +205,9 @@ fun AttacksTab(
         settingsViewModel = settingsViewModel
     )
 
-    editingAttack?.let { attack ->
+    if (editingAttack != null && state == null) {
         AttackConfigDialog(
-            attack = attack,
+            attack = editingAttack!!,
             proficiencyBonus = proficiencyBonus,
             attributeModifiers = attributeModifiers,
             onDismiss = { editingAttack = null },
@@ -412,6 +429,7 @@ fun AttackItem(
 
                             if (showInfo) {
                                 val isOled = colorScheme.background == Color.Black
+                                val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
                                 Popup(
                                     onDismissRequest = { showInfo = false },
@@ -421,26 +439,22 @@ fun AttackItem(
                                         dismissOnClickOutside = true
                                     )
                                 ) {
-                                    CompositionLocalProvider(LocalHazeStyle provides AttackInfoHazeStyle) {
-                                        Surface(
-                                            modifier = Modifier
-                                                .padding(8.dp)
-                                                .widthIn(max = 260.dp)
-                                                .run {
-                                                    if (blurPopups && hazeState != null && !isOled) {
-                                                        this.clip(RoundedCornerShape(16.dp))
-                                                            .hazeEffect(state = hazeState) {
-                                                                inputScale = HazeInputScale.Fixed(0.6f)
-                                                            }
-                                                    } else this
-                                                }
-                                                .then(if (!isOled) Modifier.outerShadow(RoundedCornerShape(16.dp), blur = 6.dp, offsetY = 3.dp) else Modifier)
-                                                .clickable { showInfo = false },
-                                            shape = RoundedCornerShape(16.dp),
-                                            color = if (isOled) Color.Black else colorScheme.surfaceContainerHigh.copy(alpha = if (blurPopups) 0.4f else 0.95f),
-                                            tonalElevation = 0.dp,
-                                            shadowElevation = 0.dp
-                                        ) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .widthIn(max = 260.dp)
+                                            .hazePopover(
+                                                state = hazeState,
+                                                blurRadius = blurRadius,
+                                                isOled = isOled
+                                            )
+                                            .then(if (!isOled) Modifier.outerShadow(RoundedCornerShape(16.dp), blur = 6.dp, offsetY = 3.dp) else Modifier)
+                                            .clickable { showInfo = false },
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = if (isOled) Color.Black else colorScheme.surfaceContainerHigh.copy(alpha = 0.2f),
+                                        tonalElevation = 0.dp,
+                                        shadowElevation = 0.dp
+                                    ) {
                                             Column(modifier = Modifier.padding(12.dp)) {
                                                 Text(
                                                     text = attack.name,
@@ -462,7 +476,6 @@ fun AttackItem(
                             }
                         }
                     }
-                }
 
                 if (!isEditMode || !collapseActionsOnEdit) {
                     Row(
@@ -702,3 +715,4 @@ fun AttackItem(
         }
     }
 }
+

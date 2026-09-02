@@ -15,7 +15,8 @@ sealed class DynamicContentBlock {
         val notes: String = "",
         val showNotes: Boolean = false,
         val useSlider: Boolean = false,
-        val sliderStep: Double? = null
+        val sliderStep: Double? = null,
+        val id: String = ru.quasaris.characternexus.util.generateUuid()
     ) : DynamicContentBlock() {
         fun toTag(): String {
             val parts = mutableListOf<String>()
@@ -30,6 +31,7 @@ sealed class DynamicContentBlock {
             if (showNotes) parts.add("showNotes=true")
             if (useSlider) parts.add("slider=true")
             if (sliderStep != null) parts.add("step=$sliderStep")
+            parts.add("id=$id")
             
             return "{Ресурс: ${parts.joinToString(" | ")}}"
         }
@@ -82,7 +84,8 @@ object DynamicContentParser {
                     notes = params["notes"] ?: "",
                     showNotes = params["shownotes"]?.toBoolean() ?: false,
                     useSlider = params["slider"]?.toBoolean() ?: false,
-                    sliderStep = params["step"]?.toDoubleOrNull()
+                    sliderStep = params["step"]?.toDoubleOrNull(),
+                    id = params["id"] ?: ru.quasaris.characternexus.util.generateUuid()
                 )
                 allMatches.add(match.range to block)
             }

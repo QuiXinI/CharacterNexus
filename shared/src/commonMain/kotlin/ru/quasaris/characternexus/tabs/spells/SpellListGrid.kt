@@ -32,7 +32,8 @@ fun SpellListGrid(
     onRollAttack: (AdvantageType) -> Unit = {},
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
-    blurCards: Boolean = true
+    blurCards: Boolean = true,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val grouped = spells.groupBy { it.level }
     val sortedLevels = grouped.keys.sortedBy { it.toIntOrNull() ?: Int.MAX_VALUE }
@@ -69,7 +70,7 @@ fun SpellListGrid(
                         Spacer(Modifier.width(4.dp))
                     }
                     
-                    SpellCardItem(
+                    SpellCardItem(settingsViewModel = settingsViewModel, 
                         spell = spell,
                         isExpanded = spell.id in expandedIds,
                         onToggleExpand = { onToggleExpand(spell.id) },

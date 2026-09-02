@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.HeaderCode.Fullscreen.HealthSettingsContent
 import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
@@ -34,80 +35,130 @@ fun CharacterSettingsWindow(
     state: CharacterDetailState,
     statsMap: Map<String, String>,
     onDismiss: () -> Unit,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    isDesktop: Boolean = false,
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        DialogDimStyle(0f)
-        BackHandler(onBack = onDismiss)
-        val colorScheme = MaterialTheme.colorScheme
-        val isOled = colorScheme.background == Color.Black
-        var selectedTabIndex by remember { mutableStateOf(0) }
-        val tabs = listOf("Идентичность", "Хиты")
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val handleDismiss = {
+        focusManager.clearFocus()
+        onDismiss()
+    }
 
-        Scaffold(
-            topBar = {
-                Column(
-                    modifier = Modifier.background(
-                        if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
-                    )
-                ) {
-                    CenterAlignedTopAppBar(
-                        title = { Text("Настройки персонажа", fontWeight = FontWeight.Black) },
-                        navigationIcon = {
-                            IconButton(onClick = onDismiss) {
-                                Icon(Icons.Default.Close, contentDescription = "Закрыть")
-                            }
-                        },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = Color.Transparent
+    if (isDesktop) {
+        CharacterSettingsContent(
+            state = state,
+            statsMap = statsMap,
+            onDismiss = handleDismiss,
+            forceBlurEnabled = forceBlurEnabled,
+            hazeState = popupHazeState ?: hazeState
+        )
+    } else {
+        Dialog(
+            onDismissRequest = handleDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            DialogDimStyle(0f)
+            CharacterSettingsContent(
+                state = state,
+                statsMap = statsMap,
+                onDismiss = handleDismiss,
+                forceBlurEnabled = forceBlurEnabled,
+                hazeState = popupHazeState ?: hazeState
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CharacterSettingsContent(
+    state: CharacterDetailState,
+    statsMap: Map<String, String>,
+    onDismiss: () -> Unit,
+    forceBlurEnabled: Boolean,
+    hazeState: HazeState? = null
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isOled = colorScheme.background == Color.Black
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("Идентичность", "Хиты")
+
+    BackHandler(onBack = onDismiss)
+
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .run {
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    this.hazeEffect(state = hazeState) {
+                        style = HazeStyle(
+                            blurRadius = 24.dp,
+                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.4f)))
                         )
-                    )
-                    PrimaryTabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = Color.Transparent,
-                        divider = {}
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = { Text(title, fontWeight = FontWeight.Bold) }
-                            )
+                    }
+                } else this
+            },
+        topBar = {
+            Column(
+                modifier = Modifier.background(
+                    if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                )
+            ) {
+                CenterAlignedTopAppBar(
+                    title = { Text("Настройки персонажа", fontWeight = FontWeight.Black) },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = "Закрыть")
                         }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+                PrimaryTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = Color.Transparent,
+                    divider = {}
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = { Text(title, fontWeight = FontWeight.Bold) }
+                        )
                     }
                 }
-            },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
-        ) { paddingValues ->
-            Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-                when (selectedTabIndex) {
-                    0 -> IdentitySettingsSection(state, statsMap)
-                    1 -> HealthSettingsContent(
-                        isManual = state.isManualHP,
-                        onManualChange = { state.isManualHP = it },
-                        manualMaxHp = state.manualMaxHp,
-                        onManualMaxHpChange = { state.manualMaxHp = it },
-                        isMulticlass = state.isMulticlassHP,
-                        onMulticlassChange = { state.isMulticlassHP = it },
-                        currentHitDie = state.defaultHitDie,
-                        onHitDieChange = { state.defaultHitDie = it },
-                        hpLevelData = state.hpLevelData,
-                        onHPLevelDataChange = { state.hpLevelData = it },
-                        manualHPLevelData = state.manualHPLevelData,
-                        onManualHPLevelDataChange = { state.manualHPLevelData = it },
-                        manualMaxHitDice = state.manualMaxHitDice,
-                        onManualMaxHitDiceChange = { state.manualMaxHitDice = it },
-                        hpBonusesAtLevel = state.hpBonusesAtLevel,
-                        onHpBonusesAtLevelChange = { state.hpBonusesAtLevel = it },
-                        hpBonusesTotal = state.hpBonusesTotal,
-                        onHpBonusesTotalChange = { state.hpBonusesTotal = it },
-                        statsMap = statsMap,
-                        level = state.level.toIntOrNull() ?: 1
-                    )
-                }
+            }
+        },
+        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            when (selectedTabIndex) {
+                0 -> IdentitySettingsSection(state, statsMap)
+                1 -> HealthSettingsContent(
+                    isManual = state.isManualHP,
+                    onManualChange = { state.isManualHP = it },
+                    manualMaxHp = state.manualMaxHp,
+                    onManualMaxHpChange = { state.manualMaxHp = it },
+                    isMulticlass = state.isMulticlassHP,
+                    onMulticlassChange = { state.isMulticlassHP = it },
+                    currentHitDie = state.defaultHitDie,
+                    onHitDieChange = { state.defaultHitDie = it },
+                    hpLevelData = state.hpLevelData,
+                    onHPLevelDataChange = { state.hpLevelData = it },
+                    manualHPLevelData = state.manualHPLevelData,
+                    onManualHPLevelDataChange = { state.manualHPLevelData = it },
+                    manualMaxHitDice = state.manualMaxHitDice,
+                    onManualMaxHitDiceChange = { state.manualMaxHitDice = it },
+                    hpBonusesAtLevel = state.hpBonusesAtLevel,
+                    onHpBonusesAtLevelChange = { state.hpBonusesAtLevel = it },
+                    hpBonusesTotal = state.hpBonusesTotal,
+                    onHpBonusesTotalChange = { state.hpBonusesTotal = it },
+                    statsMap = statsMap,
+                    level = state.level.toIntOrNull() ?: 1
+                )
             }
         }
     }

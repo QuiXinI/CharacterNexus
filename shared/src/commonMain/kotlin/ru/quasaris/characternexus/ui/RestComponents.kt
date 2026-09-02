@@ -39,6 +39,8 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.HazeInputScale
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.hazePopover
 
 
 data class RestRoll(
@@ -49,6 +51,7 @@ data class RestRoll(
     val diceSpent: Int = 1
 )
 
+
 @Composable
 fun RestPopup(
     onShortRest: () -> Unit,
@@ -57,11 +60,14 @@ fun RestPopup(
     onDismiss: () -> Unit,
     hazeState: HazeState? = null,
     isOled: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val offsetX = with(density) { (-135).dp.roundToPx() }
     val focusRequester = remember { FocusRequester() }
+
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -103,17 +109,13 @@ fun RestPopup(
                             }
                         } else false
                     }
-                    .run {
-                        if (hazeState != null && !isOled) {
-                            this.clip(RoundedCornerShape(12.dp))
-                                .hazeEffect(state = hazeState) {
-                                    style = HazeStyle(blurRadius = 24.dp, tints = listOf(HazeTint(colorScheme.surface.copy(alpha = 0.4f))))
-                                    inputScale = HazeInputScale.Fixed(0.6f)
-                                }
-                        } else this
-                    },
+                    .hazePopover(
+                        state = hazeState,
+                        blurRadius = blurRadius,
+                        isOled = isOled
+                    ),
                 shape = RoundedCornerShape(12.dp),
-                color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
+                color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.2f) else colorScheme.surface,
                 tonalElevation = 8.dp,
                 border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
             ) {

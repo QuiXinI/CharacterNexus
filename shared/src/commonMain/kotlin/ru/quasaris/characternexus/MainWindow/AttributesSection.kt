@@ -78,8 +78,10 @@ fun AttributesSection(
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
     isOled: Boolean = false,
-    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL
+    advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
     val colorScheme = MaterialTheme.colorScheme
 
@@ -128,7 +130,10 @@ fun AttributesSection(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     stats.forEach { stat ->
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { onStatClick(stat.attribute) },
+                            StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { 
+                                focusManager.clearFocus()
+                                onStatClick(stat.attribute) 
+                            },
                                 saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.SAVING_THROW } as List<IBonus>, statsMap),
                                 checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK } as List<IBonus>, statsMap),
                                 isEditable = !stat.hasValueBonus,
@@ -142,7 +147,8 @@ fun AttributesSection(
                                 },
                                 exhaustion = exhaustion,
                                 hazeState = hazeState,
-                                isOled = isOled
+                                isOled = isOled,
+                                settingsViewModel = settingsViewModel
                             )
                             stat.skills.forEach { skill ->
                                 SkillSubPlate(skill, stat.attribute, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, attributeModifiers, onSkillClick, onLongClick = onSkillLongClick,
@@ -155,7 +161,8 @@ fun AttributesSection(
                                     },
                                     exhaustion = exhaustion,
                                     hazeState = hazeState,
-                                    isOled = isOled
+                                    isOled = isOled,
+                                    settingsViewModel = settingsViewModel
                                 )
                             }
                         }
@@ -171,7 +178,10 @@ fun AttributesSection(
                     val chaHasBonus = statBonuses.any { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.CHARACTERISTIC_VALUE && it.isActive }
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Сила", effStrength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange, onClick = { onStatClick(Attribute.STRENGTH) },
+                        StatCard("Сила", effStrength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange, onClick = { 
+                            focusManager.clearFocus()
+                            onStatClick(Attribute.STRENGTH) 
+                        },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.SAVING_THROW } as List<IBonus>, statsMap),
                             checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK } as List<IBonus>, statsMap),
                             isEditable = !strHasBonus,
@@ -185,9 +195,13 @@ fun AttributesSection(
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
-                            isOled = isOled
+                            isOled = isOled,
+                            settingsViewModel = settingsViewModel
                         )
-                        StatCard("Интеллект", effIntelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange, onClick = { onStatClick(Attribute.INTELLIGENCE) },
+                        StatCard("Интеллект", effIntelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange, onClick = { 
+                            focusManager.clearFocus()
+                            onStatClick(Attribute.INTELLIGENCE) 
+                        },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.SAVING_THROW } as List<IBonus>, statsMap),
                             checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK } as List<IBonus>, statsMap),
                             isEditable = !intHasBonus,
@@ -201,11 +215,15 @@ fun AttributesSection(
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
-                            isOled = isOled
+                            isOled = isOled,
+                            settingsViewModel = settingsViewModel
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Ловкость", effDexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange, onClick = { onStatClick(Attribute.DEXTERITY) },
+                        StatCard("Ловкость", effDexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange, onClick = { 
+                            focusManager.clearFocus()
+                            onStatClick(Attribute.DEXTERITY) 
+                        },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.SAVING_THROW } as List<IBonus>, statsMap),
                             checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK } as List<IBonus>, statsMap),
                             isEditable = !dexHasBonus,
@@ -219,9 +237,13 @@ fun AttributesSection(
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
-                            isOled = isOled
+                            isOled = isOled,
+                            settingsViewModel = settingsViewModel
                         )
-                        StatCard("Мудрость", effWisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange, onClick = { onStatClick(Attribute.WISDOM) },
+                        StatCard("Мудрость", effWisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange, onClick = { 
+                            focusManager.clearFocus()
+                            onStatClick(Attribute.WISDOM) 
+                        },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.SAVING_THROW } as List<IBonus>, statsMap),
                             checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK } as List<IBonus>, statsMap),
                             isEditable = !wisHasBonus,
@@ -235,11 +257,15 @@ fun AttributesSection(
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
-                            isOled = isOled
+                            isOled = isOled,
+                            settingsViewModel = settingsViewModel
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Тело.", effConstitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange, onClick = { onStatClick(Attribute.CONSTITUTION) },
+                        StatCard("Тело.", effConstitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange, onClick = { 
+                            focusManager.clearFocus()
+                            onStatClick(Attribute.CONSTITUTION) 
+                        },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.SAVING_THROW } as List<IBonus>, statsMap),
                             checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK } as List<IBonus>, statsMap),
                             isEditable = !conHasBonus,
@@ -253,9 +279,13 @@ fun AttributesSection(
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
-                            isOled = isOled
+                            isOled = isOled,
+                            settingsViewModel = settingsViewModel
                         )
-                        StatCard("Харизма", effCharisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange, onClick = { onStatClick(Attribute.CHARISMA) },
+                        StatCard("Харизма", effCharisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange, onClick = { 
+                            focusManager.clearFocus()
+                            onStatClick(Attribute.CHARISMA) 
+                        },
                             saveBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.SAVING_THROW } as List<IBonus>, statsMap),
                             checkBonus = calculateTotalBonus(statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK } as List<IBonus>, statsMap),
                             isEditable = !chaHasBonus,
@@ -269,7 +299,8 @@ fun AttributesSection(
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
-                            isOled = isOled
+                            isOled = isOled,
+                            settingsViewModel = settingsViewModel
                         )
                     }
                 }
@@ -340,7 +371,8 @@ fun StatCard(
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
     isOled: Boolean = false,
-    isEditable: Boolean = true
+    isEditable: Boolean = true,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val base = calculateModifier(value)
@@ -357,7 +389,10 @@ fun StatCard(
         )
         .clip(RoundedCornerShape(16.dp))
         .background(colorScheme.surfaceContainer)
-        .clickable { onClick() }
+        .combinedClickable(
+            onClick = { onClick() },
+            onLongClick = { onPToggle(!isP) }
+        )
         .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Column(
@@ -476,21 +511,23 @@ fun StatCard(
                         color = colorScheme.onSurfaceVariant
                     )
                     Spacer(Modifier.width(8.dp))
-                    ModifierBubble(
+                    ModifierBubble( 
                         text = if (totalSave >= 0) "+$totalSave" else "$totalSave",
                         color = if (isP) colorScheme.primary else colorScheme.onSurface,
                         onRoll = onRollSave,
                         hazeState = hazeState,
-                        isOled = isOled
+                        isOled = isOled,
+                        settingsViewModel = settingsViewModel
                     )
                 }
 
-                ModifierBubble(
+                ModifierBubble( 
                     text = if (totalCheck >= 0) "+$totalCheck" else "$totalCheck",
                     color = colorScheme.primary,
                     onRoll = onRollCheck,
                     hazeState = hazeState,
-                    isOled = isOled
+                    isOled = isOled,
+                    settingsViewModel = settingsViewModel
                 )
             }
         }
@@ -505,7 +542,8 @@ fun ModifierBubble(
     clickable: Boolean = true,
     onRoll: (AdvantageType) -> Unit = {},
     hazeState: HazeState? = null,
-    isOled: Boolean = false
+    isOled: Boolean = false,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     var showPopup by remember { mutableStateOf(false) }
     var bubbleSize by remember { mutableStateOf(IntSize.Zero) }
@@ -555,7 +593,8 @@ fun ModifierBubble(
                 hazeState = hazeState,
                 isOled = isOled,
                 widthMultiplier = 2f,
-                modifier = Modifier.size(width = sizeDp.width * 2f, height = sizeDp.height)
+                modifier = Modifier.size(width = sizeDp.width * 2f, height = sizeDp.height),
+                settingsViewModel = settingsViewModel
             )
         }
     }
@@ -576,7 +615,8 @@ fun SkillSubPlate(
     onRoll: (AdvantageType) -> Unit = {},
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
-    isOled: Boolean = false
+    isOled: Boolean = false,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val pb = pbStr.replace("+", "").toIntOrNull() ?: 0
@@ -628,12 +668,13 @@ fun SkillSubPlate(
             fontWeight = FontWeight.ExtraBold, 
             color = colorScheme.onSurface
         )
-        ModifierBubble(
+        ModifierBubble( 
             text = if (total >= 0) "+$total" else "$total",
             color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface,
             onRoll = onRoll,
             hazeState = hazeState,
-            isOled = isOled
+            isOled = isOled,
+            settingsViewModel = settingsViewModel
         )
     }
 }

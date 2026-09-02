@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import org.jetbrains.compose.resources.painterResource
+import characternexus.shared.generated.resources.Res
 import characternexus.shared.generated.resources.*
 import org.jetbrains.compose.resources.DrawableResource
 import androidx.compose.ui.text.TextStyle
@@ -37,6 +38,11 @@ import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.backend.calculateModifier
 import dev.chrisbanes.haze.HazeState
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.ViewList
+import ru.quasaris.characternexus.ui.TabControlHeader
+import ru.quasaris.characternexus.ui.CharacterDetailState
 
 data class StatsState(
     val strength: String = "10",
@@ -88,17 +94,12 @@ fun StatsTab(
     attributeModifiers: Map<Attribute, Int> = emptyMap(),
     statsMap: Map<String, String> = emptyMap(),
     onBonusConfigOpenChange: (Boolean) -> Unit = {},
-    header: @Composable () -> Unit = {}
+    state: CharacterDetailState? = null,
+    header: @Composable () -> Unit = {},
+    isDesktop: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
-    var showBonusDialogForAttribute by remember { mutableStateOf<Attribute?>(null) }
-    var showBonusDialogForSkill by remember { mutableStateOf<String?>(null) }
-    
-    LaunchedEffect(showBonusDialogForAttribute, showBonusDialogForSkill) {
-        onBonusConfigOpenChange(showBonusDialogForAttribute != null || showBonusDialogForSkill != null)
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -107,7 +108,46 @@ fun StatsTab(
             .verticalScroll(rememberScrollState())
     ) {
         header()
-        Spacer(Modifier.height(12.dp))
+        
+        if (isDesktop) {
+            Surface(
+                onClick = { if (state != null) state.isAdvancedMode = !state.isAdvancedMode },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .outerShadow(
+                        shape = RoundedCornerShape(16.dp),
+                        blur = 4.dp,
+                        offsetY = 2.dp
+                    ),
+                shape = RoundedCornerShape(16.dp),
+                color = colorScheme.surfaceContainer,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = if (isAdvancedMode) Icons.Default.ViewList else Icons.Default.GridView,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = colorScheme.primary
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = if (isAdvancedMode) "Расширенный Режим" else "Компактный режим",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Black,
+                        color = colorScheme.primary
+                    )
+                }
+            }
+        } else {
+            Spacer(Modifier.height(8.dp))
+        }
 
         // Stats Section
         Column(modifier = Modifier.padding(horizontal = 3.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -145,8 +185,20 @@ fun StatsTab(
 
                     onStatsStateChange(statsState.copy(skilledProficiencies = newProf, skilledExpertise = newExp))
                 },
-                onStatClick = { showBonusDialogForAttribute = it },
-                onSkillLongClick = { showBonusDialogForSkill = it },
+                onStatClick = { attr ->
+                    if (state != null) {
+                        state.closeMajorOverlays()
+                        state.activeBonusConfigAttribute = attr
+                        state.isBonusConfigOpen = true
+                    }
+                },
+                onSkillLongClick = { skillName ->
+                    if (state != null) {
+                        state.closeMajorOverlays()
+                        state.activeBonusConfigSkill = skillName
+                        state.isBonusConfigOpen = true
+                    }
+                },
                 onRoll = onRoll,
                 statsMap = statsMap,
                 attributeModifiers = attributeModifiers,
@@ -158,106 +210,6 @@ fun StatsTab(
         }
 
         Spacer(Modifier.height(24.dp))
-    }
-
-    // --- Bonus Config Dialogs ---
-    showBonusDialogForAttribute?.let { attr ->
-        val skills = when (attr) {
-            Attribute.STRENGTH -> listOf("Атлетика")
-            Attribute.DEXTERITY -> listOf("Акробатика", "Ловкость рук", "Скрытность")
-            Attribute.CONSTITUTION -> emptyList()
-            Attribute.INTELLIGENCE -> listOf("Анализ", "История", "Магия", "Природа", "Религия")
-            Attribute.WISDOM -> listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")
-            Attribute.CHARISMA -> listOf("Выступление", "Запугивание", "Обман", "Убеждение")
-            else -> emptyList()
-        }
-        
-        BonusConfigDialog(
-            title = "Бонусы: ${attr.fullName}",
-            attribute = attr,
-            proficiencyBonus = getProficiencyBonus(level),
-            attributeModifiers = statsState.toAttributeModifiers(),
-            initialBaseScore = when(attr) {
-                Attribute.STRENGTH -> statsState.strength
-                Attribute.DEXTERITY -> statsState.dexterity
-                Attribute.CONSTITUTION -> statsState.constitution
-                Attribute.INTELLIGENCE -> statsState.intelligence
-                Attribute.WISDOM -> statsState.wisdom
-                Attribute.CHARISMA -> statsState.charisma
-                else -> "10"
-            },
-            initialStatBonuses = statsState.statBonuses,
-            initialIsStatProficient = when(attr) {
-                Attribute.STRENGTH -> statsState.strProf
-                Attribute.DEXTERITY -> statsState.dexProf
-                Attribute.CONSTITUTION -> statsState.conProf
-                Attribute.INTELLIGENCE -> statsState.intProf
-                Attribute.WISDOM -> statsState.wisProf
-                Attribute.CHARISMA -> statsState.chaProf
-                else -> false
-            },
-            initialSkillBonuses = statsState.skillBonuses,
-            initialSkillProficiencies = statsState.skilledProficiencies,
-            initialSkillExpertise = statsState.skilledExpertise,
-            skillsToDisplay = skills,
-            onDismiss = { showBonusDialogForAttribute = null },
-            onSave = { baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise ->
-                var newState = statsState.copy(
-                    statBonuses = statBonuses,
-                    skillBonuses = skillBonuses,
-                    skilledProficiencies = skillProficiencies,
-                    skilledExpertise = skillExpertise
-                )
-                newState = when(attr) {
-                    Attribute.STRENGTH -> newState.copy(strProf = isStatProficient, strength = baseScore)
-                    Attribute.DEXTERITY -> newState.copy(dexProf = isStatProficient, dexterity = baseScore)
-                    Attribute.CONSTITUTION -> newState.copy(conProf = isStatProficient, constitution = baseScore)
-                    Attribute.INTELLIGENCE -> newState.copy(intProf = isStatProficient, intelligence = baseScore)
-                    Attribute.WISDOM -> newState.copy(wisProf = isStatProficient, wisdom = baseScore)
-                    Attribute.CHARISMA -> newState.copy(chaProf = isStatProficient, charisma = baseScore)
-                    else -> newState
-                }
-                onStatsStateChange(newState)
-                showBonusDialogForAttribute = null
-            },
-            forceBlurEnabled = forceBlurEnabled
-        )
-    }
-
-    showBonusDialogForSkill?.let { skillName ->
-        val attr = when (skillName) {
-            "Атлетика" -> Attribute.STRENGTH
-            "Акробатика", "Ловкость рук", "Скрытность" -> Attribute.DEXTERITY
-            "Анализ", "История", "Магия", "Природа", "Религия" -> Attribute.INTELLIGENCE
-            "Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными" -> Attribute.WISDOM
-            "Выступление", "Запугивание", "Обман", "Убеждение" -> Attribute.CHARISMA
-            else -> Attribute.NONE
-        }
-
-        BonusConfigDialog(
-            title = "Бонусы: $skillName",
-            attribute = attr,
-            proficiencyBonus = getProficiencyBonus(level),
-            attributeModifiers = statsState.toAttributeModifiers(),
-            initialBaseScore = "10",
-            initialStatBonuses = emptyList(), // Not needed for single skill
-            initialIsStatProficient = false, // Not needed
-            initialSkillBonuses = statsState.skillBonuses,
-            initialSkillProficiencies = statsState.skilledProficiencies,
-            initialSkillExpertise = statsState.skilledExpertise,
-            skillsToDisplay = listOf(skillName),
-            showStatBonuses = false,
-            onDismiss = { showBonusDialogForSkill = null },
-            onSave = { _, _, _, skillBonuses, skillProficiencies, skillExpertise ->
-                onStatsStateChange(statsState.copy(
-                    skillBonuses = skillBonuses,
-                    skilledProficiencies = skillProficiencies,
-                    skilledExpertise = skillExpertise
-                ))
-                showBonusDialogForSkill = null
-            },
-            forceBlurEnabled = forceBlurEnabled
-        )
     }
 }
 

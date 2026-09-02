@@ -5,11 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,21 +18,19 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import ru.quasaris.characternexus.ui.DialogDimStyle
-import ru.quasaris.characternexus.ui.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
+import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.tabs.attacks.AddBonusButton
-import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
-import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
-import ru.quasaris.characternexus.backend.parseFormulaParts
 import ru.quasaris.characternexus.tabs.attacks.AdvantagePreferenceLabel
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +61,10 @@ fun BonusConfigDialog(
         skillProficiencies: List<String>,
         skillExpertise: List<String>
     ) -> Unit,
-    forceBlurEnabled: Boolean = false
+    forceBlurEnabled: Boolean = false,
+    isDesktop: Boolean = false,
+    hazeState: HazeState? = null,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     var baseScore by remember { mutableStateOf(initialBaseScore) }
     var statBonuses by remember { mutableStateOf(initialStatBonuses) }
@@ -75,211 +74,314 @@ fun BonusConfigDialog(
     var skillProficiencies by remember { mutableStateOf(initialSkillProficiencies) }
     var skillExpertise by remember { mutableStateOf(initialSkillExpertise) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        DialogDimStyle(0f)
-        BackHandler(onBack = onDismiss)
-        val colorScheme = MaterialTheme.colorScheme
-        val isOled = colorScheme.background == Color.Black
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    
+    val handleDismiss = {
+        focusManager.clearFocus()
+        onDismiss()
+    }
+    
+    val handleSave = {
+        focusManager.clearFocus()
+        onSave(baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise)
+    }
 
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text(title, fontWeight = FontWeight.Black) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Закрыть")
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
-                    )
-                )
+    if (isDesktop) {
+        BonusConfigDialogContent(
+            title = title,
+            attribute = attribute,
+            proficiencyBonus = proficiencyBonus,
+            attributeModifiers = attributeModifiers,
+            baseScore = baseScore,
+            onBaseScoreChange = { baseScore = it },
+            statBonuses = statBonuses,
+            onStatBonusesChange = { statBonuses = it },
+            isStatProficient = isStatProficient,
+            onIsStatProficientChange = { isStatProficient = it },
+            skillBonuses = skillBonuses,
+            onSkillBonusesChange = { skillBonuses = it },
+            skillProficiencies = skillProficiencies,
+            onSkillProficienciesChange = { skillProficiencies = it },
+            skillExpertise = skillExpertise,
+            onSkillExpertiseChange = { skillExpertise = it },
+            skillsToDisplay = skillsToDisplay,
+            showStatBonuses = showStatBonuses,
+            onDismiss = handleDismiss,
+            onSave = handleSave,
+            forceBlurEnabled = forceBlurEnabled,
+            hazeState = hazeState,
+            blurRadius = blurRadius
+        )
+    } else {
+        Dialog(
+            onDismissRequest = handleDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            DialogDimStyle(0f)
+            BonusConfigDialogContent(
+                title = title,
+                attribute = attribute,
+                proficiencyBonus = proficiencyBonus,
+                attributeModifiers = attributeModifiers,
+                baseScore = baseScore,
+                onBaseScoreChange = { baseScore = it },
+                statBonuses = statBonuses,
+                onStatBonusesChange = { statBonuses = it },
+                isStatProficient = isStatProficient,
+                onIsStatProficientChange = { isStatProficient = it },
+                skillBonuses = skillBonuses,
+                onSkillBonusesChange = { skillBonuses = it },
+                skillProficiencies = skillProficiencies,
+                onSkillProficienciesChange = { skillProficiencies = it },
+                skillExpertise = skillExpertise,
+                onSkillExpertiseChange = { skillExpertise = it },
+                skillsToDisplay = skillsToDisplay,
+                showStatBonuses = showStatBonuses,
+                onDismiss = handleDismiss,
+                onSave = handleSave,
+                forceBlurEnabled = forceBlurEnabled,
+                hazeState = hazeState,
+                blurRadius = blurRadius
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BonusConfigDialogContent(
+    title: String,
+    attribute: Attribute,
+    proficiencyBonus: Int,
+    attributeModifiers: Map<Attribute, Int>,
+    baseScore: String,
+    onBaseScoreChange: (String) -> Unit,
+    statBonuses: List<StatBonus>,
+    onStatBonusesChange: (List<StatBonus>) -> Unit,
+    isStatProficient: Boolean,
+    onIsStatProficientChange: (Boolean) -> Unit,
+    skillBonuses: List<SkillBonus>,
+    onSkillBonusesChange: (List<SkillBonus>) -> Unit,
+    skillProficiencies: List<String>,
+    onSkillProficienciesChange: (List<String>) -> Unit,
+    skillExpertise: List<String>,
+    onSkillExpertiseChange: (List<String>) -> Unit,
+    skillsToDisplay: List<String>,
+    showStatBonuses: Boolean,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    forceBlurEnabled: Boolean,
+    hazeState: HazeState? = null,
+    blurRadius: androidx.compose.ui.unit.Dp = 24.dp
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isOled = colorScheme.background == Color.Black
+
+    BackHandler(onBack = onDismiss)
+
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .run {
+                if (forceBlurEnabled && hazeState != null && !isOled) {
+                    this.hazeEffect(state = hazeState) {
+                        style = HazeStyle(
+                            blurRadius = blurRadius,
+                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
+                        )
+                    }
+                } else this
             },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
-        ) { paddingValues ->
-            Box(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(title, fontWeight = FontWeight.Black) },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                )
+            )
+        },
+        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
-                ) {
-                    if (showStatBonuses) {
-                        // --- BASE SCORE SECTION ---
-                        SectionHeader("Базовое значение")
-                        OutlinedTextField(
-                            value = baseScore,
-                            onValueChange = { 
-                                val f = it.filter { c -> c.isDigit() }
-                                if (f.length <= 2) baseScore = f
+                if (showStatBonuses) {
+                    // --- BASE SCORE SECTION ---
+                    SectionHeader("Базовое значение")
+                    OutlinedTextField(
+                        value = baseScore,
+                        onValueChange = { 
+                            val f = it.filter { c -> c.isDigit() }
+                            if (f.length <= 2) onBaseScoreChange(f)
+                        },
+                        label = { Text("Значение характеристики") },
+                        placeholder = { Text("10 (по умолчанию)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        trailingIcon = {
+                            Text(
+                                text = calculateModifier(baseScore).let { if (it >= 0) "+$it" else it.toString() },
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                        }
+                    )
+
+                    // --- CHARACTERISTIC VALUE SECTION ---
+                    SectionHeader("Бонусы к значению")
+                    val valueBonuses = statBonuses.filter {
+                        it.type == StatBonusType.CHARACTERISTIC_VALUE && it.attribute == attribute
+                    }
+                    val valueHasOverride = valueBonuses.any { it.isActive && it.operation == BonusOperation.OVERRIDE }
+                    valueBonuses.forEach { bonus ->
+                        BonusField(
+                            bonus = bonus,
+                            isOverrideDisabled = valueHasOverride && bonus.operation != BonusOperation.OVERRIDE,
+                            onUpdate = { n, f, act, op, adv ->
+                                onStatBonusesChange(statBonuses.map {
+                                    if (it.id == bonus.id) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
+                                })
                             },
-                            label = { Text("Значение характеристики") },
-                            placeholder = { Text("10 (по умолчанию)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                            trailingIcon = {
-                                Text(
-                                    text = calculateModifier(baseScore).let { if (it >= 0) "+$it" else it.toString() },
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(end = 12.dp)
-                                )
+                            onDelete = {
+                                onStatBonusesChange(statBonuses.filter { it.id != bonus.id })
                             }
                         )
+                    }
+                    AddBonusButton {
+                        onStatBonusesChange(statBonuses + StatBonus(attribute = attribute, type = StatBonusType.CHARACTERISTIC_VALUE, advantagePreference = AdvantagePreference.NONE))
+                    }
 
-                        // --- CHARACTERISTIC VALUE SECTION ---
-                        SectionHeader("Бонусы к значению")
-                        val valueBonuses = statBonuses.filter {
-                            it.type == StatBonusType.CHARACTERISTIC_VALUE && it.attribute == attribute
-                        }
-                        val valueHasOverride = valueBonuses.any { it.isActive && it.operation == BonusOperation.OVERRIDE }
-                        valueBonuses.forEach { bonus ->
-                            BonusField(
-                                bonus = bonus,
-                                isOverrideDisabled = valueHasOverride && bonus.operation != BonusOperation.OVERRIDE,
-                                onUpdate = { n, f, act, op, adv ->
-                                    statBonuses = statBonuses.map {
-                                        if (it.id == bonus.id) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
-                                    }
-                                },
-                                onDelete = {
-                                    statBonuses = statBonuses.filter { it.id != bonus.id }
-                                }
-                            )
-                        }
-                        AddBonusButton {
-                            statBonuses =
-                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.CHARACTERISTIC_VALUE, advantagePreference = AdvantagePreference.NONE)
-                        }
+                    // --- SAVING THROW SECTION ---
+                    SectionHeader("Спасбросок")
+                    ProficiencyToggle(
+                        isProficient = isStatProficient,
+                        proficiencyBonus = proficiencyBonus,
+                        onToggle = { onIsStatProficientChange(it) }
+                    )
 
-                        // --- SAVING THROW SECTION ---
-                        SectionHeader("Спасбросок")
-                        ProficiencyToggle(
-                            isProficient = isStatProficient,
-                            proficiencyBonus = proficiencyBonus,
-                            onToggle = { isStatProficient = it }
+                    val saveBonuses = statBonuses.filter {
+                        it.type == StatBonusType.SAVING_THROW && it.attribute == attribute
+                    }
+                    val saveHasOverride = saveBonuses.any { it.isActive && it.operation == BonusOperation.OVERRIDE }
+                    saveBonuses.forEach { bonus ->
+                        BonusField(
+                            bonus = bonus,
+                            isOverrideDisabled = saveHasOverride && bonus.operation != BonusOperation.OVERRIDE,
+                            onUpdate = { n, f, act, op, adv ->
+                                onStatBonusesChange(statBonuses.map {
+                                    if (it.id == bonus.id) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
+                                })
+                            },
+                            onDelete = {
+                                onStatBonusesChange(statBonuses.filter { it.id != bonus.id })
+                            }
                         )
-
-                        val saveBonuses = statBonuses.filter {
-                            it.type == StatBonusType.SAVING_THROW && it.attribute == attribute
-                        }
-                        val saveHasOverride = saveBonuses.any { it.isActive && it.operation == BonusOperation.OVERRIDE }
-                        saveBonuses.forEach { bonus ->
-                            BonusField(
-                                bonus = bonus,
-                                isOverrideDisabled = saveHasOverride && bonus.operation != BonusOperation.OVERRIDE,
-                                onUpdate = { n, f, act, op, adv ->
-                                    statBonuses = statBonuses.map {
-                                        if (it.id == bonus.id) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
-                                    }
-                                },
-                                onDelete = {
-                                    statBonuses = statBonuses.filter { it.id != bonus.id }
-                                }
-                            )
-                        }
-                        AddBonusButton {
-                            statBonuses =
-                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.SAVING_THROW, advantagePreference = AdvantagePreference.NONE)
-                        }
-
-                        // --- ABILITY CHECK SECTION ---
-                        SectionHeader("Проверка характеристики")
-                        val checkBonuses = statBonuses.filter {
-                            it.type == StatBonusType.ABILITY_CHECK && it.attribute == attribute
-                        }
-                        val checkHasOverride = checkBonuses.any { it.isActive && it.operation == BonusOperation.OVERRIDE }
-                        checkBonuses.forEach { bonus ->
-                            BonusField(
-                                bonus = bonus,
-                                applyToSkills = bonus.applyToSkills,
-                                isOverrideDisabled = checkHasOverride && bonus.operation != BonusOperation.OVERRIDE,
-                                onApplyToSkillsChange = { apply ->
-                                    statBonuses = statBonuses.map {
-                                        if (it.id == bonus.id) it.copy(applyToSkills = apply) else it
-                                    }
-                                },
-                                onUpdate = { n, f, act, op, adv ->
-                                    statBonuses = statBonuses.map {
-                                        if (it.id == bonus.id) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
-                                    }
-                                },
-                                onDelete = {
-                                    statBonuses = statBonuses.filter { it.id != bonus.id }
-                                }
-                            )
-                        }
-                        AddBonusButton {
-                            statBonuses =
-                                statBonuses + StatBonus(attribute = attribute, type = StatBonusType.ABILITY_CHECK, advantagePreference = AdvantagePreference.NONE)
-                        }
+                    }
+                    AddBonusButton {
+                        onStatBonusesChange(statBonuses + StatBonus(attribute = attribute, type = StatBonusType.SAVING_THROW, advantagePreference = AdvantagePreference.NONE))
                     }
 
-                    // --- SKILLS SECTION ---
-                    if (skillsToDisplay.isNotEmpty()) {
-                        SectionHeader("Навыки")
-                        skillsToDisplay.forEach { skillName ->
-                            SkillBonusSection(
-                                name = skillName,
-                                isProficient = skillProficiencies.contains(skillName),
-                                isExpert = skillExpertise.contains(skillName),
-                                proficiencyBonus = proficiencyBonus,
-                                bonuses = skillBonuses.filter { it.skillName == skillName },
-                                onLevelSelected = { level ->
-                                    when (level) {
-                                        0 -> {
-                                            skillProficiencies = skillProficiencies - skillName
-                                            skillExpertise = skillExpertise - skillName
-                                        }
-                                        1 -> {
-                                            skillProficiencies = skillProficiencies + skillName
-                                            skillExpertise = skillExpertise - skillName
-                                        }
-                                        2 -> {
-                                            skillProficiencies = skillProficiencies - skillName
-                                            skillExpertise = skillExpertise + skillName
-                                        }
-                                    }
-                                },
-                                onAddBonus = {
-                                    skillBonuses = skillBonuses + SkillBonus(skillName = skillName, advantagePreference = AdvantagePreference.NONE)
-                                },
-                                onUpdateBonus = { bonusId, n, f, act, op, adv ->
-                                    skillBonuses = skillBonuses.map {
-                                        if (it.id == bonusId) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
-                                    }
-                                },
-                                onDeleteBonus = { bonusId ->
-                                    skillBonuses = skillBonuses.filter { it.id != bonusId }
-                                }
-                            )
-                        }
+                    // --- ABILITY CHECK SECTION ---
+                    SectionHeader("Проверка характеристики")
+                    val checkBonuses = statBonuses.filter {
+                        it.type == StatBonusType.ABILITY_CHECK && it.attribute == attribute
                     }
-
-                    Spacer(modifier = Modifier.height(80.dp))
+                    val checkHasOverride = checkBonuses.any { it.isActive && it.operation == BonusOperation.OVERRIDE }
+                    checkBonuses.forEach { bonus ->
+                        BonusField(
+                            bonus = bonus,
+                            applyToSkills = bonus.applyToSkills,
+                            isOverrideDisabled = checkHasOverride && bonus.operation != BonusOperation.OVERRIDE,
+                            onApplyToSkillsChange = { apply ->
+                                onStatBonusesChange(statBonuses.map {
+                                    if (it.id == bonus.id) it.copy(applyToSkills = apply) else it
+                                })
+                            },
+                            onUpdate = { n, f, act, op, adv ->
+                                onStatBonusesChange(statBonuses.map {
+                                    if (it.id == bonus.id) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
+                                })
+                            },
+                            onDelete = {
+                                onStatBonusesChange(statBonuses.filter { it.id != bonus.id })
+                            }
+                        )
+                    }
+                    AddBonusButton {
+                        onStatBonusesChange(statBonuses + StatBonus(attribute = attribute, type = StatBonusType.ABILITY_CHECK, advantagePreference = AdvantagePreference.NONE))
+                    }
                 }
 
-                Button(
-                    onClick = { 
-                        onSave(baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise) 
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                // --- SKILLS SECTION ---
+                if (skillsToDisplay.isNotEmpty()) {
+                    SectionHeader("Навыки")
+                    skillsToDisplay.forEach { skillName ->
+                        SkillBonusSection(
+                            name = skillName,
+                            isProficient = skillProficiencies.contains(skillName),
+                            isExpert = skillExpertise.contains(skillName),
+                            proficiencyBonus = proficiencyBonus,
+                            bonuses = skillBonuses.filter { it.skillName == skillName },
+                            onLevelSelected = { level ->
+                                when (level) {
+                                    0 -> {
+                                        onSkillProficienciesChange(skillProficiencies - skillName)
+                                        onSkillExpertiseChange(skillExpertise - skillName)
+                                    }
+                                    1 -> {
+                                        onSkillProficienciesChange(skillProficiencies + skillName)
+                                        onSkillExpertiseChange(skillExpertise - skillName)
+                                    }
+                                    2 -> {
+                                        onSkillProficienciesChange(skillProficiencies - skillName)
+                                        onSkillExpertiseChange(skillExpertise + skillName)
+                                    }
+                                }
+                            },
+                            onAddBonus = {
+                                onSkillBonusesChange(skillBonuses + SkillBonus(skillName = skillName, advantagePreference = AdvantagePreference.NONE))
+                            },
+                            onUpdateBonus = { bonusId, n, f, act, op, adv ->
+                                onSkillBonusesChange(skillBonuses.map {
+                                    if (it.id == bonusId) it.copy(name = n, formula = f, isActive = act, operation = op, advantagePreference = adv) else it
+                                })
+                            },
+                            onDeleteBonus = { bonusId ->
+                                onSkillBonusesChange(skillBonuses.filter { it.id != bonusId })
+                            }
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(80.dp))
+            }
+
+            Button(
+                onClick = onSave,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

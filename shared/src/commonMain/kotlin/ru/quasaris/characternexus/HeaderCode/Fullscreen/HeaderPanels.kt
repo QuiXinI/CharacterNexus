@@ -99,144 +99,187 @@ fun EditVariantDialog(
     onSave: (FormulaEntry) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
-    forceBlurEnabled: Boolean
+    forceBlurEnabled: Boolean,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    asOverlay: Boolean = false
 ) {
     var state by remember { mutableStateOf(entry) }
-    
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        val colorScheme = MaterialTheme.colorScheme
-        val isOled = colorScheme.background == Color.Black
+    val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+
+    if (asOverlay) {
+        EditVariantContent(
+            title = title,
+            state = state,
+            onStateChange = { state = it },
+            statsMap = statsMap,
+            statType = statType,
+            onSave = onSave,
+            onDelete = onDelete,
+            onDismiss = onDismiss,
+            masterBlurEnabled = masterBlurEnabled
+        )
+    } else {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            EditVariantContent(
+                title = title,
+                state = state,
+                onStateChange = { state = it },
+                statsMap = statsMap,
+                statType = statType,
+                onSave = onSave,
+                onDelete = onDelete,
+                onDismiss = onDismiss,
+                masterBlurEnabled = masterBlurEnabled
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditVariantContent(
+    title: String,
+    state: FormulaEntry,
+    onStateChange: (FormulaEntry) -> Unit,
+    statsMap: Map<String, String>,
+    statType: String,
+    onSave: (FormulaEntry) -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit,
+    masterBlurEnabled: Boolean
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val isOled = colorScheme.background == Color.Black
 
     BackHandler(onBack = onDismiss)
 
     Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text(title, fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = onDelete) {
-                            Icon(Icons.Default.Delete, null, tint = colorScheme.error)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
-                    )
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(title, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, null, tint = colorScheme.error)
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = if (masterBlurEnabled) Color.Transparent else colorScheme.surface
                 )
-            },
-            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background
-        ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Indicator for this variant
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        val calc = calculateEntryTotal(state, statsMap, statType)
-                        AttackBonusIndicator(
-                            bonus = calc.first,
-                            dice = calc.second,
-                            showLabel = false,
-                            showPlus = statType != "AC" && statType != "SPEED"
-                        )
-                    }
+            )
+        },
+        containerColor = if (masterBlurEnabled) Color.Transparent else colorScheme.background
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Indicator for this variant
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    val calc = calculateEntryTotal(state, statsMap, statType)
+                    AttackBonusIndicator(
+                        bonus = calc.first,
+                        dice = calc.second,
+                        showLabel = false,
+                        showPlus = statType != "AC" && statType != "SPEED"
+                    )
+                }
 
-                    SectionHeader("Основное")
-                    OutlinedTextField(
-                        value = state.name,
-                        onValueChange = { s -> state = updateEntry(state, name = s) },
-                        label = { Text("Название") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    OutlinedTextField(
-                        value = state.formula,
-                        onValueChange = { s -> state = updateEntry(state, formula = s) },
-                        label = { Text("Формула") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    
-                    if (state is InitiativeEntry) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { 
-                                    state = (state as InitiativeEntry).copy(hasAdvantage = !(state as InitiativeEntry).hasAdvantage)
-                                },
-                            colors = CardDefaults.cardColors(containerColor = colorScheme.primary.copy(alpha = 0.1f)),
-                            shape = RoundedCornerShape(12.dp)
+                SectionHeader("Основное")
+                OutlinedTextField(
+                    value = state.name,
+                    onValueChange = { s -> onStateChange(updateEntry(state, name = s)) },
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                OutlinedTextField(
+                    value = state.formula,
+                    onValueChange = { s -> onStateChange(updateEntry(state, formula = s)) },
+                    label = { Text("Формула") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                if (state is InitiativeEntry) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onStateChange(state.copy(hasAdvantage = !state.hasAdvantage))
+                            },
+                        colors = CardDefaults.cardColors(containerColor = colorScheme.primary.copy(alpha = 0.1f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.padding(16.dp), 
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Преимущество", modifier = Modifier.weight(1f), fontWeight = FontWeight.Black, fontSize = 18.sp)
-                                Icon(
-                                    Icons.Default.KeyboardArrowUp, 
-                                    null, 
-                                    tint = if ((state as InitiativeEntry).hasAdvantage) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.2f),
-                                    modifier = Modifier.size(44.dp)
-                                )
-                            }
+                            Text("Преимущество", modifier = Modifier.weight(1f), fontWeight = FontWeight.Black, fontSize = 18.sp)
+                            Icon(
+                                Icons.Default.KeyboardArrowUp,
+                                null,
+                                tint = if (state.hasAdvantage) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.2f),
+                                modifier = Modifier.size(44.dp)
+                            )
                         }
                     }
-
-                    SectionHeader("Бонусы")
-                    val bonuses = when(state) {
-                        is ArmorClassEntry -> state.bonuses
-                        is InitiativeEntry -> state.bonuses
-                        is SpeedEntry -> state.bonuses
-                        is ShieldEntry -> state.bonuses
-                        else -> emptyList()
-                    }
-
-                    bonuses.forEachIndexed { index, bonus ->
-                        AttackBonusField(
-                            bonus = bonus,
-                            showAdvantageLogic = state is InitiativeEntry,
-                            onUpdate = { updated ->
-                                val newList = bonuses.toMutableList()
-                                newList[index] = updated
-                                state = updateEntry(state, bonuses = newList)
-                            },
-                            onDelete = {
-                                val newList = bonuses.toMutableList()
-                                newList.removeAt(index)
-                                state = updateEntry(state, bonuses = newList)
-                            }
-                        )
-                    }
-
-                    AddBonusButton {
-                        state = updateEntry(state, bonuses = bonuses + AttackBonus(advantagePreference = AdvantagePreference.NONE))
-                    }
-
-                    Spacer(modifier = Modifier.height(80.dp))
                 }
 
-                Button(
-                    onClick = { onSave(state) },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                SectionHeader("Бонусы")
+                val bonuses = when(state) {
+                    is ArmorClassEntry -> state.bonuses
+                    is InitiativeEntry -> state.bonuses
+                    is SpeedEntry -> state.bonuses
+                    is ShieldEntry -> state.bonuses
+                    else -> emptyList()
                 }
+
+                bonuses.forEachIndexed { index, bonus ->
+                    AttackBonusField(
+                        bonus = bonus,
+                        showAdvantageLogic = state is InitiativeEntry,
+                        onUpdate = { updated ->
+                            val newList = bonuses.toMutableList()
+                            newList[index] = updated
+                            onStateChange(updateEntry(state, bonuses = newList))
+                        },
+                        onDelete = {
+                            val newList = bonuses.toMutableList()
+                            newList.removeAt(index)
+                            onStateChange(updateEntry(state, bonuses = newList))
+                        }
+                    )
+                }
+
+                AddBonusButton {
+                    onStateChange(updateEntry(state, bonuses = bonuses + AttackBonus(advantagePreference = AdvantagePreference.NONE)))
+                }
+
+                Spacer(modifier = Modifier.height(80.dp))
+            }
+
+            Button(
+                onClick = { onSave(state) },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
