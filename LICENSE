@@ -1,22 +1,47 @@
 SOURCE-AVAILABLE NON-REDISTRIBUTION LICENSE (SANRL)
+Version 1.0
 
-Copyright (C) 2026 QuiXinI
+Copyright (C) 2026 QuiXinI. All rights reserved.
 
-1. PERMITTED USES AND LOCAL BUILDS
-Subject to the terms of this License, any user is granted a non-exclusive right to inspect, modify, and locally compile the source code solely for their own personal, non-commercial use on their own devices.
+1. DEFINITIONS
+"Software" means the source code, object code, documentation, and related assets provided under this License.
+"Copyright Holder" means the individual(s) or entity(ies) identified in the copyright notice above.
+"Source Code" means the human-readable form of the Software.
+"Official Binaries" means pre-compiled executables or packages compiled and directly published by the Copyright Holder.
+"Modification" means any revision, alteration, translation, addition, or derivative work based on the Source Code.
+"Commercial Use" means any use aimed at generating direct or indirect monetary income, business operations, or commercial services.
 
-2. DISTRIBUTION OF OFFICIAL BINARIES
-You are permitted to redistribute original, unmodified, pre-compiled official binaries produced and released directly by the Copyright Holder, provided that no paywalls, monetization logic, or source files are altered or bypassed.
+2. GRANT OF RIGHTS
+Subject to the terms and conditions of this License, the Copyright Holder grants You a non-exclusive, royalty-free, worldwide, non-transferable license, for the entire duration of copyright in the Software, to:
+a) Inspect, view, and study the Source Code;
+b) Modify the Source Code solely for Your own personal or internal, non-commercial use;
+c) Locally compile the original or modified Source Code solely on Your own devices for Your own personal or internal, non-commercial use;
+d) Redistribute unmodified Official Binaries, strictly free of charge, provided that all copyright notices, license conditions, and monetization/paywall logic remain intact and unaltered.
 
-3. RESTRICTION ON MODIFIED BINARY DISTRIBUTION
-You are STRICTLY PROHIBITED from hosting, publishing, distributing, sublicensing, selling, or sharing any compiled binaries, executables, or packages (including but not limited to APK, EXE, IPA, ELF files) derived from modified versions of this source code, or builds compiled by third parties. 
-For the avoidance of doubt: modifying the source code for personal use is permitted, but publishing or distributing the compiled results of those modifications is a direct violation of this License.
+3. RESTRICTIONS AND PROHIBITIONS
+You shall NOT:
+a) Host, publish, distribute, sublicense, sell, rent, lease, or otherwise share modified versions of the Source Code or any forks thereof;
+b) Host, publish, distribute, sublicense, sell, rent, lease, or otherwise share any compiled binaries, executables, or packages (including, but not limited to, APK, EXE, IPA, ELF files) derived from modified Source Code, or compiled by any third party;
+c) Use the Software, Source Code, or Official Binaries for any Commercial Use without prior written authorization from the Copyright Holder;
+d) Bypass, remove, or modify any paywall, subscription, licensing check, or monetization logic integrated into the Software or Official Binaries.
 
-4. TRADEMARKS AND BRANDING
-This License does not grant any rights to use the trade names, trademarks, service marks, or product names of the Copyright Holder. Modified builds or forks may not use the original application's name or logos.
+4. RESERVATION OF RIGHTS AND TRADEMARKS
+4.1. All rights not expressly granted in Section 2 are strictly reserved by the Copyright Holder.
+4.2. This License does not grant any rights to use trade names, trademarks, service marks, logos, or product names of the Copyright Holder. Modified builds or forks shall not use the original application's name, brand, or logos.
 
-5. DISCLAIMER FOR THIRD-PARTY BUILDS
-THE COPYRIGHT HOLDER TAKES NO RESPONSIBILITY AND ASSUMES NO LIABILITY FOR ANY BINARIES, EXECUTABLES, OR PACKAGES THAT WERE NOT DIRECTLY COMPILED AND PUBLISHED BY THE COPYRIGHT HOLDER. IF YOU USE A BUILD COMPILED BY A THIRD PARTY, YOU DO SO ENTIRELY AT YOUR OWN RISK.
+5. TERMINATION
+5.1. Any violation of the terms and conditions of this License shall automatically and immediately terminate all rights granted to You hereunder.
+5.2. Upon termination, You must permanently cease all use of the Software, destroy all copies of the Source Code (including modifications), and remove any compiled binaries in Your possession.
 
-6. NO WARRANTY AND LIMITATION OF LIABILITY
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+6. DISCLAIMER OF RESPONSIBILITY FOR THIRD-PARTY BUILDS
+The Copyright Holder assumes no responsibility or liability for any binaries, executables, or packages compiled or distributed by third parties. Using third-party builds is entirely at Your own risk.
+
+7. NO WARRANTY AND LIMITATION OF LIABILITY
+7.1. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+7.2. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE.
+
+8. GOVERNING LAW AND JURISDICTION
+This License shall be governed by, construed, and enforced in accordance with the laws of the Russian Federation (specifically Part IV of the Civil Code of the Russian Federation), without regard to its conflict of law principles. Any disputes arising out of or in connection with this License shall be submitted to the competent courts of the Russian Federation.
+
+9. SEVERABILITY
+If any provision of this License is held to be invalid or unenforceable, such provision shall be enforced to the maximum extent permissible, and the remaining provisions of this License shall remain in full force and effect.
