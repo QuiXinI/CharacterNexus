@@ -18,7 +18,7 @@ data class DicePart(val count: Int, val sides: Int)
  * Расчет модификатора характеристики по значению.
  */
 fun calculateModifier(scoreStr: String): Int {
-    val score = scoreStr.toIntOrNull() ?: 10
+    val score = scoreStr.takeWhile { it.isDigit() }.toIntOrNull() ?: 10
     return floor((score - 10) / 2.0).toInt()
 }
 
@@ -123,6 +123,37 @@ fun calculateLevelFromExperience(expStr: String): Int {
 sealed class FormulaPart {
     data class Dice(val count: Int, val sides: Int) : FormulaPart()
     data class Flat(val value: Int) : FormulaPart()
+}
+
+/**
+ * Применяет список бонусов к базовому значению с учетом приоритета операций.
+ * Если есть хотя бы один активный OVERRIDE, базовое значение и все ADD/SUBTRACT игнорируются.
+ */
+fun applyBonuses(
+    base: Int,
+    bonuses: List<ru.quasaris.characternexus.model.IBonus>,
+    stats: Map<String, String> = emptyMap()
+): Int {
+    val activeBonuses = bonuses.filter { it.isActive }
+    val overrides = activeBonuses.filter { it.operation == ru.quasaris.characternexus.model.BonusOperation.OVERRIDE }
+    
+    if (overrides.isNotEmpty()) {
+        // Если есть заменители, берем последний из них (или единственный)
+        // Остальные бонусы и база игнорируются
+        val lastOverride = overrides.last()
+        return evaluateFormula(lastOverride.formula, stats)
+    }
+    
+    var total = base
+    activeBonuses.forEach { bonus ->
+        val bonusVal = evaluateFormula(bonus.formula, stats)
+        when (bonus.operation) {
+            ru.quasaris.characternexus.model.BonusOperation.ADD -> total += bonusVal
+            ru.quasaris.characternexus.model.BonusOperation.SUBTRACT -> total -= bonusVal
+            else -> {} // OVERRIDE обработан выше
+        }
+    }
+    return total
 }
 
 /**

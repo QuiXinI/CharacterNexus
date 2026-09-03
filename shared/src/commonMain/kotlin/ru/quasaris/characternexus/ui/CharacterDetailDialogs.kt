@@ -63,79 +63,6 @@ fun CharacterDetailDialogs(
 
     // --- ALL DIALOGS on RIGHT SIDE for Desktop ---
     if (!isDesktop || targetSection == "right") {
-        if (state.isLevelPanelVisible && isDesktop) {
-             LevelPanelOverlay(
-                 level = state.level,
-                 onLevelChange = { state.level = it },
-                 experience = state.experience,
-                 onExpChange = { state.experience = it },
-                 proficiencyBonus = state.proficiencyBonus,
-                 onProfChange = { state.proficiencyBonus = it },
-                 nextLevelExp = state.nextLevelExp,
-                 statsMap = statsMap,
-                 onDismiss = { state.isLevelPanelVisible = false },
-                 hazeState = hazeState,
-                 settingsViewModel = state.settingsViewModel
-             )
-        }
-
-        if (state.isHealthPanelVisible && isDesktop) {
-            HealthPanelOverlay(
-                maxHp = state.maxHp,
-                onMaxHpChange = { state.maxHp = it },
-                tempHp = state.tempHp,
-                onTempHpChange = { state.tempHp = it },
-                currentHp = state.currentHp,
-                onCurrentHpChange = { state.currentHp = it },
-                onHealClick = { state.hpDialogType = "heal"; state.hpDialogValue = ""; state.showHpDialog = true },
-                onDamageClick = { state.hpDialogType = "damage"; state.hpDialogValue = ""; state.showHpDialog = true },
-                onTempClick = { state.hpDialogType = "temp"; state.hpDialogValue = ""; state.showHpDialog = true },
-                healthColor = state.healthColor,
-                hitDiceEntries = state.hitDiceEntries,
-                onSpentHitDiceChange = { idx: Int, newValue: Int ->
-                    val newList = state.hitDiceEntries.toMutableList()
-                    if (idx in newList.indices) {
-                        newList[idx] = newList[idx].copy(spent = newValue)
-                        state.hitDiceEntries = newList
-                    }
-                },
-                onOpenHealthSettings = { state.showHealthSettings = true },
-                onDismiss = { state.isHealthPanelVisible = false },
-                hazeState = hazeState,
-                settingsViewModel = state.settingsViewModel
-            )
-        }
-
-        if (state.isRestPanelVisible && isDesktop) {
-            RestPanelOverlay(
-                onRestPanelDismiss = { state.isRestPanelVisible = false },
-                onRestPanelHitDiceChange = { state.hitDiceEntries = it },
-                hitDiceEntries = state.hitDiceEntries,
-                onHealAmount = { amount: Int ->
-                    state.currentHp = minOf(
-                        state.maxHp.toIntOrNull() ?: 0,
-                        (state.currentHp.toIntOrNull() ?: 0) + amount
-                    ).toString()
-                },
-                onShortRestConfirmed = {
-                    state.handleRestoration("short", state.statsMap)
-                    state.isRestPanelVisible = false
-                },
-                onLongRest = { state.handleRestoration("long", state.statsMap) },
-                onDawn = { state.handleRestoration("dawn", state.statsMap) },
-                defaultHitDie = state.defaultHitDie,
-                hazeState = hazeState,
-                settingsViewModel = state.settingsViewModel
-            )
-        }
-        
-        if (state.showRestPopup && isDesktop) {
-            // Reroute RestPopup to an overlay or keep as popup? 
-            // User said "popups ... fell off Haze". 
-            // If it's on the right, it should probably be an overlay too if he wants "common framework".
-            // But he said "everything strictly on the right".
-        }
-
         if (state.showSpellSettings) {
             SpellSettingsDialog(
                 settings = state.spellSettings,
@@ -332,7 +259,7 @@ fun CharacterDetailDialogs(
             )
         }
 
-        if (state.showEnhancedAC || (state.isArmorClassPanelVisible && isDesktop)) {
+        if (state.showEnhancedAC) {
             val activeArmor = state.armorClassEntries.find { it.id == state.activeArmorClassId }
             val activeShieldObj = state.shieldEntries.find { it.id == state.activeShieldId }
             
@@ -345,7 +272,6 @@ fun CharacterDetailDialogs(
                 forceBlurEnabled = effectiveBlurFullscreen,
                 onDismiss = { 
                     state.showEnhancedAC = false
-                    state.isArmorClassPanelVisible = false
                 },
                 onSubDialogOpenChange = { state.isArmorClassSubDialogOpen = it },
                 isShieldActive = state.isShieldActive,
@@ -369,7 +295,7 @@ fun CharacterDetailDialogs(
             )
         }
 
-        if (state.showEnhancedInit || (state.isInitiativePanelVisible && isDesktop)) {
+        if (state.showEnhancedInit) {
             val activeInit = state.initiativeEntries.find { it.id == state.activeInitiativeId }
             InitiativeDialog(
                 activeEntry = activeInit,
@@ -380,7 +306,6 @@ fun CharacterDetailDialogs(
                 forceBlurEnabled = effectiveBlurFullscreen,
                 onDismiss = { 
                     state.showEnhancedInit = false
-                    state.isInitiativePanelVisible = false
                 },
                 onSubDialogOpenChange = { state.isInitiativeSubDialogOpen = it },
                 isDesktop = isDesktop,
@@ -390,7 +315,7 @@ fun CharacterDetailDialogs(
             )
         }
 
-        if (state.showEnhancedSpeed || (state.isSpeedPanelVisible && isDesktop)) {
+        if (state.showEnhancedSpeed) {
             val activeSpeed = state.speedEntries.find { it.id == state.activeSpeedId }
             SpeedDialog(
                 activeEntry = activeSpeed,
@@ -401,7 +326,6 @@ fun CharacterDetailDialogs(
                 forceBlurEnabled = effectiveBlurFullscreen,
                 onDismiss = { 
                     state.showEnhancedSpeed = false
-                    state.isSpeedPanelVisible = false
                 },
                 onSubDialogOpenChange = { state.isSpeedSubDialogOpen = it },
                 isDesktop = isDesktop,
@@ -441,7 +365,7 @@ fun CharacterDetailDialogs(
             )
         }
 
-        if (state.showEnhancedCond || (state.isConditionsPanelVisible && isDesktop)) {
+        if (state.showEnhancedCond) {
             ConditionsDialog(
                 allConditions = allConditions,
                 selectedConditions = state.selectedConditions,
@@ -453,7 +377,6 @@ fun CharacterDetailDialogs(
                 forceBlurEnabled = effectiveBlurFullscreen,
                 onDismiss = { 
                     state.showEnhancedCond = false
-                    state.isConditionsPanelVisible = false
                 },
                 isDesktop = isDesktop,
                 hazeState = hazeState,

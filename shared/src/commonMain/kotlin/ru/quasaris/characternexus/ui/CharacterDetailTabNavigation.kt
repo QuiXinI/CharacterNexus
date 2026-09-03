@@ -31,6 +31,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.model.*
 
+/**
+ * Стиль размытия для нижней панели выбора вкладок.
+ */
+val TabSheetHazeStyle = HazeStyle(
+    blurRadius = 24.dp,
+    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.25f)))
+)
+
 @Composable
 fun TabNavigationBar(
     currentTab: CharacterTab,

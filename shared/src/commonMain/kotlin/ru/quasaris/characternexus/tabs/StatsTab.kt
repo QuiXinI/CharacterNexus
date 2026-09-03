@@ -96,12 +96,13 @@ fun StatsTab(
     onBonusConfigOpenChange: (Boolean) -> Unit = {},
     state: CharacterDetailState? = null,
     header: @Composable () -> Unit = {},
-    isDesktop: Boolean = false
+    isDesktop: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
     
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
             .background(colorScheme.surface)
@@ -187,14 +188,14 @@ fun StatsTab(
                 },
                 onStatClick = { attr ->
                     if (state != null) {
-                        state.closeMajorOverlays()
+                        state.closeFullscreenDialogs()
                         state.activeBonusConfigAttribute = attr
                         state.isBonusConfigOpen = true
                     }
                 },
                 onSkillLongClick = { skillName ->
                     if (state != null) {
-                        state.closeMajorOverlays()
+                        state.closeFullscreenDialogs()
                         state.activeBonusConfigSkill = skillName
                         state.isBonusConfigOpen = true
                     }

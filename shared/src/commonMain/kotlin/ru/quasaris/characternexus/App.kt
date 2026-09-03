@@ -37,6 +37,8 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.ui.*
+import ru.quasaris.characternexus.ui.*
+import ru.quasaris.characternexus.ui.detail.CharacterWindow
 import ru.quasaris.characternexus.util.*
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.*
@@ -126,7 +128,7 @@ fun App(
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .onPreviewKeyEvent {
+                    .onKeyEvent {
                         if (it.type == KeyEventType.KeyDown && it.key == Key.Tab) {
                             GlobalActionRegistry.toggleDrawer()
                             true
@@ -484,7 +486,7 @@ fun App(
                                             }
                                         }
 
-                                        CharacterDetailWindow(
+                                        CharacterWindow(
                                             character = character,
                                             onNavigateBack = {
                                                 navController.popBackStack()

@@ -48,6 +48,8 @@ object CharacterDataHandler {
         isManualHP: Boolean = false,
         manualMaxHp: Int = 0,
         manualMaxHitDice: Int = 0,
+        statBonuses: List<StatBonus> = emptyList(),
+        skillBonuses: List<SkillBonus> = emptyList(),
         hpBonusesAtLevel: List<AttackBonus> = emptyList(),
         hpBonusesTotal: List<AttackBonus> = emptyList(),
         attacks: List<AttackEntry> = emptyList(),
@@ -128,6 +130,8 @@ object CharacterDataHandler {
             isManualHP = isManualHP,
             manualMaxHp = manualMaxHp,
             manualMaxHitDice = manualMaxHitDice,
+            statBonuses = statBonuses,
+            skillBonuses = skillBonuses,
             hpBonusesAtLevel = hpBonusesAtLevel,
             hpBonusesTotal = hpBonusesTotal
         )

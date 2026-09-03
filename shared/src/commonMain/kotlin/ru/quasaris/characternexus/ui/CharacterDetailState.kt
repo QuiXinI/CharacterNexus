@@ -195,6 +195,7 @@ class CharacterDetailState(
     var selectedCurrency by mutableStateOf<Currency?>(null)
     var isResourceConfigOpen by mutableStateOf(false)
     var activeResourceConfig by mutableStateOf<DynamicContentBlock.Resource?>(null)
+    var activeResourceIndex by mutableStateOf(-1)
     var activeBonusConfigAttribute by mutableStateOf<Attribute?>(null)
     var activeBonusConfigSkill by mutableStateOf<String?>(null)
 
@@ -265,10 +266,36 @@ class CharacterDetailState(
     val effectiveDiceFabAlpha by derivedStateOf { diceFabAlphaSetting }
 
     // Derived State
+    val boostedStatsMap by derivedStateOf {
+        val baseStats = statsState.toStatsMap(level, proficiencyBonus)
+        val mutableStats = baseStats.toMutableMap()
+
+        Attribute.entries.forEach { attr ->
+            if (attr == Attribute.NONE) return@forEach
+            val key = attr.name.lowercase()
+            val baseScore = baseStats[key] ?: ""
+            
+            val characteristicBonuses = statsState.statBonuses.filter { bonus -> 
+                bonus.attribute == attr && bonus.type == StatBonusType.CHARACTERISTIC_VALUE && bonus.isActive 
+            }
+            
+            if (characteristicBonuses.isNotEmpty()) {
+                val effScore = ru.quasaris.characternexus.tabs.attacks.calculateTotalBonus(
+                    bonuses = characteristicBonuses,
+                    stats = baseStats,
+                    initialValue = baseScore.toIntOrNull() ?: 10
+                ).toString()
+                mutableStats[key] = effScore
+                mutableStats["base_$key"] = baseScore
+            }
+        }
+        mutableStats.toMap()
+    }
+
     val baseStatsMapForHP by derivedStateOf {
         val totalMaxHD = hitDiceMap.values.sum()
         val totalCurrentHD = totalMaxHD - hitDiceEntries.sumOf { it.spent }
-        statsState.toStatsMap(level, proficiencyBonus) + mapOf(
+        boostedStatsMap + mapOf(
             "manualMaxHitDice" to manualMaxHitDice.toString(),
             "totalMaxHD" to totalMaxHD.toString(),
             "totalCurrentHD" to totalCurrentHD.toString()
@@ -278,15 +305,15 @@ class CharacterDetailState(
     val calculatedMaxHp by derivedStateOf {
         val conMod = evaluateFormula("[CON]", baseStatsMapForHP)
         val levelInt = level.toIntOrNull() ?: 1
-        val totalFixedBonus = hpBonusesTotal.filter { it.isActive }.sumOf { evaluateFormula(it.formula, baseStatsMapForHP) }
+        val perLevelBonus = applyBonuses(0, hpBonusesAtLevel, baseStatsMapForHP)
+        val fixedBonus = applyBonuses(0, hpBonusesTotal, baseStatsMapForHP)
 
         if (isManualHP) {
-            manualMaxHp + totalFixedBonus
+            manualMaxHp + (perLevelBonus * levelInt) + (conMod * levelInt) + fixedBonus
         } else {
-            val totalPerLevelBonus = hpBonusesAtLevel.filter { it.isActive }.sumOf { evaluateFormula(it.formula, baseStatsMapForHP) }
             val dataToUse = hpLevelData.take(levelInt)
             val totalRolls = dataToUse.sumOf { it.rollResult ?: 0 }
-            totalRolls + (conMod * levelInt) + (totalPerLevelBonus * levelInt) + totalFixedBonus
+            totalRolls + (conMod * levelInt) + (perLevelBonus * levelInt) + fixedBonus
         }
     }
 
@@ -566,11 +593,7 @@ class CharacterDetailState(
         if (restType == "long") {
             currentHp = maxHp
             tempHp = "0"
-            hitDiceEntries = hitDiceEntries.map { entry ->
-                val maxHD = evaluateFormula(entry.formula, statsMap)
-                val recover = maxOf(1, maxHD / 2)
-                entry.copy(spent = maxOf(0, entry.spent - recover))
-            }
+            hitDiceEntries = hitDiceEntries.map { it.copy(spent = 0) }
             if (exhaustion > 0) exhaustion--
         }
     }
@@ -665,14 +688,7 @@ class CharacterDetailState(
         }
     }
 
-    fun closeMajorOverlays() {
-        isLevelPanelVisible = false
-        isArmorClassPanelVisible = false
-        isInitiativePanelVisible = false
-        isSpeedPanelVisible = false
-        isConditionsPanelVisible = false
-        isHealthPanelVisible = false
-        isRestPanelVisible = false
+    fun closeFullscreenDialogs() {
         showEnhancedAC = false
         showEnhancedInit = false
         showEnhancedSpeed = false
@@ -691,5 +707,15 @@ class CharacterDetailState(
         showHpDialog = false
         activeBonusConfigAttribute = null
         activeBonusConfigSkill = null
+    }
+
+    fun closeWidgets() {
+        isLevelPanelVisible = false
+        isArmorClassPanelVisible = false
+        isInitiativePanelVisible = false
+        isSpeedPanelVisible = false
+        isConditionsPanelVisible = false
+        isHealthPanelVisible = false
+        isRestPanelVisible = false
     }
 }

@@ -180,7 +180,19 @@ fun ArmorClassDialogContent(
                         )
                     )
                 },
-                containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+                containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .run {
+                        if (forceBlurEnabled && hazeState != null && !isOled) {
+                            this.hazeEffect(state = hazeState) {
+                                style = HazeStyle(
+                                    blurRadius = blurRadius,
+                                    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
+                                )
+                            }
+                        } else this
+                    }
             ) { paddingValues ->
                 Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                     Column(

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.input.TextFieldValue
@@ -103,9 +104,9 @@ fun FormattingToolbar(
                 )
                 FormattingButton(
                     icon = Icons.Default.FormatQuote,
-                    isActive = MarkdownHelper.isFormatActive(value, "> ", ""),
+                    isActive = MarkdownHelper.isFormatActive(value, ">> ", " <<"),
                     enabled = isSelectionActive,
-                    onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "> ", "")) }
+                    onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, ">> ", " <<")) }
                 )
                 FormattingButton(
                     icon = Icons.Default.Link,
@@ -127,8 +128,8 @@ fun FormattingToolbar(
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
                         val suffix = "\n"
                         val insert = prefix + "---" + suffix
-                        val newText = value.text.substring(0, value.selection.start) + insert + value.text.substring(value.selection.end)
-                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.start + insert.length)))
+                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
                     }
                 )
                 FormattingButton(
@@ -138,8 +139,8 @@ fun FormattingToolbar(
                     onClick = {
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
                         val insert = prefix + "{Ресурс: Новый ресурс | cur=0 | max=0 | sr=0 | lr=all}\n"
-                        val newText = value.text.substring(0, value.selection.start) + insert + value.text.substring(value.selection.end)
-                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.start + insert.length)))
+                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
                     }
                 )
 
@@ -175,7 +176,9 @@ private fun FormattingButton(
             contentColor = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
             disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
         ),
-        modifier = Modifier.size(36.dp)
+        modifier = Modifier
+            .size(36.dp)
+            .focusProperties { canFocus = false }
     ) {
         Icon(
             imageVector = icon,

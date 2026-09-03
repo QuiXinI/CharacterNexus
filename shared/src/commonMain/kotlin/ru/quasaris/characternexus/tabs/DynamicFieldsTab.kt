@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
@@ -29,6 +28,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -38,7 +38,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,7 +54,6 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.HazeInputScale
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextLayoutResult
@@ -140,7 +138,6 @@ fun DynamicFieldsTab(
 ) {
     val focusManager = LocalFocusManager.current
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     val items = remember { mutableStateListOf<DynamicNoteState>().apply { addAll(fields) } }
 
@@ -185,7 +182,6 @@ fun DynamicFieldsTab(
     val fullscreenEditingOnly by settingsViewModel?.fullscreenEditingOnly?.collectAsState() ?: remember { mutableStateOf(false) }
     val collapseDynamicFieldsOnEditSetting by settingsViewModel?.collapseDynamicFieldsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
     val collapseOnEditActual = collapseOnEdit ?: collapseDynamicFieldsOnEditSetting
-    val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
 
     var savedExpansionStates by remember { mutableStateOf<Map<String, Boolean>?>(null) }
 
@@ -434,7 +430,6 @@ fun DynamicFieldItem(
             toolbarState = Triple(contentValue, false, false)
             return@LaunchedEffect
         }
-        kotlinx.coroutines.delay(200)
         toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
     }
 
@@ -462,7 +457,7 @@ fun DynamicFieldItem(
 
     if (showLinkDialog) {
         val selection = contentValue.selection
-        val selectedText = contentValue.text.substring(selection.start, selection.end)
+        val selectedText = contentValue.text.substring(selection.min, selection.max)
         HyperlinkDialog(
             initialText = selectedText,
             initialUrl = "",
@@ -470,8 +465,8 @@ fun DynamicFieldItem(
                 val prefix = "["
                 val middle = "]("
                 val suffix = ")"
-                val newText = contentValue.text.substring(0, selection.start) + prefix + text + middle + url + suffix + contentValue.text.substring(selection.end)
-                val newSelection = TextRange(selection.start + prefix.length + text.length + middle.length + url.length + suffix.length)
+                val newText = contentValue.text.substring(0, selection.min) + prefix + text + middle + url + suffix + contentValue.text.substring(selection.max)
+                val newSelection = TextRange(selection.min + prefix.length + text.length + middle.length + url.length + suffix.length)
                 val new = contentValue.copy(text = newText, selection = newSelection)
                 contentValue = new
                 onFieldChange(field.copy(content = new.text))
@@ -681,19 +676,7 @@ fun DynamicFieldItem(
                                                     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
                                                     val blocks = remember(field.content) {
-                                                        val rawBlocks = DynamicContentParser.parse(field.content)
-                                                        rawBlocks.mapIndexed { index, block ->
-                                                            if (block is DynamicContentBlock.Text) {
-                                                                var content = block.content
-                                                                if (index > 0 && rawBlocks[index - 1] !is DynamicContentBlock.Text) {
-                                                                    if (content.startsWith("\n")) content = content.substring(1)
-                                                                }
-                                                                if (index < rawBlocks.size - 1 && rawBlocks[index + 1] !is DynamicContentBlock.Text) {
-                                                                    if (content.endsWith("\n")) content = content.substring(0, content.length - 1)
-                                                                }
-                                                                block.copy(content = content)
-                                                            } else block
-                                                        }
+                                                        DynamicContentParser.parse(field.content)
                                                     }
 
                                                     val marginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
@@ -726,7 +709,8 @@ fun DynamicFieldItem(
                                                             modifier = Modifier
                                                                 .fillMaxWidth()
                                                         ) {
-                                                            blocks.forEach { block ->
+                                                            val displayBlocks = remember(blocks) { DynamicContentParser.getDisplayBlocks(blocks) }
+                                                            displayBlocks.forEachIndexed { index, (absoluteIndex, block) ->
                                                                 when (block) {
                                                                     is DynamicContentBlock.Text -> {
                                                                         val annotated = remember(block.content, onSurface) {
@@ -764,8 +748,12 @@ fun DynamicFieldItem(
                                                                         )
                                                                     }
                                                                     is DynamicContentBlock.Divider -> {
+                                                                        val prevIsDivider = index > 0 && displayBlocks[index - 1].second is DynamicContentBlock.Divider
                                                                         HorizontalDivider(
-                                                                            modifier = Modifier.padding(vertical = 4.dp),
+                                                                            modifier = Modifier.padding(
+                                                                                top = if (prevIsDivider) 0.dp else 4.dp,
+                                                                                bottom = 4.dp
+                                                                            ),
                                                                             thickness = 1.dp,
                                                                             color = colorScheme.outlineVariant
                                                                         )
@@ -776,15 +764,20 @@ fun DynamicFieldItem(
                                                                         }
                                                                         SpoilerComponent(content = annotated)
                                                                     }
+                                                                    is DynamicContentBlock.Quote -> {
+                                                                        val annotated = remember(block.content, onSurface) {
+                                                                            MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                        }
+                                                                        QuoteComponent(content = annotated)
+                                                                    }
                                                                     is DynamicContentBlock.Resource -> {
                                                                         ResourceBlock(
                                                                             resource = block,
                                                                             statsMap = statsMap,
                                                                             onUpdate = { updatedResource ->
                                                                                 val newBlocks = blocks.toMutableList()
-                                                                                val blockIndex = newBlocks.indexOf(block)
-                                                                                if (blockIndex != -1) {
-                                                                                    newBlocks[blockIndex] = updatedResource
+                                                                                if (absoluteIndex != -1 && absoluteIndex < newBlocks.size) {
+                                                                                    newBlocks[absoluteIndex] = updatedResource
                                                                                     val newContent = DynamicContentParser.render(newBlocks)
                                                                                     onFieldChange(field.copy(content = newContent))
                                                                                 }
@@ -797,11 +790,17 @@ fun DynamicFieldItem(
                                                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                                             onSubDialogOpenChange = { /* Item doesn't blur on sub-dialog */ },
                                                                             state = state,
+                                                                            onOpenConfig = state?.let { s ->
+                                                                                { res ->
+                                                                                    s.activeResourceConfig = res
+                                                                                    s.activeResourceIndex = absoluteIndex
+                                                                                    s.isResourceConfigOpen = true
+                                                                                }
+                                                                            },
                                                                             onDeleteRequest = {
                                                                                 val newBlocks = blocks.toMutableList()
-                                                                                val blockIndex = newBlocks.indexOf(block)
-                                                                                if (blockIndex != -1) {
-                                                                                    newBlocks.removeAt(blockIndex)
+                                                                                if (absoluteIndex != -1 && absoluteIndex < newBlocks.size) {
+                                                                                    newBlocks.removeAt(absoluteIndex)
                                                                                     val newContent = DynamicContentParser.render(newBlocks)
                                                                                     onFieldChange(field.copy(content = newContent))
                                                                                 }
@@ -1002,6 +1001,29 @@ fun DynamicFieldFullscreenContent(
 
     var toolbarState by remember { mutableStateOf(Triple(contentValue, false, false)) }
 
+    LaunchedEffect(contentValue, isFocused) {
+        if (!isFocused) {
+            toolbarState = Triple(contentValue, false, false)
+            return@LaunchedEffect
+        }
+        toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
+    }
+
+    LaunchedEffect(contentValue.selection, contentValue.text, isFocused) {
+        val layoutResult = textLayoutResult
+        if (isFocused && layoutResult != null && contentValue.selection.collapsed) {
+            val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
+            coroutineScope.launch {
+                bringIntoViewRequester.bringIntoView(
+                    cursorRect.copy(
+                        top = cursorRect.top - 40f,
+                        bottom = cursorRect.bottom + 40f
+                    )
+                )
+            }
+        }
+    }
+
     BackHandler(onBack = onDismiss)
 
     DisposableEffect(Unit) {
@@ -1017,7 +1039,7 @@ fun DynamicFieldFullscreenContent(
 
     if (showLinkDialog) {
         val selection = contentValue.selection
-        val selectedText = contentValue.text.substring(selection.start, selection.end)
+        val selectedText = contentValue.text.substring(selection.min, selection.max)
         HyperlinkDialog(
             initialText = selectedText,
             initialUrl = "",
@@ -1025,8 +1047,8 @@ fun DynamicFieldFullscreenContent(
                 val prefix = "["
                 val middle = "]("
                 val suffix = ")"
-                val newText = contentValue.text.substring(0, selection.start) + prefix + text + middle + url + suffix + contentValue.text.substring(selection.end)
-                val newSelection = TextRange(selection.start + prefix.length + text.length + middle.length + url.length + suffix.length)
+                val newText = contentValue.text.substring(0, selection.min) + prefix + text + middle + url + suffix + contentValue.text.substring(selection.max)
+                val newSelection = TextRange(selection.min + prefix.length + text.length + middle.length + url.length + suffix.length)
                 onContentValueChange(contentValue.copy(text = newText, selection = newSelection))
                 showLinkDialog = false
             },
@@ -1161,24 +1183,13 @@ fun DynamicFieldFullscreenContent(
                                 var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
                                 val blocks = remember(contentValue.text) {
-                                    val rawBlocks = DynamicContentParser.parse(contentValue.text)
-                                    rawBlocks.mapIndexed { index, block ->
-                                        if (block is DynamicContentBlock.Text) {
-                                            var content = block.content
-                                            if (index > 0 && rawBlocks[index - 1] !is DynamicContentBlock.Text) {
-                                                if (content.startsWith("\n")) content = content.substring(1)
-                                            }
-                                            if (index < rawBlocks.size - 1 && rawBlocks[index + 1] !is DynamicContentBlock.Text) {
-                                                if (content.endsWith("\n")) content = content.substring(0, content.length - 1)
-                                            }
-                                            block.copy(content = content)
-                                        } else block
-                                    }
+                                    DynamicContentParser.parse(contentValue.text)
                                 }
 
                                 if (isPreviewMode) {
                                     Column(modifier = Modifier.fillMaxWidth()) {
-                                        blocks.forEach { block ->
+                                        val displayBlocks = remember(blocks) { DynamicContentParser.getDisplayBlocks(blocks) }
+                                        displayBlocks.forEachIndexed { index, (absoluteIndex, block) ->
                                             when (block) {
                                                 is DynamicContentBlock.Text -> {
                                                     val annotated = remember(block.content, onSurface) {
@@ -1208,8 +1219,12 @@ fun DynamicFieldFullscreenContent(
                                                     )
                                                 }
                                                 is DynamicContentBlock.Divider -> {
+                                                    val prevIsDivider = index > 0 && displayBlocks[index - 1].second is DynamicContentBlock.Divider
                                                     HorizontalDivider(
-                                                        modifier = Modifier.padding(vertical = 4.dp),
+                                                        modifier = Modifier.padding(
+                                                            top = if (prevIsDivider) 0.dp else 4.dp,
+                                                            bottom = 4.dp
+                                                        ),
                                                         thickness = 1.dp,
                                                         color = colorScheme.outlineVariant
                                                     )
@@ -1220,15 +1235,20 @@ fun DynamicFieldFullscreenContent(
                                                     }
                                                     SpoilerComponent(content = annotated)
                                                 }
+                                                is DynamicContentBlock.Quote -> {
+                                                    val annotated = remember(block.content, onSurface) {
+                                                        MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                    }
+                                                    QuoteComponent(content = annotated)
+                                                }
                                                 is DynamicContentBlock.Resource -> {
                                                     ResourceBlock(
                                                         resource = block,
                                                         statsMap = statsMap,
                                                         onUpdate = { updatedResource ->
                                                             val newBlocks = blocks.toMutableList()
-                                                            val blockIndex = newBlocks.indexOf(block)
-                                                            if (blockIndex != -1) {
-                                                                newBlocks[blockIndex] = updatedResource
+                                                            if (absoluteIndex != -1 && absoluteIndex < newBlocks.size) {
+                                                                newBlocks[absoluteIndex] = updatedResource
                                                                 val newContent = DynamicContentParser.render(newBlocks)
                                                                 onContentValueChange(contentValue.copy(text = newContent))
                                                             }
@@ -1242,9 +1262,8 @@ fun DynamicFieldFullscreenContent(
                                                         onSubDialogOpenChange = { },
                                                         onDeleteRequest = {
                                                             val newBlocks = blocks.toMutableList()
-                                                            val blockIndex = newBlocks.indexOf(block)
-                                                            if (blockIndex != -1) {
-                                                                newBlocks.removeAt(blockIndex)
+                                                            if (absoluteIndex != -1 && absoluteIndex < newBlocks.size) {
+                                                                newBlocks.removeAt(absoluteIndex)
                                                                 val newContent = DynamicContentParser.render(newBlocks)
                                                                 onContentValueChange(contentValue.copy(text = newContent))
                                                             }
@@ -1254,6 +1273,7 @@ fun DynamicFieldFullscreenContent(
                                                         onOpenConfig = state?.let { s ->
                                                             { res ->
                                                                 s.activeResourceConfig = res
+                                                                s.activeResourceIndex = absoluteIndex
                                                                 s.isResourceConfigOpen = true
                                                             }
                                                         }
@@ -1303,19 +1323,7 @@ fun DynamicFieldFullscreenContent(
                                                     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
                                                     val blocks = remember(contentValue.text) {
-                                                        val rawBlocks = DynamicContentParser.parse(contentValue.text)
-                                                        rawBlocks.mapIndexed { index, block ->
-                                                            if (block is DynamicContentBlock.Text) {
-                                                                var content = block.content
-                                                                if (index > 0 && rawBlocks[index - 1] !is DynamicContentBlock.Text) {
-                                                                    if (content.startsWith("\n")) content = content.substring(1)
-                                                                }
-                                                                if (index < rawBlocks.size - 1 && rawBlocks[index + 1] !is DynamicContentBlock.Text) {
-                                                                    if (content.endsWith("\n")) content = content.substring(0, content.length - 1)
-                                                                }
-                                                                block.copy(content = content)
-                                                            } else block
-                                                        }
+                                                        DynamicContentParser.parse(contentValue.text)
                                                     }
 
                                                     val marginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
@@ -1348,7 +1356,8 @@ fun DynamicFieldFullscreenContent(
                                                             modifier = Modifier
                                                                 .fillMaxWidth()
                                                         ) {
-                                                            blocks.forEach { block ->
+                                                            val displayBlocks = remember(blocks) { DynamicContentParser.getDisplayBlocks(blocks) }
+                                                            displayBlocks.forEachIndexed { index, (absoluteIndex, block) ->
                                                                 when (block) {
                                                                     is DynamicContentBlock.Text -> {
                                                                         val annotated = remember(block.content, onSurface) {
@@ -1386,8 +1395,12 @@ fun DynamicFieldFullscreenContent(
                                                                         )
                                                                     }
                                                                     is DynamicContentBlock.Divider -> {
+                                                                        val prevIsDivider = index > 0 && displayBlocks[index - 1].second is DynamicContentBlock.Divider
                                                                         HorizontalDivider(
-                                                                            modifier = Modifier.padding(vertical = 4.dp),
+                                                                            modifier = Modifier.padding(
+                                                                                top = if (prevIsDivider) 0.dp else 4.dp,
+                                                                                bottom = 4.dp
+                                                                            ),
                                                                             thickness = 1.dp,
                                                                             color = colorScheme.outlineVariant
                                                                         )
@@ -1398,15 +1411,20 @@ fun DynamicFieldFullscreenContent(
                                                                         }
                                                                         SpoilerComponent(content = annotated)
                                                                     }
+                                                                    is DynamicContentBlock.Quote -> {
+                                                                        val annotated = remember(block.content, onSurface) {
+                                                                            MarkdownHelper.parseMarkdown(block.content, onSurface, isEditing = false)
+                                                                        }
+                                                                        QuoteComponent(content = annotated)
+                                                                    }
                                                                     is DynamicContentBlock.Resource -> {
                                                                         ResourceBlock(
                                                                             resource = block,
                                                                             statsMap = statsMap,
                                                                             onUpdate = { updatedResource ->
                                                                                 val newBlocks = blocks.toMutableList()
-                                                                                val blockIndex = newBlocks.indexOf(block)
-                                                                                if (blockIndex != -1) {
-                                                                                    newBlocks[blockIndex] = updatedResource
+                                                                                if (absoluteIndex != -1 && absoluteIndex < newBlocks.size) {
+                                                                                    newBlocks[absoluteIndex] = updatedResource
                                                                                     val newContent = DynamicContentParser.render(newBlocks)
                                                                                     onContentValueChange(contentValue.copy(text = newContent))
                                                                                 }
@@ -1418,9 +1436,8 @@ fun DynamicFieldFullscreenContent(
                                                                             onSubDialogOpenChange = { },
                                                                             onDeleteRequest = {
                                                                                 val newBlocks = blocks.toMutableList()
-                                                                                val blockIndex = newBlocks.indexOf(block)
-                                                                                if (blockIndex != -1) {
-                                                                                    newBlocks.removeAt(blockIndex)
+                                                                                if (absoluteIndex != -1 && absoluteIndex < newBlocks.size) {
+                                                                                    newBlocks.removeAt(absoluteIndex)
                                                                                     val newContent = DynamicContentParser.render(newBlocks)
                                                                                     onFieldChange(field.copy(content = newContent))
                                                                                 }
@@ -1430,6 +1447,7 @@ fun DynamicFieldFullscreenContent(
                                                                             onOpenConfig = state?.let { s ->
                                                                                 { res ->
                                                                                     s.activeResourceConfig = res
+                                                                                    s.activeResourceIndex = absoluteIndex
                                                                                     s.isResourceConfigOpen = true
                                                                                 }
                                                                             }
@@ -1519,19 +1537,37 @@ fun DynamicFieldFullscreenContent(
                     },
                     onSave = { updated ->
                         state.updateResource(updated)
-                        onContentValueChange(contentValue.copy(text = DynamicContentParser.render(DynamicContentParser.parse(contentValue.text).map {
-                            if (it is DynamicContentBlock.Resource && it.id == updated.id) updated else it
-                        })))
+                        val currentBlocks = DynamicContentParser.parse(contentValue.text).toMutableList()
+                        val resIndex = state.activeResourceIndex
+                        if (resIndex != -1 && resIndex < currentBlocks.size) {
+                            currentBlocks[resIndex] = updated
+                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks)))
+                        } else {
+                            // Fallback to ID matching
+                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks.map {
+                                if (it is DynamicContentBlock.Resource && it.id == updated.id && it.id.isNotEmpty()) updated else it
+                            })))
+                        }
                         state.isResourceConfigOpen = false
                         state.activeResourceConfig = null
+                        state.activeResourceIndex = -1
                     },
                     onDelete = { deleted ->
                         state.deleteResource(deleted)
-                        onContentValueChange(contentValue.copy(text = DynamicContentParser.render(DynamicContentParser.parse(contentValue.text).filter {
-                            !(it is DynamicContentBlock.Resource && it.id == deleted.id)
-                        })))
+                        val currentBlocks = DynamicContentParser.parse(contentValue.text).toMutableList()
+                        val resIndex = state.activeResourceIndex
+                        if (resIndex != -1 && resIndex < currentBlocks.size) {
+                            currentBlocks.removeAt(resIndex)
+                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks)))
+                        } else {
+                            // Fallback to ID matching
+                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks.filter {
+                                !(it is DynamicContentBlock.Resource && it.id == deleted.id && it.id.isNotEmpty())
+                            })))
+                        }
                         state.isResourceConfigOpen = false
                         state.activeResourceConfig = null
+                        state.activeResourceIndex = -1
                     },
                     forceBlurEnabled = effectiveBlur,
                     settingsViewModel = settingsViewModel,

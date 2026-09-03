@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -252,6 +253,7 @@ fun BonusConfigDialogContent(
                     valueBonuses.forEach { bonus ->
                         BonusField(
                             bonus = bonus,
+                            isIgnored = valueHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                             isOverrideDisabled = valueHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                             onUpdate = { n, f, act, op, adv ->
                                 onStatBonusesChange(statBonuses.map {
@@ -269,19 +271,21 @@ fun BonusConfigDialogContent(
 
                     // --- SAVING THROW SECTION ---
                     SectionHeader("Спасбросок")
-                    ProficiencyToggle(
-                        isProficient = isStatProficient,
-                        proficiencyBonus = proficiencyBonus,
-                        onToggle = { onIsStatProficientChange(it) }
-                    )
-
                     val saveBonuses = statBonuses.filter {
                         it.type == StatBonusType.SAVING_THROW && it.attribute == attribute
                     }
                     val saveHasOverride = saveBonuses.any { it.isActive && it.operation == BonusOperation.OVERRIDE }
+                    ProficiencyToggle(
+                        isProficient = isStatProficient,
+                        proficiencyBonus = proficiencyBonus,
+                        onToggle = { onIsStatProficientChange(it) },
+                        isIgnored = saveHasOverride
+                    )
+
                     saveBonuses.forEach { bonus ->
                         BonusField(
                             bonus = bonus,
+                            isIgnored = saveHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                             isOverrideDisabled = saveHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                             onUpdate = { n, f, act, op, adv ->
                                 onStatBonusesChange(statBonuses.map {
@@ -307,6 +311,7 @@ fun BonusConfigDialogContent(
                         BonusField(
                             bonus = bonus,
                             applyToSkills = bonus.applyToSkills,
+                            isIgnored = checkHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                             isOverrideDisabled = checkHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                             onApplyToSkillsChange = { apply ->
                                 onStatBonusesChange(statBonuses.map {
@@ -392,9 +397,12 @@ fun ProficiencyToggle(
     isProficient: Boolean,
     proficiencyBonus: Int,
     onToggle: (Boolean) -> Unit,
+    isIgnored: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier.alpha(if (isIgnored) 0.5f else 1f)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -495,6 +503,7 @@ fun SkillProficiencyToggle(
 fun BonusField(
     bonus: IBonus,
     applyToSkills: Boolean? = null,
+    isIgnored: Boolean = false,
     isOverrideDisabled: Boolean = false,
     onApplyToSkillsChange: ((Boolean) -> Unit)? = null,
     onUpdate: (name: String, formula: String, isActive: Boolean, operation: BonusOperation, advantagePreference: AdvantagePreference) -> Unit,
@@ -505,7 +514,7 @@ fun BonusField(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (bonus.isActive) 1f else 0.5f),
+            .alpha(if (!bonus.isActive || isIgnored) 0.5f else 1f),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -518,9 +527,12 @@ fun BonusField(
             OutlinedTextField(
                 value = bonus.name,
                 onValueChange = { onUpdate(it, bonus.formula, bonus.isActive, bonus.operation, bonus.advantagePreference) },
-                label = { Text("Название") },
+                label = { 
+                    Text(if (isIgnored) "Игнорируется (есть =)" else "Название") 
+                },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                textStyle = if (isIgnored) TextStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough) else LocalTextStyle.current
             )
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Close, contentDescription = "Удалить", tint = Color.Red)
@@ -645,6 +657,7 @@ fun SkillBonusSection(
             bonuses.forEach { bonus ->
                 BonusField(
                     bonus = bonus,
+                    isIgnored = skillHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                     isOverrideDisabled = skillHasOverride && bonus.operation != BonusOperation.OVERRIDE,
                     onUpdate = { n, f, act, op, adv -> onUpdateBonus(bonus.id, n, f, act, op, adv) },
                     onDelete = { onDeleteBonus(bonus.id) }

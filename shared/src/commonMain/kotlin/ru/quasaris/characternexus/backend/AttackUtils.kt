@@ -9,30 +9,36 @@ fun formatFullDamage(
     stats: Map<String, String> = emptyMap(),
     renderInOrder: Boolean = true
 ): String {
+    val activeBonuses = bonuses.filter { it.isActive }
+    val overrides = activeBonuses.filter { it.operation == BonusOperation.OVERRIDE }
+    
     val allParts = mutableListOf<FormulaPart>()
     
-    // Process base formula
-    allParts.addAll(parseFormulaOrdered(baseFormula, stats))
-    if (baseDamageBonus != 0) {
-        allParts.add(FormulaPart.Flat(baseDamageBonus))
-    }
-    
-    // Process additional bonuses
-    bonuses.filter { it.isActive }.forEach { bonus ->
-        val fParts = parseFormulaOrdered(bonus.formula, stats)
-        when (bonus.operation) {
-            BonusOperation.ADD -> allParts.addAll(fParts)
-            BonusOperation.SUBTRACT -> {
-                fParts.forEach { part ->
-                    when (part) {
-                        is FormulaPart.Dice -> allParts.add(FormulaPart.Dice(-part.count, part.sides))
-                        is FormulaPart.Flat -> allParts.add(FormulaPart.Flat(-part.value))
+    if (overrides.isNotEmpty()) {
+        // Если есть заменители, берем только их (последний по логике)
+        val lastOverride = overrides.last()
+        allParts.addAll(parseFormulaOrdered(lastOverride.formula, stats))
+    } else {
+        // Process base formula
+        allParts.addAll(parseFormulaOrdered(baseFormula, stats))
+        if (baseDamageBonus != 0) {
+            allParts.add(FormulaPart.Flat(baseDamageBonus))
+        }
+        
+        // Process additional bonuses
+        activeBonuses.forEach { bonus ->
+            val fParts = parseFormulaOrdered(bonus.formula, stats)
+            when (bonus.operation) {
+                BonusOperation.ADD -> allParts.addAll(fParts)
+                BonusOperation.SUBTRACT -> {
+                    fParts.forEach { part ->
+                        when (part) {
+                            is FormulaPart.Dice -> allParts.add(FormulaPart.Dice(-part.count, part.sides))
+                            is FormulaPart.Flat -> allParts.add(FormulaPart.Flat(-part.value))
+                        }
                     }
                 }
-            }
-            BonusOperation.OVERRIDE -> {
-                allParts.clear()
-                allParts.addAll(fParts)
+                BonusOperation.OVERRIDE -> {} // Already handled
             }
         }
     }
@@ -80,17 +86,5 @@ fun calculateTotalBonus(
     stats: Map<String, String> = emptyMap(),
     initialValue: Int = 0
 ): Int {
-    var total = initialValue
-    bonuses.filter { it.isActive }.forEach { bonus ->
-        val parts = parseFormulaOrdered(bonus.formula, stats)
-        var bonusFlat = 0
-        parts.forEach { if (it is FormulaPart.Flat) bonusFlat += it.value }
-        
-        total = when (bonus.operation) {
-            BonusOperation.ADD -> total + bonusFlat
-            BonusOperation.SUBTRACT -> total - bonusFlat
-            BonusOperation.OVERRIDE -> bonusFlat
-        }
-    }
-    return total
+    return applyBonuses(initialValue, bonuses, stats)
 }

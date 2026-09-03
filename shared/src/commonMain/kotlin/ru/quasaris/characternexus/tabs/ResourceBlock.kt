@@ -73,11 +73,12 @@ fun ResourceBlock(
 
     val curValue = resource.current.toDoubleOrNull() ?: 0.0
     val maxValue = evaluateFormulaDouble(resource.max, statsMap)
+    val hasMax = resource.max != "0" && resource.max.lowercase() != "null" && resource.max.isNotEmpty()
 
     val level = statsMap["level"] ?: "1"
     val pb = getProficiencyBonus(level)
 
-    val canIncrement = curValue < maxValue || resource.max == "0"
+    val canIncrement = !hasMax || curValue < maxValue
     val canDecrement = curValue > 0
     
     val useHaze = hazeState != null && blurDynamicFields
@@ -244,14 +245,14 @@ fun ResourceBlock(
                         value = curValue.toFloat(),
                         onValueChange = { 
                             val step = resource.sliderStep ?: 1.0
-                            val max = maxValue
-                            val rawValue = it.toDouble().coerceIn(0.0, max)
+                            val maxLimit = if (hasMax) maxValue else curValue
+                            val rawValue = it.toDouble().coerceIn(0.0, maxLimit)
                             
                             // Alignment from maximum:
                             // We want values like: max, max - step, max - 2*step, ...
-                            val diff = max - rawValue
+                            val diff = maxLimit - rawValue
                             val snappedDiff = round(diff / step) * step
-                            val snappedValue = (max - snappedDiff).coerceIn(0.0, max)
+                            val snappedValue = (maxLimit - snappedDiff).coerceIn(0.0, maxLimit)
                             
                             val updatedResource = resource.copy(current = formatValue(snappedValue))
                             if (updatedResource.current != resource.current) {
@@ -259,7 +260,7 @@ fun ResourceBlock(
                             }
                             onUpdate(updatedResource)
                         },
-                        valueRange = 0f..maxValue.toFloat().coerceAtLeast(0.001f),
+                        valueRange = 0f..if (hasMax) maxValue.toFloat().coerceAtLeast(0.001f) else curValue.toFloat().coerceAtLeast(0.001f),
                         modifier = Modifier.weight(1f),
                         colors = SliderDefaults.colors(
                             thumbColor = colorScheme.primary,
@@ -451,6 +452,7 @@ private fun ResourceValueDisplay(
     maxFormula: String,
     formatValue: (Double) -> String
 ) {
+    val hasMax = maxFormula != "0" && maxFormula.lowercase() != "null" && maxFormula.isNotEmpty()
     val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
@@ -465,7 +467,7 @@ private fun ResourceValueDisplay(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = if (maxFormula != "0") "${formatValue(curValue)}/${formatValue(maxValue)}" else formatValue(curValue),
+            text = if (hasMax) "${formatValue(curValue)}/${formatValue(maxValue)}" else formatValue(curValue),
             style = TextStyle(
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Black,

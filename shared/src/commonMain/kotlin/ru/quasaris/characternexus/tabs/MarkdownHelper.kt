@@ -17,43 +17,59 @@ object MarkdownHelper {
     fun applyMarkdown(value: TextFieldValue, prefix: String, suffix: String): TextFieldValue {
         val selection = value.selection
         val text = value.text
+        val selStart = selection.min
+        val selEnd = selection.max
 
         // 1. Cursor case (selection length is 0)
-        if (selection.length == 0) {
+        if (selection.collapsed) {
             // Check if cursor is immediately surrounded by tags: **|**
-            if (selection.start >= prefix.length && selection.end <= text.length - suffix.length) {
-                val before = text.substring(selection.start - prefix.length, selection.start)
-                val after = text.substring(selection.end, selection.end + suffix.length)
+            if (selStart >= prefix.length && selEnd <= text.length - suffix.length) {
+                val before = text.substring(selStart - prefix.length, selStart)
+                val after = text.substring(selEnd, selEnd + suffix.length)
                 if (before == prefix && after == suffix) {
                     // Toggle OFF: Remove tags
-                    val newText = text.substring(0, selection.start - prefix.length) + text.substring(selection.end + suffix.length)
-                    val newPos = selection.start - prefix.length
+                    val newText = text.substring(0, selStart - prefix.length) + text.substring(selEnd + suffix.length)
+                    val newPos = selStart - prefix.length
                     return value.copy(text = newText, selection = TextRange(newPos))
                 }
             }
             // Toggle ON: Insert empty tags and place cursor between them
-            val newText = text.substring(0, selection.start) + prefix + suffix + text.substring(selection.end)
-            val newPos = selection.start + prefix.length
+            val newText = text.substring(0, selStart) + prefix + suffix + text.substring(selEnd)
+            val newPos = selStart + prefix.length
             return value.copy(text = newText, selection = TextRange(newPos))
         }
 
-        val selectedText = text.substring(selection.start, selection.end)
+        val selectedText = text.substring(selStart, selEnd)
 
         // 2. Selection matches exactly or is wrapped: **word**
         if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
             val unwrappedText = selectedText.substring(prefix.length, selectedText.length - suffix.length)
-            val newText = text.substring(0, selection.start) + unwrappedText + text.substring(selection.end)
-            return value.copy(text = newText, selection = TextRange(selection.start, selection.start + unwrappedText.length))
+            val newText = text.substring(0, selStart) + unwrappedText + text.substring(selEnd)
+            return value.copy(text = newText, selection = TextRange(selStart, selStart + unwrappedText.length))
         }
 
         // 3. Selection is immediately inside tags: **|word|**
-        if (selection.start >= prefix.length && selection.end <= text.length - suffix.length) {
-            val before = text.substring(selection.start - prefix.length, selection.start)
-            val after = text.substring(selection.end, selection.end + suffix.length)
+        if (selStart >= prefix.length && selEnd <= text.length - suffix.length) {
+            val before = text.substring(selStart - prefix.length, selStart)
+            val after = text.substring(selEnd, selEnd + suffix.length)
             if (before == prefix && after == suffix) {
                 // Toggle OFF: Remove surrounding tags
-                val newText = text.substring(0, selection.start - prefix.length) + selectedText + text.substring(selection.end + suffix.length)
-                return value.copy(text = newText, selection = TextRange(selection.start - prefix.length, selection.end - prefix.length))
+                val newText = text.substring(0, selStart - prefix.length) + selectedText + text.substring(selEnd + suffix.length)
+                return value.copy(text = newText, selection = TextRange(selStart - prefix.length, selEnd - prefix.length))
+            }
+        }
+
+        // Special case for Quotes: handle >> text << or >> text
+        if (prefix == ">> " && suffix == " <<") {
+            if (selectedText.startsWith(">> ") && selectedText.endsWith(" <<")) {
+                val unwrapped = selectedText.substring(3, selectedText.length - 3)
+                val newText = text.substring(0, selStart) + unwrapped + text.substring(selEnd)
+                return value.copy(text = newText, selection = TextRange(selStart, selStart + unwrapped.length))
+            }
+            if (selectedText.startsWith(">> ")) {
+                val unwrapped = selectedText.substring(3)
+                val newText = text.substring(0, selStart) + unwrapped + text.substring(selEnd)
+                return value.copy(text = newText, selection = TextRange(selStart, selStart + unwrapped.length))
             }
         }
 
@@ -65,39 +81,42 @@ object MarkdownHelper {
             } else {
                 selectedText.replace(prefix, "")
             }
-            val newText = text.substring(0, selection.start) + newSelectedText + text.substring(selection.end)
-            return value.copy(text = newText, selection = TextRange(selection.start, selection.start + newSelectedText.length))
+            val newText = text.substring(0, selStart) + newSelectedText + text.substring(selEnd)
+            return value.copy(text = newText, selection = TextRange(selStart, selStart + newSelectedText.length))
         }
 
         // 5. Default: Toggle ON (Apply tags)
-        val newText = text.substring(0, selection.start) + prefix + selectedText + suffix + text.substring(selection.end)
-        return value.copy(text = newText, selection = TextRange(selection.start, selection.start + prefix.length + selectedText.length + suffix.length))
+        val newText = text.substring(0, selStart) + prefix + selectedText + suffix + text.substring(selEnd)
+        return value.copy(text = newText, selection = TextRange(selStart, selStart + prefix.length + selectedText.length + suffix.length))
     }
 
     fun isFormatActive(value: TextFieldValue, prefix: String, suffix: String): Boolean {
         val selection = value.selection
         val text = value.text
-        if (selection.length == 0) {
+        val selStart = selection.min
+        val selEnd = selection.max
+        
+        if (selection.collapsed) {
             // Special case for links [text](url)
             if (prefix == "[" && suffix == "](") {
                 // Check if cursor is inside [text](url) or surrounding it
                 // This is a bit complex, but let's do a simple check
-                val before = text.substring(0, selection.start)
-                val after = text.substring(selection.end)
+                val before = text.substring(0, selStart)
+                val after = text.substring(selEnd)
                 return before.contains("[") && after.contains(")")
             }
 
-            if (selection.start >= prefix.length && selection.end <= text.length - suffix.length) {
-                val before = text.substring(selection.start - prefix.length, selection.start)
-                val after = text.substring(selection.end, selection.end + suffix.length)
+            if (selStart >= prefix.length && selEnd <= text.length - suffix.length) {
+                val before = text.substring(selStart - prefix.length, selStart)
+                val after = text.substring(selEnd, selEnd + suffix.length)
                 return before == prefix && (suffix.isEmpty() || after.startsWith(suffix))
             }
             return false
         }
         
         // Safety check for selection bounds
-        val start = selection.start.coerceIn(0, text.length)
-        val end = selection.end.coerceIn(0, text.length)
+        val start = selStart.coerceIn(0, text.length)
+        val end = selEnd.coerceIn(0, text.length)
         val selectedText = if (start < end) text.substring(start, end) else ""
         
         // Special case for links [text](url)
@@ -105,6 +124,20 @@ object MarkdownHelper {
             return selectedText.startsWith("[") && selectedText.contains("](") && selectedText.endsWith(")") ||
                    (start > 0 && text.substring(0, start).contains("[") && 
                     text.substring(end).contains(")"))
+        }
+
+        // Special case for quotes
+        if (prefix == ">> " && suffix == " <<") {
+            if (selectedText.startsWith(">> ")) return true
+            
+            // Check if there's an unclosed quote before the cursor
+            val before = text.substring(0, start)
+            val lastQuoteStart = before.lastIndexOf(">> ")
+            if (lastQuoteStart != -1) {
+                val lastQuoteEnd = before.lastIndexOf(" <<")
+                if (lastQuoteEnd < lastQuoteStart) return true
+            }
+            return false
         }
 
         return (selectedText.startsWith(prefix) && (suffix.isEmpty() || selectedText.endsWith(suffix))) || 
@@ -124,7 +157,6 @@ object MarkdownHelper {
         val italicRanges = mutableListOf<IntRange>()
         val strikeRanges = mutableListOf<IntRange>()
         val linkRanges = mutableListOf<Triple<IntRange, String, String>>() // Range, Text, URL
-        val quoteRanges = mutableListOf<IntRange>()
         val markerRanges = mutableListOf<IntRange>()
 
         var i = 0
@@ -204,17 +236,6 @@ object MarkdownHelper {
                         i++
                     }
                 }
-                (i == 0 || (i > 0 && text[i-1] == '\n')) && text.startsWith("> ", i) -> {
-                    if (isEditing) markerRanges.add(result.length until result.length + 2) // > 
-                    if (isEditing) result.append("> ")
-                    val start = result.length
-                    i += 2
-                    val endOfLine = text.indexOf('\n', i)
-                    val lineContent = if (endOfLine != -1) text.substring(i, endOfLine) else text.substring(i)
-                    result.append(lineContent)
-                    quoteRanges.add(start until result.length)
-                    i = if (endOfLine != -1) endOfLine else text.length
-                }
                 else -> {
                     result.append(text[i])
                     i++
@@ -247,16 +268,13 @@ object MarkdownHelper {
                 addStyle(SpanStyle(fontStyle = FontStyle.Italic), it.first, it.last + 1) 
             }
             strikeRanges.filter { it.first < it.last + 1 }.forEach { 
-                addStyle(SpanStyle(textDecoration = TextDecoration.LineThrough), it.first, it.last + 1)
-            }
-            quoteRanges.filter { it.first < it.last + 1 }.forEach {
                 addStyle(
                     SpanStyle(
-                        background = Color.Gray.copy(alpha = 0.1f),
-                        fontStyle = FontStyle.Italic
-                    ),
+                        textDecoration = TextDecoration.LineThrough,
+                        color = if (onSurface != Color.Unspecified) onSurface else Color.Unspecified
+                    ), 
                     it.first, it.last + 1
-                )
+                ) 
             }
 
             val urlAccent = Color(0xFF2196F3)
