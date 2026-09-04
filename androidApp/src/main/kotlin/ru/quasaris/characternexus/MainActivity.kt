@@ -17,6 +17,7 @@ import ru.quasaris.characternexus.backend.ModuleManager
 import ru.quasaris.characternexus.backend.SpellbookManager
 import ru.quasaris.characternexus.backend.GlossaryImporter
 import ru.quasaris.characternexus.util.PlatformUtils
+import ru.quasaris.characternexus.util.AndroidCrashHandler
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +28,8 @@ class MainActivity : ComponentActivity() {
         PlatformUtils.androidContext = applicationContext
         
         val settingsManager = SettingsManager()
+        AndroidCrashHandler.initialize(settingsManager)
+        
         val settingsViewModel = SettingsViewModel(settingsManager)
 
         val moduleManager = ModuleManager()

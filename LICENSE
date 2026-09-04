@@ -1,47 +1,68 @@
 SOURCE-AVAILABLE NON-REDISTRIBUTION LICENSE (SANRL)
-Version 1.0
+Version 1.1
 
 Copyright (C) 2026 QuiXinI. All rights reserved.
 
 1. DEFINITIONS
 "Software" means the source code, object code, documentation, and related assets provided under this License.
 "Copyright Holder" means the individual(s) or entity(ies) identified in the copyright notice above.
+"You" / "Licensee" means the individual or entity exercising rights under this License.
 "Source Code" means the human-readable form of the Software.
-"Official Binaries" means pre-compiled executables or packages compiled and directly published by the Copyright Holder.
+"Official Binaries" means pre-compiled executables or packages compiled and directly published by the Copyright Holder, digitally signed or otherwise identified by the Copyright Holder as authentic.
 "Modification" means any revision, alteration, translation, addition, or derivative work based on the Source Code.
-"Commercial Use" means any use aimed at generating direct or indirect monetary income, business operations, or commercial services.
+"Commercial Use" means any use of the Software, directly or indirectly, intended to generate monetary or other economic benefit for any party other than the Copyright Holder. This includes, without limitation: charging any fee for services performed with or through the Software (e.g., paid game-mastering, hosting, or similar services rendered using the Software); selling, renting, or otherwise monetizing access to the Software or any Modification; bundling the Software into a paid product or service; or any use of the Software in the course of business operations for profit. Using the Software free of charge for personal or internal purposes -- including, without limitation, running tabletop role-playing game sessions for which no fee is charged for the use of the Software itself -- is not Commercial Use.
+"Contribution" means any Modification, patch, code, documentation, or other material voluntarily submitted by You to the Copyright Holder for potential inclusion in the Software.
+"Distribute" / "Distribution" means to make the Software, a Modification, or any compiled artifact thereof available to any third party, by any means, whether or not for a fee.
 
 2. GRANT OF RIGHTS
-Subject to the terms and conditions of this License, the Copyright Holder grants You a non-exclusive, royalty-free, worldwide, non-transferable license, for the entire duration of copyright in the Software, to:
+Subject to the terms and conditions of this License, the Copyright Holder grants You a non-exclusive, royalty-free, worldwide, non-transferable, non-sublicensable license to:
 a) Inspect, view, and study the Source Code;
 b) Modify the Source Code solely for Your own personal or internal, non-commercial use;
 c) Locally compile the original or modified Source Code solely on Your own devices for Your own personal or internal, non-commercial use;
-d) Redistribute unmodified Official Binaries, strictly free of charge, provided that all copyright notices, license conditions, and monetization/paywall logic remain intact and unaltered.
+d) Maintain public or private forks or repositories of the Source Code or Your Modifications for personal, non-commercial purposes, provided such forks are not used to Distribute compiled binaries or build/compilation instructions to third parties (see Section 3);
+e) Redistribute, strictly free of charge, Official Binaries in unmodified form exactly as published by the Copyright Holder, provided all copyright notices, license conditions, developer signatures, and monetization/paywall logic remain intact and unaltered.
 
 3. RESTRICTIONS AND PROHIBITIONS
 You shall NOT:
-a) Host, publish, distribute, sublicense, sell, rent, lease, or otherwise share modified versions of the Source Code or any forks thereof;
-b) Host, publish, distribute, sublicense, sell, rent, lease, or otherwise share any compiled binaries, executables, or packages (including, but not limited to, APK, EXE, IPA, ELF files) derived from modified Source Code, or compiled by any third party;
-c) Use the Software, Source Code, or Official Binaries for any Commercial Use without prior written authorization from the Copyright Holder;
-d) Bypass, remove, or modify any paywall, subscription, licensing check, or monetization logic integrated into the Software or Official Binaries.
+a) Distribute, publish, sell, rent, lease, or otherwise share the Source Code, any Modification, or any fork thereof, except as expressly permitted under Section 2(d);
+b) Compile, Distribute, publish, sell, rent, lease, or otherwise share any binaries, executables, or packages (including but not limited to APK, EXE, IPA, or ELF files), other than Official Binaries redistributed unmodified under Section 2(e) -- this prohibition applies regardless of whether such binaries are built by You or by any third party, and regardless of whether they are built from original or modified Source Code;
+c) Publish or share build/compilation instructions, scripts, or configuration files intended to enable third parties to compile or produce binaries of the Software or any Modification;
+d) Make any Commercial Use of the Software, Source Code, or Official Binaries, in whole or in part, under any circumstances;
+e) Bypass, remove, disable, or modify any paywall, subscription, licensing check, or monetization logic integrated into the Software or Official Binaries;
+f) Sublicense, assign, or transfer any rights granted under this License to any third party.
 
-4. RESERVATION OF RIGHTS AND TRADEMARKS
-4.1. All rights not expressly granted in Section 2 are strictly reserved by the Copyright Holder.
-4.2. This License does not grant any rights to use trade names, trademarks, service marks, logos, or product names of the Copyright Holder. Modified builds or forks shall not use the original application's name, brand, or logos.
+4. CONTRIBUTIONS
+By submitting a Contribution to the Copyright Holder, You grant the Copyright Holder a perpetual, irrevocable, worldwide, royalty-free, transferable license to use, modify, distribute, sublicense, and otherwise exploit the Contribution in any manner the Copyright Holder sees fit, including in Commercial Use, without any obligation of compensation to You.
+In consideration for Your Contribution, You will be credited by name (or a chosen alias) in the Software's Credits section, unless You request otherwise.
+You represent and warrant that You have the necessary rights to grant the license described in this Section for any Contribution You submit.
 
-5. TERMINATION
-5.1. Any violation of the terms and conditions of this License shall automatically and immediately terminate all rights granted to You hereunder.
-5.2. Upon termination, You must permanently cease all use of the Software, destroy all copies of the Source Code (including modifications), and remove any compiled binaries in Your possession.
+5. RESERVATION OF RIGHTS
+All rights not expressly granted in Section 2 are strictly reserved by the Copyright Holder, including the exclusive right to monetize the Software, the Source Code, and any Modifications thereof in any form.
 
-6. DISCLAIMER OF RESPONSIBILITY FOR THIRD-PARTY BUILDS
-The Copyright Holder assumes no responsibility or liability for any binaries, executables, or packages compiled or distributed by third parties. Using third-party builds is entirely at Your own risk.
+6. THIRD-PARTY COMPONENTS
+The Software may include third-party components distributed under their own licenses. Nothing in this License overrides or restricts the rights and obligations attached to such third-party components. Where a conflict exists between this License and the license of a third-party component, the applicable third-party license governs use of that component.
 
-7. NO WARRANTY AND LIMITATION OF LIABILITY
-7.1. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
-7.2. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE.
+7. TERMINATION
+7.1. Upon becoming aware of a violation of this License, the Copyright Holder will provide You with notice describing the violation and a period of thirty (30) days to cure it.
+7.2. If the violation is not cured within thirty (30) days, or in the case of repeated or willful violations, all rights granted to You under this License terminate automatically and immediately.
+7.3. Upon termination, You must permanently cease all use of the Software, destroy all copies of the Source Code (including Modifications) in Your possession, and remove any compiled binaries in Your possession.
+7.4. Before pursuing removal through third-party platforms or any other enforcement action, the Copyright Holder will first send a notice to the party responsible for any unauthorized Distribution, requesting that it cease.
 
-8. GOVERNING LAW AND JURISDICTION
-This License shall be governed by, construed, and enforced in accordance with the laws of the Russian Federation (specifically Part IV of the Civil Code of the Russian Federation), without regard to its conflict of law principles. Any disputes arising out of or in connection with this License shall be submitted to the competent courts of the Russian Federation.
+8. ACCEPTANCE
+By installing, copying, compiling, or otherwise placing the Software on Your device, You accept and agree to be bound by the terms of this License, whether or not You have run or executed the Software.
 
-9. SEVERABILITY
+9. DISCLAIMER OF RESPONSIBILITY FOR THIRD-PARTY BUILDS
+The Copyright Holder assumes no responsibility or liability for any binaries, executables, or packages compiled or distributed in violation of this License by any party. Using such unauthorized builds is entirely at Your own risk.
+
+10. NO WARRANTY AND LIMITATION OF LIABILITY
+10.1. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+10.2. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE.
+
+11. AMENDMENTS AND VERSIONING
+The Copyright Holder may publish updated versions of this License at their sole discretion. Upon publication, the updated version automatically applies to all copies of the Software, including those previously obtained by You, and supersedes any prior version of this License.
+
+12. SEVERABILITY
 If any provision of this License is held to be invalid or unenforceable, such provision shall be enforced to the maximum extent permissible, and the remaining provisions of this License shall remain in full force and effect.
+
+13. ENTIRE AGREEMENT
+This License constitutes the entire agreement between You and the Copyright Holder regarding the Software and supersedes all prior or contemporaneous understandings, agreements, or representations regarding its subject matter.

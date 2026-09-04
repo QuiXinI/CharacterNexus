@@ -194,11 +194,13 @@ fun CharacterWindow(
     val rootFocusRequester = remember { FocusRequester() }
     var isRootFocused by remember { mutableStateOf(false) }
     var isRootHasFocus by remember { mutableStateOf(false) }
+    var isDisposed by remember { mutableStateOf(false) }
 
     val keybinds by settingsViewModel?.keybinds?.collectAsState() ?: remember { mutableStateOf(emptyMap<KeybindAction, Key>()) }
 
     DisposableEffect(Unit) {
         onDispose {
+            isDisposed = true
             focusManager.clearFocus()
         }
     }
@@ -280,8 +282,12 @@ fun CharacterWindow(
                 .onFocusChanged { 
                     isRootFocused = it.isFocused 
                     isRootHasFocus = it.hasFocus
-                    if (!it.isFocused && !it.hasFocus && !isAnyFullscreenDialogOpen) {
-                         rootFocusRequester.requestFocus()
+                    if (!it.isFocused && !it.hasFocus && !isAnyFullscreenDialogOpen && !isDisposed) {
+                        try {
+                            rootFocusRequester.requestFocus()
+                        } catch (e: Exception) {
+                            // Ignore focus errors during transitions
+                        }
                     }
                 }
                 .focusable()
