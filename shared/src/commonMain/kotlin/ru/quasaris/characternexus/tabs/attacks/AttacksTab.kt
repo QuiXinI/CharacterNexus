@@ -89,12 +89,15 @@ fun AttacksTab(
     LaunchedEffect(editingAttack) {
         onAttackConfigOpenChange(editingAttack != null)
         state?.activeAttackConfigId = editingAttack?.id
+        state?.editingAttack = editingAttack
         state?.isAttackConfigOpen = editingAttack != null
     }
 
     LaunchedEffect(state?.isAttackConfigOpen) {
         if (state?.isAttackConfigOpen == false) {
             editingAttack = null
+        } else if (state?.editingAttack != null && editingAttack != state.editingAttack) {
+            editingAttack = state.editingAttack
         }
     }
 

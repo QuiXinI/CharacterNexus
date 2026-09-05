@@ -190,6 +190,7 @@ class CharacterDetailState(
     var isSpellbookSelectionOpen by mutableStateOf(false)
 
     var activeAttackConfigId by mutableStateOf<String?>(null)
+    var editingAttack by mutableStateOf<AttackEntry?>(null)
     var editingSpell by mutableStateOf<SpellCard?>(null)
     var activeDynamicField by mutableStateOf<DynamicNoteState?>(null)
     var selectedCurrency by mutableStateOf<Currency?>(null)

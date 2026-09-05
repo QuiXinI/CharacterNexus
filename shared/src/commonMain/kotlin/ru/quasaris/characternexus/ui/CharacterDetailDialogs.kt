@@ -78,39 +78,41 @@ fun CharacterDetailDialogs(
             )
         }
 
-        if (state.isAttackConfigOpen && state.activeAttackConfigId != null) {
-             val attack = state.attacks.find { it.id == state.activeAttackConfigId }
-             if (attack != null) {
-                 AttackConfigDialog(
-                     attack = attack,
-                     proficiencyBonus = getPreviousLevelThreshold(state.level).toIntOrNull()?.let { 0 } ?: getProficiencyBonus(state.level),
-                     attributeModifiers = state.attributeModifiers,
-                     onDismiss = { 
-                         state.isAttackConfigOpen = false
-                         state.activeAttackConfigId = null
-                     },
-                     onSave = { updated: AttackEntry ->
-                         state.attacks = state.attacks.map { if (it.id == updated.id) updated else it }
-                         state.isAttackConfigOpen = false
-                         state.activeAttackConfigId = null
-                     },
-                     onDelete = { deleted: AttackEntry ->
-                         state.attacks = state.attacks.filter { it.id != deleted.id }
-                         state.isAttackConfigOpen = false
-                         state.activeAttackConfigId = null
-                     },
-                     forceBlurEnabled = forceBlurEnabled,
-                     exhaustion = state.exhaustion,
-                     settingsViewModel = state.settingsViewModel,
-                     stats = statsMap,
-                     spellSettings = state.spellSettings,
-                     isDesktop = isDesktop,
-                     hazeState = popupHazeState ?: hazeState
-                 )
-             } else {
-                 state.isAttackConfigOpen = false
-                 state.activeAttackConfigId = null
-             }
+        if (state.isAttackConfigOpen && state.editingAttack != null) {
+            AttackConfigDialog(
+                attack = state.editingAttack!!,
+                proficiencyBonus = getProficiencyBonus(state.level),
+                attributeModifiers = state.attributeModifiers,
+                onDismiss = { 
+                    state.isAttackConfigOpen = false
+                    state.activeAttackConfigId = null
+                    state.editingAttack = null
+                },
+                onSave = { updated: AttackEntry ->
+                    val newAttacks = if (state.attacks.any { it.id == updated.id }) {
+                        state.attacks.map { if (it.id == updated.id) updated else it }
+                    } else {
+                        state.attacks + updated
+                    }
+                    state.attacks = newAttacks
+                    state.isAttackConfigOpen = false
+                    state.activeAttackConfigId = null
+                    state.editingAttack = null
+                },
+                onDelete = { deleted: AttackEntry ->
+                    state.attacks = state.attacks.filter { it.id != deleted.id }
+                    state.isAttackConfigOpen = false
+                    state.activeAttackConfigId = null
+                    state.editingAttack = null
+                },
+                forceBlurEnabled = forceBlurEnabled,
+                exhaustion = state.exhaustion,
+                settingsViewModel = state.settingsViewModel,
+                stats = statsMap,
+                spellSettings = state.spellSettings,
+                isDesktop = isDesktop,
+                hazeState = popupHazeState ?: hazeState
+            )
         }
 
         if (state.isSpellEditorOpen && state.editingSpell != null) {

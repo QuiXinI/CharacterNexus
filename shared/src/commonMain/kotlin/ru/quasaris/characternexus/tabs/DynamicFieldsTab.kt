@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalDensity
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -214,7 +216,7 @@ fun DynamicFieldsTab(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .imePadding()
+            .background(MaterialTheme.colorScheme.background)
     ) {
         if (items.isEmpty() && isScrollEnabled) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -224,9 +226,12 @@ fun DynamicFieldsTab(
 
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().clipToBounds(),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .clipToBounds(),
             userScrollEnabled = isScrollEnabled,
-            contentPadding = PaddingValues(vertical = 16.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 40.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -413,15 +418,25 @@ fun DynamicFieldItem(
 
     val focusManager = LocalFocusManager.current
     val colorScheme = MaterialTheme.colorScheme
+    val density = LocalDensity.current
     val focusRequester = remember { FocusRequester() }
     val canEdit = !isEditMode && !isLockedGlobal && !field.isLocked
 
     var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
 
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val contentBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val titleBringIntoViewRequester = remember { BringIntoViewRequester() }
     val coroutineScope = rememberCoroutineScope()
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var isFocused by remember { mutableStateOf(false) }
+    var isTitleFocused by remember { mutableStateOf(false) }
+
+    // Реальная (анимируемая системой) высота клавиатуры. Читаем её прямо в composition,
+    // чтобы этот composable перекомпоновывался на каждом кадре анимации IME и
+    // пересчитывал bringIntoView по актуальному viewport'у, а не по угаданной задержке.
+    val imeBottomPx = WindowInsets.ime.getBottom(density)
+
+    val scrollMarginPx = with(density) { 40.dp.toPx() }
 
     var toolbarState by remember { mutableStateOf(Triple(contentValue, false, false)) }
 
@@ -433,18 +448,31 @@ fun DynamicFieldItem(
         toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
     }
 
-    LaunchedEffect(contentValue.selection, contentValue.text, isFocused) {
+    // Единый источник правды для автоскролла к курсору: перезапускается и при смене
+    // текста/выделения/фокуса, И при каждом изменении высоты клавиатуры (imeBottomPx),
+    // поэтому корректно доводит скролл до конца уже после того, как IME анимация
+    // реально завершилась, а не через фиксированные 150мс.
+    LaunchedEffect(imeBottomPx, contentValue.selection, contentValue.text, isFocused) {
+        if (!isFocused) return@LaunchedEffect
         val layoutResult = textLayoutResult
-        if (isFocused && layoutResult != null && contentValue.selection.collapsed) {
+        if (layoutResult != null && contentValue.selection.collapsed) {
             val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
-            coroutineScope.launch {
-                bringIntoViewRequester.bringIntoView(
-                    cursorRect.copy(
-                        top = cursorRect.top - 40f,
-                        bottom = cursorRect.bottom + 40f
-                    )
+            contentBringIntoViewRequester.bringIntoView(
+                cursorRect.copy(
+                    top = cursorRect.top - scrollMarginPx,
+                    bottom = cursorRect.bottom + scrollMarginPx
                 )
-            }
+            )
+        } else {
+            contentBringIntoViewRequester.bringIntoView()
+        }
+    }
+
+    LaunchedEffect(imeBottomPx, isTitleFocused) {
+        if (isTitleFocused) {
+            titleBringIntoViewRequester.bringIntoView(
+                androidx.compose.ui.geometry.Rect(0f, 0f, 0f, scrollMarginPx * 2f)
+            )
         }
     }
 
@@ -554,7 +582,9 @@ fun DynamicFieldItem(
                         cursorBrush = SolidColor(colorScheme.primary),
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 8.dp)
+                            .bringIntoViewRequester(titleBringIntoViewRequester)
+                            .onFocusChanged { isTitleFocused = it.isFocused },
                         decorationBox = { innerTextField ->
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (field.title.isEmpty()) {
@@ -659,7 +689,6 @@ fun DynamicFieldItem(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .hazeSource(state = internalHazeState)
-                                                .bringIntoViewRequester(bringIntoViewRequester)
                                                 .focusRequester(focusRequester)
                                                 .onFocusChanged { isFocused = it.isFocused },
                                             onTextLayout = { textLayoutResult = it },
@@ -688,7 +717,9 @@ fun DynamicFieldItem(
                                                             if (toolbarState.second) {
                                                                 Spacer(modifier = Modifier.height(topMargin))
                                                             }
-                                                            innerTextField()
+                                                            Box(Modifier.bringIntoViewRequester(contentBringIntoViewRequester)) {
+                                                                innerTextField()
+                                                            }
                                                             Spacer(modifier = Modifier.height(8.dp))
                                                         }
                                                     } else {
@@ -993,11 +1024,20 @@ fun DynamicFieldFullscreenContent(
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val colorScheme = MaterialTheme.colorScheme
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val density = LocalDensity.current
+    val contentBringIntoViewRequester = remember { BringIntoViewRequester() }
+    val titleBringIntoViewRequester = remember { BringIntoViewRequester() }
     val coroutineScope = rememberCoroutineScope()
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     val localHazeState = remember { HazeState() }
     var isFocused by remember { mutableStateOf(false) }
+    var isTitleFocused by remember { mutableStateOf(false) }
+
+    // Реальная (анимируемая системой) высота клавиатуры — читаем прямо в composition,
+    // чтобы перекомпоновываться на каждый кадр анимации IME.
+    val imeBottomPx = WindowInsets.ime.getBottom(density)
+
+    val scrollMarginPx = with(density) { 40.dp.toPx() }
 
     var toolbarState by remember { mutableStateOf(Triple(contentValue, false, false)) }
 
@@ -1009,18 +1049,30 @@ fun DynamicFieldFullscreenContent(
         toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
     }
 
-    LaunchedEffect(contentValue.selection, contentValue.text, isFocused) {
+    // Единый источник правды для автоскролла к курсору: реагирует и на смену
+    // текста/выделения/фокуса, и на изменение высоты клавиатуры, поэтому докручивает
+    // список уже после того, как IME анимация реально завершилась.
+    LaunchedEffect(imeBottomPx, contentValue.selection, contentValue.text, isFocused) {
+        if (!isFocused) return@LaunchedEffect
         val layoutResult = textLayoutResult
-        if (isFocused && layoutResult != null && contentValue.selection.collapsed) {
+        if (layoutResult != null && contentValue.selection.collapsed) {
             val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
-            coroutineScope.launch {
-                bringIntoViewRequester.bringIntoView(
-                    cursorRect.copy(
-                        top = cursorRect.top - 40f,
-                        bottom = cursorRect.bottom + 40f
-                    )
+            contentBringIntoViewRequester.bringIntoView(
+                cursorRect.copy(
+                    top = cursorRect.top - scrollMarginPx,
+                    bottom = cursorRect.bottom + scrollMarginPx
                 )
-            }
+            )
+        } else {
+            contentBringIntoViewRequester.bringIntoView()
+        }
+    }
+
+    LaunchedEffect(imeBottomPx, isTitleFocused) {
+        if (isTitleFocused) {
+            titleBringIntoViewRequester.bringIntoView(
+                androidx.compose.ui.geometry.Rect(0f, 0f, 0f, scrollMarginPx * 2f)
+            )
         }
     }
 
@@ -1085,7 +1137,11 @@ fun DynamicFieldFullscreenContent(
                                     color = colorScheme.onSurface
                                 ),
                                 cursorBrush = SolidColor(colorScheme.primary),
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .bringIntoViewRequester(titleBringIntoViewRequester)
+                                    .onFocusChanged { isTitleFocused = it.isFocused },
                                 decorationBox = { innerTextField ->
                                     if (title.isEmpty()) {
                                         Text(titlePlaceholder, color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
@@ -1121,11 +1177,11 @@ fun DynamicFieldFullscreenContent(
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent else colorScheme.surface
+                            containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) colorScheme.background.copy(alpha = 0.01f) else colorScheme.surface
                         )
                     )
                 },
-                containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent else colorScheme.background,
+                containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) colorScheme.background.copy(alpha = 0.01f) else colorScheme.background,
                 modifier = Modifier
                     .fillMaxSize()
                     .run {
@@ -1151,7 +1207,6 @@ fun DynamicFieldFullscreenContent(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { focusManager.clearFocus() }
-                    .imePadding()
             ) { paddingValues ->
                 Box(
                     modifier = Modifier
@@ -1161,6 +1216,7 @@ fun DynamicFieldFullscreenContent(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .imePadding()
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
                     ) {
@@ -1306,7 +1362,6 @@ fun DynamicFieldFullscreenContent(
                                             },
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .bringIntoViewRequester(bringIntoViewRequester)
                                                 .focusRequester(focusRequester)
                                                 .onFocusChanged { isFocused = it.isFocused },
                                             onTextLayout = { textLayoutResult = it },
@@ -1335,7 +1390,9 @@ fun DynamicFieldFullscreenContent(
                                                             if (toolbarState.second) {
                                                                 Spacer(modifier = Modifier.height(topMargin))
                                                             }
-                                                            innerTextField()
+                                                            Box(Modifier.bringIntoViewRequester(contentBringIntoViewRequester)) {
+                                                                innerTextField()
+                                                            }
                                                             Spacer(modifier = Modifier.height(32.dp))
                                                         }
                                                     } else {
