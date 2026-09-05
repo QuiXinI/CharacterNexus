@@ -65,7 +65,8 @@ data class AppSettings(
     var collapseSpellsOnEdit: Boolean = true,
     var collapseDynamicFieldsOnEdit: Boolean = true,
     var veryResponsiveHaptics: Boolean = true,
-    var isPremium: Boolean = false
+    var isPremium: Boolean = false,
+    var lastCrashLog: String? = null
 )
 
 class SettingsManager {
@@ -139,6 +140,7 @@ class SettingsManager {
     var customBlurRadius: Int get() = settings.customBlurRadius; set(value) { settings.customBlurRadius = value; save() }
     var veryResponsiveHaptics: Boolean get() = settings.veryResponsiveHaptics; set(value) { settings.veryResponsiveHaptics = value; save() }
     var isPremium: Boolean get() = settings.isPremium; set(value) { settings.isPremium = value; save() }
+    var lastCrashLog: String? get() = settings.lastCrashLog; set(value) { settings.lastCrashLog = value; save() }
 
     fun resetToDefaults() {
         settings = AppSettings()

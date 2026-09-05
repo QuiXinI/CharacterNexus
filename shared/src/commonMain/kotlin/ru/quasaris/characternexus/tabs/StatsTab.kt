@@ -93,6 +93,7 @@ fun StatsTab(
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     attributeModifiers: Map<Attribute, Int> = emptyMap(),
     statsMap: Map<String, String> = emptyMap(),
+    exhaustion: Int = 0,
     onBonusConfigOpenChange: (Boolean) -> Unit = {},
     state: CharacterDetailState? = null,
     header: @Composable () -> Unit = {},
@@ -203,7 +204,7 @@ fun StatsTab(
                 onRoll = onRoll,
                 statsMap = statsMap,
                 attributeModifiers = attributeModifiers,
-                exhaustion = character.exhaustion,
+                exhaustion = exhaustion,
                 hazeState = hazeState,
                 isOled = colorScheme.background == Color.Black,
                 advantageLogic = advantageLogic

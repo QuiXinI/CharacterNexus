@@ -30,6 +30,7 @@ class AndroidCrashHandler(
                 """.trimIndent()
 
                 PlatformUtils.setClipboardText("Character Nexus Crash Log", deviceInfo)
+                settingsManager.lastCrashLog = deviceInfo
             } catch (e: Exception) {
                 // Prevent infinite loop if clipboard fails
                 e.printStackTrace()

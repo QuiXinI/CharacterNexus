@@ -55,6 +55,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -141,6 +143,12 @@ fun CharacterWindow(
     }
 
     var showExportPortraitSaver by remember { mutableStateOf(false) }
+    var showDebugLogs by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showDebugLogs) {
+        onFullscreenDialogOpenChange(showDebugLogs)
+    }
+
     CommonFileSaver(
         show = showExportPortraitSaver,
         fileName = "${character.name}_Portrait",
@@ -482,6 +490,7 @@ fun CharacterWindow(
                         onImagePickerClick = { showImagePicker = true },
                         onExportSheetClick = { showExportSheetSaver = true },
                         onExportPortraitClick = { showExportPortraitSaver = true },
+                        onDebugClick = { showDebugLogs = true },
                         settingsViewModel = settingsViewModel
                     )
                 }
@@ -583,6 +592,19 @@ fun CharacterWindow(
             onDismiss = { state.imageToCrop = null; state.bytesToCrop = null }
         )
     }
+
+    AnimatedVisibility(
+        visible = showDebugLogs,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    ) {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            DebugLogScreen(
+                onDismiss = { showDebugLogs = false },
+                settingsViewModel = settingsViewModel
+            )
+        }
+    }
 }
 
 
@@ -604,6 +626,7 @@ fun CharacterDetailTopBar(
     onImagePickerClick: () -> Unit,
     onExportSheetClick: () -> Unit,
     onExportPortraitClick: () -> Unit,
+    onDebugClick: () -> Unit = {},
     settingsViewModel: SettingsViewModel? = null
 ) {
     // Единый Surface обёртывает Хедер, Табы и Выпадающие Панели!
@@ -695,6 +718,7 @@ fun CharacterDetailTopBar(
                 onDawn = { handleRestoration("dawn") },
                 showRestPopup = state.showRestPopup,
                 onShowRestPopupChange = { state.showRestPopup = it },
+                onDebugClick = onDebugClick,
                 hazeState = popupHazeState ?: hazeState,
                 blurPopups = blurPopups,
                 settingsViewModel = settingsViewModel
@@ -1155,6 +1179,7 @@ fun CharacterDetailMainContent(
                         isAdvancedMode = state.isAdvancedMode,
                         attributeModifiers = state.attributeModifiers,
                         statsMap = state.statsMap,
+                        exhaustion = state.exhaustion,
                         onBonusConfigOpenChange = { 
                             if (it) state.closeFullscreenDialogs()
                             state.isBonusConfigOpen = it 
@@ -1298,6 +1323,7 @@ fun TabContent(
                 isAdvancedMode = state.isAdvancedMode,
                 attributeModifiers = state.attributeModifiers,
                 statsMap = state.statsMap,
+                exhaustion = state.exhaustion,
                 onBonusConfigOpenChange = { if (it) state.closeFullscreenDialogs(); state.isBonusConfigOpen = it },
                 advantageLogic = state.advantageLogic,
                 state = state,

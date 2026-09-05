@@ -1,7 +1,9 @@
 package ru.quasaris.characternexus.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,8 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -102,6 +108,7 @@ fun CurrencyEditDialog(
     var selectedCurrency by remember { mutableStateOf(initialCurrency) }
     var amountString by remember { mutableStateOf("") }
     var conversionToConfirm by remember { mutableStateOf<CurrencyUtils.ConversionResult?>(null) }
+    var manualConversionToConfirm by remember { mutableStateOf<CurrencyUtils.ConversionResult?>(null) }
 
     if (isDesktop) {
         CurrencyEditContent(
@@ -112,6 +119,8 @@ fun CurrencyEditDialog(
             onAmountStringChange = { amountString = it },
             conversionToConfirm = conversionToConfirm,
             onConversionToConfirmChange = { conversionToConfirm = it },
+            manualConversionToConfirm = manualConversionToConfirm,
+            onManualConversionToConfirmChange = { manualConversionToConfirm = it },
             onWalletChange = onWalletChange,
             onDismiss = onDismiss,
             hazeState = hazeState,
@@ -132,6 +141,8 @@ fun CurrencyEditDialog(
                 onAmountStringChange = { amountString = it },
                 conversionToConfirm = conversionToConfirm,
                 onConversionToConfirmChange = { conversionToConfirm = it },
+                manualConversionToConfirm = manualConversionToConfirm,
+                onManualConversionToConfirmChange = { manualConversionToConfirm = it },
                 onWalletChange = onWalletChange,
                 onDismiss = onDismiss,
                 hazeState = hazeState,
@@ -142,7 +153,7 @@ fun CurrencyEditDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CurrencyEditContent(
     wallet: Wallet,
@@ -152,6 +163,8 @@ fun CurrencyEditContent(
     onAmountStringChange: (String) -> Unit,
     conversionToConfirm: CurrencyUtils.ConversionResult?,
     onConversionToConfirmChange: (CurrencyUtils.ConversionResult?) -> Unit,
+    manualConversionToConfirm: CurrencyUtils.ConversionResult?,
+    onManualConversionToConfirmChange: (CurrencyUtils.ConversionResult?) -> Unit,
     onWalletChange: (Wallet) -> Unit,
     onDismiss: () -> Unit,
     hazeState: HazeState?,
@@ -161,6 +174,7 @@ fun CurrencyEditContent(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val verticalScrollState = rememberScrollState()
 
     BackHandler(onBack = onDismiss)
 
@@ -192,6 +206,7 @@ fun CurrencyEditContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(verticalScrollState)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -213,7 +228,23 @@ fun CurrencyEditContent(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { onSelectedCurrencyChange(currency) }
+                                .combinedClickable(
+                                    onClick = { onSelectedCurrencyChange(currency) },
+                                    onLongClick = {
+                                        if (amountString.isNotBlank() && currency != selectedCurrency) {
+                                            val amount = CurrencyUtils.evaluateFormula(amountString)
+                                            if (amount > 0) {
+                                                onManualConversionToConfirmChange(
+                                                    CurrencyUtils.calculateManualConversion(
+                                                        selectedCurrency,
+                                                        currency,
+                                                        amount
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
                                 .padding(vertical = 8.dp)
                         ) {
                             CurrencyIcon(currency, Modifier.size(20.dp))
@@ -338,6 +369,94 @@ fun CurrencyEditContent(
 
             Spacer(Modifier.height(32.dp))
 
+            // Detailed Balance List
+            Text(
+                "Точный баланс",
+                style = MaterialTheme.typography.labelLarge,
+                color = colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.align(Alignment.Start)
+            )
+            Spacer(Modifier.height(8.dp))
+            
+            Surface(
+                color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Currency.entries.forEach { currency ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CurrencyIcon(currency, Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = currency.displayName,
+                                color = currency.color,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(Modifier.width(16.dp))
+                            
+                            val horizontalScrollState = rememberScrollState()
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                    .drawWithContent {
+                                        drawContent()
+                                        val fadeWidth = 4.dp.toPx()
+                                        if (horizontalScrollState.value > 0) {
+                                            drawRect(
+                                                brush = Brush.horizontalGradient(
+                                                    0f to Color.Transparent,
+                                                    fadeWidth to Color.Black,
+                                                    startX = 0f,
+                                                    endX = fadeWidth
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                        if (horizontalScrollState.value < horizontalScrollState.maxValue) {
+                                            drawRect(
+                                                brush = Brush.horizontalGradient(
+                                                    (size.width - fadeWidth) to Color.Black,
+                                                    size.width to Color.Transparent,
+                                                    startX = size.width - fadeWidth,
+                                                    endX = size.width
+                                                ),
+                                                blendMode = BlendMode.DstIn
+                                            )
+                                        }
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .horizontalScroll(horizontalScrollState)
+                                        .align(Alignment.CenterEnd),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        text = CurrencyUtils.getWalletValue(wallet, currency).toLong().toString(),
+                                        color = currency.color,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+
             // Visibility Selector
             Text(
                 "Отображение в инвентаре",
@@ -415,6 +534,77 @@ fun CurrencyEditContent(
             onDismiss = { onConversionToConfirmChange(null) }
         )
     }
+
+    manualConversionToConfirm?.let { conversion ->
+        ManualConversionDialog(
+            result = conversion,
+            onConfirm = {
+                var tempWallet = wallet
+                val sourceBalance = CurrencyUtils.getWalletValue(tempWallet, conversion.sourceCurrency)
+                
+                // We allow conversion even if balance is low, but character nexus usually checks
+                // Let's check balance for safety
+                if (sourceBalance >= conversion.sourceAmount) {
+                    tempWallet = CurrencyUtils.updateWallet(tempWallet, conversion.sourceCurrency, sourceBalance - conversion.sourceAmount)
+                    val targetBalance = CurrencyUtils.getWalletValue(tempWallet, conversion.targetCurrency)
+                    tempWallet = CurrencyUtils.updateWallet(tempWallet, conversion.targetCurrency, targetBalance + conversion.targetAmount)
+                    onWalletChange(tempWallet)
+                    onAmountStringChange("")
+                }
+                onManualConversionToConfirmChange(null)
+            },
+            onDismiss = { onManualConversionToConfirmChange(null) },
+            canConfirm = CurrencyUtils.getWalletValue(wallet, conversion.sourceCurrency) >= conversion.sourceAmount
+        )
+    }
+}
+
+@Composable
+fun ManualConversionDialog(
+    result: CurrencyUtils.ConversionResult,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    canConfirm: Boolean
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Конвертация валюты") },
+        text = {
+            Column {
+                Text("Вы хотите конвертировать:")
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CurrencyIcon(result.sourceCurrency, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("${result.sourceAmount.toLong()} ${result.sourceCurrency.displayName}", fontWeight = FontWeight.Bold)
+                }
+                Icon(
+                    imageVector = Icons.Default.ArrowDownward,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CurrencyIcon(result.targetCurrency, Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("${result.targetAmount.toLong()} ${result.targetCurrency.displayName}", fontWeight = FontWeight.Bold)
+                }
+                
+                if (!canConfirm) {
+                    Spacer(Modifier.height(16.dp))
+                    Text("Недостаточно средств на балансе!", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = canConfirm) { Text("Да") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Нет") }
+        }
+    )
 }
 
 @Composable

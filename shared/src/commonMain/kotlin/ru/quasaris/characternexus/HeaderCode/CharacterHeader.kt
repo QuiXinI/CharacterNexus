@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -103,12 +104,14 @@ fun CharacterHeader(
     onDawn: () -> Unit = {},
     showRestPopup: Boolean = false,
     onShowRestPopupChange: (Boolean) -> Unit = {},
+    onDebugClick: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     blurPopups: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
+    val debugInfoEnabled by settingsViewModel?.debugInfoEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
 
     val inspirationRotation by androidx.compose.animation.core.animateFloatAsState(if (hasInspiration) 0f else 45f)
     val inspirationScale by androidx.compose.animation.core.animateFloatAsState(if (hasInspiration) 1f else 0.8f)
@@ -214,6 +217,20 @@ fun CharacterHeader(
                             hazeState = hazeState,
                             isOled = colorScheme.background == Color.Black,
                             settingsViewModel = settingsViewModel
+                        )
+                    }
+                }
+
+                if (debugInfoEnabled && onDebugClick != null) {
+                    IconButton(onClick = {
+                        ru.quasaris.characternexus.util.Logger.i("CharacterHeader", "Debug bug icon clicked")
+                        onDebugClick()
+                    }) {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.BugReport,
+                            contentDescription = "Отладка",
+                            modifier = Modifier.size(24.dp),
+                            tint = colorScheme.error.copy(alpha = 0.7f)
                         )
                     }
                 }

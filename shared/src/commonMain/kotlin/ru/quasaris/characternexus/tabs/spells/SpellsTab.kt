@@ -26,6 +26,7 @@ import ru.quasaris.characternexus.ui.outerShadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -101,11 +102,23 @@ fun SpellsTab(
         }
     }
 
+    LaunchedEffect(state?.isMagicBonusSettingsOpen) {
+        if (state?.isMagicBonusSettingsOpen == false) {
+            showMagicBonusSettings = false
+        }
+    }
+
     var showSelectionDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(showSelectionDialog) {
         onSpellbookSelectionOpenChange(showSelectionDialog)
+    }
+
+    LaunchedEffect(state?.isSpellbookSelectionOpen) {
+        if (state?.isSpellbookSelectionOpen == false) {
+            showSelectionDialog = false
+        }
     }
 
     var levelInEditMode by remember { mutableStateOf<Float?>(null) }
@@ -212,6 +225,7 @@ fun SpellsTab(
     }
 
     val spellAttackBonus = magicAtkCalculation.first
+    val displaySpellAttackBonus = spellAttackBonus - (exhaustion * 2)
     val spellAttackBase = magicAtkCalculation.second
     val spellAttackDice = magicAtkCalculation.third
     val spellSaveDc = magicSaveCalculation.first
@@ -346,7 +360,7 @@ fun SpellsTab(
                                 fontSize = 10.sp
                             )
                             AttackBonusIndicator(
-                                bonus = spellAttackBonus,
+                                bonus = displaySpellAttackBonus,
                                 dice = spellAttackDice,
                                 size = 42.dp,
                                 fontSize = 16.sp,
@@ -557,7 +571,7 @@ fun SpellsTab(
                         }
 
                         val isListEditMode = levelInEditMode == level
-                        var draggingIndex by remember { mutableStateOf<Int?>(null) }
+                        var draggingItemKey by remember { mutableStateOf<Any?>(null) }
 
                         Surface(
                             modifier = Modifier
@@ -614,12 +628,13 @@ fun SpellsTab(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) { idx, item, isDragging ->
+                                    val itemKey = remember(item) { item.spellId ?: item.divider?.id ?: idx }
                                     LaunchedEffect(isDragging) {
-                                        if (isDragging) draggingIndex = idx
-                                        else if (draggingIndex == idx) draggingIndex = null
+                                        if (isDragging) draggingItemKey = itemKey
+                                        else if (draggingItemKey == itemKey) draggingItemKey = null
                                     }
 
-                                    val abilityForThisItem = remember(levelItems, idx, spellSettings.spellcastingAbility) {
+                                    val abilityForThisItem = remember(item, spellSettings.spellcastingAbility) {
                                         var current = spellSettings.spellcastingAbility
                                         for (i in 0..idx) {
                                             val itm = if (i < levelItems.size) levelItems[i] else null
@@ -649,8 +664,9 @@ fun SpellsTab(
 
                                             Box(modifier = Modifier.weight(1f)) {
                                                 if (item.divider != null) {
+                                                    val isAnyItemDragging = draggingItemKey != null
                                                     val dividerScale by animateFloatAsState(targetValue = if (isDragging) 1.02f else 1f)
-                                                    val dividerBlur by animateDpAsState(targetValue = if (draggingIndex != null && !isDragging) 6.dp else 0.dp)
+                                                    val dividerBlur by animateDpAsState(targetValue = if (isAnyItemDragging && !isDragging) 6.dp else 0.dp)
                                                     Surface(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
@@ -670,8 +686,17 @@ fun SpellsTab(
                                                             verticalAlignment = Alignment.CenterVertically,
                                                             horizontalArrangement = Arrangement.SpaceBetween
                                                         ) {
-                                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                                Text(item.divider.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = colorScheme.onSurface)
+                                                            Row(
+                                                                modifier = Modifier.weight(1f),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Text(
+                                                                    item.divider.title,
+                                                                    fontWeight = FontWeight.Bold,
+                                                                    fontSize = 14.sp,
+                                                                    color = colorScheme.onSurface,
+                                                                    modifier = Modifier.weight(1f, fill = false)
+                                                                )
                                                                 if (item.divider.ability != Attribute.NONE) {
                                                                     Spacer(Modifier.width(8.dp))
                                                                     Surface(
@@ -688,7 +713,8 @@ fun SpellsTab(
                                                                 }
                                                             }
                                                             if (isListEditMode) {
-                                                                Row {
+                                                                Spacer(Modifier.width(8.dp))
+                                                                Row(verticalAlignment = Alignment.CenterVertically) {
                                                                     IconButton(onClick = { showDividerEditor = level to item.divider }, modifier = Modifier.size(24.dp)) {
                                                                         Icon(Icons.Default.Settings, null, modifier = Modifier.size(16.dp), tint = colorScheme.onSurfaceVariant)
                                                                     }
@@ -718,6 +744,7 @@ fun SpellsTab(
                                                             stats = statsMap,
                                                             renderInOrder = renderDiceInOrder
                                                         )
+                                                        val displaySpellAtk = spellAtk - (exhaustion * 2)
                                                         val (spellDc, spellSaveDiceParts) = calculateAttackFormulaParts(
                                                             baseFlat = 8 + pb + spellMod,
                                                             bonuses = spellSettings.spellSaveDcBonuses,
@@ -781,7 +808,7 @@ fun SpellsTab(
                                                             isEditable = true,
                                                             statsMap = statsMap,
                                                             characterLevel = characterLevel,
-                                                            spellAttackBonus = spellAtk,
+                                                            spellAttackBonus = displaySpellAtk,
                                                             spellAttackDice = spellAtkDice,
                                                             spellSaveDc = spellDc,
                                                             spellSaveDice = spellSaveDiceParts,
@@ -796,7 +823,7 @@ fun SpellsTab(
                                                             isEditMode = isListEditMode,
                                                             collapseOnEdit = collapseSpellsOnEdit,
                                                             isDragging = isDragging,
-                                                            isAnyItemDragging = draggingIndex != null,
+                                                            isAnyItemDragging = draggingItemKey != null,
                                                             settingsViewModel = settingsViewModel
                                                         )
                                                     }
@@ -805,7 +832,7 @@ fun SpellsTab(
                                         }
                                     }
                                 }
-
+                                
                                 if (isListEditMode) {
                                     TextButton(
                                         onClick = { showDividerEditor = level to null },
@@ -848,6 +875,7 @@ fun SpellsTab(
                     }
                 }
             )
+
 
             if (spellSettings.isMagicEnabled) {
                 Box(

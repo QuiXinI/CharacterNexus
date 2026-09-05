@@ -177,6 +177,9 @@ class SettingsViewModel(
     private val _exportDirectoryUri = MutableStateFlow(settingsManager.settings.exportDirectoryUri)
     val exportDirectoryUri = _exportDirectoryUri.asStateFlow()
 
+    private val _lastCrashLog = MutableStateFlow(settingsManager.settings.lastCrashLog)
+    val lastCrashLog = _lastCrashLog.asStateFlow()
+
     private val keybindManager = KeybindManager()
     private val _keybinds = MutableStateFlow(keybindManager.mappings)
     val keybinds = _keybinds.asStateFlow()
@@ -488,6 +491,11 @@ class SettingsViewModel(
     fun updateIsPremium(enabled: Boolean) {
         _isPremium.value = enabled
         settingsManager.isPremium = enabled
+    }
+
+    fun updateLastCrashLog(log: String?) {
+        _lastCrashLog.value = log
+        settingsManager.lastCrashLog = log
     }
 
     fun updateVeryResponsiveHaptics(enabled: Boolean) {

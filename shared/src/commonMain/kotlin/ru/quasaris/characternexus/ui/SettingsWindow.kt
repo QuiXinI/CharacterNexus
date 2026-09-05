@@ -1,5 +1,7 @@
 package ru.quasaris.characternexus.ui
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -42,6 +44,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.DesktopWindows
+import androidx.compose.material.icons.filled.BugReport
 import ru.quasaris.characternexus.getDynamicColorScheme
 import ru.quasaris.characternexus.ui.util.PayWall
 import dev.chrisbanes.haze.HazeState
@@ -67,13 +70,14 @@ fun SettingsWindow(
 
     var showResetDialog by remember { mutableStateOf(false) }
     var showKeybindSettings by remember { mutableStateOf(false) }
+    var showDebugLogs by remember { mutableStateOf(false) }
 
     val forceBlurEnabled by settingsViewModel.blurFullscreen.collectAsState()
     val masterBlurEnabled by settingsViewModel.masterBlurEnabled.collectAsState()
     val effectiveBlurFullscreen = masterBlurEnabled && forceBlurEnabled
 
-    LaunchedEffect(showKeybindSettings) {
-        onFullscreenDialogOpenChange(showKeybindSettings)
+    LaunchedEffect(showKeybindSettings, showDebugLogs) {
+        onFullscreenDialogOpenChange(showKeybindSettings || showDebugLogs)
     }
 
     if (showKeybindSettings) {
@@ -82,6 +86,19 @@ fun SettingsWindow(
             onDismiss = { showKeybindSettings = false },
             forceBlurEnabled = effectiveBlurFullscreen
         )
+    }
+
+    AnimatedVisibility(
+        visible = showDebugLogs,
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    ) {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            DebugLogScreen(
+                onDismiss = { showDebugLogs = false },
+                settingsViewModel = settingsViewModel
+            )
+        }
     }
 
     if (showResetDialog) {
@@ -432,6 +449,25 @@ fun SettingsWindow(
                         checked = debugInfoEnabled,
                         onCheckedChange = { settingsViewModel.updateDebugInfoEnabled(it) }
                     )
+                }
+
+                if (debugInfoEnabled) {
+                    Button(
+                        onClick = { 
+                            ru.quasaris.characternexus.util.Logger.i("SettingsWindow", "View Logs button clicked")
+                            showDebugLogs = true 
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.secondaryContainer,
+                            contentColor = colorScheme.onSecondaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.BugReport, null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Посмотреть логи приложения", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
             

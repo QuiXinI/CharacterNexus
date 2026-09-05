@@ -2,6 +2,7 @@ package ru.quasaris.characternexus.backend
 
 import androidx.compose.ui.graphics.Color
 import ru.quasaris.characternexus.model.Wallet
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 enum class Currency(
@@ -15,7 +16,7 @@ enum class Currency(
     GOLD("gold", "Золото", Color(0xFFFFD700), 100, 1),
     ELECTRUM("electrum", "Электрум", Color(0xFFBF00FF), 50, 2),
     SILVER("silver", "Серебро", Color(0xFFC0C0C0), 10, 3),
-    COPPER("copper", "Бронза", Color(0xFFCD7F32), 1, 4)
+    COPPER("copper", "Медь", Color(0xFFCD7F32), 1, 4)
 }
 
 object CurrencyUtils {
@@ -39,7 +40,7 @@ object CurrencyUtils {
             if (s.length > maxDigits) s.take(maxDigits) + suffix else s + suffix
         } else {
             // For 3.1 type limit (1 decimal)
-            val rounded = (kotlin.math.round(num * 10) / 10.0)
+            val rounded = (floor(num * 10) / 10.0)
             val formatted = rounded.toString().replace(",", ".")
             val parts = formatted.split(".")
             val integerPart = parts[0]
@@ -93,6 +94,17 @@ object CurrencyUtils {
         }
         
         return null // Not enough funds even after conversion
+    }
+
+    fun calculateManualConversion(source: Currency, target: Currency, amount: Double): ConversionResult {
+        val amountInCopper = amount * source.rateToCopper
+        val targetAmount = amountInCopper / target.rateToCopper
+        return ConversionResult(
+            sourceCurrency = source,
+            sourceAmount = amount,
+            targetCurrency = target,
+            targetAmount = targetAmount
+        )
     }
 
     fun getWalletValue(wallet: Wallet, currency: Currency): Double = when (currency) {

@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -102,7 +103,7 @@ fun SpellCardItem(
         label = "backgroundBlur"
     )
     
-    val useHaze = hazeState != null && blurCards
+    val useHaze = hazeState != null && blurCards && !isDragging
 
     Card(
         modifier = modifier
@@ -125,9 +126,8 @@ fun SpellCardItem(
             )
             .run {
                 if (useHaze) {
-                    val targetState = if (isDragging) (popupHazeState ?: hazeState!!) else hazeState!!
                     this.hazePopover(
-                        state = targetState,
+                        state = hazeState!!,
                         blurRadius = blurRadius,
                         isOled = colorScheme.background == Color.Black
                     )
@@ -136,6 +136,7 @@ fun SpellCardItem(
         colors = CardDefaults.cardColors(
             containerColor = if (useHaze) Color.Transparent
                             else if (isSelected) colorScheme.primaryContainer
+                            else if (isDragging) colorScheme.surfaceVariant
                             else colorScheme.surfaceContainer
         ),
         shape = RoundedCornerShape(16.dp)
