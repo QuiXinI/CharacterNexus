@@ -79,6 +79,7 @@ fun SpellsTab(
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     onSpellbookSelectionOpenChange: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    isDesktop: Boolean = false,
     header: @Composable () -> Unit = {}
 ) {
     var showAddLevelDialog by remember { mutableStateOf(false) }
@@ -400,7 +401,7 @@ fun SpellsTab(
                                     ))
                                 },
                                 onDismiss = { showSpellAtkPopup = false },
-                                hazeState = hazeState,
+                                hazeState = popupHazeState ?: hazeState,
                                 isOled = colorScheme.background == Color.Black,
                                 modifier = Modifier.size(sizeDp)
                             )
@@ -427,10 +428,11 @@ fun SpellsTab(
                 isTitleReadOnly = true,
                 isAddButtonVisible = false,
                 isReorderButtonVisible = true,
-                isContentVisible = spellSettings.spellMode != SpellMode.CARDS,
+                isContentVisible = { spellSettings.spellMode != SpellMode.CARDS },
                 collapseOnEdit = collapseSpellsOnEdit,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
+                isDesktop = isDesktop,
                 header = header,
                 footer = {
                     if (spellSettings.isMagicEnabled) {
@@ -666,14 +668,14 @@ fun SpellsTab(
                                                 if (item.divider != null) {
                                                     val isAnyItemDragging = draggingItemKey != null
                                                     val dividerScale by animateFloatAsState(targetValue = if (isDragging) 1.02f else 1f)
-                                                    val dividerBlur by animateDpAsState(targetValue = if (isAnyItemDragging && !isDragging) 6.dp else 0.dp)
+                                                    val dividerBlur by animateDpAsState(targetValue = if (isAnyItemDragging && !isDragging && !ru.quasaris.characternexus.util.PlatformUtils.isAndroid) 6.dp else 0.dp)
                                                     Surface(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
                                                             .scale(dividerScale)
                                                             .then(
                                                                 if (dividerBlur > 0.dp) 
-                                                                    Modifier.blur(dividerBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                                                                    Modifier.blur(dividerBlur) 
                                                                 else Modifier
                                                             )
                                                             .then(if (isDragging) Modifier.outerShadow(RoundedCornerShape(8.dp), blur = 16.dp, offsetY = 8.dp) else Modifier),

@@ -11,6 +11,26 @@ fun JsonElement.toSafeString(): String = when (this) {
 }
 
 @Serializable
+enum class MagicItemType(val displayName: String) {
+    POTION("Зелье"),
+    OTHER("Другое")
+}
+
+@Serializable
+data class GameMagicItem(
+    @SerialName("id") val id: String? = null,
+    @SerialName("name") val name: String? = null,
+    @SerialName("type") val type: MagicItemType = MagicItemType.POTION,
+    @SerialName("rarity") val rarity: ru.quasaris.characternexus.model.PotionRarity = ru.quasaris.characternexus.model.PotionRarity.COMMON,
+    @SerialName("description") val description: String? = null,
+    @SerialName("formula") val formula: String? = null,
+    @SerialName("damage_types") val damageTypes: List<ru.quasaris.characternexus.model.DamageType>? = null,
+    @SerialName("icon_index") val iconIndex: Int = 1,
+    @SerialName("color_hex") val colorHex: String = "FF0000",
+    @SerialName("source_module_id") val sourceModuleId: String? = null
+)
+
+@Serializable
 data class GameFeature(
     @SerialName("id") val id: String? = null,
     @SerialName("name") val name: String? = null,

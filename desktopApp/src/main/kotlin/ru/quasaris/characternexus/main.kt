@@ -21,6 +21,7 @@ import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
 import ru.quasaris.characternexus.backend.ModuleManager
 import ru.quasaris.characternexus.backend.SpellbookManager
+import ru.quasaris.characternexus.backend.MagicItemManager
 import ru.quasaris.characternexus.backend.GlossaryImporter
 import ru.quasaris.characternexus.model.DiceRollPosition
 
@@ -66,6 +67,7 @@ fun runApp() = application {
     
     val moduleManager = remember { ModuleManager() }
     val spellbookManager = remember { SpellbookManager() }
+    val magicItemManager = remember { MagicItemManager(moduleManager) }
     val glossaryImporter = remember { GlossaryImporter(spellbookManager, moduleManager) }
 
     val characterRepository = remember {
@@ -121,6 +123,7 @@ fun runApp() = application {
             characterRepository = characterRepository,
             spellbookManager = spellbookManager,
             moduleManager = moduleManager,
+            magicItemManager = magicItemManager,
             glossaryImporter = glossaryImporter,
             getScaleFactor = { scaleFactor },
             getRollHistorySize = { rollHistorySize },

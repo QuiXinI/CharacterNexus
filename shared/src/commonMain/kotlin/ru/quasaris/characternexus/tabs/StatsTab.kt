@@ -206,6 +206,7 @@ fun StatsTab(
                 attributeModifiers = attributeModifiers,
                 exhaustion = exhaustion,
                 hazeState = hazeState,
+                popupHazeState = popupHazeState,
                 isOled = colorScheme.background == Color.Black,
                 advantageLogic = advantageLogic
             )

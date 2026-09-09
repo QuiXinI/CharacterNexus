@@ -1028,16 +1028,17 @@ fun DamageTypeMultiSelect(
     selectedTypes: List<DamageType>,
     onToggle: (DamageType) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    label: String = "Вид урона"
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
-        val text = if (selectedTypes.isEmpty()) "Вид урона" else selectedTypes.joinToString("/") { it.displayName }
+        val text = if (selectedTypes.isEmpty()) label else selectedTypes.joinToString("/") { it.displayName }
         OutlinedTextField(
             value = text,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Вид урона") },
+            label = { Text(label) },
             trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
             modifier = Modifier.fillMaxWidth(),
             enabled = false,

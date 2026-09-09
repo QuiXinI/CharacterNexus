@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 actual object PlatformUtils {
+    actual val isAndroid: Boolean = true
     lateinit var androidContext: Context
 
     actual fun logError(tag: String, message: String, throwable: Throwable?) {

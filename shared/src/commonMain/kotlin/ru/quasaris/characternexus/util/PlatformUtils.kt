@@ -9,6 +9,7 @@ enum class HapticType {
 }
 
 expect object PlatformUtils {
+    val isAndroid: Boolean
     fun logError(tag: String, message: String, throwable: Throwable? = null)
     fun setClipboardText(label: String, text: String)
     fun performHapticFeedback(type: HapticType = HapticType.CLICK)

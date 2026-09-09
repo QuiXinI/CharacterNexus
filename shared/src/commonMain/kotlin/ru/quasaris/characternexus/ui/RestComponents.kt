@@ -1,7 +1,6 @@
 package ru.quasaris.characternexus.ui
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -85,6 +84,7 @@ fun RestPopup(
                 modifier = modifier
                     .width(180.dp)
                     .outerShadow(RoundedCornerShape(12.dp), blur = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .focusRequester(focusRequester)
                     .focusable()
                     .onKeyEvent { event ->
@@ -116,8 +116,7 @@ fun RestPopup(
                     ),
                 shape = RoundedCornerShape(12.dp),
                 color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.2f) else colorScheme.surface,
-                tonalElevation = 8.dp,
-                border = BorderStroke(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f))
+                tonalElevation = 8.dp
             ) {
                 Row(
                     modifier = Modifier.padding(2.dp),
@@ -208,15 +207,20 @@ fun RestPanel(
     var restRolls by remember { mutableStateOf(listOf<RestRoll>()) }
     var showManualInput by remember { mutableStateOf(false) }
 
-    Column(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .background(colorScheme.surface, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .outerShadow(RoundedCornerShape(16.dp), blur = 6.dp, offsetY = 3.dp)
+            .clip(RoundedCornerShape(16.dp)),
+        color = colorScheme.surface,
+        shape = RoundedCornerShape(16.dp)
     ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -357,6 +361,7 @@ fun RestPanel(
                 Text("Завершить отдых")
             }
         }
+    }
     }
 
     if (showManualInput) {

@@ -110,6 +110,7 @@ class ModuleManager {
                     "subclass" -> "subclasses"
                     "species" -> "species"
                     "feat" -> "feats"
+                    "magic_item" -> "magic_items"
                     else -> null
                 }
                 

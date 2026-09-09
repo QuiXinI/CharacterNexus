@@ -15,6 +15,7 @@ import ru.quasaris.characternexus.backend.CharacterRepository
 import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
 import ru.quasaris.characternexus.backend.ModuleManager
 import ru.quasaris.characternexus.backend.SpellbookManager
+import ru.quasaris.characternexus.backend.MagicItemManager
 import ru.quasaris.characternexus.backend.GlossaryImporter
 import ru.quasaris.characternexus.util.PlatformUtils
 import ru.quasaris.characternexus.util.AndroidCrashHandler
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
 
         val moduleManager = ModuleManager()
         val spellbookManager = SpellbookManager()
+        val magicItemManager = MagicItemManager(moduleManager)
         val glossaryImporter = GlossaryImporter(spellbookManager, moduleManager)
 
         val characterRepository = CharacterRepository(
@@ -63,6 +65,7 @@ class MainActivity : ComponentActivity() {
                 characterRepository = characterRepository,
                 spellbookManager = spellbookManager,
                 moduleManager = moduleManager,
+                magicItemManager = magicItemManager,
                 glossaryImporter = glossaryImporter,
                 getScaleFactor = { scaleFactor },
                 getRollHistorySize = { rollHistorySize },

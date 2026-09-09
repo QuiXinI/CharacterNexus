@@ -7,7 +7,8 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.BonusConfigDialog
 import ru.quasaris.characternexus.tabs.DynamicFieldFullscreenDialog
 import ru.quasaris.characternexus.tabs.ResourceConfigDialog
-import ru.quasaris.characternexus.tabs.DynamicContentBlock
+import ru.quasaris.characternexus.tabs.potions.PotionConfigDialog
+import ru.quasaris.characternexus.tabs.potions.PotionSelectionDialog
 import ru.quasaris.characternexus.tabs.attacks.AttackConfigDialog
 import ru.quasaris.characternexus.tabs.attacks.calculateAttackFormulaParts
 import ru.quasaris.characternexus.tabs.spells.SpellSettingsDialog
@@ -384,6 +385,58 @@ fun CharacterDetailDialogs(
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
                 settingsViewModel = state.settingsViewModel
+            )
+        }
+
+        if (state.isPotionConfigOpen && state.activePotionConfig != null) {
+            PotionConfigDialog(
+                initialPotion = state.activePotionConfig!!,
+                onDismiss = {
+                    state.isPotionConfigOpen = false
+                    state.activePotionConfig = null
+                },
+                onSave = { updated ->
+                    state.updatePotion(updated)
+                    state.isPotionConfigOpen = false
+                    state.activePotionConfig = null
+                },
+                onDelete = { deleted ->
+                    state.deletePotion(deleted)
+                    state.isPotionConfigOpen = false
+                    state.activePotionConfig = null
+                },
+                forceBlurEnabled = forceBlurEnabled,
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
+                settingsViewModel = state.settingsViewModel,
+                isDesktop = isDesktop
+            )
+        }
+
+        if (state.isPotionSelectionOpen && state.magicItemManager != null) {
+            PotionSelectionDialog(
+                manager = state.magicItemManager,
+                onDismiss = { state.isPotionSelectionOpen = false },
+                onSelect = { item ->
+                    val newPotion = PotionState(
+                        name = item.name ?: "Без названия",
+                        formula = item.formula ?: "",
+                        description = item.description ?: "",
+                        type = if (item.damageTypes?.contains(DamageType.HEALING) == true) PotionType.HEALING else PotionType.OTHER,
+                        rarity = item.rarity,
+                        damageTypes = item.damageTypes ?: emptyList(),
+                        iconIndex = item.iconIndex,
+                        colorHex = item.colorHex,
+                        sourceModuleId = item.sourceModuleId
+                    )
+                    state.potions = state.potions + newPotion
+                    state.isPotionSelectionOpen = false
+                },
+                settingsViewModel = state.settingsViewModel,
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
+                forceBlurEnabled = forceBlurEnabled,
+                isDesktop = isDesktop
             )
         }
         

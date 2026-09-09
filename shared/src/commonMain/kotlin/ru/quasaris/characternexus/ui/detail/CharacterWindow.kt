@@ -101,7 +101,8 @@ fun CharacterWindow(
     forceBlurEnabled: Boolean = false,
     blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
-    spellbookManager: SpellbookManager? = null
+    spellbookManager: SpellbookManager? = null,
+    magicItemManager: MagicItemManager? = null
 ) {
     if (character == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -110,7 +111,7 @@ fun CharacterWindow(
         return
     }
 
-    val state = rememberCharacterDetailState(character, settingsViewModel)
+    val state = rememberCharacterDetailState(character, settingsViewModel, magicItemManager)
     state.CollectSettings()
 
     val scope = rememberCoroutineScope()
@@ -231,7 +232,7 @@ fun CharacterWindow(
         state.skillsAndTraits, state.inventory, state.spells, state.spellSettings, state.wallet,
         state.bioShortFields, state.bioLongSections, state.hitDiceEntries, state.hitDiceMap, state.defaultHitDie, state.hpLevelData, state.manualHPLevelData, state.isMulticlassHP,
         state.isManualHP, state.manualMaxHp, state.manualMaxHitDice,
-        state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration
+        state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions
     ) {
         onSaveChanges(state.toCharacter(character))
     }
@@ -246,7 +247,7 @@ fun CharacterWindow(
             state.isAttackConfigOpen || state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
             state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen || state.isSpellbookSelectionOpen ||
             state.isArmorClassSubDialogOpen || state.isInitiativeSubDialogOpen || state.isSpeedSubDialogOpen || 
-            state.isResourceConfigOpen || state.showHpDialog
+            state.isResourceConfigOpen || state.isPotionConfigOpen || state.isPotionSelectionOpen || state.showHpDialog
 
     BoxWithConstraints(
         modifier = Modifier
@@ -524,7 +525,8 @@ fun CharacterWindow(
                     isDesktop = isDesktop,
                     onOpenDrawer = onOpenDrawer,
                     handleRestoration = handleRestoration,
-                    desktopPagerState = desktopPagerState
+                    desktopPagerState = desktopPagerState,
+                    magicItemManager = magicItemManager
                 )
 
                 if (!isDesktop) {
@@ -990,7 +992,8 @@ fun CharacterDetailMainContent(
     isDesktop: Boolean = false,
     onOpenDrawer: () -> Unit = {},
     handleRestoration: (String) -> Unit = {},
-    desktopPagerState: PagerState
+    desktopPagerState: PagerState,
+    magicItemManager: MagicItemManager? = null
 ) {
     val focusManager = LocalFocusManager.current
     val keybinds by settingsViewModel?.keybinds?.collectAsState() ?: remember { mutableStateOf(emptyMap<KeybindAction, Key>()) }
@@ -1247,7 +1250,8 @@ fun CharacterDetailMainContent(
                         allConditions = allConditions,
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                         showImagePicker = showImagePicker,
-                        isDesktop = isDesktop
+                        isDesktop = isDesktop,
+                        magicItemManager = magicItemManager
                     )
                 }
             }
@@ -1258,6 +1262,7 @@ fun CharacterDetailMainContent(
                             state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
                             state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen || 
                             state.isSpellbookSelectionOpen || state.isResourceConfigOpen ||
+                            state.isPotionConfigOpen || state.isPotionSelectionOpen ||
                             state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed || 
                             state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings ||
                             state.isBonusConfigOpen || state.showHpDialog
@@ -1306,7 +1311,8 @@ fun TabContent(
     allConditions: List<Condition>,
     onFullscreenDialogOpenChange: (Boolean) -> Unit,
     showImagePicker: () -> Unit,
-    isDesktop: Boolean = false
+    isDesktop: Boolean = false,
+    magicItemManager: MagicItemManager? = null
 ) {
     when (tab) {
         CharacterTab.STATS -> {
@@ -1413,6 +1419,8 @@ fun TabContent(
             InventoryTab(
                 inventory = state.inventory,
                 onInventoryChange = { state.inventory = it },
+                potions = state.potions,
+                onPotionsChange = { state.potions = it },
                 wallet = state.wallet,
                 onWalletChange = { state.wallet = it },
                 hazeState = hazeState,
@@ -1432,7 +1440,10 @@ fun TabContent(
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
                 onWalletDialogOpenChange = { if (it) state.closeFullscreenDialogs(); state.isWalletDialogOpen = it },
-                state = state
+                onRoll = onRoll,
+                state = state,
+                magicItemManager = magicItemManager,
+                isDesktop = isDesktop
             )
         }
         CharacterTab.SPELLS -> {
@@ -1466,7 +1477,8 @@ fun TabContent(
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
                 onSpellbookSelectionOpenChange = { if (it) state.closeFullscreenDialogs(); state.isSpellbookSelectionOpen = it },
-                state = state
+                state = state,
+                isDesktop = isDesktop
             )
         }
         CharacterTab.NOTES -> {

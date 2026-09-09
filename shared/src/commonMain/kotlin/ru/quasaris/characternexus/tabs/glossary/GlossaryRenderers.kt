@@ -14,6 +14,13 @@ import androidx.compose.ui.unit.sp
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Casino
+import org.jetbrains.compose.resources.painterResource
+import characternexus.shared.generated.resources.Res
+import characternexus.shared.generated.resources.*
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.spells.SpellCardItem
@@ -58,6 +65,84 @@ fun SpellCardRenderer(spell: SpellCard) {
             isEditable = false,
             isSelected = false
         )
+    }
+}
+
+@Composable
+fun MagicItemRenderer(item: GameMagicItem) {
+    val colorScheme = MaterialTheme.colorScheme
+    
+    val potionColor = remember(item.colorHex) {
+        try {
+            val hex = item.colorHex.removePrefix("#")
+            when (hex.length) {
+                6 -> Color(
+                    red = hex.substring(0, 2).toInt(16),
+                    green = hex.substring(2, 4).toInt(16),
+                    blue = hex.substring(4, 6).toInt(16)
+                )
+                8 -> Color(
+                    red = hex.substring(0, 2).toInt(16),
+                    green = hex.substring(2, 4).toInt(16),
+                    blue = hex.substring(4, 6).toInt(16),
+                    alpha = hex.substring(6, 8).toInt(16)
+                )
+                else -> Color.Gray
+            }
+        } catch (e: Exception) {
+            Color.Gray
+        }
+    }
+
+    val iconRes = when (item.iconIndex) {
+        1 -> Res.drawable.small_potion
+        2 -> Res.drawable.potion
+        3 -> Res.drawable.big_potion
+        4 -> Res.drawable.huge_potion
+        else -> Res.drawable.small_potion
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = potionColor
+            )
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(item.name ?: "Без названия", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                Text(
+                    text = "${item.rarity.displayName} • ${item.type.displayName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colorScheme.primary
+                )
+            }
+        }
+        
+        Spacer(Modifier.height(16.dp))
+        
+        if (!item.formula.isNullOrBlank()) {
+            Surface(
+                color = colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Casino, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Формула: ${item.formula}", fontWeight = FontWeight.Bold)
+                    if (!item.damageTypes.isNullOrEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        Text("(${item.damageTypes.joinToString { it.displayName }})", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+        
+        RichText(item.description ?: "")
     }
 }
 

@@ -129,8 +129,10 @@ fun DynamicFieldsTab(
     isAddButtonVisible: Boolean = true,
     isReorderButtonVisible: Boolean = true,
     isScrollEnabled: Boolean = true,
-    isContentVisible: Boolean = true,
+    isContentVisible: (DynamicNoteState) -> Boolean = { true },
     collapseOnEdit: Boolean? = null,
+    isAdvancedMode: Boolean = false,
+    isDesktop: Boolean = false,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
@@ -161,6 +163,11 @@ fun DynamicFieldsTab(
         val toIdx = to.index - 1
         if (fromIdx in items.indices && toIdx in items.indices) {
             items.add(toIdx, items.removeAt(fromIdx))
+        }
+    }
+
+    LaunchedEffect(reorderableState.isAnyItemDragging) {
+        if (!reorderableState.isAnyItemDragging) {
             onFieldsChange(items.toList())
         }
     }
@@ -271,7 +278,7 @@ fun DynamicFieldsTab(
                         isCollapsible = isCollapsible,
                         isTitleReadOnly = isTitleReadOnly,
                         isReorderButtonVisible = isReorderButtonVisible,
-                        isContentVisible = isContentVisible,
+                        isContentVisible = isContentVisible(field),
                         isLockedGlobal = fullscreenEditingOnly,
                         collapseOnEdit = collapseOnEditActual,
                         hazeState = hazeState,
@@ -365,7 +372,9 @@ fun DynamicFieldsTab(
                 blurPopups = blurPopups,
                 settingsViewModel = settingsViewModel,
                 statsMap = statsMap,
-                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
+                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                isDesktop = isDesktop,
+                popupHazeState = popupHazeState
             )
         }
     }
@@ -400,9 +409,7 @@ fun DynamicFieldItem(
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
-    val internalHazeState = remember { HazeState() }
     val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
-
     val isExpanded = if (isCollapsible) field.isExpanded else true
     val rotation by animateFloatAsState(targetValue = if (isExpanded) 0f else 180f)
     val scale by animateFloatAsState(targetValue = when {
@@ -504,7 +511,7 @@ fun DynamicFieldItem(
         )
     }
 
-    val useHaze = hazeState != null && blurDynamicFields
+    val useHaze = hazeState != null && (blurDynamicFields ?: true)
 
     Surface(
         modifier = modifier
@@ -512,7 +519,7 @@ fun DynamicFieldItem(
             .scale(scale)
             .then(
                 if (backgroundBlur > 0.dp) 
-                    Modifier.blur(backgroundBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                    Modifier.blur(backgroundBlur) 
                 else Modifier
             )
             .padding(padding)
@@ -523,10 +530,9 @@ fun DynamicFieldItem(
             )
             .run {
                 if (useHaze) {
-                    val targetState = if (isDragging) (popupHazeState ?: hazeState) else hazeState
                     this.clip(RoundedCornerShape(16.dp))
                         .hazeEffect(
-                            state = targetState,
+                            state = hazeState!!,
                             style = HazeStyle(
                                 blurRadius = 24.dp,
                                 tints = listOf(HazeTint(colorScheme.surfaceContainer.copy(alpha = 0.6f)))
@@ -688,7 +694,6 @@ fun DynamicFieldItem(
                                             enabled = canEdit,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .hazeSource(state = internalHazeState)
                                                 .focusRequester(focusRequester)
                                                 .onFocusChanged { isFocused = it.isFocused },
                                             onTextLayout = { textLayoutResult = it },
@@ -814,6 +819,7 @@ fun DynamicFieldItem(
                                                                                 }
                                                                             },
                                                                             hazeState = hazeState,
+                                                                            popupHazeState = popupHazeState,
                                                                             forceBlurEnabled = forceBlurEnabled,
                                                                             blurDynamicFields = blurDynamicFields,
                                                                             blurPopups = blurPopups,
@@ -928,7 +934,8 @@ fun DynamicFieldFullscreenDialog(
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     isDesktop: Boolean = false,
-    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    popupHazeState: HazeState? = null
 ) {
     var title by remember { mutableStateOf(field.title) }
     var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
@@ -956,7 +963,8 @@ fun DynamicFieldFullscreenDialog(
             statsMap = statsMap,
             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
             isDesktop = true,
-            state = state
+            state = state,
+            popupHazeState = popupHazeState
         )
     } else {
         Dialog(
@@ -978,6 +986,7 @@ fun DynamicFieldFullscreenDialog(
                 onDelete = onDelete,
                 onDismiss = onDismiss,
                 hazeState = hazeState,
+                popupHazeState = popupHazeState,
                 forceBlurEnabled = forceBlurEnabled,
                 blurDynamicFields = blurDynamicFields,
                 blurPopups = blurPopups,
@@ -1007,6 +1016,7 @@ fun DynamicFieldFullscreenContent(
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
     hazeState: HazeState?,
+    popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean,
     blurDynamicFields: Boolean,
     blurPopups: Boolean,
@@ -1310,6 +1320,7 @@ fun DynamicFieldFullscreenContent(
                                                             }
                                                         },
                                                         hazeState = null, // Handled by overlay
+                                                        popupHazeState = popupHazeState,
                                                         forceBlurEnabled = effectiveBlur,
                                                         blurDynamicFields = blurDynamicFields,
                                                         blurPopups = blurPopups,
@@ -1487,6 +1498,7 @@ fun DynamicFieldFullscreenContent(
                                                                                 }
                                                                             },
                                                                             hazeState = null, // Handled by overlay
+                                                                            popupHazeState = popupHazeState,
                                                                             forceBlurEnabled = effectiveBlur,
                                                                             settingsViewModel = settingsViewModel,
                                                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,

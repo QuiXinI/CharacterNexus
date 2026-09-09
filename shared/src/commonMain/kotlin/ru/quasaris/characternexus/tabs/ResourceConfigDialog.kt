@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
+import ru.quasaris.characternexus.model.DynamicContentBlock
 import org.jetbrains.compose.resources.painterResource
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import characternexus.shared.generated.resources.*

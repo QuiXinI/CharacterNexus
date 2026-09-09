@@ -52,6 +52,7 @@ fun App(
     characterRepository: CharacterRepository,
     spellbookManager: SpellbookManager?,
     moduleManager: ModuleManager?,
+    magicItemManager: MagicItemManager? = null,
     glossaryImporter: GlossaryImporter?,
     getScaleFactor: @Composable () -> Float,
     getRollHistorySize: @Composable () -> Int,
@@ -80,6 +81,7 @@ fun App(
     val themeBehavior by settingsViewModel.themeBehavior.collectAsState()
     val m3SeedColor by settingsViewModel.m3SeedColor.collectAsState()
     var lastCharacterId by remember { mutableIntStateOf(initialLastCharacterId) }
+    val safeMagicItemManager = magicItemManager ?: remember { MagicItemManager(moduleManager) }
 
     val masterBlurEnabled = getMasterBlurEnabled()
     val blurRolls = getBlurRolls()
@@ -429,6 +431,7 @@ fun App(
                                             GlossaryWindow(
                                                 spellbookManager = spellbookManager,
                                                 moduleManager = moduleManager,
+                                                magicItemManager = safeMagicItemManager,
                                                 onOpenDrawer = { scope.launch { drawerState.open() } },
                                                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                 forceBlurEnabled = effectiveBlurFullscreen,
@@ -529,7 +532,8 @@ fun App(
                                             forceBlurEnabled = effectiveBlurFullscreen,
                                             blurPopups = effectiveBlurPopups,
                                             settingsViewModel = settingsViewModel,
-                                            spellbookManager = spellbookManager
+                                            spellbookManager = spellbookManager,
+                                            magicItemManager = safeMagicItemManager
                                         )
                                     }
                                 }

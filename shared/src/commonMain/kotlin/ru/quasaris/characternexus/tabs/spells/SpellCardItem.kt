@@ -86,7 +86,6 @@ fun SpellCardItem(
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val internalHazeState = remember { HazeState() }
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
     var showAttackPopup by remember { mutableStateOf(false) }
@@ -103,7 +102,7 @@ fun SpellCardItem(
         label = "backgroundBlur"
     )
     
-    val useHaze = hazeState != null && blurCards && !isDragging
+    val useHaze = hazeState != null && blurCards
 
     Card(
         modifier = modifier
@@ -116,14 +115,15 @@ fun SpellCardItem(
             .scale(scale)
             .then(
                 if (backgroundBlur > 0.dp) 
-                    Modifier.blur(backgroundBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                    Modifier.blur(backgroundBlur) 
                 else Modifier
             )
             .outerShadow(
                 shape = RoundedCornerShape(16.dp),
-                blur = 2.dp,
-                offsetY = 1.dp
+                blur = if (isDragging) 6.dp else 2.dp,
+                offsetY = if (isDragging) 3.dp else 1.dp
             )
+            .clip(RoundedCornerShape(16.dp))
             .run {
                 if (useHaze) {
                     this.hazePopover(
@@ -141,7 +141,7 @@ fun SpellCardItem(
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.hazeSource(state = internalHazeState).padding(if (isCompact) 8.dp else 12.dp)) {
+        Column(modifier = Modifier.padding(if (isCompact) 8.dp else 12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,

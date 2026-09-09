@@ -113,6 +113,11 @@ fun AttacksTab(
         val toIdx = to.index - 1
         if (fromIdx in items.indices && toIdx in items.indices) {
             items.add(toIdx, items.removeAt(fromIdx))
+        }
+    }
+
+    LaunchedEffect(reorderableState.isAnyItemDragging) {
+        if (!reorderableState.isAnyItemDragging) {
             onUpdateAttacks(items.toList())
         }
     }
@@ -262,7 +267,6 @@ fun AttackItem(
     collapseActionsOnEdit: Boolean = true
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val internalHazeState = remember { HazeState() }
     val blurCards by settingsViewModel?.blurCards?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val scale by animateFloatAsState(
@@ -348,7 +352,7 @@ fun AttackItem(
             .scale(scale)
             .then(
                 if (backgroundBlur > 0.dp) 
-                    Modifier.blur(backgroundBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded) 
+                    Modifier.blur(backgroundBlur) 
                 else Modifier
             )
             .padding(padding)
@@ -357,17 +361,16 @@ fun AttackItem(
                 blur = 6.dp,
                 offsetY = 3.dp
             )
+            .clip(RoundedCornerShape(16.dp))
             .run {
                 if (useHaze) {
-                    val targetState = if (isDragging) (popupHazeState ?: hazeState!!) else hazeState!!
-                    this.clip(RoundedCornerShape(16.dp))
-                        .hazeEffect(
-                            state = targetState,
-                            style = HazeStyle(
-                                blurRadius = 24.dp,
-                                tints = listOf(HazeTint(colorScheme.surfaceContainer.copy(alpha = 0.6f)))
-                            )
+                    this.hazeEffect(
+                        state = hazeState!!,
+                        style = HazeStyle(
+                            blurRadius = 24.dp,
+                            tints = listOf(HazeTint(colorScheme.surfaceContainer.copy(alpha = 0.6f)))
                         )
+                    )
                 } else this
             }
             .clickable(enabled = !isEditMode, onClick = onClick),
@@ -380,7 +383,7 @@ fun AttackItem(
         border = null
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().hazeSource(state = internalHazeState),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isEditMode) {
@@ -442,22 +445,24 @@ fun AttackItem(
                                         dismissOnClickOutside = true
                                     )
                                 ) {
-                                    Surface(
-                                        modifier = Modifier
-                                            .padding(8.dp)
-                                            .widthIn(max = 260.dp)
-                                            .hazePopover(
-                                                state = hazeState,
-                                                blurRadius = blurRadius,
-                                                isOled = isOled
-                                            )
-                                            .then(if (!isOled) Modifier.outerShadow(RoundedCornerShape(16.dp), blur = 6.dp, offsetY = 3.dp) else Modifier)
-                                            .clickable { showInfo = false },
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = if (isOled) Color.Black else colorScheme.surfaceContainerHigh.copy(alpha = 0.2f),
-                                        tonalElevation = 0.dp,
-                                        shadowElevation = 0.dp
-                                    ) {
+                                    AppScaleProvider(LocalAppScale.current) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .padding(8.dp)
+                                                .widthIn(max = 260.dp)
+                                                .then(if (!isOled) Modifier.outerShadow(RoundedCornerShape(16.dp), blur = 8.dp) else Modifier)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .hazePopover(
+                                                    state = popupHazeState ?: hazeState,
+                                                    blurRadius = blurRadius,
+                                                    isOled = isOled
+                                                )
+                                                .clickable { showInfo = false },
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = if (isOled) Color.Black else if ((popupHazeState ?: hazeState) != null) colorScheme.surface.copy(alpha = 0.2f) else colorScheme.surface,
+                                            tonalElevation = 8.dp,
+                                            shadowElevation = 0.dp
+                                        ) {
                                             Column(modifier = Modifier.padding(12.dp)) {
                                                 Text(
                                                     text = attack.name,
@@ -479,6 +484,7 @@ fun AttackItem(
                             }
                         }
                     }
+                }
 
                 if (!isEditMode || !collapseActionsOnEdit) {
                     Row(

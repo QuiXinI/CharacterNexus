@@ -10,7 +10,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.AutoFixNormal
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ViewHeadline
+import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,7 +54,8 @@ enum class GlossaryCategory(val title: String, val dirName: String, val icon: Im
     SPECIES("Виды", "species", Icons.Default.Groups),
     CLASSES("Классы", "classes", Icons.Default.Shield),
     SPELLS("Заклинания", "spells", Icons.Default.AutoFixHigh),
-    FEATS("Черты", "feats", Icons.Default.Star)
+    FEATS("Черты", "feats", Icons.Default.Star),
+    MAGIC_ITEMS("Магические предметы", "magic_items", Icons.Default.AutoFixNormal)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +63,7 @@ enum class GlossaryCategory(val title: String, val dirName: String, val icon: Im
 fun GlossaryWindow(
     spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
     moduleManager: ru.quasaris.characternexus.backend.ModuleManager,
+    magicItemManager: ru.quasaris.characternexus.backend.MagicItemManager? = null,
     onOpenDrawer: () -> Unit,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     forceBlurEnabled: Boolean = false,

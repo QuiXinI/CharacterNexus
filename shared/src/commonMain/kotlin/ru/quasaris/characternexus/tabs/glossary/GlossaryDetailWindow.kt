@@ -36,12 +36,14 @@ fun GlossaryDetailWindow(
                 GlossaryCategory.SPECIES -> JsonConfig.json.decodeFromString<GameSpecies>(json)
                 GlossaryCategory.FEATS -> JsonConfig.json.decodeFromString<GameFeat>(json)
                 GlossaryCategory.SPELLS -> JsonConfig.json.decodeFromString<SpellCard>(json)
+                GlossaryCategory.MAGIC_ITEMS -> JsonConfig.json.decodeFromString<GameMagicItem>(json)
                 else -> null
             }
             val name = when (item) {
                 is GameSpecies -> item.name
                 is GameFeat -> item.name
                 is SpellCard -> item.name
+                is GameMagicItem -> item.name
                 else -> "Детали"
             } ?: "Детали"
             onTitleChange(name)
@@ -129,6 +131,9 @@ fun GlossaryDetailWindow(
             }
             is SpellCard -> {
                 SpellCardRenderer(content)
+            }
+            is GameMagicItem -> {
+                MagicItemRenderer(content)
             }
         }
         Spacer(Modifier.height(80.dp))

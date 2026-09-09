@@ -77,6 +77,7 @@ fun AttributesSection(
     attributeModifiers: Map<Attribute, Int> = emptyMap(),
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     isOled: Boolean = false,
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
@@ -147,6 +148,7 @@ fun AttributesSection(
                                 },
                                 exhaustion = exhaustion,
                                 hazeState = hazeState,
+                                popupHazeState = popupHazeState,
                                 isOled = isOled,
                                 settingsViewModel = settingsViewModel
                             )
@@ -161,6 +163,7 @@ fun AttributesSection(
                                     },
                                     exhaustion = exhaustion,
                                     hazeState = hazeState,
+                                    popupHazeState = popupHazeState,
                                     isOled = isOled,
                                     settingsViewModel = settingsViewModel
                                 )
@@ -370,6 +373,7 @@ fun StatCard(
     onRollCheck: (AdvantageType) -> Unit = {},
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     isOled: Boolean = false,
     isEditable: Boolean = true,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
@@ -516,6 +520,7 @@ fun StatCard(
                         color = if (isP) colorScheme.primary else colorScheme.onSurface,
                         onRoll = onRollSave,
                         hazeState = hazeState,
+                        popupHazeState = popupHazeState,
                         isOled = isOled,
                         settingsViewModel = settingsViewModel
                     )
@@ -526,6 +531,7 @@ fun StatCard(
                     color = colorScheme.primary,
                     onRoll = onRollCheck,
                     hazeState = hazeState,
+                    popupHazeState = popupHazeState,
                     isOled = isOled,
                     settingsViewModel = settingsViewModel
                 )
@@ -542,6 +548,7 @@ fun ModifierBubble(
     clickable: Boolean = true,
     onRoll: (AdvantageType) -> Unit = {},
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     isOled: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
@@ -590,7 +597,7 @@ fun ModifierBubble(
                 onAdvantage = { onRoll(AdvantageType.ADVANTAGE) },
                 onDisadvantage = { onRoll(AdvantageType.DISADVANTAGE) },
                 onDismiss = { showPopup = false },
-                hazeState = hazeState,
+                hazeState = popupHazeState ?: hazeState,
                 isOled = isOled,
                 widthMultiplier = 2f,
                 modifier = Modifier.size(width = sizeDp.width * 2f, height = sizeDp.height),
@@ -615,6 +622,7 @@ fun SkillSubPlate(
     onRoll: (AdvantageType) -> Unit = {},
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     isOled: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
@@ -673,6 +681,7 @@ fun SkillSubPlate(
             color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface,
             onRoll = onRoll,
             hazeState = hazeState,
+            popupHazeState = popupHazeState,
             isOled = isOled,
             settingsViewModel = settingsViewModel
         )

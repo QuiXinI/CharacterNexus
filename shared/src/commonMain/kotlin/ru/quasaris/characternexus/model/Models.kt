@@ -237,7 +237,46 @@ data class DynamicNoteState(
     val title: String = "",
     val content: String = "",
     val isExpanded: Boolean = true,
-    val isLocked: Boolean = false
+    val isLocked: Boolean = false,
+    val tag: String? = null
+)
+
+@Serializable
+enum class PotionType(val displayName: String) {
+    HEALING("Лечение"),
+    DAMAGE("Урон"),
+    OTHER("Другое")
+}
+
+@Serializable
+enum class PotionRarity(val displayName: String) {
+    COMMON("Обычное"),
+    UNCOMMON("Необычное"),
+    RARE("Редкое"),
+    VERY_RARE("Очень редкое"),
+    LEGENDARY("Легендарное"),
+    ARTIFACT("Артефакт")
+}
+
+@Serializable
+data class PotionState(
+    val id: String = generateUuid(),
+    val name: String = "",
+    val formula: String = "",
+    val description: String = "",
+    val type: PotionType = PotionType.HEALING,
+    val rarity: PotionRarity = PotionRarity.COMMON,
+    val damageTypes: List<DamageType> = emptyList(),
+    val quantity: DynamicContentBlock.Resource = DynamicContentBlock.Resource(
+        name = "Количество",
+        current = "0",
+        max = "0",
+        id = generateUuid()
+    ),
+    val iconIndex: Int = 1,
+    val colorHex: String = "FF0000",
+    val isExpanded: Boolean = false,
+    val sourceModuleId: String? = null
 )
 
 @Serializable
@@ -617,6 +656,7 @@ data class Character(
     val spells: List<DynamicNoteState> = listOf(DynamicNoteState(title = "Заговоры")) + (1..9).map {
         DynamicNoteState(title = "$it уровень")
     },
+    val potions: List<PotionState> = emptyList(),
     val bioShortFields: List<BioShortField> = listOf(
         BioShortField(title = "Предыстория", widthRatio = 0.5f),
         BioShortField(title = "Мировоззрение", widthRatio = 0.5f),
@@ -723,5 +763,6 @@ data class ModuleBundle(
     val species: List<ru.quasaris.characternexus.backend.GameSpecies> = emptyList(),
     val feats: List<ru.quasaris.characternexus.backend.GameFeat> = emptyList(),
     val classes: List<ru.quasaris.characternexus.backend.GameClass> = emptyList(),
-    val subclasses: List<ru.quasaris.characternexus.backend.GameSubclass> = emptyList()
+    val subclasses: List<ru.quasaris.characternexus.backend.GameSubclass> = emptyList(),
+    val magicItems: List<ru.quasaris.characternexus.backend.GameMagicItem> = emptyList()
 )

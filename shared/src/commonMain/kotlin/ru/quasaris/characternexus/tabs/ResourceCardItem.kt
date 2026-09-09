@@ -25,8 +25,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
-import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.evaluateFormula
+import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.backend.evaluateFormulaDouble
 import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.tabs.attacks.DiceIcon
@@ -36,7 +36,6 @@ import ru.quasaris.characternexus.util.HapticType
 import ru.quasaris.characternexus.util.PlatformUtils
 import kotlin.math.round
 import kotlin.math.pow
-import kotlin.math.max
 
 @Composable
 fun ResourceBlock(
@@ -44,6 +43,7 @@ fun ResourceBlock(
     statsMap: Map<String, String>,
     onUpdate: (DynamicContentBlock.Resource) -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     onDeleteRequest: () -> Unit,
     forceBlurEnabled: Boolean = false,
     blurDynamicFields: Boolean = true,
@@ -321,6 +321,7 @@ fun ResourceBlock(
             anchorPosition = infoIconPosition,
             onDismiss = { showInfo = false },
             hazeState = hazeState,
+            popupHazeState = popupHazeState,
             forceBlurEnabled = blurPopups,
             settingsViewModel = settingsViewModel
         )

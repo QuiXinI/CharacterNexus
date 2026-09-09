@@ -19,16 +19,18 @@ import characternexus.shared.generated.resources.*
 @Composable
 fun rememberCharacterDetailState(
     character: Character?,
-    settingsViewModel: SettingsViewModel?
+    settingsViewModel: SettingsViewModel?,
+    magicItemManager: MagicItemManager? = null
 ): CharacterDetailState {
     return remember(character?.uuid) {
-        CharacterDetailState(character, settingsViewModel)
+        CharacterDetailState(character, settingsViewModel, magicItemManager)
     }
 }
 
 class CharacterDetailState(
     val initialCharacter: Character?,
-    val settingsViewModel: SettingsViewModel?
+    val settingsViewModel: SettingsViewModel?,
+    val magicItemManager: MagicItemManager? = null
 ) {
     val characterUuid = initialCharacter?.uuid ?: ""
     var name by mutableStateOf(initialCharacter?.name ?: "")
@@ -141,9 +143,15 @@ class CharacterDetailState(
             listOf(
                 DynamicNoteState(title = "Снаряжение"),
                 DynamicNoteState(title = "Сокровища"),
+                DynamicNoteState(title = "Зелья", tag = "potions"),
                 DynamicNoteState(title = "Экипировано", content = "\n\n**_Настройки_**\n1. \n2. \n3. ")
             )
-        } else initialCharacter?.inventory!!
+        } else {
+            val list = initialCharacter?.inventory!!.map { 
+                if (it.title == "Зелья" && it.tag == null) it.copy(tag = "potions") else it
+            }.toMutableList()
+            list
+        }
     )
     var spells by mutableStateOf(
         if (initialCharacter?.spells.isNullOrEmpty()) {
@@ -151,6 +159,66 @@ class CharacterDetailState(
                 DynamicNoteState(title = "$it уровень")
             }
         } else initialCharacter?.spells!!
+    )
+    var potions by mutableStateOf(
+        if (initialCharacter == null || initialCharacter.potions.isEmpty()) {
+            val srdModuleId = "srd_potions_5.2"
+            val description = "Вы восстанавливаете себе Хиты, когда выпиваете это зелье. Количетсво хитов указано в формуле."
+            listOf(
+                PotionState(
+                    name = "Зелье лечения",
+                    formula = "2d4+2",
+                    description = description,
+                    type = PotionType.HEALING,
+                    rarity = PotionRarity.COMMON,
+                    damageTypes = listOf(DamageType.HEALING),
+                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    iconIndex = 1,
+                    colorHex = "FF0000",
+                    sourceModuleId = srdModuleId
+                ),
+                PotionState(
+                    name = "Большое зелье лечения",
+                    formula = "4d4+4",
+                    description = description,
+                    type = PotionType.HEALING,
+                    rarity = PotionRarity.UNCOMMON,
+                    damageTypes = listOf(DamageType.HEALING),
+                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    iconIndex = 2,
+                    colorHex = "FF0000",
+                    sourceModuleId = srdModuleId
+                ),
+                PotionState(
+                    name = "Отличное зелье лечения",
+                    formula = "8d4+8",
+                    description = description,
+                    type = PotionType.HEALING,
+                    rarity = PotionRarity.RARE,
+                    damageTypes = listOf(DamageType.HEALING),
+                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    iconIndex = 3,
+                    colorHex = "FF0000",
+                    sourceModuleId = srdModuleId
+                ),
+                PotionState(
+                    name = "Превосходное зелье лечения",
+                    formula = "10d4+20",
+                    description = description,
+                    type = PotionType.HEALING,
+                    rarity = PotionRarity.VERY_RARE,
+                    damageTypes = listOf(DamageType.HEALING),
+                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    iconIndex = 4,
+                    colorHex = "FF0000",
+                    sourceModuleId = srdModuleId
+                )
+            )
+        } else {
+            // Sync custom potions definitions to local manager on load
+            magicItemManager?.syncCustomPotions(initialCharacter.potions)
+            initialCharacter.potions
+        }
     )
     var spellSettings by mutableStateOf(initialCharacter?.spellSettings ?: SpellSettings())
     var wallet by mutableStateOf(initialCharacter?.wallet ?: Wallet())
@@ -196,6 +264,9 @@ class CharacterDetailState(
     var selectedCurrency by mutableStateOf<Currency?>(null)
     var isResourceConfigOpen by mutableStateOf(false)
     var activeResourceConfig by mutableStateOf<DynamicContentBlock.Resource?>(null)
+    var isPotionConfigOpen by mutableStateOf(false)
+    var isPotionSelectionOpen by mutableStateOf(false)
+    var activePotionConfig by mutableStateOf<PotionState?>(null)
     var activeResourceIndex by mutableStateOf(-1)
     var activeBonusConfigAttribute by mutableStateOf<Attribute?>(null)
     var activeBonusConfigSkill by mutableStateOf<String?>(null)
@@ -510,6 +581,7 @@ class CharacterDetailState(
             inventory = inventory, spells = spells, spellSettings = spellSettings, wallet = wallet,
             bioShortFields = bioShortFields, bioLongSections = bioLongSections, hitDiceEntries = hitDiceEntries,
             hitDiceMap = hitDiceMap,
+            potions = potions,
             defaultHitDie = defaultHitDie, hpLevelData = hpLevelData, manualHPLevelData = manualHPLevelData,
             isMulticlassHP = isMulticlassHP,
             isManualHP = isManualHP, manualMaxHp = manualMaxHp,
@@ -604,6 +676,28 @@ class CharacterDetailState(
         skillsAndTraits = skillsAndTraits.map { if (it.id == updated.id) updated else it }
         inventory = inventory.map { if (it.id == updated.id) updated else it }
         spells = spells.map { if (it.id == updated.id) updated else it }
+    }
+
+    fun updatePotion(updated: PotionState) {
+        val finalPotion = if (updated.sourceModuleId == null) {
+            updated.copy(sourceModuleId = "custom_potions")
+        } else updated
+
+        potions = if (potions.any { it.id == finalPotion.id }) {
+            potions.map { if (it.id == finalPotion.id) finalPotion else it }
+        } else {
+            potions + finalPotion
+        }
+        
+        if (finalPotion.sourceModuleId == "custom_potions") {
+            magicItemManager?.syncCustomPotions(listOf(finalPotion))
+        }
+    }
+
+    fun deletePotion(potion: PotionState) {
+        potions = potions.filter { it.id != potion.id }
+        // Note: we don't necessarily remove from custom sync here as it might be needed for other characters, 
+        // but it's removed from this character's list.
     }
 
     fun deleteDynamicField(field: DynamicNoteState) {
@@ -705,6 +799,8 @@ class CharacterDetailState(
         isWalletDialogOpen = false
         isSpellbookSelectionOpen = false
         isResourceConfigOpen = false
+        isPotionConfigOpen = false
+        isPotionSelectionOpen = false
         showHpDialog = false
         activeBonusConfigAttribute = null
         activeBonusConfigSkill = null
