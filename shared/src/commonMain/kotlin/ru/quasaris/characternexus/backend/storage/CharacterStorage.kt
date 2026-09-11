@@ -1,7 +1,6 @@
 package ru.quasaris.characternexus.backend.storage
 
-import ru.quasaris.characternexus.model.Character
-import ru.quasaris.characternexus.model.CharacterSummary
+import ru.quasaris.characternexus.model.*
 
 interface CharacterStorage {
     suspend fun saveCharacter(character: Character)
@@ -9,6 +8,8 @@ interface CharacterStorage {
     suspend fun deleteCharacter(uuid: String)
     suspend fun loadAllSummaries(): List<CharacterSummary>
     suspend fun saveSummaries(summaries: List<CharacterSummary>)
+    suspend fun loadListState(): CharacterListState
+    suspend fun saveListState(state: CharacterListState)
     suspend fun listCharacterUuids(): List<String>
     
     // Image handling

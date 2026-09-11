@@ -29,7 +29,7 @@ object CombatCalculations {
         return total.toString()
     }
 
-    fun calculateInitiative(activeInitiativeId: String?, initiativeEntries: List<InitiativeEntry>, statsMap: Map<String, String>, exhaustion: Int = 0): String {
+    fun calculateInitiative(activeInitiativeId: String?, initiativeEntries: List<InitiativeEntry>, statsMap: Map<String, String>, exhaustion: Int = 0, isJackOfAllTrades: Boolean = false): String {
         val active = initiativeEntries.find { it.id == activeInitiativeId }
         val base = if (active != null) evaluateFormula(active.formula, statsMap) else 0
         
@@ -37,6 +37,12 @@ object CombatCalculations {
             applyBonuses(base, active.bonuses, statsMap)
         } else base
         
+        if (isJackOfAllTrades) {
+            val pbStr = statsMap["proficiencyBonus"] ?: "2"
+            val pb = pbStr.replace("+", "").toIntOrNull() ?: 2
+            v += pb / 2
+        }
+
         v -= exhaustion * 2
         return if (v >= 0) "+$v" else v.toString()
     }

@@ -14,8 +14,8 @@ import ru.quasaris.characternexus.backend.SettingsViewModel
  */
 @Composable
 fun rememberEffectiveBlurRadius(settingsViewModel: SettingsViewModel?): Dp {
-    val blurRadiusVal by settingsViewModel?.blurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
-    val customBlurRadiusVal by settingsViewModel?.customBlurRadius?.collectAsState() ?: remember { mutableStateOf(16) }
+    val blurRadiusVal by settingsViewModel?.blurRadius?.collectAsState() ?: remember { mutableStateOf(24) }
+    val customBlurRadiusVal by settingsViewModel?.customBlurRadius?.collectAsState() ?: remember { mutableStateOf(24) }
     val targetBlurRadius = if (blurRadiusVal >= 48) customBlurRadiusVal else blurRadiusVal
     return targetBlurRadius.dp
 }

@@ -177,6 +177,7 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
     var lastSavedMulticlass by remember { mutableStateOf(state.isMulticlassHP) }
     var lastSavedClasses by remember { mutableStateOf(state.classes) }
     var lastSavedBaseClass by remember { mutableStateOf(state.characterClass) }
+    var lastSavedJackOfAllTrades by remember { mutableStateOf(state.isJackOfAllTrades) }
 
     val isDirty = state.name != lastSavedName ||
             state.race != lastSavedRace ||
@@ -185,7 +186,8 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
             state.proficiencyBonus != lastSavedProficiency ||
             state.isMulticlassHP != lastSavedMulticlass ||
             state.classes != lastSavedClasses ||
-            state.characterClass != lastSavedBaseClass
+            state.characterClass != lastSavedBaseClass ||
+            state.isJackOfAllTrades != lastSavedJackOfAllTrades
 
     Column(
         modifier = Modifier
@@ -395,6 +397,37 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
             }
         }
 
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Бард - Мастер на все руки", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Вы можете добавить половину своего Бонуса Мастерства к любой проверке характеристики которую вы совершаете, которой вы не владеете и которая другим образом не использует ваш Бонус Мастерства.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = state.isJackOfAllTrades,
+                    onCheckedChange = {
+                        state.isJackOfAllTrades = it
+                        state.syncIdentity()
+                    },
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+        }
+
         if (isDirty) {
             Button(
                 onClick = {
@@ -406,6 +439,7 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
                     lastSavedMulticlass = state.isMulticlassHP
                     lastSavedClasses = state.classes
                     lastSavedBaseClass = state.characterClass
+                    lastSavedJackOfAllTrades = state.isJackOfAllTrades
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
@@ -420,4 +454,3 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
     }
 }
 
-// DELETE or keep if needed, but I'll remove as per plan to simplify

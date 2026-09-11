@@ -232,7 +232,8 @@ fun CharacterWindow(
         state.skillsAndTraits, state.inventory, state.spells, state.spellSettings, state.wallet,
         state.bioShortFields, state.bioLongSections, state.hitDiceEntries, state.hitDiceMap, state.defaultHitDie, state.hpLevelData, state.manualHPLevelData, state.isMulticlassHP,
         state.isManualHP, state.manualMaxHp, state.manualMaxHitDice,
-        state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions
+        state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions,
+        state.race, state.classes, state.isJackOfAllTrades
     ) {
         onSaveChanges(state.toCharacter(character))
     }
@@ -274,7 +275,7 @@ fun CharacterWindow(
         val isTrulyFullscreenBlocking = if (isDesktop) {
             state.imageToCrop != null
         } else {
-            isAnyFullscreenDialogOpen || state.isAnyPanelVisible
+            isAnyFullscreenDialogOpen
         }
 
         LaunchedEffect(isTrulyFullscreenBlocking) {
@@ -1176,7 +1177,6 @@ fun CharacterDetailMainContent(
                         onStatsStateChange = { state.statsState = it },
                         onRoll = onRoll,
                         hazeState = leftHaze,
-                        popupHazeState = null,
                         forceBlurEnabled = forceBlurEnabled,
                         blurPopups = blurPopups,
                         isAdvancedMode = state.isAdvancedMode,
@@ -1190,7 +1190,8 @@ fun CharacterDetailMainContent(
                         advantageLogic = state.advantageLogic,
                         state = state,
                         isDesktop = true,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        popupHazeState = popupHazeState
                     )
                 }
             }
@@ -1242,7 +1243,7 @@ fun CharacterDetailMainContent(
                         onRoll = onRoll,
                         pb = pb,
                         hazeState = if (isDesktop) rightHaze else hazeState,
-                        popupHazeState = if (isDesktop) null else popupHazeState,
+                        popupHazeState = popupHazeState,
                         forceBlurEnabled = forceBlurEnabled,
                         blurPopups = blurPopups,
                         settingsViewModel = settingsViewModel,

@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
             val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
 
             App(
-                initialLastCharacterId = settingsManager.lastCharacterId,
+                initialLastCharacterUuid = settingsManager.lastCharacterUuid,
                 initialLastCharacterSeedColor = settingsManager.lastCharacterSeedColor,
                 settingsViewModel = settingsViewModel,
                 characterRepository = characterRepository,
@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
                 getFullCharacter = { uuid -> characterRepository.getFullCharacter(uuid) },
                 updateCharacter = { char -> characterRepository.updateCharacter(char) },
                 deleteCharacter = { uuid -> characterRepository.deleteCharacter(uuid) },
-                onCharacterIdChange = { id -> settingsManager.lastCharacterId = id },
+                onCharacterUuidChange = { uuid -> settingsManager.lastCharacterUuid = uuid },
                 onSeedColorChange = { color -> settingsManager.lastCharacterSeedColor = color }
             )
         }

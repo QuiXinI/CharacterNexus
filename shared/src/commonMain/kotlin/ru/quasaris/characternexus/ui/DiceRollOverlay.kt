@@ -97,7 +97,7 @@ fun DiceRollOverlay(
                     if (forceBlurEnabled && hazeState != null && !isOled) {
                         this.clip(RoundedCornerShape(24.dp))
                             .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
-                            .background(colorScheme.surface.copy(alpha = 0.4f))
+                            .background(colorScheme.surface.copy(alpha = 0.2f))
                     } else {
                         this.outerShadow(shape = RoundedCornerShape(24.dp), blur = 8.dp)
                             .clip(RoundedCornerShape(24.dp))
@@ -439,31 +439,31 @@ fun DiceRollAdvantagePopup(
         onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true)
     ) {
-        ru.quasaris.characternexus.backend.AppScaleProvider(ru.quasaris.characternexus.backend.LocalAppScale.current) {
-            val colorScheme = MaterialTheme.colorScheme
-            val critBrush = Brush.linearGradient(colors = listOf(Color(0xFF00E1FF), Color(0xFF00ffd9)))
-            val goldenBrush = Brush.linearGradient(colors = listOf(Color(0xFFFFD700), Color(0xFFFFA500)))
-            val advBrush = Brush.linearGradient(colors = listOf(Color(0xFF00ff5e), Color(0xFF92cf80)))
-            val disBrush = Brush.linearGradient(colors = listOf(Color(0xFFFF1100), Color(0xFFE18275)))
+        val colorScheme = MaterialTheme.colorScheme
+        val critBrush = Brush.linearGradient(colors = listOf(Color(0xFF00E1FF), Color(0xFF00ffd9)))
+        val goldenBrush = Brush.linearGradient(colors = listOf(Color(0xFFFFD700), Color(0xFFFFA500)))
+        val advBrush = Brush.linearGradient(colors = listOf(Color(0xFF00ff5e), Color(0xFF92cf80)))
+        val disBrush = Brush.linearGradient(colors = listOf(Color(0xFFFF1100), Color(0xFFE18275)))
 
-            val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+        val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
-            Surface(
-                modifier = modifier
-                    .fillMaxWidth(widthMultiplier)
-                    .outerShadow(RoundedCornerShape(12.dp), blur = 8.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .hazePopover(
-                        state = hazeState,
-                        blurRadius = blurRadius,
-                        isOled = isOled
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.2f) else colorScheme.surface,
-                tonalElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(2.dp).height(IntrinsicSize.Min),
+        Surface(
+            modifier = modifier
+                .widthIn(min = 160.dp)
+                .fillMaxWidth(widthMultiplier)
+                .outerShadow(RoundedCornerShape(12.dp), blur = 8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .hazePopover(
+                    state = hazeState,
+                    blurRadius = blurRadius,
+                    isOled = isOled
+                ),
+            shape = RoundedCornerShape(12.dp),
+            color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.2f) else colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(2.dp).height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -535,7 +535,6 @@ fun DiceRollAdvantagePopup(
                                 }
                         )
                     }
-                }
             }
         }
     }

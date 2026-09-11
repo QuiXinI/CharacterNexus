@@ -93,6 +93,7 @@ class CharacterDetailState(
     var manualHPLevelData by mutableStateOf(initialCharacter?.manualHPLevelData ?: emptyList<HPLevelEntry>())
     var isMulticlassHP by mutableStateOf(initialCharacter?.isMulticlassHP ?: false)
     var isManualHP by mutableStateOf(initialCharacter?.isManualHP ?: false)
+    var isJackOfAllTrades by mutableStateOf(initialCharacter?.isJackOfAllTrades ?: false)
     var manualMaxHp by mutableIntStateOf(initialCharacter?.manualMaxHp ?: 0)
     var manualMaxHitDice by mutableIntStateOf(initialCharacter?.manualMaxHitDice ?: 0)
     var hpBonusesAtLevel by mutableStateOf(initialCharacter?.hpBonusesAtLevel ?: emptyList<AttackBonus>())
@@ -438,6 +439,7 @@ class CharacterDetailState(
             put("xp", experience)
             put("exhaustion", exhaustion.toString())
             put("conditions", selectedConditions.size.toString())
+            put("isJackOfAllTrades", isJackOfAllTrades.toString())
 
             if (spellSettings.spellcastingAbility != Attribute.NONE) {
                 val score = get(spellSettings.spellcastingAbility.name.lowercase()) ?: "10"
@@ -467,7 +469,7 @@ class CharacterDetailState(
     }
 
     val initValue by derivedStateOf {
-        ru.quasaris.characternexus.backend.CombatCalculations.calculateInitiative(activeInitiativeId, initiativeEntries, statsMap, exhaustion)
+        ru.quasaris.characternexus.backend.CombatCalculations.calculateInitiative(activeInitiativeId, initiativeEntries, statsMap, exhaustion, isJackOfAllTrades)
     }
 
     val isAnyPanelVisible by derivedStateOf {
@@ -587,7 +589,8 @@ class CharacterDetailState(
             isManualHP = isManualHP, manualMaxHp = manualMaxHp,
             manualMaxHitDice = manualMaxHitDice,
             hpBonusesAtLevel = hpBonusesAtLevel, hpBonusesTotal = hpBonusesTotal,
-            hasInspiration = hasInspiration
+            hasInspiration = hasInspiration,
+            isJackOfAllTrades = isJackOfAllTrades
         )
     }
 

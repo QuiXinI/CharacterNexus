@@ -85,6 +85,7 @@ fun AttributesSection(
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val pbVal = evalPB.replace("+", "").toIntOrNull() ?: 0
     val colorScheme = MaterialTheme.colorScheme
+    val isJackOfAllTrades = statsMap["isJackOfAllTrades"] == "true"
 
     // Эффективные значения для отображения в карточках (из statsMap или параметров)
     val effStrength = statsMap["strength"] ?: strength
@@ -144,20 +145,21 @@ fun AttributesSection(
                                 },
                                 onRollCheck = { adv ->
                                     val base = attributeModifiers[stat.attribute] ?: calculateModifier(stat.value)
-                                    onRoll(DiceRoller.roll("Проверка: ${stat.label}", base, statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
+                                    onRoll(DiceRoller.roll("Проверка: ${stat.label}", base + (if (isJackOfAllTrades) pbVal / 2 else 0), statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
                                 },
                                 exhaustion = exhaustion,
                                 hazeState = hazeState,
                                 popupHazeState = popupHazeState,
                                 isOled = isOled,
-                                settingsViewModel = settingsViewModel
+                                settingsViewModel = settingsViewModel,
+                                isJackOfAllTrades = isJackOfAllTrades
                             )
                             stat.skills.forEach { skill ->
                                 SkillSubPlate(skill, stat.attribute, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, attributeModifiers, onSkillClick, onLongClick = onSkillLongClick,
                                     bonus = calculateTotalBonus((skillBonuses.filter { it.skillName == skill } + statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK && it.applyToSkills }) as List<IBonus>, statsMap),
                                     onRoll = { adv ->
                                         val base = attributeModifiers[stat.attribute] ?: calculateModifier(stat.value)
-                                        val totalMod = base + (if (skilledExpertise.contains(skill)) pbVal * 2 else if (skilledProficiencies.contains(skill)) pbVal else 0)
+                                        val totalMod = base + (if (skilledExpertise.contains(skill)) pbVal * 2 else if (skilledProficiencies.contains(skill)) pbVal else if (isJackOfAllTrades) pbVal / 2 else 0)
                                         val combinedBonuses = skillBonuses.filter { it.skillName == skill } + statBonuses.filter { it.attribute == stat.attribute && it.type == StatBonusType.ABILITY_CHECK && it.applyToSkills }
                                         onRoll(DiceRoller.roll(skill, totalMod, combinedBonuses, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.SKILL, advantageType = adv, advantageLogic = advantageLogic))
                                     },
@@ -165,7 +167,8 @@ fun AttributesSection(
                                     hazeState = hazeState,
                                     popupHazeState = popupHazeState,
                                     isOled = isOled,
-                                    settingsViewModel = settingsViewModel
+                                    settingsViewModel = settingsViewModel,
+                                    isJackOfAllTrades = isJackOfAllTrades
                                 )
                             }
                         }
@@ -194,12 +197,14 @@ fun AttributesSection(
                             },
                             onRollCheck = { adv ->
                                 val base = attributeModifiers[Attribute.STRENGTH] ?: calculateModifier(effStrength)
-                                onRoll(DiceRoller.roll("Проверка Силы", base, statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
+                                onRoll(DiceRoller.roll("Проверка Силы", base + (if (isJackOfAllTrades) pbVal / 2 else 0), statBonuses.filter { it.attribute == Attribute.STRENGTH && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             isOled = isOled,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            isJackOfAllTrades = isJackOfAllTrades
                         )
                         StatCard("Интеллект", effIntelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange, onClick = { 
                             focusManager.clearFocus()
@@ -214,12 +219,14 @@ fun AttributesSection(
                             },
                             onRollCheck = { adv ->
                                 val base = attributeModifiers[Attribute.INTELLIGENCE] ?: calculateModifier(effIntelligence)
-                                onRoll(DiceRoller.roll("Проверка Интеллекта", base, statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
+                                onRoll(DiceRoller.roll("Проверка Интеллекта", base + (if (isJackOfAllTrades) pbVal / 2 else 0), statBonuses.filter { it.attribute == Attribute.INTELLIGENCE && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             isOled = isOled,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            isJackOfAllTrades = isJackOfAllTrades
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -236,12 +243,14 @@ fun AttributesSection(
                             },
                             onRollCheck = { adv ->
                                 val base = attributeModifiers[Attribute.DEXTERITY] ?: calculateModifier(effDexterity)
-                                onRoll(DiceRoller.roll("Проверка Ловкости", base, statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
+                                onRoll(DiceRoller.roll("Проверка Ловкости", base + (if (isJackOfAllTrades) pbVal / 2 else 0), statBonuses.filter { it.attribute == Attribute.DEXTERITY && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             isOled = isOled,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            isJackOfAllTrades = isJackOfAllTrades
                         )
                         StatCard("Мудрость", effWisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange, onClick = { 
                             focusManager.clearFocus()
@@ -256,12 +265,14 @@ fun AttributesSection(
                             },
                             onRollCheck = { adv ->
                                 val base = attributeModifiers[Attribute.WISDOM] ?: calculateModifier(effWisdom)
-                                onRoll(DiceRoller.roll("Проверка Мудрости", base, statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
+                                onRoll(DiceRoller.roll("Проверка Мудрости", base + (if (isJackOfAllTrades) pbVal / 2 else 0), statBonuses.filter { it.attribute == Attribute.WISDOM && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             isOled = isOled,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            isJackOfAllTrades = isJackOfAllTrades
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -278,12 +289,14 @@ fun AttributesSection(
                             },
                             onRollCheck = { adv ->
                                 val base = attributeModifiers[Attribute.CONSTITUTION] ?: calculateModifier(effConstitution)
-                                onRoll(DiceRoller.roll("Проверка Телосложения", base, statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
+                                onRoll(DiceRoller.roll("Проверка Телосложения", base + (if (isJackOfAllTrades) pbVal / 2 else 0), statBonuses.filter { it.attribute == Attribute.CONSTITUTION && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             isOled = isOled,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            isJackOfAllTrades = isJackOfAllTrades
                         )
                         StatCard("Харизма", effCharisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange, onClick = { 
                             focusManager.clearFocus()
@@ -298,12 +311,14 @@ fun AttributesSection(
                             },
                             onRollCheck = { adv ->
                                 val base = attributeModifiers[Attribute.CHARISMA] ?: calculateModifier(effCharisma)
-                                onRoll(DiceRoller.roll("Проверка Харизмы", base, statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
+                                onRoll(DiceRoller.roll("Проверка Харизмы", base + (if (isJackOfAllTrades) pbVal / 2 else 0), statBonuses.filter { it.attribute == Attribute.CHARISMA && it.type == StatBonusType.ABILITY_CHECK }, stats = statsMap, exhaustion = exhaustion, sourceType = RollSourceType.ABILITY, advantageType = adv, advantageLogic = advantageLogic))
                             },
                             exhaustion = exhaustion,
                             hazeState = hazeState,
+                            popupHazeState = popupHazeState,
                             isOled = isOled,
-                            settingsViewModel = settingsViewModel
+                            settingsViewModel = settingsViewModel,
+                            isJackOfAllTrades = isJackOfAllTrades
                         )
                     }
                 }
@@ -336,11 +351,11 @@ fun AttributesSection(
                 thickness = 1.dp,
                 color = colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
-            PassiveCheckRow("Пассивный Анализ", Attribute.INTELLIGENCE, evalPB, attributeModifiers, skilledProficiencies.contains("Анализ"), skilledExpertise.contains("Анализ"), exhaustion = exhaustion)
+            PassiveCheckRow("Пассивный Анализ", Attribute.INTELLIGENCE, evalPB, attributeModifiers, skilledProficiencies.contains("Анализ"), skilledExpertise.contains("Анализ"), exhaustion = exhaustion, isJackOfAllTrades = isJackOfAllTrades)
             androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = colorScheme.outlineVariant.copy(alpha = 0.2f))
-            PassiveCheckRow("Пассивная Внимательность", Attribute.WISDOM, evalPB, attributeModifiers, skilledProficiencies.contains("Внимательность"), skilledExpertise.contains("Внимательность"), exhaustion = exhaustion)
+            PassiveCheckRow("Пассивная Внимательность", Attribute.WISDOM, evalPB, attributeModifiers, skilledProficiencies.contains("Внимательность"), skilledExpertise.contains("Внимательность"), exhaustion = exhaustion, isJackOfAllTrades = isJackOfAllTrades)
             androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), thickness = 0.5.dp, color = colorScheme.outlineVariant.copy(alpha = 0.2f))
-            PassiveCheckRow("Пассивная Проницательность", Attribute.WISDOM, evalPB, attributeModifiers, skilledProficiencies.contains("Проницательность"), skilledExpertise.contains("Проницательность"), exhaustion = exhaustion)
+            PassiveCheckRow("Пассивная Проницательность", Attribute.WISDOM, evalPB, attributeModifiers, skilledProficiencies.contains("Проницательность"), skilledExpertise.contains("Проницательность"), exhaustion = exhaustion, isJackOfAllTrades = isJackOfAllTrades)
         }
     }
 }
@@ -376,13 +391,14 @@ fun StatCard(
     popupHazeState: HazeState? = null,
     isOled: Boolean = false,
     isEditable: Boolean = true,
-    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    isJackOfAllTrades: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val base = calculateModifier(value)
     val pb = (profB.replace("+", "").toIntOrNull() ?: 0)
     val totalSave = base + (if (isP) pb else 0) + saveBonus - (exhaustion * 2)
-    val totalCheck = base + checkBonus - (exhaustion * 2)
+    val totalCheck = base + checkBonus + (if (isJackOfAllTrades) pb / 2 else 0) - (exhaustion * 2)
     
     Box(modifier = modifier
         .heightIn(min = 100.dp)
@@ -624,12 +640,13 @@ fun SkillSubPlate(
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     isOled: Boolean = false,
-    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    isJackOfAllTrades: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val pb = pbStr.replace("+", "").toIntOrNull() ?: 0
     val baseMod = attributeModifiers[attribute] ?: 0
-    val total = baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0) + bonus - (exhaustion * 2)
+    val total = baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else if (isJackOfAllTrades) pb / 2 else 0) + bonus - (exhaustion * 2)
 
     Row(
         modifier = Modifier
@@ -678,7 +695,7 @@ fun SkillSubPlate(
         )
         ModifierBubble( 
             text = if (total >= 0) "+$total" else "$total",
-            color = if (isExpert || isProficient) colorScheme.primary else colorScheme.onSurface,
+            color = if (isExpert || isProficient || isJackOfAllTrades) colorScheme.primary else colorScheme.onSurface,
             onRoll = onRoll,
             hazeState = hazeState,
             popupHazeState = popupHazeState,
@@ -697,12 +714,13 @@ fun PassiveCheckRow(
     attributeModifiers: Map<Attribute, Int>,
     isProficient: Boolean,
     isExpert: Boolean,
-    exhaustion: Int = 0
+    exhaustion: Int = 0,
+    isJackOfAllTrades: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val pb = pbStr.replace("+", "").toIntOrNull() ?: 0
     val baseMod = attributeModifiers[attribute] ?: 0
-    val total = 10 + baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else 0) - (exhaustion * 2)
+    val total = 10 + baseMod + (if (isExpert) pb * 2 else if (isProficient) pb else if (isJackOfAllTrades) pb / 2 else 0) - (exhaustion * 2)
 
     Row(
         modifier = Modifier

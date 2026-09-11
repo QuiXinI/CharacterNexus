@@ -636,7 +636,7 @@ fun SpellsTab(
                                         else if (draggingItemKey == itemKey) draggingItemKey = null
                                     }
 
-                                    val abilityForThisItem = remember(item, spellSettings.spellcastingAbility) {
+                                    val abilityForThisItem = remember(levelItems, idx, spellSettings.spellcastingAbility) {
                                         var current = spellSettings.spellcastingAbility
                                         for (i in 0..idx) {
                                             val itm = if (i < levelItems.size) levelItems[i] else null
@@ -740,17 +740,29 @@ fun SpellsTab(
                                                             calculateModifier(statsMap[spellAbility.name.lowercase()] ?: "10")
                                                         } else abilityModifier
 
+                                                        val localStatsMap = remember(statsMap, spellAbility, spellMod) {
+                                                            if (spellAbility != Attribute.NONE && spellAbility != spellSettings.spellcastingAbility) {
+                                                                statsMap.toMutableMap().apply {
+                                                                    val modStr = spellMod.toString()
+                                                                    put("mag_mod", modStr)
+                                                                    put("[MAG MOD]", modStr)
+                                                                    put("[МАГ МОД]", modStr)
+                                                                    put("mag_mod_bonus", modStr)
+                                                                }
+                                                            } else statsMap
+                                                        }
+
                                                         val (spellAtk, spellAtkDice) = calculateAttackFormulaParts(
                                                             baseFlat = pb + spellMod,
                                                             bonuses = spellSettings.spellAttackBonuses,
-                                                            stats = statsMap,
+                                                            stats = localStatsMap,
                                                             renderInOrder = renderDiceInOrder
                                                         )
                                                         val displaySpellAtk = spellAtk - (exhaustion * 2)
                                                         val (spellDc, spellSaveDiceParts) = calculateAttackFormulaParts(
                                                             baseFlat = 8 + pb + spellMod,
                                                             bonuses = spellSettings.spellSaveDcBonuses,
-                                                            stats = statsMap,
+                                                            stats = localStatsMap,
                                                             renderInOrder = renderDiceInOrder
                                                         )
 
@@ -786,7 +798,7 @@ fun SpellsTab(
                                                                     bonuses = listOf(SimpleBonus(formula = formula, name = if (isHealing) "Лечение" else "Урон")),
                                                                     isDamage = !isHealing,
                                                                     isHealing = isHealing,
-                                                                    stats = statsMap,
+                                                                    stats = localStatsMap,
                                                                     exhaustion = 0,
                                                                     sourceType = RollSourceType.OTHER,
                                                                     advantageType = advantage,
@@ -799,7 +811,7 @@ fun SpellsTab(
                                                                         title = "${card.name} (Атака)",
                                                                         baseModifier = pb + spellMod,
                                                                         bonuses = spellSettings.spellAttackBonuses,
-                                                                        stats = statsMap,
+                                                                        stats = localStatsMap,
                                                                         exhaustion = exhaustion,
                                                                         sourceType = RollSourceType.ATTACK,
                                                                         advantageType = advantage,
@@ -808,7 +820,7 @@ fun SpellsTab(
                                                                 }
                                                             },
                                                             isEditable = true,
-                                                            statsMap = statsMap,
+                                                            statsMap = localStatsMap,
                                                             characterLevel = characterLevel,
                                                             spellAttackBonus = displaySpellAtk,
                                                             spellAttackDice = spellAtkDice,

@@ -46,7 +46,7 @@ import ru.quasaris.characternexus.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(
-    initialLastCharacterId: Int,
+    initialLastCharacterUuid: String?,
     initialLastCharacterSeedColor: Int?,
     settingsViewModel: SettingsViewModel,
     characterRepository: CharacterRepository,
@@ -69,7 +69,7 @@ fun App(
     getFullCharacter: suspend (String) -> Character?,
     updateCharacter: (Character) -> Unit,
     deleteCharacter: (String) -> Unit,
-    onCharacterIdChange: (Int) -> Unit,
+    onCharacterUuidChange: (String?) -> Unit,
     onSeedColorChange: (Int?) -> Unit
 ) {
     val scaleFactor = getScaleFactor()
@@ -80,7 +80,7 @@ fun App(
     val themeMode by settingsViewModel.themeMode.collectAsState()
     val themeBehavior by settingsViewModel.themeBehavior.collectAsState()
     val m3SeedColor by settingsViewModel.m3SeedColor.collectAsState()
-    var lastCharacterId by remember { mutableIntStateOf(initialLastCharacterId) }
+    var lastCharacterUuid by remember { mutableStateOf(initialLastCharacterUuid) }
     val safeMagicItemManager = magicItemManager ?: remember { MagicItemManager(moduleManager) }
 
     val masterBlurEnabled = getMasterBlurEnabled()
@@ -112,9 +112,17 @@ fun App(
         }
     }
 
+    // Reactively update characters list from repository
+    LaunchedEffect(characterRepository) {
+        characterRepository.charactersSummaryState.collect { newList ->
+            characters.clear()
+            characters.addAll(newList)
+        }
+    }
+
     var rollHistory by remember { mutableStateOf(listOf<RollResult>()) }
 
-    val lastCharacter = characters.find { it.id == lastCharacterId }
+    val lastCharacter = characters.find { it.uuid == lastCharacterUuid }
     val avatarColor = lastCharacter?.themeSeedColorArgb ?: initialLastCharacterSeedColor
 
     AppScaleProvider(scaleFactor = scaleFactor) {
@@ -221,13 +229,13 @@ fun App(
                                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                                     )
 
-                                    if (lastCharacterId != -1) {
+                                    if (lastCharacterUuid != null) {
                                         NavigationDrawerItem(
                                             label = { Text("Последний персонаж") },
                                             selected = false,
                                             onClick = {
                                                 scope.launch { drawerState.close() }
-                                                val lastChar = characters.find { it.id == lastCharacterId }
+                                                val lastChar = characters.find { it.uuid == lastCharacterUuid }
                                                 if (lastChar != null) {
                                                     navController.navigate("edit/${lastChar.uuid}")
                                                 }
@@ -357,14 +365,19 @@ fun App(
                                     }
                                 ) {
                                     composable("menu") {
+                                        val folders by characterRepository.foldersState.collectAsState()
+                                        val globalOrder by characterRepository.globalOrderState.collectAsState()
+
                                         MenuWindow(
                                             characters = characters,
+                                            folders = folders,
+                                            globalOrder = globalOrder,
                                             onNavigateToCreate = { navController.navigate("create_setup") },
                                             onCharacterClick = { characterUuid ->
                                                 val char = characters.find { it.uuid == characterUuid }
                                                 if (char != null) {
-                                                    lastCharacterId = char.id
-                                                    onCharacterIdChange(char.id)
+                                                    lastCharacterUuid = char.uuid
+                                                    onCharacterUuidChange(char.uuid)
                                                     onSeedColorChange(char.themeSeedColorArgb)
                                                     navController.navigate("edit/${char.uuid}")
                                                 }
@@ -377,18 +390,26 @@ fun App(
                                             onDeleteCharacters = { uuidsToDelete ->
                                                 uuidsToDelete.forEach { deleteCharacter(it) }
                                                 characters.removeAll { it.uuid in uuidsToDelete }
-                                                if (characters.none { it.id == lastCharacterId }) {
-                                                    lastCharacterId = -1
-                                                    onCharacterIdChange(-1)
+                                                if (characters.none { it.uuid == lastCharacterUuid }) {
+                                                    lastCharacterUuid = null
+                                                    onCharacterUuidChange(null)
                                                 }
                                             },
                                             onReorderCharacters = { orderedUuids ->
                                                 characterRepository.updateSummariesOrder(orderedUuids)
-                                                characters.clear()
-                                                characters.addAll(loadCharacters())
                                             },
                                             getFullCharacter = getFullCharacter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
+                                            onCreateFolder = { name, color -> characterRepository.createFolder(name, color) },
+                                            onUpdateFolder = { folder -> characterRepository.updateFolder(folder) },
+                                            onDeleteFolder = { uuid, delChars -> characterRepository.deleteFolder(uuid, delChars) },
+                                            onMoveCharactersToFolder = { uuids, folderUuid, afterUuid -> 
+                                                characterRepository.moveCharactersToFolder(uuids, folderUuid, afterUuid)
+                                            },
+                                            onMoveFolderToFolder = { uuid, folderUuid, afterUuid ->
+                                                characterRepository.moveFolderToFolder(uuid, folderUuid, afterUuid)
+                                            },
+                                            onToggleFolderExpansion = { uuid -> characterRepository.toggleFolderExpansion(uuid) },
                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                             settingsViewModel = settingsViewModel,
                                             hazeState = hazeState,
@@ -461,8 +482,8 @@ fun App(
                                                 updateCharacter(newChar)
                                                 characters.clear()
                                                 characters.addAll(loadCharacters())
-                                                lastCharacterId = newChar.id
-                                                onCharacterIdChange(newChar.id)
+                                                lastCharacterUuid = newChar.uuid
+                                                onCharacterUuidChange(newChar.uuid)
                                                 onSeedColorChange(newChar.themeSeedColorArgb)
                                                 navController.navigate("edit/${newChar.uuid}") {
                                                     popUpTo("menu")
@@ -498,9 +519,9 @@ fun App(
                                             onDeleteCharacter = { charToDelete ->
                                                 deleteCharacter(charToDelete.uuid)
                                                 characters.removeAll { it.uuid == charToDelete.uuid }
-                                                if (lastCharacterId == charToDelete.id) {
-                                                    lastCharacterId = -1
-                                                    onCharacterIdChange(-1)
+                                                if (lastCharacterUuid == charToDelete.uuid) {
+                                                    lastCharacterUuid = null
+                                                    onCharacterUuidChange(null)
                                                 }
                                                 navController.popBackStack()
                                             },
@@ -508,11 +529,11 @@ fun App(
                                                 updateCharacter(updatedCharacter)
                                                 val index = characters.indexOfFirst { it.uuid == updatedCharacter.uuid }
                                                 if (index != -1) {
-                                                    val newSummary = updatedCharacter.toSummary()
+                                                    val newSummary = updatedCharacter.toSummary(characters[index].folderUuid)
                                                     if (characters[index] != newSummary) {
                                                         characters[index] = newSummary
                                                     }
-                                                    if (updatedCharacter.id == lastCharacterId) {
+                                                    if (updatedCharacter.uuid == lastCharacterUuid) {
                                                         onSeedColorChange(updatedCharacter.themeSeedColorArgb)
                                                     }
                                                 }

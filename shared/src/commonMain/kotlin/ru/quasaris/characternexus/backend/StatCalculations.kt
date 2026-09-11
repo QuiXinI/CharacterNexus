@@ -309,7 +309,7 @@ fun preprocessFormula(formula: String, stats: Map<String, String>): String {
                 val level = stats["level"] ?: "1"
                 stats["proficiencyBonus"] ?: getProficiencyBonus(level).toString()
             }
-            "НАСТ БМ", "REAL PB" -> getProficiencyBonus(stats["level"] ?: "1").toString()
+            "НАСТ БМ", "REAL PB", "НБМ", "RPB"-> getProficiencyBonus(stats["level"] ?: "1").toString()
             "MATC", "МАТК" -> stats["[MAG ATC BON]"] ?: stats["[МАГ АТК БОН]"] ?: stats["mag_atk_bonus"] ?: "0"
             "MSAVEB", "МСПАСБ" -> stats["[MAG SAVE BON]"] ?: stats["[МАГ СПАС БОН]"] ?: stats["mag_save_bonus"] ?: "0"
             "MMOD", "ММОД" -> stats["[MAG MOD]"] ?: stats["[МАГ МОД]"] ?: stats["mag_mod"] ?: "0"

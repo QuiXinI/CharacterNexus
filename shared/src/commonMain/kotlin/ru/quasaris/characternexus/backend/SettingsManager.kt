@@ -16,7 +16,7 @@ data class AppSettings(
     var m3SeedColor: String = "#6750A4",
     var exportFormat: ExportFormat = ExportFormat.WEBP,
     var exportDirectoryUri: String? = null,
-    var lastCharacterId: Int = -1,
+    var lastCharacterUuid: String? = null,
     var lastCharacterSeedColor: Int? = null,
     var rollHistorySize: Int = 5,
     var customRollHistorySize: Int = 10,
@@ -111,7 +111,7 @@ class SettingsManager {
     var interfaceMode: AppInterfaceMode get() = settings.interfaceMode; set(value) { settings.interfaceMode = value; save() }
     var m3SeedColor: String get() = settings.m3SeedColor; set(value) { settings.m3SeedColor = value; save() }
     var exportFormat: ExportFormat get() = settings.exportFormat; set(value) { settings.exportFormat = value; save() }
-    var lastCharacterId: Int get() = settings.lastCharacterId; set(value) { settings.lastCharacterId = value; save() }
+    var lastCharacterUuid: String? get() = settings.lastCharacterUuid; set(value) { settings.lastCharacterUuid = value; save() }
     var lastCharacterSeedColor: Int? get() = settings.lastCharacterSeedColor; set(value) { settings.lastCharacterSeedColor = value; save() }
     var rollHistorySize: Int get() = settings.rollHistorySize; set(value) { settings.rollHistorySize = value; save() }
     var customRollHistorySize: Int get() = settings.customRollHistorySize; set(value) { settings.customRollHistorySize = value; save() }

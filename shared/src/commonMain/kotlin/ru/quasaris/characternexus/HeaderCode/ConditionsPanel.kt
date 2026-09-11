@@ -5,7 +5,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.util.formatConditionDescription
 import ru.quasaris.characternexus.model.Condition
 
@@ -45,8 +45,8 @@ fun ConditionsPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
+            .outerShadow(RoundedCornerShape(16.dp), blur = 8.dp, offsetY = 4.dp)
             .background(colorScheme.surface.copy(alpha = 0.0f), RoundedCornerShape(16.dp))
-            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
     ) {
         Text(
             text = "Состояния",
@@ -106,10 +106,9 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Surface(
                     onClick = { if (exhaustion > 0) onExhaustionChange(exhaustion - 1) },
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(36.dp).outerShadow(RoundedCornerShape(8.dp), blur = 4.dp, offsetY = 2.dp),
                     shape = RoundedCornerShape(8.dp),
-                    color = colorScheme.primary.copy(alpha = 0.1f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.2f))
+                    color = colorScheme.primary.copy(alpha = 0.1f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -148,10 +147,9 @@ fun ExhaustionSection(exhaustion: Int, onExhaustionChange: (Int) -> Unit) {
 
                 Surface(
                     onClick = { if (exhaustion < 6) onExhaustionChange(exhaustion + 1) },
-                    modifier = Modifier.size(36.dp),
+                    modifier = Modifier.size(36.dp).outerShadow(RoundedCornerShape(8.dp), blur = 4.dp, offsetY = 2.dp),
                     shape = RoundedCornerShape(8.dp),
-                    color = colorScheme.primary.copy(alpha = 0.1f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.2f))
+                    color = colorScheme.primary.copy(alpha = 0.1f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(

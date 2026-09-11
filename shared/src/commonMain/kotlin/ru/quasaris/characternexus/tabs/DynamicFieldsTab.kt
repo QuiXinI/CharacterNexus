@@ -438,9 +438,6 @@ fun DynamicFieldItem(
     var isFocused by remember { mutableStateOf(false) }
     var isTitleFocused by remember { mutableStateOf(false) }
 
-    // Реальная (анимируемая системой) высота клавиатуры. Читаем её прямо в composition,
-    // чтобы этот composable перекомпоновывался на каждом кадре анимации IME и
-    // пересчитывал bringIntoView по актуальному viewport'у, а не по угаданной задержке.
     val imeBottomPx = WindowInsets.ime.getBottom(density)
 
     val scrollMarginPx = with(density) { 40.dp.toPx() }
@@ -455,14 +452,11 @@ fun DynamicFieldItem(
         toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
     }
 
-    // Единый источник правды для автоскролла к курсору: перезапускается и при смене
-    // текста/выделения/фокуса, И при каждом изменении высоты клавиатуры (imeBottomPx),
-    // поэтому корректно доводит скролл до конца уже после того, как IME анимация
-    // реально завершилась, а не через фиксированные 150мс.
-    LaunchedEffect(imeBottomPx, contentValue.selection, contentValue.text, isFocused) {
+    LaunchedEffect(imeBottomPx, contentValue.selection, textLayoutResult, isFocused) {
         if (!isFocused) return@LaunchedEffect
-        val layoutResult = textLayoutResult
-        if (layoutResult != null && contentValue.selection.collapsed) {
+        val layoutResult = textLayoutResult ?: return@LaunchedEffect
+
+        if (layoutResult.layoutInput.text.text == contentValue.text && contentValue.selection.collapsed) {
             val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
             contentBringIntoViewRequester.bringIntoView(
                 cursorRect.copy(
@@ -470,8 +464,6 @@ fun DynamicFieldItem(
                     bottom = cursorRect.bottom + scrollMarginPx
                 )
             )
-        } else {
-            contentBringIntoViewRequester.bringIntoView()
         }
     }
 
@@ -1043,8 +1035,6 @@ fun DynamicFieldFullscreenContent(
     var isFocused by remember { mutableStateOf(false) }
     var isTitleFocused by remember { mutableStateOf(false) }
 
-    // Реальная (анимируемая системой) высота клавиатуры — читаем прямо в composition,
-    // чтобы перекомпоновываться на каждый кадр анимации IME.
     val imeBottomPx = WindowInsets.ime.getBottom(density)
 
     val scrollMarginPx = with(density) { 40.dp.toPx() }
@@ -1059,13 +1049,11 @@ fun DynamicFieldFullscreenContent(
         toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
     }
 
-    // Единый источник правды для автоскролла к курсору: реагирует и на смену
-    // текста/выделения/фокуса, и на изменение высоты клавиатуры, поэтому докручивает
-    // список уже после того, как IME анимация реально завершилась.
-    LaunchedEffect(imeBottomPx, contentValue.selection, contentValue.text, isFocused) {
+    LaunchedEffect(imeBottomPx, contentValue.selection, textLayoutResult, isFocused) {
         if (!isFocused) return@LaunchedEffect
-        val layoutResult = textLayoutResult
-        if (layoutResult != null && contentValue.selection.collapsed) {
+        val layoutResult = textLayoutResult ?: return@LaunchedEffect
+        
+        if (layoutResult.layoutInput.text.text == contentValue.text && contentValue.selection.collapsed) {
             val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
             contentBringIntoViewRequester.bringIntoView(
                 cursorRect.copy(
@@ -1073,8 +1061,6 @@ fun DynamicFieldFullscreenContent(
                     bottom = cursorRect.bottom + scrollMarginPx
                 )
             )
-        } else {
-            contentBringIntoViewRequester.bringIntoView()
         }
     }
 

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.model.HitDiceEntry
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -67,8 +68,8 @@ fun HealthPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
+            .outerShadow(RoundedCornerShape(16.dp), blur = 8.dp, offsetY = 4.dp)
             .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-            .border(androidx.compose.foundation.BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

@@ -81,7 +81,7 @@ fun PayWall(
 
         if (isLocked) {
             val isDark = isSystemInDarkTheme()
-            val overlayColor = if (isDark) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f)
+            val overlayColor = if (isDark) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.7f)
             
             Box(
                 modifier = Modifier

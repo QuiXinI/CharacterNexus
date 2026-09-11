@@ -67,24 +67,38 @@ class FileSystemCharacterStorage : CharacterStorage {
         }
     }
 
-    override suspend fun loadAllSummaries(): List<CharacterSummary> = withContext(ioDispatcher) {
-        if (!fileSystem.exists(cacheFile)) return@withContext emptyList()
-        
+    override suspend fun loadAllSummaries(): List<CharacterSummary> = loadListState().characters
+
+    override suspend fun saveSummaries(summaries: List<CharacterSummary>): Unit = withContext(ioDispatcher) {
+        val currentState = loadListState()
+        saveListState(currentState.copy(characters = summaries))
+    }
+
+    override suspend fun loadListState(): CharacterListState = withContext(ioDispatcher) {
+        if (!fileSystem.exists(cacheFile)) return@withContext CharacterListState()
+
         try {
             fileSystem.read(cacheFile) {
                 val content = readUtf8()
-                if (content.isBlank()) return@read emptyList<CharacterSummary>()
-                json.decodeFromString<List<CharacterSummary>>(content)
+                if (content.isBlank()) return@read CharacterListState()
+                
+                // Migration logic: try to parse as CharacterListState first, then fall back to List<CharacterSummary>
+                try {
+                    json.decodeFromString<CharacterListState>(content)
+                } catch (e: Exception) {
+                    val legacyList = json.decodeFromString<List<CharacterSummary>>(content)
+                    CharacterListState(characters = legacyList)
+                }
             }
         } catch (e: Exception) {
-            PlatformUtils.logError("FileSystemCharacterStorage", "Failed to load summaries", e)
-            emptyList()
+            PlatformUtils.logError("FileSystemCharacterStorage", "Failed to load list state", e)
+            CharacterListState()
         }
     }
 
-    override suspend fun saveSummaries(summaries: List<CharacterSummary>): Unit = withContext(ioDispatcher) {
+    override suspend fun saveListState(state: CharacterListState): Unit = withContext(ioDispatcher) {
         fileSystem.write(cacheFile) {
-            writeUtf8(json.encodeToString(summaries))
+            writeUtf8(json.encodeToString(state))
         }
     }
 

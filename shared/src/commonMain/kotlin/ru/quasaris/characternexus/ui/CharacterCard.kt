@@ -5,6 +5,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,18 +34,26 @@ import ru.quasaris.characternexus.backend.getNextLevelThreshold
 import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.platformFileSystem
+import ru.quasaris.characternexus.ui.util.FolderColors
+import androidx.compose.foundation.isSystemInDarkTheme
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun CharacterCard(
     character: CharacterSummary,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
     useOldAvatarStyle: Boolean = false,
+    folderColorArgb: Int? = null,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val isDark = isSystemInDarkTheme()
+
+    val adaptedFolderColor = remember(folderColorArgb, isDark) {
+        FolderColors.getThemeAdaptedColor(folderColorArgb, isDark)
+    }
 
     val thumbPath = remember(character.imageData, character.uuid) {
         ImageManager.getThumbnailFile(character.imageData ?: "", character.uuid)
@@ -65,8 +74,11 @@ fun CharacterCard(
     val cardColor = if (isSelected) {
         colorScheme.primaryContainer
     } else {
-        colorScheme.surfaceVariant
+        adaptedFolderColor?.let { FolderColors.getCardContainerColor(it, isDark) } ?: colorScheme.surfaceVariant
     }
+    
+    val progressBarColor = adaptedFolderColor?.let { FolderColors.getProgressBarColor(it, isDark) } 
+        ?: colorScheme.primary.copy(alpha = 0.2f)
 
     val levelStr = character.level.filter { it.isDigit() }.ifEmpty { "1" }
     val expStr = character.experience.filter { it.isDigit() }.ifEmpty { "0" }
@@ -91,11 +103,6 @@ fun CharacterCard(
     
     val hpColor = lerp(baseHpColor, colorScheme.onSurfaceVariant, 0.5f)
 
-    val hpText = buildString {
-        append("$currentHp/$maxHp")
-        if (tempHp > 0) append(" (+$tempHp)")
-    }
-
     Card(
         modifier = modifier.fillMaxWidth()
             .outerShadow(RoundedCornerShape(16.dp), blur = if (isSelected) 4.dp else 2.dp),
@@ -116,7 +123,7 @@ fun CharacterCard(
                         (avatarOffsetDp + avatarSizeDp / 2).toPx()
                     }
                     drawRect(
-                        color = colorScheme.primary.copy(alpha = 0.2f),
+                        color = progressBarColor,
                         topLeft = androidx.compose.ui.geometry.Offset(startPointPx, 0f),
                         size = Size((size.width - startPointPx) * progress, size.height)
                     )
@@ -167,23 +174,44 @@ fun CharacterCard(
                             text = character.name.ifEmpty { "Без имени" },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = colorScheme.onSurface,
-                            maxLines = 1
+                            color = colorScheme.onSurface
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        FlowRow(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalArrangement = Arrangement.Start
+                        ) {
                             Text(
-                                text = "Уровень ${character.level} • ${character.characterClass} • ",
+                                text = "Уровень ${character.level}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = colorScheme.onSurfaceVariant,
-                                maxLines = 1
+                                color = colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                text = hpText,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = hpColor,
-                                maxLines = 1
-                            )
+                            
+                            character.characterClass.split(" • ").forEach { part ->
+                                if (part.isNotBlank()) {
+                                    Text(
+                                        text = " • $part",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = " • $currentHp/$maxHp",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hpColor
+                                )
+                                if (tempHp > 0) {
+                                    Text(
+                                        text = " (+$tempHp)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF64B5F6)
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {
@@ -235,23 +263,44 @@ fun CharacterCard(
                             text = character.name.ifEmpty { "Без имени" },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = colorScheme.onSurface,
-                            maxLines = 1
+                            color = colorScheme.onSurface
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        FlowRow(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalArrangement = Arrangement.Start
+                        ) {
                             Text(
-                                text = "Уровень ${character.level} • ${character.characterClass} • ",
+                                text = "Уровень ${character.level}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = colorScheme.onSurfaceVariant,
-                                maxLines = 1
+                                color = colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                text = hpText,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = hpColor,
-                                maxLines = 1
-                            )
+
+                            character.characterClass.split(" • ").forEach { part ->
+                                if (part.isNotBlank()) {
+                                    Text(
+                                        text = " • $part",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = " • $currentHp/$maxHp",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = hpColor
+                                )
+                                if (tempHp > 0) {
+                                    Text(
+                                        text = " (+$tempHp)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF64B5F6)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

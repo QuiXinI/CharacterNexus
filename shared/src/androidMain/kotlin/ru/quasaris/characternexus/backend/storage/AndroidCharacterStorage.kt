@@ -8,8 +8,7 @@ import kotlinx.serialization.json.Json
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.buffer
-import ru.quasaris.characternexus.model.Character
-import ru.quasaris.characternexus.model.CharacterSummary
+import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.util.log
 
 class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
@@ -64,23 +63,37 @@ class AndroidCharacterStorage(private val context: Context) : CharacterStorage {
         }
     }
 
-    override suspend fun loadAllSummaries(): List<CharacterSummary> = withContext(Dispatchers.IO) {
-        if (!fileSystem.exists(cacheFile)) return@withContext emptyList()
-        
+    override suspend fun loadAllSummaries(): List<CharacterSummary> = loadListState().characters
+
+    override suspend fun saveSummaries(summaries: List<CharacterSummary>): Unit = withContext(Dispatchers.IO) {
+        val currentState = loadListState()
+        saveListState(currentState.copy(characters = summaries))
+    }
+
+    override suspend fun loadListState(): CharacterListState = withContext(Dispatchers.IO) {
+        if (!fileSystem.exists(cacheFile)) return@withContext CharacterListState()
+
         try {
             fileSystem.read(cacheFile) {
                 val content = readUtf8()
-                json.decodeFromString<List<CharacterSummary>>(content)
+                if (content.isBlank()) return@read CharacterListState()
+
+                try {
+                    json.decodeFromString<CharacterListState>(content)
+                } catch (e: Exception) {
+                    val legacyList = json.decodeFromString<List<CharacterSummary>>(content)
+                    CharacterListState(characters = legacyList)
+                }
             }
         } catch (e: Exception) {
             e.log()
-            emptyList()
+            CharacterListState()
         }
     }
 
-    override suspend fun saveSummaries(summaries: List<CharacterSummary>): Unit = withContext(Dispatchers.IO) {
+    override suspend fun saveListState(state: CharacterListState): Unit = withContext(Dispatchers.IO) {
         fileSystem.write(cacheFile) {
-            writeUtf8(json.encodeToString(summaries))
+            writeUtf8(json.encodeToString(state))
         }
     }
 

@@ -6,7 +6,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.*
 
 fun getFullFormula(entry: FormulaEntry): String {
@@ -71,8 +71,8 @@ fun FormulaPanel(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
+            .outerShadow(RoundedCornerShape(16.dp), blur = 8.dp, offsetY = 4.dp)
             .background(colorScheme.surface.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
     ) {
         Box(
             modifier = Modifier
@@ -139,10 +139,10 @@ fun FormulaPanel(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .height(44.dp),
+                .height(44.dp)
+                .outerShadow(RoundedCornerShape(8.dp), blur = 4.dp, offsetY = 2.dp),
             shape = RoundedCornerShape(8.dp),
-            color = colorScheme.primary.copy(alpha = 0.1f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.3f))
+            color = colorScheme.primary.copy(alpha = 0.1f)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

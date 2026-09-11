@@ -584,6 +584,23 @@ data class HPLevelEntry(
 )
 
 @Serializable
+data class CharacterFolder(
+    val uuid: String = generateUuid(),
+    val name: String = "",
+    val isExpanded: Boolean = true,
+    val colorArgb: Int? = null,
+    val order: String = "",
+    val parentFolderUuid: String? = null
+)
+
+@Serializable
+data class CharacterListState(
+    val characters: List<CharacterSummary> = emptyList(),
+    val folders: List<CharacterFolder> = emptyList(),
+    val globalOrder: List<String> = emptyList()
+)
+
+@Serializable
 data class CharacterSummary(
     val uuid: String = "",
     val id: Int = 0,
@@ -596,7 +613,8 @@ data class CharacterSummary(
     val imageData: String? = null,
     val themeSeedColorArgb: Int? = null,
     val experience: String = "0",
-    val order: String = ""
+    val order: String = "",
+    val folderUuid: String? = null
 )
 
 @Serializable
@@ -695,16 +713,28 @@ data class Character(
     val cropW: Float? = null,
     val cropH: Float? = null,
     val race: String = "",
-    val classes: List<ClassEntry> = emptyList()
+    val classes: List<ClassEntry> = emptyList(),
+    val isJackOfAllTrades: Boolean = false
 ) {
-    fun toSummary(): CharacterSummary {
-        val displayClass = if (isMulticlassHP) {
-            classes.joinToString(" • ") { "${it.className} ${it.level}" }
-        } else {
-            val firstClass = classes.firstOrNull()
-            val baseClass = firstClass?.className ?: characterClass
-            val subclass = firstClass?.subclass ?: ""
-            if (subclass.isNotBlank()) "$baseClass • $subclass" else baseClass
+    fun toSummary(currentFolderUuid: String? = null): CharacterSummary {
+        val displayClass = buildString {
+            if (race.isNotBlank()) {
+                append(race)
+            }
+            
+            val classInfo = if (isMulticlassHP) {
+                classes.joinToString(" • ") { "${it.className} ${it.level}" }
+            } else {
+                val firstClass = classes.firstOrNull()
+                val baseClass = firstClass?.className ?: characterClass
+                val subclass = firstClass?.subclass ?: ""
+                if (subclass.isNotBlank()) "$baseClass • $subclass" else baseClass
+            }
+            
+            if (classInfo.isNotBlank()) {
+                if (this.isNotEmpty()) append(" • ")
+                append(classInfo)
+            }
         }
 
         return CharacterSummary(
@@ -719,7 +749,8 @@ data class Character(
             imageData = imageData,
             themeSeedColorArgb = themeSeedColorArgb,
             experience = experience,
-            order = order
+            order = order,
+            folderUuid = currentFolderUuid
         )
     }
 }
