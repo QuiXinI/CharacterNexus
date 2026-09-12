@@ -73,6 +73,8 @@ class CharacterDetailState(
     var maxHp by mutableStateOf(initialCharacter?.maxHp ?: "10")
     var currentHp by mutableStateOf(initialCharacter?.currentHp ?: "10")
     var tempHp by mutableStateOf(initialCharacter?.tempHp ?: "0")
+    var deathSaveSuccesses by mutableIntStateOf(initialCharacter?.deathSaveSuccesses ?: 0)
+    var deathSaveFailures by mutableIntStateOf(initialCharacter?.deathSaveFailures ?: 0)
 
     var armorClassEntries by mutableStateOf(initialCharacter?.armorClassEntries ?: listOf(ArmorClassEntry(name = "Базовый КД", formula = "10 + [ЛОВ]")))
     var activeArmorClassId by mutableStateOf(initialCharacter?.activeArmorClassId ?: armorClassEntries.firstOrNull()?.id)
@@ -487,6 +489,7 @@ class CharacterDetailState(
         val c = currentHp.toIntOrNull() ?: 0
         val m = maxHp.toIntOrNull() ?: 0
         when {
+            c <= 0 && deathSaveSuccesses >= 3 -> "stabilized"
             c <= 0 -> "dead"
             m > 0 && (c <= m / 2) -> "bloodied"
             else -> "healthy"
@@ -495,6 +498,7 @@ class CharacterDetailState(
 
     val healthColor by derivedStateOf {
         when(healthStatus) {
+            "stabilized" -> Color(0xFFFFD54F)
             "dead" -> Color(0xFF454545)
             "bloodied" -> Color(0xFFE57373)
             else -> Color(0xFF00C46F)
@@ -590,7 +594,9 @@ class CharacterDetailState(
             manualMaxHitDice = manualMaxHitDice,
             hpBonusesAtLevel = hpBonusesAtLevel, hpBonusesTotal = hpBonusesTotal,
             hasInspiration = hasInspiration,
-            isJackOfAllTrades = isJackOfAllTrades
+            isJackOfAllTrades = isJackOfAllTrades,
+            deathSaveSuccesses = deathSaveSuccesses,
+            deathSaveFailures = deathSaveFailures
         )
     }
 
@@ -669,6 +675,8 @@ class CharacterDetailState(
         if (restType == "long") {
             currentHp = maxHp
             tempHp = "0"
+            deathSaveSuccesses = 0
+            deathSaveFailures = 0
             hitDiceEntries = hitDiceEntries.map { it.copy(spent = 0) }
             if (exhaustion > 0) exhaustion--
         }

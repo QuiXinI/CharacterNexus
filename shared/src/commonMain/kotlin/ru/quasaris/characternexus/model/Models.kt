@@ -610,6 +610,8 @@ data class CharacterSummary(
     val currentHp: String = "0",
     val maxHp: String = "0",
     val tempHp: String = "0",
+    val deathSaveSuccesses: Int = 0,
+    val deathSaveFailures: Int = 0,
     val imageData: String? = null,
     val themeSeedColorArgb: Int? = null,
     val experience: String = "0",
@@ -714,7 +716,9 @@ data class Character(
     val cropH: Float? = null,
     val race: String = "",
     val classes: List<ClassEntry> = emptyList(),
-    val isJackOfAllTrades: Boolean = false
+    val isJackOfAllTrades: Boolean = false,
+    val deathSaveSuccesses: Int = 0,
+    val deathSaveFailures: Int = 0
 ) {
     fun toSummary(currentFolderUuid: String? = null): CharacterSummary {
         val displayClass = buildString {
@@ -750,7 +754,9 @@ data class Character(
             themeSeedColorArgb = themeSeedColorArgb,
             experience = experience,
             order = order,
-            folderUuid = currentFolderUuid
+            folderUuid = currentFolderUuid,
+            deathSaveSuccesses = deathSaveSuccesses,
+            deathSaveFailures = deathSaveFailures
         )
     }
 }

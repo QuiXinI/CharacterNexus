@@ -52,6 +52,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import dev.chrisbanes.haze.HazeState
+import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.getPreviousLevelThreshold
 import ru.quasaris.characternexus.util.log
@@ -106,6 +107,7 @@ fun CharacterHeader(
     onShowRestPopupChange: (Boolean) -> Unit = {},
     onDebugClick: (() -> Unit)? = null,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     blurPopups: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
@@ -214,7 +216,7 @@ fun CharacterHeader(
                             onLongRest = { onLongRest() },
                             onDawn = { onDawn() },
                             onDismiss = { onShowRestPopupChange(false) },
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             isOled = colorScheme.background == Color.Black,
                             settingsViewModel = settingsViewModel
                         )
@@ -420,6 +422,14 @@ fun ExpandingPanelsSection(
     hpPanelHitDice: List<HitDiceEntry>,
     onSpentHitDiceChange: (Int, Int) -> Unit,
     onOpenHealthSettings: () -> Unit,
+    deathSaveSuccesses: Int = 0,
+    deathSaveFailures: Int = 0,
+    onDeathSaveSuccessesChange: (Int) -> Unit = {},
+    onDeathSaveFailuresChange: (Int) -> Unit = {},
+    onDeathRoll: (AdvantageType) -> Unit = {},
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null,
 
     isRestPanelVisible: Boolean,
     onRestPanelDismiss: () -> Unit,
@@ -495,7 +505,15 @@ fun ExpandingPanelsSection(
             HealthPanel(
                 maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, 
                 onHealClick, onDamageClick, onTempClick, healthColor, clampHp, hpPanelHitDice, 
-                onSpentHitDiceChange, onOpenHealthSettings
+                onSpentHitDiceChange, onOpenHealthSettings,
+                deathSaveSuccesses = deathSaveSuccesses,
+                deathSaveFailures = deathSaveFailures,
+                onDeathSaveSuccessesChange = onDeathSaveSuccessesChange,
+                onDeathSaveFailuresChange = onDeathSaveFailuresChange,
+                onDeathRoll = onDeathRoll,
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
+                settingsViewModel = settingsViewModel
             )
         }
 

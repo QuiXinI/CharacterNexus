@@ -465,7 +465,14 @@ fun CharacterDetailDialogs(
                     val tempHpInt = state.tempHp.toIntOrNull() ?: 0
 
                     when(state.hpDialogType) {
-                        "heal" -> state.currentHp = minOf(maxHpInt, currentHpInt + value).toString()
+                        "heal" -> {
+                            val newHp = minOf(maxHpInt, currentHpInt + value)
+                            state.currentHp = newHp.toString()
+                            if (newHp > 0) {
+                                state.deathSaveSuccesses = 0
+                                state.deathSaveFailures = 0
+                            }
+                        }
                         "damage" -> {
                             var d = value
                             var t = tempHpInt
@@ -476,7 +483,18 @@ fun CharacterDetailDialogs(
                                 d -= a
                                 state.tempHp = t.toString()
                             }
-                            if (d > 0) state.currentHp = maxOf(0, c - d).toString()
+                            if (d > 0) {
+                                val newHp = maxOf(0, c - d)
+                                state.currentHp = newHp.toString()
+                                if (newHp <= 0) {
+                                    state.deathSaveSuccesses = 0
+                                    state.deathSaveFailures = 0
+                                }
+                            } else if (c <= 0 && value > 0) {
+                                // Damage at 0 HP (even if stabilized) resets death saves
+                                state.deathSaveSuccesses = 0
+                                state.deathSaveFailures = 0
+                            }
                         }
                         "temp" -> state.tempHp = minOf(9999, value).toString()
                     }

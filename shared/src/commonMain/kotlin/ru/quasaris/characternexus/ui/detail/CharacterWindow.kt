@@ -233,7 +233,8 @@ fun CharacterWindow(
         state.bioShortFields, state.bioLongSections, state.hitDiceEntries, state.hitDiceMap, state.defaultHitDie, state.hpLevelData, state.manualHPLevelData, state.isMulticlassHP,
         state.isManualHP, state.manualMaxHp, state.manualMaxHitDice,
         state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions,
-        state.race, state.classes, state.isJackOfAllTrades
+        state.race, state.classes, state.isJackOfAllTrades,
+        state.deathSaveSuccesses, state.deathSaveFailures
     ) {
         onSaveChanges(state.toCharacter(character))
     }
@@ -722,7 +723,8 @@ fun CharacterDetailTopBar(
                 showRestPopup = state.showRestPopup,
                 onShowRestPopupChange = { state.showRestPopup = it },
                 onDebugClick = onDebugClick,
-                hazeState = popupHazeState ?: hazeState,
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
                 blurPopups = blurPopups,
                 settingsViewModel = settingsViewModel
             )
@@ -763,7 +765,10 @@ fun CharacterDetailTopBar(
                     state = state,
                     colorScheme = colorScheme,
                     isOled = isOled,
-                    handleRestoration = handleRestoration
+                    handleRestoration = handleRestoration,
+                    hazeState = hazeState,
+                    popupHazeState = popupHazeState,
+                    onRoll = onRoll
                 )
             }
         }
@@ -777,7 +782,10 @@ fun CharacterDetailExpandingPanels(
     state: CharacterDetailState,
     colorScheme: ColorScheme,
     isOled: Boolean,
-    handleRestoration: (String) -> Unit
+    handleRestoration: (String) -> Unit,
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
+    onRoll: (RollResult) -> Unit = {}
 ) {
     val panelScrollState = rememberScrollState()
     val screenHeight = 800.dp
@@ -838,7 +846,13 @@ fun CharacterDetailExpandingPanels(
                     tempHp = state.tempHp,
                     onTempHpChange = { state.tempHp = it },
                     currentHp = state.currentHp,
-                    onCurrentHpChange = { state.currentHp = it },
+                    onCurrentHpChange = { 
+                        state.currentHp = it 
+                        if ((it.toIntOrNull() ?: 0) > 0) {
+                            state.deathSaveSuccesses = 0
+                            state.deathSaveFailures = 0
+                        }
+                    },
                     onHealClick = {
                         state.hpDialogType = "heal"; state.hpDialogValue = ""; state.showHpDialog = true
                     },
@@ -859,14 +873,62 @@ fun CharacterDetailExpandingPanels(
                         }
                     },
                     onOpenHealthSettings = { state.showHealthSettings = true },
+                    deathSaveSuccesses = state.deathSaveSuccesses,
+                    deathSaveFailures = state.deathSaveFailures,
+                    onDeathSaveSuccessesChange = { 
+                        state.deathSaveSuccesses = it 
+                    },
+                    onDeathSaveFailuresChange = { state.deathSaveFailures = it },
+                    onDeathRoll = { advantage ->
+                        val d1 = kotlin.random.Random.nextInt(1, 21)
+                        val d2 = kotlin.random.Random.nextInt(1, 21)
+                        val res = when(advantage) {
+                            AdvantageType.ADVANTAGE -> maxOf(d1, d2)
+                            AdvantageType.DISADVANTAGE -> minOf(d1, d2)
+                            else -> d1
+                        }
+
+                        val rollResult = RollResult(
+                            title = "Спасбросок от смерти",
+                            total = res,
+                            breakdown = "d20",
+                            mainD20 = d1,
+                            alternativeD20 = if (advantage != AdvantageType.NONE) d2 else null,
+                            advantageType = advantage,
+                            sourceType = RollSourceType.SAVING_THROW,
+                            isCriticalSuccess = res == 20,
+                            isCriticalFailure = res == 1
+                        )
+                        onRoll(rollResult)
+                        
+                        if (res == 20) {
+                            state.deathSaveSuccesses = 3
+                            state.deathSaveFailures = 0
+                            state.currentHp = "1"
+                        } else if (res == 1) {
+                            state.deathSaveFailures = (state.deathSaveFailures + 2).coerceAtMost(3)
+                        } else if (res >= 10) {
+                            state.deathSaveSuccesses = (state.deathSaveSuccesses + 1).coerceAtMost(3)
+                        } else {
+                            state.deathSaveFailures = (state.deathSaveFailures + 1).coerceAtMost(3)
+                        }
+                    },
+                    hazeState = hazeState,
+                    popupHazeState = popupHazeState,
+                    settingsViewModel = state.settingsViewModel,
                     isRestPanelVisible = state.isRestPanelVisible,
                     onRestPanelDismiss = { state.isRestPanelVisible = false },
                     onRestPanelHitDiceChange = { state.hitDiceEntries = it },
                     onHealAmount = { amount ->
-                        state.currentHp = minOf(
+                        val newHp = minOf(
                             state.maxHp.toIntOrNull() ?: 0,
                             (state.currentHp.toIntOrNull() ?: 0) + amount
-                        ).toString()
+                        )
+                        state.currentHp = newHp.toString()
+                        if (newHp > 0) {
+                            state.deathSaveSuccesses = 0
+                            state.deathSaveFailures = 0
+                        }
                     },
                     onShortRestConfirmed = {
                         handleRestoration("short")
@@ -1166,7 +1228,10 @@ fun CharacterDetailMainContent(
                             state = state,
                             colorScheme = colorScheme,
                             isOled = colorScheme.background == Color.Black,
-                            handleRestoration = handleRestoration
+                            handleRestoration = handleRestoration,
+                            hazeState = hazeState,
+                            popupHazeState = popupHazeState,
+                            onRoll = onRoll
                         )
                     }
 

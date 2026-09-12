@@ -106,6 +106,7 @@ fun HealthPanelOverlay(
     onOpenHealthSettings: () -> Unit,
     onDismiss: () -> Unit,
     hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -161,7 +162,10 @@ fun HealthPanelOverlay(
                 onFocusLost = {},
                 hitDiceEntries = hitDiceEntries,
                 onSpentHitDiceChange = onSpentHitDiceChange,
-                onOpenSettings = onOpenHealthSettings
+                onOpenSettings = onOpenHealthSettings,
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
+                settingsViewModel = settingsViewModel
             )
         }
     }

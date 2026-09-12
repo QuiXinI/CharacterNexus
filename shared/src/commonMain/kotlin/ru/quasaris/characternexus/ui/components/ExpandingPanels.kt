@@ -3,11 +3,13 @@ package ru.quasaris.characternexus.ui.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,9 +41,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import characternexus.shared.generated.resources.*
+import dev.chrisbanes.haze.HazeState
+import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup
+import ru.quasaris.characternexus.util.PlatformUtils
+import ru.quasaris.characternexus.util.HapticType
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
 import kotlin.math.abs
+import kotlin.math.floor
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -70,6 +79,14 @@ fun ExpandingPanelsSection(
     hpPanelHitDice: List<HitDiceEntry>,
     onSpentHitDiceChange: (Int, Int) -> Unit,
     onOpenHealthSettings: () -> Unit,
+    deathSaveSuccesses: Int = 0,
+    deathSaveFailures: Int = 0,
+    onDeathSaveSuccessesChange: (Int) -> Unit = {},
+    onDeathSaveFailuresChange: (Int) -> Unit = {},
+    onDeathRoll: (AdvantageType) -> Unit = {},
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null,
 
     isArmorClassPanelVisible: Boolean,
     armorClassEntries: List<ArmorClassEntry>,
@@ -139,7 +156,16 @@ fun ExpandingPanelsSection(
             HealthPanel(
                 maxHp, onMaxHpChange, tempHp, onTempHpChange, currentHp, onCurrentHpChange, 
                 onHealClick, onDamageClick, onTempClick, healthColor, clampHp, hpPanelHitDice, 
-                onSpentHitDiceChange, onOpenHealthSettings, diceIcons
+                onSpentHitDiceChange, onOpenHealthSettings,
+                deathSaveSuccesses = deathSaveSuccesses,
+                deathSaveFailures = deathSaveFailures,
+                onDeathSaveSuccessesChange = onDeathSaveSuccessesChange,
+                onDeathSaveFailuresChange = onDeathSaveFailuresChange,
+                onDeathRoll = onDeathRoll,
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
+                settingsViewModel = settingsViewModel,
+                diceIcons = diceIcons
             )
         }
 
@@ -440,6 +466,14 @@ fun HealthPanel(
     hitDiceEntries: List<HitDiceEntry>,
     onSpentHitDiceChange: (Int, Int) -> Unit,
     onOpenSettings: () -> Unit,
+    deathSaveSuccesses: Int = 0,
+    deathSaveFailures: Int = 0,
+    onDeathSaveSuccessesChange: (Int) -> Unit = {},
+    onDeathSaveFailuresChange: (Int) -> Unit = {},
+    onDeathRoll: (AdvantageType) -> Unit = {},
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null,
     diceIcons: Map<Int, DrawableResource>
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -599,7 +633,142 @@ fun HealthPanel(
             HealthActionButton("Урон", Color(0xFFE57373), Modifier.weight(1f), onDamageClick)
             HealthActionButton("Укрепление", Color(0xFF64B5F6), Modifier.weight(1f), onTempClick)
         }
+
+        val showDeathSaves = (currentHp.toIntOrNull() ?: 0) <= 0 && deathSaveSuccesses < 3
+        AnimatedVisibility(
+            visible = showDeathSaves,
+            enter = expandVertically(animationSpec = tween(300)) + fadeIn(animationSpec = tween(300)),
+            exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(animationSpec = tween(300))
+        ) {
+            DeathSavingThrowsSection(
+                successes = deathSaveSuccesses,
+                failures = deathSaveFailures,
+                onSuccessChange = onDeathSaveSuccessesChange,
+                onFailureChange = onDeathSaveFailuresChange,
+                onRoll = onDeathRoll,
+                colorScheme = colorScheme,
+                isOled = colorScheme.background == Color.Black,
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
+                settingsViewModel = settingsViewModel,
+                diceIcons = diceIcons
+            )
+        }
     }
+}
+
+@Composable
+fun DeathSavingThrowsSection(
+    successes: Int,
+    failures: Int,
+    onSuccessChange: (Int) -> Unit,
+    onFailureChange: (Int) -> Unit,
+    onRoll: (AdvantageType) -> Unit,
+    colorScheme: ColorScheme,
+    isOled: Boolean,
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null,
+    diceIcons: Map<Int, DrawableResource> = emptyMap()
+) {
+    var showAdvantagePopup by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Failures (Red) - 3 squares, filled from center (RTL)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            repeat(3) { i ->
+                val index = 2 - i
+                val isFilled = failures > index
+                DeathSaveSquare(
+                    isFilled = isFilled,
+                    color = Color(0xFFE57373),
+                    onClick = {
+                        PlatformUtils.performHapticFeedback(HapticType.CLICK)
+                        val newUsed = if (isFilled) failures - 1 else failures + 1
+                        onFailureChange(newUsed.coerceIn(0, 3))
+                    }
+                )
+            }
+        }
+
+        Spacer(Modifier.width(20.dp))
+
+        // D20 Button
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.5f), CircleShape)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onRoll(AdvantageType.NONE) },
+                            onLongPress = { showAdvantagePopup = true }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                val d20Icon = diceIcons[20] ?: Res.drawable.ic_d20_dice
+                Icon(
+                    painter = painterResource(d20Icon),
+                    contentDescription = "Бросок спаса от смерти",
+                    modifier = Modifier.size(24.dp),
+                    tint = colorScheme.primary
+                )
+            }
+
+            if (showAdvantagePopup) {
+                DiceRollAdvantagePopup(
+                    onAdvantage = { onRoll(AdvantageType.ADVANTAGE); showAdvantagePopup = false },
+                    onDisadvantage = { onRoll(AdvantageType.DISADVANTAGE); showAdvantagePopup = false },
+                    onDismiss = { showAdvantagePopup = false },
+                    hazeState = popupHazeState ?: hazeState,
+                    isOled = isOled,
+                    settingsViewModel = settingsViewModel,
+                    isCircular = true
+                )
+            }
+        }
+
+        Spacer(Modifier.width(20.dp))
+
+        // Successes (Green) - 3 squares, filled from center (LTR)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            repeat(3) { index ->
+                val isFilled = successes > index
+                DeathSaveSquare(
+                    isFilled = isFilled,
+                    color = Color(0xFF00C46F),
+                    onClick = {
+                        PlatformUtils.performHapticFeedback(HapticType.CLICK)
+                        val newUsed = if (isFilled) successes - 1 else successes + 1
+                        onSuccessChange(newUsed.coerceIn(0, 3))
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DeathSaveSquare(
+    isFilled: Boolean,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(if (isFilled) color else color.copy(alpha = 0.1f))
+            .border(1.dp, color.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+            .clickable { onClick() }
+    )
 }
 
 @Composable

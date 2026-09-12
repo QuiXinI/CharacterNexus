@@ -58,6 +58,10 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -452,19 +456,42 @@ fun DynamicFieldItem(
         toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
     }
 
-    LaunchedEffect(imeBottomPx, contentValue.selection, textLayoutResult, isFocused) {
-        if (!isFocused) return@LaunchedEffect
-        val layoutResult = textLayoutResult ?: return@LaunchedEffect
+    val lastCursorOffset = remember { mutableIntStateOf(-1) }
+    val lastImeHeight = remember { mutableIntStateOf(-1) }
 
-        if (layoutResult.layoutInput.text.text == contentValue.text && contentValue.selection.collapsed) {
-            val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
-            contentBringIntoViewRequester.bringIntoView(
-                cursorRect.copy(
-                    top = cursorRect.top - scrollMarginPx,
-                    bottom = cursorRect.bottom + scrollMarginPx
-                )
-            )
+    LaunchedEffect(contentValue.selection.start, contentValue.selection.end, isFocused) {
+        if (!isFocused) {
+            lastCursorOffset.intValue = -1
+            return@LaunchedEffect
         }
+        
+        snapshotFlow { Pair(textLayoutResult, imeBottomPx) }
+            .filter { (layout, _) -> layout != null && layout.layoutInput.text.text == contentValue.text }
+            .collect { (layoutResult, imeHeight) ->
+                val currentOffset = contentValue.selection.start
+                val selectionChanged = currentOffset != lastCursorOffset.intValue
+                val imeChanged = kotlin.math.abs(imeHeight - lastImeHeight.intValue) > 10
+                
+                if ((selectionChanged || imeChanged) && contentValue.selection.collapsed) {
+                    val layout = layoutResult!!
+                    val cursorRect = layout.getCursorRect(currentOffset)
+                    
+                    // Constrain the margin to not exceed the actual field bounds to prevent "bouncing" at edges
+                    val fieldHeight = layout.size.height.toFloat()
+                    val actualTopMargin = kotlin.math.min(scrollMarginPx, cursorRect.top)
+                    val actualBottomMargin = kotlin.math.min(scrollMarginPx, fieldHeight - cursorRect.bottom)
+                    
+                    lastCursorOffset.intValue = currentOffset
+                    lastImeHeight.intValue = imeHeight
+                    
+                    contentBringIntoViewRequester.bringIntoView(
+                        cursorRect.copy(
+                            top = cursorRect.top - actualTopMargin,
+                            bottom = cursorRect.bottom + actualBottomMargin
+                        )
+                    )
+                }
+            }
     }
 
     LaunchedEffect(imeBottomPx, isTitleFocused) {
@@ -1049,19 +1076,42 @@ fun DynamicFieldFullscreenContent(
         toolbarState = Triple(contentValue, true, contentValue.selection.length > 0)
     }
 
-    LaunchedEffect(imeBottomPx, contentValue.selection, textLayoutResult, isFocused) {
-        if (!isFocused) return@LaunchedEffect
-        val layoutResult = textLayoutResult ?: return@LaunchedEffect
-        
-        if (layoutResult.layoutInput.text.text == contentValue.text && contentValue.selection.collapsed) {
-            val cursorRect = layoutResult.getCursorRect(contentValue.selection.start)
-            contentBringIntoViewRequester.bringIntoView(
-                cursorRect.copy(
-                    top = cursorRect.top - scrollMarginPx,
-                    bottom = cursorRect.bottom + scrollMarginPx
-                )
-            )
+    val lastCursorOffset = remember { mutableIntStateOf(-1) }
+    val lastImeHeight = remember { mutableIntStateOf(-1) }
+
+    LaunchedEffect(contentValue.selection.start, contentValue.selection.end, isFocused) {
+        if (!isFocused) {
+            lastCursorOffset.intValue = -1
+            return@LaunchedEffect
         }
+        
+        snapshotFlow { Pair(textLayoutResult, imeBottomPx) }
+            .filter { (layout, _) -> layout != null && layout.layoutInput.text.text == contentValue.text }
+            .collect { (layoutResult, imeHeight) ->
+                val currentOffset = contentValue.selection.start
+                val selectionChanged = currentOffset != lastCursorOffset.intValue
+                val imeChanged = kotlin.math.abs(imeHeight - lastImeHeight.intValue) > 10
+                
+                if ((selectionChanged || imeChanged) && contentValue.selection.collapsed) {
+                    val layout = layoutResult!!
+                    val cursorRect = layout.getCursorRect(currentOffset)
+                    
+                    // Constrain the margin to not exceed the actual field bounds to prevent "bouncing" at edges
+                    val fieldHeight = layout.size.height.toFloat()
+                    val actualTopMargin = kotlin.math.min(scrollMarginPx, cursorRect.top)
+                    val actualBottomMargin = kotlin.math.min(scrollMarginPx, fieldHeight - cursorRect.bottom)
+                    
+                    lastCursorOffset.intValue = currentOffset
+                    lastImeHeight.intValue = imeHeight
+                    
+                    contentBringIntoViewRequester.bringIntoView(
+                        cursorRect.copy(
+                            top = cursorRect.top - actualTopMargin,
+                            bottom = cursorRect.bottom + actualBottomMargin
+                        )
+                    )
+                }
+            }
     }
 
     LaunchedEffect(imeBottomPx, isTitleFocused) {

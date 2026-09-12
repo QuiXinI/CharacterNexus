@@ -433,7 +433,8 @@ fun DiceRollAdvantagePopup(
     isOled: Boolean = false,
     widthMultiplier: Float = 1f,
     modifier: Modifier = Modifier,
-    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    isCircular: Boolean = false
 ) {
     Popup(
         onDismissRequest = onDismiss,
@@ -449,21 +450,60 @@ fun DiceRollAdvantagePopup(
 
         Surface(
             modifier = modifier
-                .widthIn(min = 160.dp)
-                .fillMaxWidth(widthMultiplier)
-                .outerShadow(RoundedCornerShape(12.dp), blur = 8.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .then(if (isCircular) Modifier.size(48.dp) else Modifier.widthIn(min = 160.dp).fillMaxWidth(widthMultiplier))
+                .outerShadow(if (isCircular) CircleShape else RoundedCornerShape(12.dp), blur = 8.dp)
+                .clip(if (isCircular) CircleShape else RoundedCornerShape(12.dp))
                 .hazePopover(
                     state = hazeState,
                     blurRadius = blurRadius,
                     isOled = isOled
                 ),
-            shape = RoundedCornerShape(12.dp),
-            color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.2f) else colorScheme.surface,
+            shape = if (isCircular) CircleShape else RoundedCornerShape(12.dp),
+            color = if (isOled) Color.Black else if (hazeState != null) colorScheme.surface.copy(alpha = 0.4f) else colorScheme.surface,
             tonalElevation = 8.dp
         ) {
-            Row(
-                modifier = Modifier.padding(2.dp).height(IntrinsicSize.Min),
+            if (isCircular) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    IconButton(
+                        onClick = { onAdvantage(); onDismiss() },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowUp,
+                            null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                                .graphicsLayer(alpha = 0.99f)
+                                .drawWithContent {
+                                    drawContent()
+                                    drawRect(advBrush, blendMode = BlendMode.SrcIn)
+                                }
+                        )
+                    }
+                    IconButton(
+                        onClick = { onDisadvantage(); onDismiss() },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(20.dp)
+                                .graphicsLayer(alpha = 0.99f)
+                                .drawWithContent {
+                                    drawContent()
+                                    drawRect(disBrush, blendMode = BlendMode.SrcIn)
+                                }
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.padding(2.dp).height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -535,6 +575,7 @@ fun DiceRollAdvantagePopup(
                                 }
                         )
                     }
+                }
             }
         }
     }
