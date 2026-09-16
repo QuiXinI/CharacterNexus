@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.text.input.KeyboardType
@@ -160,6 +161,28 @@ fun CharacterSettingsContent(
                     level = state.level.toIntOrNull() ?: 1
                 )
             }
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.compositeOver(MaterialTheme.colorScheme.background),
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp
+                )
+            ) {
+                Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            }
         }
     }
 }
@@ -168,26 +191,6 @@ fun CharacterSettingsContent(
 @Composable
 fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, String>) {
     val colorScheme = MaterialTheme.colorScheme
-
-    var lastSavedName by remember { mutableStateOf(state.name) }
-    var lastSavedRace by remember { mutableStateOf(state.race) }
-    var lastSavedLevel by remember { mutableStateOf(state.level) }
-    var lastSavedExperience by remember { mutableStateOf(state.experience) }
-    var lastSavedProficiency by remember { mutableStateOf(state.proficiencyBonus) }
-    var lastSavedMulticlass by remember { mutableStateOf(state.isMulticlassHP) }
-    var lastSavedClasses by remember { mutableStateOf(state.classes) }
-    var lastSavedBaseClass by remember { mutableStateOf(state.characterClass) }
-    var lastSavedJackOfAllTrades by remember { mutableStateOf(state.isJackOfAllTrades) }
-
-    val isDirty = state.name != lastSavedName ||
-            state.race != lastSavedRace ||
-            state.level != lastSavedLevel ||
-            state.experience != lastSavedExperience ||
-            state.proficiencyBonus != lastSavedProficiency ||
-            state.isMulticlassHP != lastSavedMulticlass ||
-            state.classes != lastSavedClasses ||
-            state.characterClass != lastSavedBaseClass ||
-            state.isJackOfAllTrades != lastSavedJackOfAllTrades
 
     Column(
         modifier = Modifier
@@ -428,29 +431,7 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
             }
         }
 
-        if (isDirty) {
-            Button(
-                onClick = {
-                    lastSavedName = state.name
-                    lastSavedRace = state.race
-                    lastSavedLevel = state.level
-                    lastSavedExperience = state.experience
-                    lastSavedProficiency = state.proficiencyBonus
-                    lastSavedMulticlass = state.isMulticlassHP
-                    lastSavedClasses = state.classes
-                    lastSavedBaseClass = state.characterClass
-                    lastSavedJackOfAllTrades = state.isJackOfAllTrades
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Check, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Сохранить")
-            }
-        }
-
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(100.dp))
     }
 }
 

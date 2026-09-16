@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import ru.quasaris.characternexus.model.CharacterFolder
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.util.FolderColors
+import ru.quasaris.characternexus.util.charactersCountLabel
 import androidx.compose.foundation.isSystemInDarkTheme
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -46,7 +47,7 @@ fun FolderCard(
     val rotation by animateFloatAsState(if (folder.isExpanded) 90f else 0f)
 
     val folderBackground = FolderColors.getThemeAdaptedColor(folder.colorArgb, isDark)
-        ?: colorScheme.primary.copy(alpha = 0.1f)
+        ?: colorScheme.primary.copy(alpha = 0.4f)
     
     val containerColor = if (isSelected) {
         colorScheme.primaryContainer
@@ -55,7 +56,7 @@ fun FolderCard(
         else colorScheme.primary.copy(alpha = 0.1f)
     } else {
         if (folder.colorArgb != null) FolderColors.getCardContainerColor(folderBackground, isDark)
-        else colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        else colorScheme.surfaceContainerLow
     }
     
     val iconBackground = if (folder.colorArgb != null) folderBackground else colorScheme.primary.copy(alpha = 0.1f)
@@ -125,7 +126,7 @@ fun FolderCard(
                         maxLines = 1
                     )
                     Text(
-                        text = "$characterCount персонажей",
+                        text = charactersCountLabel(characterCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant
                     )

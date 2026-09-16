@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbar
@@ -60,6 +61,11 @@ fun ResourceConfigDialog(
     asOverlay: Boolean = false
 ) {
     var state by remember { mutableStateOf(resource) }
+    
+    LaunchedEffect(state) {
+        onSave(state)
+    }
+
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     
@@ -68,11 +74,6 @@ fun ResourceConfigDialog(
         onDismiss()
     }
     
-    val handleSave = {
-        focusManager.clearFocus()
-        onSave(state)
-    }
-
     var sliderStepText by remember { mutableStateOf(resource.sliderStep?.toString() ?: "") }
     var shortRestAll by remember { mutableStateOf(resource.shortRest.lowercase() == "all" || resource.shortRest.lowercase() == "все") }
     var longRestAll by remember { mutableStateOf(resource.longRest.lowercase() == "all" || resource.longRest.lowercase() == "все") }
@@ -91,7 +92,11 @@ fun ResourceConfigDialog(
     if (isDesktop || asOverlay) {
         ResourceConfigDialogContent(
             state = state,
-            onStateChange = { state = it },
+            onStateChange = { newState ->
+                state = newState
+                val finalState = newState.copy(sliderStep = sliderStepText.toDoubleOrNull())
+                onSave(finalState)
+            },
             sliderStepText = sliderStepText,
             onSliderStepTextChange = { sliderStepText = it },
             shortRestAll = shortRestAll,
@@ -102,10 +107,6 @@ fun ResourceConfigDialog(
             onDawnRestAllChange = { dawnRestAll = it },
             isPremium = isPremium,
             onDismiss = handleDismiss,
-            onSave = {
-                state = state.copy(sliderStep = sliderStepText.toDoubleOrNull())
-                handleSave()
-            },
             onDelete = { resourceToDelete ->
                 onDelete(resourceToDelete)
                 onDismiss()
@@ -126,7 +127,11 @@ fun ResourceConfigDialog(
             DialogDimStyle(0f)
             ResourceConfigDialogContent(
                 state = state,
-                onStateChange = { state = it },
+                onStateChange = { newState ->
+                    state = newState
+                    val finalState = newState.copy(sliderStep = sliderStepText.toDoubleOrNull())
+                    onSave(finalState)
+                },
                 sliderStepText = sliderStepText,
                 onSliderStepTextChange = { sliderStepText = it },
                 shortRestAll = shortRestAll,
@@ -137,10 +142,6 @@ fun ResourceConfigDialog(
                 onDawnRestAllChange = { dawnRestAll = it },
                 isPremium = isPremium,
                 onDismiss = handleDismiss,
-                onSave = {
-                    state = state.copy(sliderStep = sliderStepText.toDoubleOrNull())
-                    handleSave()
-                },
                 onDelete = { resourceToDelete ->
                     onDelete(resourceToDelete)
                     onDismiss()
@@ -171,7 +172,6 @@ fun ResourceConfigDialogContent(
     onDawnRestAllChange: (Boolean) -> Unit,
     isPremium: Boolean,
     onDismiss: () -> Unit,
-    onSave: () -> Unit,
     onDelete: (DynamicContentBlock.Resource) -> Unit,
     forceBlurEnabled: Boolean,
     hazeState: HazeState?,
@@ -201,7 +201,7 @@ fun ResourceConfigDialogContent(
             dawnRestAll = dawnRestAll,
             onDawnRestAllChange = onDawnRestAllChange,
             isPremium = isPremium,
-            onSave = onSave,
+            onDismiss = onDismiss,
             onDelete = { showDeleteConfirm = true }
         )
     }
@@ -340,7 +340,7 @@ fun ResourceConfigDialogInner(
     dawnRestAll: Boolean,
     onDawnRestAllChange: (Boolean) -> Unit,
     isPremium: Boolean,
-    onSave: () -> Unit,
+    onDismiss: () -> Unit,
     onDelete: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -567,15 +567,25 @@ fun ResourceConfigDialogInner(
         }
 
         Button(
-            onClick = onSave,
+            onClick = onDismiss,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(16.dp)
                 .fillMaxWidth()
                 .height(56.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.compositeOver(MaterialTheme.colorScheme.background),
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp,
+                focusedElevation = 0.dp,
+                hoveredElevation = 0.dp
+            )
         ) {
-            Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
 }

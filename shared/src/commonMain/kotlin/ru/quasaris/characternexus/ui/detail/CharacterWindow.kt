@@ -73,6 +73,7 @@ import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.tabs.*
+import ru.quasaris.characternexus.tabs.cargo.CargoConfigDialog
 import ru.quasaris.characternexus.tabs.attacks.AttacksTab
 import ru.quasaris.characternexus.tabs.spells.SpellsTab
 import ru.quasaris.characternexus.HeaderCode.*
@@ -188,7 +189,7 @@ fun CharacterWindow(
     val totalPages = 10000
     val initialPage = totalPages / 2 - (totalPages / 2 % tabs.size)
     val pagerState = rememberPagerState(initialPage = initialPage) { totalPages }
-    
+
     val desktopTabs = remember(tabs) { tabs.filter { it != CharacterTab.STATS } }
     val desktopPagerState = rememberPagerState(
         initialPage = 10000 / 2 - (10000 / 2 % desktopTabs.size)
@@ -243,12 +244,12 @@ fun CharacterWindow(
         state.handleRestoration(restType, state.statsMap)
     }
 
-    val isAnyFullscreenDialogOpen = state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed || 
-            state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings || 
-            state.showSpellSettings || state.imageToCrop != null || state.isBonusConfigOpen || 
+    val isAnyFullscreenDialogOpen = state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed ||
+            state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings ||
+            state.showSpellSettings || state.imageToCrop != null || state.isBonusConfigOpen ||
             state.isAttackConfigOpen || state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
             state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen || state.isSpellbookSelectionOpen ||
-            state.isArmorClassSubDialogOpen || state.isInitiativeSubDialogOpen || state.isSpeedSubDialogOpen || 
+            state.isArmorClassSubDialogOpen || state.isInitiativeSubDialogOpen || state.isSpeedSubDialogOpen ||
             state.isResourceConfigOpen || state.isPotionConfigOpen || state.isPotionSelectionOpen || state.showHpDialog
 
     BoxWithConstraints(
@@ -271,7 +272,7 @@ fun CharacterWindow(
             }
         }
         val isDesktop = isDesktopMode
-        
+
         // On Desktop, side overlays don't block FAB/Overlay. On Mobile, everything does.
         val isTrulyFullscreenBlocking = if (isDesktop) {
             state.imageToCrop != null
@@ -282,16 +283,16 @@ fun CharacterWindow(
         LaunchedEffect(isTrulyFullscreenBlocking) {
             onFullscreenDialogOpenChange(isTrulyFullscreenBlocking)
         }
-        
+
         val activePagerState = if (isDesktop) desktopPagerState else pagerState
-        
+
         Scaffold(
             containerColor = colorScheme.background,
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(rootFocusRequester)
-                .onFocusChanged { 
-                    isRootFocused = it.isFocused 
+                .onFocusChanged {
+                    isRootFocused = it.isFocused
                     isRootHasFocus = it.hasFocus
                     if (!it.isFocused && !it.hasFocus && !isAnyFullscreenDialogOpen && !isDisposed) {
                         try {
@@ -305,7 +306,7 @@ fun CharacterWindow(
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown) {
                         val action = keybinds.entries.find { it.value.keyCode == event.key.keyCode }?.key
-                        
+
                         if (event.key == Key.Escape) {
                             val isAnyDesktopOverlayOpen = isDesktop && (isAnyFullscreenDialogOpen || state.isAnyPanelVisible)
                             if (isAnyDesktopOverlayOpen) {
@@ -473,7 +474,7 @@ fun CharacterWindow(
                             }
                         } else false
                     } else false
-            },
+                },
             topBar = {
                 if (!isDesktop) {
                     val currentTab = tabs[pagerState.currentPage % tabs.size]
@@ -558,7 +559,7 @@ fun CharacterWindow(
 
     TabSelectionSheet(
         showTabSheet = showTabSheet,
-        onDismissRequest = { 
+        onDismissRequest = {
             showTabSheet = false
         },
         sheetState = sheetState,
@@ -577,7 +578,7 @@ fun CharacterWindow(
                 scope.launch {
                     val croppedBytes = ImageProcessor.encodeToByteArray(cropped)
                     val originalBytes = state.bytesToCrop!!
-                    
+
                     ImageManager.saveCharacterImages(
                         characterUuid = character.uuid,
                         originalBytes = originalBytes,
@@ -707,16 +708,16 @@ fun CharacterDetailTopBar(
                 onExportSheetClick = { onExportSheetClick(); state.showAvatarMenu = false },
                 onExportPortraitClick = { onExportPortraitClick(); state.showAvatarMenu = false },
                 onDeletePortraitClick = { state.characterImageData = null; state.showAvatarMenu = false },
-                onSettingsClick = { 
+                onSettingsClick = {
                     state.closeFullscreenDialogs()
-                    state.showCharacterSettings = true; state.showAvatarMenu = false 
+                    state.showCharacterSettings = true; state.showAvatarMenu = false
                 },
                 onNavigateBack = onNavigateBack,
                 exhaustion = state.exhaustion,
                 hasInspiration = state.hasInspiration,
                 onInspirationChange = { state.hasInspiration = it },
-                onShortRest = { 
-                    state.isRestPanelVisible = !state.isRestPanelVisible 
+                onShortRest = {
+                    state.isRestPanelVisible = !state.isRestPanelVisible
                 },
                 onLongRest = { handleRestoration("long") },
                 onDawn = { handleRestoration("dawn") },
@@ -846,8 +847,8 @@ fun CharacterDetailExpandingPanels(
                     tempHp = state.tempHp,
                     onTempHpChange = { state.tempHp = it },
                     currentHp = state.currentHp,
-                    onCurrentHpChange = { 
-                        state.currentHp = it 
+                    onCurrentHpChange = {
+                        state.currentHp = it
                         if ((it.toIntOrNull() ?: 0) > 0) {
                             state.deathSaveSuccesses = 0
                             state.deathSaveFailures = 0
@@ -875,8 +876,8 @@ fun CharacterDetailExpandingPanels(
                     onOpenHealthSettings = { state.showHealthSettings = true },
                     deathSaveSuccesses = state.deathSaveSuccesses,
                     deathSaveFailures = state.deathSaveFailures,
-                    onDeathSaveSuccessesChange = { 
-                        state.deathSaveSuccesses = it 
+                    onDeathSaveSuccessesChange = {
+                        state.deathSaveSuccesses = it
                     },
                     onDeathSaveFailuresChange = { state.deathSaveFailures = it },
                     onDeathRoll = { advantage ->
@@ -900,7 +901,7 @@ fun CharacterDetailExpandingPanels(
                             isCriticalFailure = res == 1
                         )
                         onRoll(rollResult)
-                        
+
                         if (res == 20) {
                             state.deathSaveSuccesses = 3
                             state.deathSaveFailures = 0
@@ -1063,7 +1064,7 @@ fun CharacterDetailMainContent(
     val colorScheme = MaterialTheme.colorScheme
 
     val desktopTabs = remember(tabs) { tabs.filter { it != CharacterTab.STATS } }
-    
+
     val leftHaze = remember { HazeState() }
     val rightHaze = remember { HazeState() }
     val density = LocalDensity.current
@@ -1082,7 +1083,7 @@ fun CharacterDetailMainContent(
                             val position = event.changes.first().position
                             val thresholdPx = with(density) { Dimensions.DesktopLeftColumnWidth.toPx() }
                             val newSection = if (position.x < thresholdPx) "left" else "right"
-                            
+
                             if (state.activeSection != newSection) {
                                 state.activeSection = newSection
                                 rootFocusRequester.requestFocus()
@@ -1121,16 +1122,16 @@ fun CharacterDetailMainContent(
                         level = state.level, experience = state.experience, nextLevelExp = state.nextLevelExp,
                         characterImageData = state.characterImageData,
                         characterUuid = state.characterUuid,
-                        onAvatarClick = { 
-                            state.showAvatarMenu = !state.showAvatarMenu 
+                        onAvatarClick = {
+                            state.showAvatarMenu = !state.showAvatarMenu
                         },
-                        onLevelClick = { 
-                            state.isLevelPanelVisible = !state.isLevelPanelVisible 
+                        onLevelClick = {
+                            state.isLevelPanelVisible = !state.isLevelPanelVisible
                         },
                         onOpenDrawer = onOpenDrawer,
                         activeACValue = state.acValue,
                         onACClick = { state.isShieldActive = !state.isShieldActive },
-                        onACLongClick = { 
+                        onACLongClick = {
                             if (state.useNewAC) {
                                 state.closeFullscreenDialogs()
                                 state.showEnhancedAC = true
@@ -1146,7 +1147,7 @@ fun CharacterDetailMainContent(
                             val advantage = if (activeEntry?.hasAdvantage == true) AdvantageType.ADVANTAGE else AdvantageType.NONE
                             onRoll(DiceRoller.roll("Инициатива", baseInit, bonuses = activeEntry?.bonuses ?: emptyList(), stats = state.statsMap, exhaustion = state.exhaustion, sourceType = RollSourceType.ABILITY, advantageType = advantage, advantageLogic = state.advantageLogic))
                         },
-                        onInitLongClick = { 
+                        onInitLongClick = {
                             if (state.useNewInit) {
                                 state.closeFullscreenDialogs()
                                 state.showEnhancedInit = true
@@ -1156,12 +1157,12 @@ fun CharacterDetailMainContent(
                         },
                         currentHp = state.currentHp, maxHp = state.maxHp, tempHp = state.tempHp,
                         healthColor = state.healthColor, healthIcon = state.healthIcon,
-                        onHealthClick = { 
-                            state.isHealthPanelVisible = !state.isHealthPanelVisible 
+                        onHealthClick = {
+                            state.isHealthPanelVisible = !state.isHealthPanelVisible
                         },
                         conditionsCount = state.exhaustion.toString(),
                         selectedConditions = state.selectedConditions,
-                        onConditionsClick = { 
+                        onConditionsClick = {
                             if (state.useNewCond) {
                                 state.closeFullscreenDialogs()
                                 state.showEnhancedCond = true
@@ -1170,7 +1171,7 @@ fun CharacterDetailMainContent(
                             }
                         },
                         activeSpeedValue = state.speedValue,
-                        onSpeedClick = { 
+                        onSpeedClick = {
                             if (state.useNewSpeed) {
                                 state.closeFullscreenDialogs()
                                 state.showEnhancedSpeed = true
@@ -1184,22 +1185,22 @@ fun CharacterDetailMainContent(
                         onExportSheetClick = { onExportSheetClick(); state.showAvatarMenu = false },
                         onExportPortraitClick = { onExportPortraitClick(); state.showAvatarMenu = false },
                         onDeletePortraitClick = { state.characterImageData = null; state.showAvatarMenu = false },
-                        onSettingsClick = { 
+                        onSettingsClick = {
                             state.closeFullscreenDialogs()
-                            state.showCharacterSettings = true; state.showAvatarMenu = false 
+                            state.showCharacterSettings = true; state.showAvatarMenu = false
                         },
                         onNavigateBack = onNavigateBack,
                         exhaustion = state.exhaustion,
                         hasInspiration = state.hasInspiration,
                         onInspirationChange = { state.hasInspiration = it },
-                        onShortRest = { 
-                            state.isRestPanelVisible = !state.isRestPanelVisible 
+                        onShortRest = {
+                            state.isRestPanelVisible = !state.isRestPanelVisible
                         },
                         onLongRest = { handleRestoration("long") },
                         onDawn = { handleRestoration("dawn") },
                         showRestPopup = state.showRestPopup,
-                        onShowRestPopupChange = { 
-                            state.showRestPopup = it 
+                        onShowRestPopupChange = {
+                            state.showRestPopup = it
                         },
                         hazeState = leftHaze,
                         blurPopups = blurPopups,
@@ -1248,9 +1249,9 @@ fun CharacterDetailMainContent(
                         attributeModifiers = state.attributeModifiers,
                         statsMap = state.statsMap,
                         exhaustion = state.exhaustion,
-                        onBonusConfigOpenChange = { 
+                        onBonusConfigOpenChange = {
                             if (it) state.closeFullscreenDialogs()
-                            state.isBonusConfigOpen = it 
+                            state.isBonusConfigOpen = it
                         },
                         advantageLogic = state.advantageLogic,
                         state = state,
@@ -1324,14 +1325,15 @@ fun CharacterDetailMainContent(
 
             // Desktop-specific overlays for the right column
             if (isDesktop) {
-                val isDialogVisible = state.showSpellSettings || state.isAttackConfigOpen || 
-                            state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
-                            state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen || 
-                            state.isSpellbookSelectionOpen || state.isResourceConfigOpen ||
-                            state.isPotionConfigOpen || state.isPotionSelectionOpen ||
-                            state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed || 
-                            state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings ||
-                            state.isBonusConfigOpen || state.showHpDialog
+                val isDialogVisible = state.showSpellSettings || state.isAttackConfigOpen ||
+                        state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
+                        state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen ||
+                        state.isSpellbookSelectionOpen || state.isResourceConfigOpen ||
+                        state.isPotionConfigOpen || state.isPotionSelectionOpen ||
+                        state.isCargoConfigOpen ||
+                        state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed ||
+                        state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings ||
+                        state.isBonusConfigOpen || state.showHpDialog
 
                 SectionOverlay(
                     visible = isDialogVisible,
@@ -1462,6 +1464,8 @@ fun TabContent(
             SkillsFeatsTab(
                 skillsAndTraits = state.skillsAndTraits,
                 onSkillsAndTraitsChange = { state.skillsAndTraits = it },
+                Cargo = state.Cargo,
+                onCargoChange = { state.Cargo = it },
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
                 forceBlurEnabled = forceBlurEnabled,
@@ -1478,7 +1482,8 @@ fun TabContent(
                 statsMap = state.statsMap,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
-                state = state
+                state = state,
+                isDesktop = isDesktop
             )
         }
         CharacterTab.INVENTORY -> {

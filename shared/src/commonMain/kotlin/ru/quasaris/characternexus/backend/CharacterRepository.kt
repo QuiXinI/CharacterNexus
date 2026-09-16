@@ -277,7 +277,8 @@ class CharacterRepository(
     }
 
     private fun updateGlobalOrderAfterMove(uuids: List<String>, targetFolderUuid: String?, afterUuid: String? = null) {
-        val currentOrder = _globalOrderState.value.toMutableList()
+        val originalOrder = _globalOrderState.value
+        val currentOrder = originalOrder.toMutableList()
         
         // Find all descendants if any of the moved items are folders
         val allMovedUuids = mutableListOf<String>()
@@ -294,30 +295,46 @@ class CharacterRepository(
             }
         }
 
+        // Determine move direction to decide if we insert before or after target
+        val firstMovedId = uuids.firstOrNull()
+        val movedOldIndex = firstMovedId?.let { originalOrder.indexOf(it) } ?: -1
+        val afterIndex = afterUuid?.let { originalOrder.indexOf(it) } ?: -1
+        val isMovingUp = afterUuid != null && movedOldIndex != -1 && afterIndex != -1 && movedOldIndex > afterIndex
+
         currentOrder.removeAll { it in allMovedUuids }
         
         if (afterUuid != null) {
-            // Find the last descendant of the afterUuid if it's a folder
-            var lastDescendant = afterUuid
-            fun findLast(p: String) {
-                val chars = _charactersSummaryState.value.filter { it.folderUuid == p }.map { it.uuid }
-                val folders = _foldersState.value.filter { it.parentFolderUuid == p }.map { it.uuid }
-                
-                // We want the last one in the current global order
-                val children = (chars + folders).sortedBy { currentOrder.indexOf(it).let { if (it == -1) Int.MAX_VALUE else it } }
-                val last = children.lastOrNull()
-                if (last != null) {
-                    lastDescendant = last
-                    findLast(last)
+            if (isMovingUp) {
+                // When moving up, place exactly at the target's position
+                val index = currentOrder.indexOf(afterUuid)
+                if (index != -1) {
+                    currentOrder.addAll(index, allMovedUuids)
+                } else {
+                    currentOrder.addAll(allMovedUuids)
                 }
-            }
-            findLast(afterUuid)
-            
-            val index = currentOrder.indexOf(lastDescendant)
-            if (index != -1) {
-                currentOrder.addAll(index + 1, allMovedUuids)
             } else {
-                currentOrder.addAll(allMovedUuids)
+                // When moving down, place after the target and all its descendants (if it's a folder)
+                var lastDescendant = afterUuid
+                fun findLast(p: String) {
+                    val chars = _charactersSummaryState.value.filter { it.folderUuid == p }.map { it.uuid }
+                    val folders = _foldersState.value.filter { it.parentFolderUuid == p }.map { it.uuid }
+                    
+                    // We want the last one in the current global order
+                    val children = (chars + folders).sortedBy { currentOrder.indexOf(it).let { if (it == -1) Int.MAX_VALUE else it } }
+                    val last = children.lastOrNull()
+                    if (last != null) {
+                        lastDescendant = last
+                        findLast(last)
+                    }
+                }
+                findLast(afterUuid)
+                
+                val index = currentOrder.indexOf(lastDescendant)
+                if (index != -1) {
+                    currentOrder.addAll(index + 1, allMovedUuids)
+                } else {
+                    currentOrder.addAll(allMovedUuids)
+                }
             }
         } else if (targetFolderUuid != null) {
             val folderIndex = currentOrder.indexOf(targetFolderUuid)

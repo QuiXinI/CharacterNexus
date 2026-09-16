@@ -74,6 +74,11 @@ fun SpellbookSelectionDialog(
         onDismiss()
     }
 
+    LaunchedEffect(currentSelected, currentPrepared, isSpellbookEnabled) {
+        val finalPrepared = if (isSpellbookEnabled) currentPrepared else currentSelected
+        onSave(currentSelected.toList(), finalPrepared.toList())
+    }
+
     if (isDesktop) {
         SpellbookSelectionContent(
             spellbookManager = spellbookManager,
@@ -351,12 +356,16 @@ fun SpellbookSelectionContent(
             )
 
             Button(
-                onClick = onSave,
+                onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.surfaceVariant,
+                    contentColor = colorScheme.onSurfaceVariant
+                )
             ) {
                 val count = if (isBookMode) currentPrepared.size else currentSelected.size
-                Text("Выбрать ($count)", fontWeight = FontWeight.Bold)
+                Text("Закрыть ($count)", fontWeight = FontWeight.Bold)
             }
         }
     }

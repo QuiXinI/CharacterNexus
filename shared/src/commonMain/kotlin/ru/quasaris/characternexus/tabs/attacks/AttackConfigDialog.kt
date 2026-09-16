@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import ru.quasaris.characternexus.ui.DialogDimStyle
@@ -65,6 +66,11 @@ fun AttackConfigDialog(
     hazeState: HazeState? = null
 ) {
     var state by remember { mutableStateOf(attack) }
+    
+    LaunchedEffect(state) {
+        onSave(state)
+    }
+
     var showDeleteConfirm by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     
@@ -73,11 +79,6 @@ fun AttackConfigDialog(
         onDismiss()
     }
     
-    val handleSave = {
-        focusManager.clearFocus()
-        onSave(state)
-    }
-
     if (isDesktop) {
         AttackConfigDialogContent(
             attack = state,
@@ -85,7 +86,6 @@ fun AttackConfigDialog(
             proficiencyBonus = proficiencyBonus,
             attributeModifiers = attributeModifiers,
             onDismiss = handleDismiss,
-            onSave = handleSave,
             onDelete = { showDeleteConfirm = true },
             forceBlurEnabled = forceBlurEnabled,
             exhaustion = exhaustion,
@@ -105,7 +105,6 @@ fun AttackConfigDialog(
                 proficiencyBonus = proficiencyBonus,
                 attributeModifiers = attributeModifiers,
                 onDismiss = handleDismiss,
-                onSave = handleSave,
                 onDelete = { showDeleteConfirm = true },
                 forceBlurEnabled = forceBlurEnabled,
                 exhaustion = exhaustion,
@@ -136,7 +135,6 @@ fun AttackConfigDialogContent(
     proficiencyBonus: Int,
     attributeModifiers: Map<Attribute, Int>,
     onDismiss: () -> Unit,
-    onSave: () -> Unit,
     onDelete: () -> Unit,
     forceBlurEnabled: Boolean,
     exhaustion: Int,
@@ -402,20 +400,29 @@ fun AttackConfigDialogContent(
                     Text("Удалить")
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(100.dp))
             }
 
-            // Save FAB or Button (Optional, usually dialogs have Save/Cancel, but let's add a Save button)
             Button(
-                onClick = onSave,
+                onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .padding(16.dp)
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                    contentColor = colorScheme.onSurfaceVariant
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp
+                )
             ) {
-                Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

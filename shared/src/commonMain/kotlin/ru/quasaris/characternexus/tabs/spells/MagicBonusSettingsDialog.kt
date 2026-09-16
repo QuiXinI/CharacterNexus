@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
@@ -50,6 +51,11 @@ fun MagicBonusSettingsDialog(
     asOverlay: Boolean = false
 ) {
     var currentBonuses by remember { mutableStateOf(bonuses) }
+    
+    LaunchedEffect(currentBonuses) {
+        onSave(currentBonuses)
+    }
+
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     
@@ -58,11 +64,6 @@ fun MagicBonusSettingsDialog(
         onDismiss()
     }
     
-    val handleSave = {
-        focusManager.clearFocus()
-        onSave(currentBonuses)
-    }
-
     val calculation = remember(currentBonuses, baseModifier, attributeModifiers, proficiencyBonus, stats) {
         var totalFlat = baseModifier
         val allDice = mutableMapOf<Int, Int>()
@@ -82,7 +83,6 @@ fun MagicBonusSettingsDialog(
             currentBonuses = currentBonuses,
             onBonusesChange = { currentBonuses = it },
             onDismiss = handleDismiss,
-            onSave = handleSave,
             forceBlurEnabled = forceBlurEnabled,
             hazeState = hazeState,
             blurRadius = blurRadius,
@@ -102,7 +102,6 @@ fun MagicBonusSettingsDialog(
                 currentBonuses = currentBonuses,
                 onBonusesChange = { currentBonuses = it },
                 onDismiss = handleDismiss,
-                onSave = handleSave,
                 forceBlurEnabled = forceBlurEnabled,
                 hazeState = popupHazeState ?: hazeState,
                 blurRadius = blurRadius,
@@ -122,7 +121,6 @@ fun MagicBonusSettingsContent(
     currentBonuses: List<AttackBonus>,
     onBonusesChange: (List<AttackBonus>) -> Unit,
     onDismiss: () -> Unit,
-    onSave: () -> Unit,
     forceBlurEnabled: Boolean,
     hazeState: HazeState?,
     blurRadius: androidx.compose.ui.unit.Dp = 24.dp,
@@ -163,7 +161,7 @@ fun MagicBonusSettingsContent(
                 calculation = calculation,
                 currentBonuses = currentBonuses,
                 onBonusesChange = onBonusesChange,
-                onSave = onSave
+                onDismiss = onDismiss
             )
             }
         }
@@ -194,7 +192,7 @@ fun MagicBonusSettingsContent(
                 calculation = calculation,
                 currentBonuses = currentBonuses,
                 onBonusesChange = onBonusesChange,
-                onSave = onSave
+                onDismiss = onDismiss
             )
             }
         }
@@ -232,7 +230,7 @@ fun MagicBonusSettingsContent(
                 calculation = calculation,
                 currentBonuses = currentBonuses,
                 onBonusesChange = onBonusesChange,
-                onSave = onSave
+                onDismiss = onDismiss
             )
             }
         }
@@ -244,7 +242,7 @@ fun MagicBonusSettingsInner(
     calculation: Pair<Int, List<DicePart>>,
     currentBonuses: List<AttackBonus>,
     onBonusesChange: (List<AttackBonus>) -> Unit,
-    onSave: () -> Unit
+    onDismiss: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -296,15 +294,25 @@ fun MagicBonusSettingsInner(
         }
 
         Button(
-            onClick = onSave,
+            onClick = onDismiss,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(16.dp)
                 .fillMaxWidth()
                 .height(56.dp),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                contentColor = colorScheme.onSurfaceVariant
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp,
+                focusedElevation = 0.dp,
+                hoveredElevation = 0.dp
+            )
         ) {
-            Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
         }
     }
 }

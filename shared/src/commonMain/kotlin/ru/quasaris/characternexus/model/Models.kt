@@ -232,6 +232,30 @@ data class SkillBonus(
 ) : IBonus
 
 @Serializable
+enum class CreatureSize(val displayName: String, val carryMultiplier: Float) {
+    TINY("Крошечный", 0.5f),
+    SMALL("Маленький", 1.0f),
+    MEDIUM("Средний", 1.0f),
+    LARGE("Большой", 2.0f),
+    HUGE("Огромный", 4.0f),
+    GARGANTUAN("Громадный", 8.0f)
+}
+
+@Serializable
+data class CargoState(
+    val id: String = generateUuid(),
+    val size: CreatureSize = CreatureSize.MEDIUM,
+    val useOverrideSize: Boolean = false,
+    val overrideSize: CreatureSize = CreatureSize.MEDIUM,
+    val carryAttribute: Attribute = Attribute.STRENGTH,
+    val jumpAttribute: Attribute = Attribute.STRENGTH,
+    val carryBonuses: List<SimpleBonus> = emptyList(),
+    val pushBonuses: List<SimpleBonus> = emptyList(),
+    val longJumpBonuses: List<SimpleBonus> = emptyList(),
+    val highJumpBonuses: List<SimpleBonus> = emptyList()
+)
+
+@Serializable
 data class DynamicNoteState(
     val id: String = generateUuid(),
     val title: String = "",
@@ -661,6 +685,7 @@ data class Character(
     val skilledExpertise: List<String> = emptyList(),
     val statBonuses: List<StatBonus> = emptyList(),
     val skillBonuses: List<SkillBonus> = emptyList(),
+    val Cargo: CargoState = CargoState(),
     val themeSeedColorArgb: Int? = null,
     val attacks: List<AttackEntry> = emptyList(),
     val notes: List<DynamicNoteState> = listOf(DynamicNoteState()),

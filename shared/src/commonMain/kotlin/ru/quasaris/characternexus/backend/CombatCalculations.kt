@@ -57,4 +57,34 @@ object CombatCalculations {
         
         return maxOf(0, v - exhaustion * 5).toString()
     }
+
+    fun calculateCargo(state: CargoState, statsMap: Map<String, String>): Pair<Int, Int> {
+        val attrValue = statsMap[state.carryAttribute.name.lowercase()]?.toIntOrNull() ?: 10
+        val effectiveSize = if (state.useOverrideSize) state.overrideSize else state.size
+        val baseCarry = (attrValue * 15 * effectiveSize.carryMultiplier).toInt()
+        val basePush = (attrValue * 30 * effectiveSize.carryMultiplier).toInt()
+
+        val carry = applyBonuses(baseCarry, state.carryBonuses, statsMap)
+        val push = applyBonuses(basePush, state.pushBonuses, statsMap)
+
+        return carry to push
+    }
+
+    fun calculateJumping(state: CargoState, statsMap: Map<String, String>): Map<String, Int> {
+        val attrValue = statsMap[state.jumpAttribute.name.lowercase()]?.toIntOrNull() ?: 10
+        val attrMod = calculateModifier(attrValue.toString())
+
+        val runningLong = applyBonuses(attrValue, state.longJumpBonuses, statsMap)
+        val standingLong = runningLong / 2
+
+        val runningHigh = applyBonuses(3 + attrMod, state.highJumpBonuses, statsMap)
+        val standingHigh = runningHigh / 2
+
+        return mapOf(
+            "runningLong" to runningLong,
+            "standingLong" to standingLong,
+            "runningHigh" to runningHigh,
+            "standingHigh" to standingHigh
+        )
+    }
 }

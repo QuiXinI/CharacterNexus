@@ -7,6 +7,7 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.BonusConfigDialog
 import ru.quasaris.characternexus.tabs.DynamicFieldFullscreenDialog
 import ru.quasaris.characternexus.tabs.ResourceConfigDialog
+import ru.quasaris.characternexus.tabs.cargo.CargoConfigDialog
 import ru.quasaris.characternexus.tabs.potions.PotionConfigDialog
 import ru.quasaris.characternexus.tabs.potions.PotionSelectionDialog
 import ru.quasaris.characternexus.tabs.attacks.AttackConfigDialog
@@ -96,9 +97,6 @@ fun CharacterDetailDialogs(
                         state.attacks + updated
                     }
                     state.attacks = newAttacks
-                    state.isAttackConfigOpen = false
-                    state.activeAttackConfigId = null
-                    state.editingAttack = null
                 },
                 onDelete = { deleted: AttackEntry ->
                     state.attacks = state.attacks.filter { it.id != deleted.id }
@@ -128,12 +126,14 @@ fun CharacterDetailDialogs(
                     if (updated.id !in state.spellSettings.selectedSpellIds) {
                         onSpellSettingsChange(state.spellSettings.copy(selectedSpellIds = state.spellSettings.selectedSpellIds + updated.id))
                     }
+                    state.refreshTrigger++
                     state.isSpellEditorOpen = false
                     state.editingSpell = null
                 },
                 onDelete = { deleted: SpellCard ->
                     spellbookManager?.deleteSpell(deleted.id)
                     onSpellSettingsChange(state.spellSettings.copy(selectedSpellIds = state.spellSettings.selectedSpellIds - deleted.id))
+                    state.refreshTrigger++
                     state.isSpellEditorOpen = false
                     state.editingSpell = null
                 },
@@ -180,7 +180,10 @@ fun CharacterDetailDialogs(
                 forceBlurEnabled = forceBlurEnabled,
                 settingsViewModel = state.settingsViewModel,
                 statsMap = statsMap,
-                isDesktop = isDesktop
+                isDesktop = isDesktop,
+                state = state,
+                extraContent = state.activeDynamicFieldExtraContent ?: {},
+                isContentVisible = state.activeDynamicFieldContentVisible
             )
         }
 
@@ -246,8 +249,6 @@ fun CharacterDetailDialogs(
                 },
                 onSave = { updated: DynamicContentBlock.Resource ->
                     state.updateResource(updated)
-                    state.isResourceConfigOpen = false
-                    state.activeResourceConfig = null
                 },
                 onDelete = { deleted: DynamicContentBlock.Resource ->
                     state.deleteResource(deleted)
@@ -397,8 +398,6 @@ fun CharacterDetailDialogs(
                 },
                 onSave = { updated ->
                     state.updatePotion(updated)
-                    state.isPotionConfigOpen = false
-                    state.activePotionConfig = null
                 },
                 onDelete = { deleted ->
                     state.deletePotion(deleted)
@@ -436,6 +435,21 @@ fun CharacterDetailDialogs(
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
                 forceBlurEnabled = forceBlurEnabled,
+                isDesktop = isDesktop
+            )
+        }
+
+        if (state.isCargoConfigOpen) {
+            CargoConfigDialog(
+                Cargo = state.Cargo,
+                onDismiss = { state.isCargoConfigOpen = false },
+                onSave = {
+                    state.Cargo = it
+                },
+                hazeState = hazeState,
+                popupHazeState = popupHazeState,
+                forceBlurEnabled = forceBlurEnabled,
+                settingsViewModel = state.settingsViewModel,
                 isDesktop = isDesktop
             )
         }
@@ -566,9 +580,6 @@ fun CharacterDetailDialogs(
                          else -> ns
                      }
                      state.statsState = ns
-                     state.isBonusConfigOpen = false
-                     state.activeBonusConfigAttribute = null
-                     state.activeBonusConfigSkill = null
                  },
                  forceBlurEnabled = forceBlurEnabled,
                  isDesktop = isDesktop,
@@ -612,9 +623,6 @@ fun CharacterDetailDialogs(
                         skilledProficiencies = skillProficiencies,
                         skilledExpertise = skillExpertise
                     )
-                    state.isBonusConfigOpen = false
-                    state.activeBonusConfigAttribute = null
-                    state.activeBonusConfigSkill = null
                 },
                 forceBlurEnabled = forceBlurEnabled,
                 isDesktop = isDesktop,

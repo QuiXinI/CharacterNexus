@@ -226,7 +226,6 @@ fun AttacksTab(
                     attacks + updatedAttack
                 }
                 onUpdateAttacks(newAttacks)
-                editingAttack = null
             },
             onDelete = { attackToDelete ->
                 onUpdateAttacks(attacks.filter { it.id != attackToDelete.id })

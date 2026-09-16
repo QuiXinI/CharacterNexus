@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -69,7 +70,6 @@ fun SpellSettingsDialog(
     popupHazeState: HazeState? = null,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
-    val focusManager = LocalFocusManager.current
     var isMagicEnabled by remember { mutableStateOf(settings.isMagicEnabled) }
     var spellcastingAbility by remember { mutableStateOf(settings.spellcastingAbility) }
     var isSpellbookEnabled by remember { mutableStateOf(settings.isSpellbookEnabled) }
@@ -142,8 +142,11 @@ fun SpellSettingsDialog(
         }
     }
 
-    val onSave = {
-        focusManager.clearFocus()
+    LaunchedEffect(
+        isMagicEnabled, spellcastingAbility, isSpellbookEnabled, spellAttackBonuses, spellSaveDcBonuses,
+        spellMode, casterType, isMulticlass, fullCasterLevel, halfCasterLevel, thirdCasterLevel,
+        specialSlots.toList(), overrideSlots, pactSlotLevel, pactSlotsCount, isPactEnabled, allowCantripUpcast
+    ) {
         onSettingsChange(
             settings.copy(
                 isMagicEnabled = isMagicEnabled,
@@ -168,7 +171,6 @@ fun SpellSettingsDialog(
                 allowCantripUpcast = allowCantripUpcast
             )
         )
-        onDismiss()
     }
 
     if (isDesktop) {
@@ -213,7 +215,6 @@ fun SpellSettingsDialog(
             onPactSlotsCountChange = { pactSlotsCount = it },
             allowCantripUpcast = allowCantripUpcast,
             onAllowCantripUpcastChange = { allowCantripUpcast = it },
-            onSave = onSave,
             hazeState = popupHazeState ?: hazeState,
             blurRadius = blurRadius,
             showAttackBonusDialog = showAttackBonusDialog,
@@ -276,10 +277,9 @@ fun SpellSettingsDialog(
                 pactSlotsCount = pactSlotsCount,
                 onPactSlotsCountChange = { pactSlotsCount = it },
                 allowCantripUpcast = allowCantripUpcast,
-                onAllowCantripUpcastChange = { allowCantripUpcast = it },
-                onSave = onSave,
-                hazeState = popupHazeState ?: hazeState,
-                blurRadius = blurRadius,
+            onAllowCantripUpcastChange = { allowCantripUpcast = it },
+            hazeState = popupHazeState ?: hazeState,
+            blurRadius = blurRadius,
                 showAttackBonusDialog = showAttackBonusDialog,
                 onShowAttackBonusDialogChange = { showAttackBonusDialog = it },
                 showSaveDcBonusDialog = showSaveDcBonusDialog,
@@ -341,7 +341,6 @@ fun SpellSettingsDialogContent(
     onPactSlotsCountChange: (Int) -> Unit,
     allowCantripUpcast: Boolean,
     onAllowCantripUpcastChange: (Boolean) -> Unit,
-    onSave: () -> Unit,
     hazeState: HazeState? = null,
     blurRadius: androidx.compose.ui.unit.Dp = 24.dp,
     showAttackBonusDialog: Boolean = false,
@@ -815,15 +814,29 @@ fun SpellSettingsDialogContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(100.dp))
+                }
 
-                    Button(
-                        onClick = onSave,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    }
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.compositeOver(MaterialTheme.colorScheme.background),
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 0.dp,
+                        pressedElevation = 0.dp,
+                        focusedElevation = 0.dp,
+                        hoveredElevation = 0.dp
+                    )
+                ) {
+                    Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -838,7 +851,6 @@ fun SpellSettingsDialogContent(
                 onDismiss = { onShowAttackBonusDialogChange(false) },
                 onSave = {
                     onSpellAttackBonusesChange(it)
-                    onShowAttackBonusDialogChange(false)
                 },
                 forceBlurEnabled = forceBlurEnabled,
                 isDesktop = isDesktop,
@@ -859,7 +871,6 @@ fun SpellSettingsDialogContent(
                 onDismiss = { onShowSaveDcBonusDialogChange(false) },
                 onSave = {
                     onSpellSaveDcBonusesChange(it)
-                    onShowSaveDcBonusDialogChange(false)
                 },
                 forceBlurEnabled = forceBlurEnabled,
                 isDesktop = isDesktop,

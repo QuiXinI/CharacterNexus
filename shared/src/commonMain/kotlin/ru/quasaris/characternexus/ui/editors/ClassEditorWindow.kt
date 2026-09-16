@@ -58,6 +58,30 @@ fun ClassEditorWindow(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
+    LaunchedEffect(className, classId, description, hitDie, primaryAbility, parentClassId, features.toList()) {
+        if (className.isNotBlank() && classId.isNotBlank()) {
+            val json = if (isSubclass) {
+                JsonConfig.json.encodeToJsonElement(GameSubclass(
+                    id = classId,
+                    classId = parentClassId,
+                    name = className,
+                    description = JsonPrimitive(description),
+                    features = features.toList()
+                ))
+            } else {
+                JsonConfig.json.encodeToJsonElement(GameClass(
+                    id = classId,
+                    name = className,
+                    description = JsonPrimitive(description),
+                    hitDie = hitDie,
+                    primaryAbility = primaryAbility,
+                    features = features.toList()
+                ))
+            }
+            onSave(json)
+        }
+    }
+
     BackHandler(onBack = if (showRightDrawer) { { showRightDrawer = false } } else onDismiss)
     
     LaunchedEffect(className, isSubclass, features.size) {
@@ -86,29 +110,6 @@ fun ClassEditorWindow(
                 actions = {
                     IconButton(onClick = { showRightDrawer = true }) {
                         Icon(Icons.AutoMirrored.Filled.List, null, tint = colorScheme.onSurface)
-                    }
-                    Button(onClick = {
-                        val json = if (isSubclass) {
-                            JsonConfig.json.encodeToJsonElement(GameSubclass(
-                                id = classId,
-                                classId = parentClassId,
-                                name = className,
-                                description = JsonPrimitive(description),
-                                features = features.toList()
-                            ))
-                        } else {
-                            JsonConfig.json.encodeToJsonElement(GameClass(
-                                id = classId,
-                                name = className,
-                                description = JsonPrimitive(description),
-                                hitDie = hitDie,
-                                primaryAbility = primaryAbility,
-                                features = features.toList()
-                            ))
-                        }
-                        onSave(json)
-                    }, modifier = Modifier.padding(horizontal = 8.dp)) {
-                        Text("Сохранить")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -203,6 +204,22 @@ fun ClassEditorWindow(
                 }
 
                 Spacer(Modifier.height(80.dp))
+            }
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.surfaceVariant,
+                    contentColor = colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text("Закрыть", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
 
             // Right Drawer

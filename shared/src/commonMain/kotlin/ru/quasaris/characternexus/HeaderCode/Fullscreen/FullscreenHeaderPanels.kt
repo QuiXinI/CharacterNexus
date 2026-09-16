@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,6 +105,11 @@ fun EditVariantDialog(
     asOverlay: Boolean = false
 ) {
     var state by remember { mutableStateOf(entry) }
+    
+    LaunchedEffect(state) {
+        onSave(state)
+    }
+    
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
 
     if (asOverlay) {
@@ -113,7 +119,6 @@ fun EditVariantDialog(
             onStateChange = { state = it },
             statsMap = statsMap,
             statType = statType,
-            onSave = onSave,
             onDelete = onDelete,
             onDismiss = onDismiss,
             masterBlurEnabled = masterBlurEnabled
@@ -129,7 +134,6 @@ fun EditVariantDialog(
                 onStateChange = { state = it },
                 statsMap = statsMap,
                 statType = statType,
-                onSave = onSave,
                 onDelete = onDelete,
                 onDismiss = onDismiss,
                 masterBlurEnabled = masterBlurEnabled
@@ -146,7 +150,6 @@ fun EditVariantContent(
     onStateChange: (FormulaEntry) -> Unit,
     statsMap: Map<String, String>,
     statType: String,
-    onSave: (FormulaEntry) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
     masterBlurEnabled: Boolean
@@ -271,15 +274,25 @@ fun EditVariantContent(
             }
 
             Button(
-                onClick = { onSave(state) },
+                onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(16.dp)
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                    contentColor = colorScheme.onSurfaceVariant
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp
+                )
             ) {
-                Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

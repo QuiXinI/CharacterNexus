@@ -111,6 +111,7 @@ fun SpellsTab(
 
     var showSelectionDialog by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
+    val effectiveRefreshTrigger = (state?.refreshTrigger ?: 0) + refreshTrigger
 
     LaunchedEffect(showSelectionDialog) {
         onSpellbookSelectionOpenChange(showSelectionDialog)
@@ -125,7 +126,7 @@ fun SpellsTab(
     var levelInEditMode by remember { mutableStateOf<Float?>(null) }
     var showDividerEditor by remember { mutableStateOf<Pair<Float, SpellLevelDivider?>?>(null) }
 
-    val characterSpells = remember(spellSettings.selectedSpellIds, spellSettings.preparedSpellIds, spellSettings.isSpellbookEnabled, refreshTrigger) {
+    val characterSpells = remember(spellSettings.selectedSpellIds, spellSettings.preparedSpellIds, spellSettings.isSpellbookEnabled, effectiveRefreshTrigger) {
         val all = spellbookManager?.loadSpells() ?: emptyList()
         if (spellSettings.isSpellbookEnabled) {
             all.filter {
@@ -433,6 +434,7 @@ fun SpellsTab(
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
                 isDesktop = isDesktop,
+                state = state,
                 header = header,
                 footer = {
                     if (spellSettings.isMagicEnabled) {
@@ -1053,7 +1055,8 @@ fun SpellsTab(
                 refreshTrigger++
             },
             forceBlurEnabled = forceBlurEnabled,
-            settingsViewModel = settingsViewModel
+            settingsViewModel = settingsViewModel,
+            isDesktop = isDesktop
         )
     }
 }

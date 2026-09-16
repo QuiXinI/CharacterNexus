@@ -202,308 +202,333 @@ fun CurrencyEditContent(
                 isOled = isOled
             )
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(verticalScrollState)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Top Full List
-            Surface(
-                color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(verticalScrollState)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                // Top Full List
+                Surface(
+                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Currency.entries.forEach { currency ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Currency.entries.forEach { currency ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .combinedClickable(
+                                        onClick = { onSelectedCurrencyChange(currency) },
+                                        onLongClick = {
+                                            if (amountString.isNotBlank() && currency != selectedCurrency) {
+                                                val amount = CurrencyUtils.evaluateFormula(amountString)
+                                                if (amount > 0) {
+                                                    onManualConversionToConfirmChange(
+                                                        CurrencyUtils.calculateManualConversion(
+                                                            selectedCurrency,
+                                                            currency,
+                                                            amount
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    )
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                CurrencyIcon(currency, Modifier.size(20.dp))
+                                Text(
+                                    text = CurrencyUtils.formatCurrency(CurrencyUtils.getWalletValue(wallet, currency), true),
+                                    color = currency.color,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // Currency Selector
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    OutlinedCard(
+                        onClick = { expanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, selectedCurrency.color.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CurrencyIcon(selectedCurrency, Modifier.size(24.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                selectedCurrency.displayName, 
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Icon(Icons.Default.ArrowDropDown, null)
+                        }
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        Currency.entries.forEach { currency ->
+                            DropdownMenuItem(
+                                text = { Text(currency.displayName) },
+                                leadingIcon = { CurrencyIcon(currency, Modifier.size(20.dp)) },
+                                onClick = {
+                                    onSelectedCurrencyChange(currency)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Amount Field
+                OutlinedTextField(
+                    value = amountString,
+                    onValueChange = onAmountStringChange,
+                    label = { Text("Сумма или формула") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(Modifier.height(32.dp))
+
+                // Action Buttons
+                Surface(
+                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else Color.Transparent,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val value = CurrencyUtils.evaluateFormula(amountString)
+                                val current = CurrencyUtils.getWalletValue(wallet, selectedCurrency)
+                                onWalletChange(CurrencyUtils.updateWallet(wallet, selectedCurrency, current + value))
+                                onAmountStringChange("")
+                            },
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .combinedClickable(
-                                    onClick = { onSelectedCurrencyChange(currency) },
-                                    onLongClick = {
-                                        if (amountString.isNotBlank() && currency != selectedCurrency) {
-                                            val amount = CurrencyUtils.evaluateFormula(amountString)
-                                            if (amount > 0) {
-                                                onManualConversionToConfirmChange(
-                                                    CurrencyUtils.calculateManualConversion(
-                                                        selectedCurrency,
-                                                        currency,
-                                                        amount
-                                                    )
+                                .height(64.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = selectedCurrency.color),
+                            border = BorderStroke(2.dp, selectedCurrency.color),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("ВЗЯТЬ", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val value = CurrencyUtils.evaluateFormula(amountString)
+                                val current = CurrencyUtils.getWalletValue(wallet, selectedCurrency)
+                                
+                                if (current < value) {
+                                    val conversion = CurrencyUtils.calculateConversion(wallet, selectedCurrency, value)
+                                    if (conversion != null) {
+                                        onConversionToConfirmChange(conversion)
+                                    }
+                                } else {
+                                    onWalletChange(CurrencyUtils.updateWallet(wallet, selectedCurrency, current - value))
+                                    onAmountStringChange("")
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(64.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE57373)),
+                            border = BorderStroke(2.dp, Color(0xFFE57373)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("ДАТЬ", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(32.dp))
+
+                // Detailed Balance List
+                Text(
+                    "Точный баланс",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(8.dp))
+                
+                Surface(
+                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Currency.entries.forEach { currency ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CurrencyIcon(currency, Modifier.size(24.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = currency.displayName,
+                                    color = currency.color,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                
+                                val horizontalScrollState = rememberScrollState()
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                        .drawWithContent {
+                                            drawContent()
+                                            val fadeWidth = 4.dp.toPx()
+                                            if (horizontalScrollState.value > 0) {
+                                                drawRect(
+                                                    brush = Brush.horizontalGradient(
+                                                        0f to Color.Transparent,
+                                                        fadeWidth to Color.Black,
+                                                        startX = 0f,
+                                                        endX = fadeWidth
+                                                    ),
+                                                    blendMode = BlendMode.DstIn
+                                                )
+                                            }
+                                            if (horizontalScrollState.value < horizontalScrollState.maxValue) {
+                                                drawRect(
+                                                    brush = Brush.horizontalGradient(
+                                                        (size.width - fadeWidth) to Color.Black,
+                                                        size.width to Color.Transparent,
+                                                        startX = size.width - fadeWidth,
+                                                        endX = size.width
+                                                    ),
+                                                    blendMode = BlendMode.DstIn
                                                 )
                                             }
                                         }
-                                    }
-                                )
-                                .padding(vertical = 8.dp)
-                        ) {
-                            CurrencyIcon(currency, Modifier.size(20.dp))
-                            Text(
-                                text = CurrencyUtils.formatCurrency(CurrencyUtils.getWalletValue(wallet, currency), true),
-                                color = currency.color,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            // Currency Selector
-            var expanded by remember { mutableStateOf(false) }
-            Box {
-                OutlinedCard(
-                    onClick = { expanded = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, selectedCurrency.color.copy(alpha = 0.5f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CurrencyIcon(selectedCurrency, Modifier.size(24.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            selectedCurrency.displayName, 
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Icon(Icons.Default.ArrowDropDown, null)
-                    }
-                }
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    Currency.entries.forEach { currency ->
-                        DropdownMenuItem(
-                            text = { Text(currency.displayName) },
-                            leadingIcon = { CurrencyIcon(currency, Modifier.size(20.dp)) },
-                            onClick = {
-                                onSelectedCurrencyChange(currency)
-                                expanded = false
-                            }
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Amount Field
-            OutlinedTextField(
-                value = amountString,
-                onValueChange = onAmountStringChange,
-                label = { Text("Сумма или формула") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(Modifier.height(32.dp))
-
-            // Action Buttons
-            Surface(
-                color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else Color.Transparent,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            val value = CurrencyUtils.evaluateFormula(amountString)
-                            val current = CurrencyUtils.getWalletValue(wallet, selectedCurrency)
-                            onWalletChange(CurrencyUtils.updateWallet(wallet, selectedCurrency, current + value))
-                            onAmountStringChange("")
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(64.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = selectedCurrency.color),
-                        border = BorderStroke(2.dp, selectedCurrency.color),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("ВЗЯТЬ", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            val value = CurrencyUtils.evaluateFormula(amountString)
-                            val current = CurrencyUtils.getWalletValue(wallet, selectedCurrency)
-                            
-                            if (current < value) {
-                                val conversion = CurrencyUtils.calculateConversion(wallet, selectedCurrency, value)
-                                if (conversion != null) {
-                                    onConversionToConfirmChange(conversion)
-                                }
-                            } else {
-                                onWalletChange(CurrencyUtils.updateWallet(wallet, selectedCurrency, current - value))
-                                onAmountStringChange("")
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(64.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE57373)),
-                        border = BorderStroke(2.dp, Color(0xFFE57373)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("ДАТЬ", fontWeight = FontWeight.Black, fontSize = 20.sp)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(32.dp))
-
-            // Detailed Balance List
-            Text(
-                "Точный баланс",
-                style = MaterialTheme.typography.labelLarge,
-                color = colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.align(Alignment.Start)
-            )
-            Spacer(Modifier.height(8.dp))
-            
-            Surface(
-                color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    Currency.entries.forEach { currency ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CurrencyIcon(currency, Modifier.size(24.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = currency.displayName,
-                                color = currency.color,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Spacer(Modifier.width(16.dp))
-                            
-                            val horizontalScrollState = rememberScrollState()
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                                    .drawWithContent {
-                                        drawContent()
-                                        val fadeWidth = 4.dp.toPx()
-                                        if (horizontalScrollState.value > 0) {
-                                            drawRect(
-                                                brush = Brush.horizontalGradient(
-                                                    0f to Color.Transparent,
-                                                    fadeWidth to Color.Black,
-                                                    startX = 0f,
-                                                    endX = fadeWidth
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                        if (horizontalScrollState.value < horizontalScrollState.maxValue) {
-                                            drawRect(
-                                                brush = Brush.horizontalGradient(
-                                                    (size.width - fadeWidth) to Color.Black,
-                                                    size.width to Color.Transparent,
-                                                    startX = size.width - fadeWidth,
-                                                    endX = size.width
-                                                ),
-                                                blendMode = BlendMode.DstIn
-                                            )
-                                        }
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .horizontalScroll(horizontalScrollState)
-                                        .align(Alignment.CenterEnd),
-                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        text = CurrencyUtils.getWalletValue(wallet, currency).toLong().toString(),
-                                        color = currency.color,
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        maxLines = 1
-                                    )
-                                    Spacer(Modifier.width(4.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .horizontalScroll(horizontalScrollState)
+                                            .align(Alignment.CenterEnd),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = CurrencyUtils.getWalletValue(wallet, currency).toLong().toString(),
+                                            color = currency.color,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            maxLines = 1
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(32.dp))
 
-            // Visibility Selector
-            Text(
-                "Отображение в инвентаре",
-                style = MaterialTheme.typography.labelLarge,
-                color = colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.align(Alignment.Start)
-            )
-            Spacer(Modifier.height(8.dp))
-            
-            Surface(
-                color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    Currency.entries.forEach { currency ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    val currentVisible = wallet.visibleCurrencies.toMutableList()
-                                    if (currentVisible.contains(currency.id)) {
-                                        currentVisible.remove(currency.id)
-                                    } else {
-                                        currentVisible.add(currency.id)
+                // Visibility Selector
+                Text(
+                    "Отображение в инвентаре",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = colorScheme.onSurface.copy(alpha = 0.6f),
+                    modifier = Modifier.align(Alignment.Start)
+                )
+                Spacer(Modifier.height(8.dp))
+                
+                Surface(
+                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Currency.entries.forEach { currency ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        val currentVisible = wallet.visibleCurrencies.toMutableList()
+                                        if (currentVisible.contains(currency.id)) {
+                                            currentVisible.remove(currency.id)
+                                        } else {
+                                            currentVisible.add(currency.id)
+                                        }
+                                        onWalletChange(wallet.copy(visibleCurrencies = currentVisible))
                                     }
-                                    onWalletChange(wallet.copy(visibleCurrencies = currentVisible))
-                                }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CurrencyIcon(currency, Modifier.size(24.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = currency.displayName,
-                                color = currency.color,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Checkbox(
-                                checked = wallet.visibleCurrencies.contains(currency.id),
-                                onCheckedChange = null // Handled by row click
-                            )
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CurrencyIcon(currency, Modifier.size(24.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = currency.displayName,
+                                    color = currency.color,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Checkbox(
+                                    checked = wallet.visibleCurrencies.contains(currency.id),
+                                    onCheckedChange = null // Handled by row click
+                                )
+                            }
                         }
                     }
                 }
+                
+                Spacer(Modifier.height(80.dp))
+            }
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                    contentColor = colorScheme.onSurfaceVariant
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp
+                )
+            ) {
+                Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

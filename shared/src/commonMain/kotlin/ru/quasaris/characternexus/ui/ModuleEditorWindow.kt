@@ -51,6 +51,12 @@ fun ModuleEditorWindow(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
+    LaunchedEffect(manifest) {
+        scope.launch {
+            moduleManager.updateModule(initialModule.manifest.id, manifest)
+        }
+    }
+
     BackHandler(onBack = onBack)
     
     LaunchedEffect(manifest.name) {
@@ -155,26 +161,7 @@ fun ModuleEditorWindow(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = colorScheme.onSurface)
                     }
                 },
-                actions = {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isSaving = true
-                                moduleManager.updateModule(initialModule.manifest.id, manifest)
-                                isSaving = false
-                                snackbarHostState.showSnackbar("Модуль сохранен")
-                            }
-                        },
-                        enabled = !isSaving,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                        } else {
-                            Text("Сохранить")
-                        }
-                    }
-                },
+                actions = {},
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                 )
@@ -183,151 +170,168 @@ fun ModuleEditorWindow(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text("Основная информация", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("Основная информация", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
 
-            OutlinedTextField(
-                value = manifest.name,
-                onValueChange = { manifest = manifest.copy(name = it) },
-                label = { Text("Название") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-            )
-
-            OutlinedTextField(
-                value = manifest.id,
-                onValueChange = { manifest = manifest.copy(id = it) },
-                label = { Text("ID модуля") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(disabledTextColor = colorScheme.onSurface.copy(alpha = 0.6f))
-            )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
-                    value = manifest.version,
-                    onValueChange = { manifest = manifest.copy(version = it) },
-                    label = { Text("Версия") },
-                    modifier = Modifier.weight(1f),
+                    value = manifest.name,
+                    onValueChange = { manifest = manifest.copy(name = it) },
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
                 )
+
                 OutlinedTextField(
-                    value = manifest.system,
-                    onValueChange = { manifest = manifest.copy(system = it) },
-                    label = { Text("Система") },
-                    modifier = Modifier.weight(1f),
+                    value = manifest.id,
+                    onValueChange = { manifest = manifest.copy(id = it) },
+                    label = { Text("ID модуля") },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(disabledTextColor = colorScheme.onSurface.copy(alpha = 0.6f))
                 )
-            }
 
-            OutlinedTextField(
-                value = manifest.description,
-                onValueChange = { manifest = manifest.copy(description = it) },
-                label = { Text("Описание") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-            )
-
-            Spacer(Modifier.height(16.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Компоненты", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = colorScheme.onSurface)
-                Box {
-                    IconButton(onClick = { showAddMenu = true }) {
-                        Icon(Icons.Default.Add, null, tint = colorScheme.primary)
-                    }
-                    DropdownMenu(expanded = showAddMenu, onDismissRequest = { showAddMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Заклинание") },
-                            onClick = {
-                                showAddMenu = false
-                                editingSpell = SpellCard(
-                                    id = ru.quasaris.characternexus.util.generateUuid(),
-                                    source = manifest.name,
-                                    sourceModuleId = manifest.id
-                                )
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Класс") },
-                            onClick = {
-                                showAddMenu = false
-                                editingClass = GameClass(id = "class_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Подкласс") },
-                            onClick = {
-                                showAddMenu = false
-                                editingSubclass = GameSubclass(id = "subclass_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Вид") },
-                            onClick = {
-                                showAddMenu = false
-                                editingSpecies = GameSpecies(id = "species_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Черта") },
-                            onClick = {
-                                showAddMenu = false
-                                editingFeat = GameFeat(id = "feat_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                            }
-                        )
-                    }
-                }
-            }
-
-            if (manifest.contents.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                    Text("Нет компонентов", color = colorScheme.onSurfaceVariant)
-                }
-            } else {
-                manifest.contents.forEach { content ->
-                    ComponentItem(
-                        content = content,
-                        onEdit = {
-                            when (content.type) {
-                                "spell" -> {
-                                    editingSpell = spellbookManager.loadSpells().find { it.id == content.id }
-                                }
-                                "class" -> {
-                                    editingClass = loadItem<GameClass>("classes", content.file)
-                                }
-                                "subclass" -> {
-                                    editingSubclass = loadItem<GameSubclass>("subclasses", content.file)
-                                }
-                                "species" -> {
-                                    editingSpecies = loadItem<GameSpecies>("species", content.file)
-                                }
-                                "feat" -> {
-                                    editingFeat = loadItem<GameFeat>("feats", content.file)
-                                }
-                            }
-                        },
-                        onDelete = {
-                            manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == content.id && it.type == content.type })
-                        }
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    OutlinedTextField(
+                        value = manifest.version,
+                        onValueChange = { manifest = manifest.copy(version = it) },
+                        label = { Text("Версия") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
+                    )
+                    OutlinedTextField(
+                        value = manifest.system,
+                        onValueChange = { manifest = manifest.copy(system = it) },
+                        label = { Text("Система") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
                     )
                 }
+
+                OutlinedTextField(
+                    value = manifest.description,
+                    onValueChange = { manifest = manifest.copy(description = it) },
+                    label = { Text("Описание") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
+                )
+
+                Spacer(Modifier.height(16.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Компоненты", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = colorScheme.onSurface)
+                    Box {
+                        IconButton(onClick = { showAddMenu = true }) {
+                            Icon(Icons.Default.Add, null, tint = colorScheme.primary)
+                        }
+                        DropdownMenu(expanded = showAddMenu, onDismissRequest = { showAddMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Заклинание") },
+                                onClick = {
+                                    showAddMenu = false
+                                    editingSpell = SpellCard(
+                                        id = ru.quasaris.characternexus.util.generateUuid(),
+                                        source = manifest.name,
+                                        sourceModuleId = manifest.id
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Класс") },
+                                onClick = {
+                                    showAddMenu = false
+                                    editingClass = GameClass(id = "class_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Подкласс") },
+                                onClick = {
+                                    showAddMenu = false
+                                    editingSubclass = GameSubclass(id = "subclass_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Вид") },
+                                onClick = {
+                                    showAddMenu = false
+                                    editingSpecies = GameSpecies(id = "species_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Черта") },
+                                onClick = {
+                                    showAddMenu = false
+                                    editingFeat = GameFeat(id = "feat_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (manifest.contents.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        Text("Нет компонентов", color = colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    manifest.contents.forEach { content ->
+                        ComponentItem(
+                            content = content,
+                            onEdit = {
+                                when (content.type) {
+                                    "spell" -> {
+                                        editingSpell = spellbookManager.loadSpells().find { it.id == content.id }
+                                    }
+                                    "class" -> {
+                                        editingClass = loadItem<GameClass>("classes", content.file)
+                                    }
+                                    "subclass" -> {
+                                        editingSubclass = loadItem<GameSubclass>("subclasses", content.file)
+                                    }
+                                    "species" -> {
+                                        editingSpecies = loadItem<GameSpecies>("species", content.file)
+                                    }
+                                    "feat" -> {
+                                        editingFeat = loadItem<GameFeat>("feats", content.file)
+                                    }
+                                }
+                            },
+                            onDelete = {
+                                manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == content.id && it.type == content.type })
+                            }
+                        )
+                    }
+                }
+                
+                Spacer(Modifier.height(80.dp))
             }
-            
-            Spacer(Modifier.height(80.dp))
+
+            Button(
+                onClick = onBack,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.surfaceVariant,
+                    contentColor = colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text("Закрыть", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

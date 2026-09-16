@@ -1,11 +1,16 @@
 package ru.quasaris.characternexus.tabs
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.Currency
 import ru.quasaris.characternexus.backend.SettingsViewModel
@@ -13,15 +18,6 @@ import ru.quasaris.characternexus.backend.MagicItemManager
 import ru.quasaris.characternexus.ui.CurrencyDisplayRow
 import ru.quasaris.characternexus.ui.CurrencyEditDialog
 import dev.chrisbanes.haze.HazeState
-
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import ru.quasaris.characternexus.tabs.potions.PotionSection
 
 @Composable
@@ -92,58 +88,72 @@ fun InventoryTab(
                 Spacer(Modifier.height(12.dp))
                 CurrencyDisplayRow(
                     wallet = wallet,
-                    onCurrencyClick = { 
+                    onCurrencyClick = {
                         state?.selectedCurrency = it
-                        editingCurrency = it 
+                        editingCurrency = it
                     }
                 )
             }
         },
         footer = {
             val hasPotionsSection = inventory.any { it.tag == "potions" }
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Add Special Field Button
-                Button(
-                    onClick = {
-                        val newFields = inventory + DynamicNoteState()
-                        onInventoryChange(newFields)
-                    },
-                    modifier = if (hasPotionsSection) Modifier.fillMaxWidth() else Modifier.weight(1.5f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("ДОБАВИТЬ ОСОБОЕ ПОЛЕ", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                val estimatedButtonWidth = if (hasPotionsSection) maxWidth else maxWidth * 0.6f
+                val estimatedPotionWidth = maxWidth * 0.4f
+
+                val addButtonText = when {
+                    estimatedButtonWidth < 180.dp -> "ПОЛЕ"
+                    estimatedButtonWidth < 270.dp -> "ОСОБОЕ ПОЛЕ"
+                    else -> "ДОБАВИТЬ ОСОБОЕ ПОЛЕ"
                 }
 
-                // Add Potions Section Button
-                if (!hasPotionsSection) {
+                val potionButtonText = when {
+                    estimatedPotionWidth < 140.dp -> "ЗЕЛЬЯ"
+                    else -> "БЛОК ЗЕЛИЙ"
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Add Special Field Button
                     Button(
                         onClick = {
-                            val newFields = inventory + DynamicNoteState(title = "Зелья", tag = "potions")
+                            val newFields = inventory + DynamicNoteState()
                             onInventoryChange(newFields)
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = if (hasPotionsSection) Modifier.fillMaxWidth() else Modifier.weight(0.6f),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("БЛОК ЗЕЛИЙ", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text(addButtonText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+
+                    // Add Potions Section Button
+                    if (!hasPotionsSection) {
+                        Button(
+                            onClick = {
+                                val newFields = inventory + DynamicNoteState(title = "Зелья", tag = "potions")
+                                onInventoryChange(newFields)
+                            },
+                            modifier = Modifier.weight(0.4f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(potionButtonText, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
                     }
                 }
             }

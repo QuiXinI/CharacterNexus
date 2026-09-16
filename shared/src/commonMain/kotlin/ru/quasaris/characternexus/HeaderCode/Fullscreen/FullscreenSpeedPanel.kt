@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,7 +28,7 @@ import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InitiativeDialog(
+fun SpeedDialog(
     activeEntry: FormulaEntry?,
     allEntries: List<FormulaEntry>,
     onAllEntriesChange: (List<FormulaEntry>) -> Unit,
@@ -56,7 +57,7 @@ fun InitiativeDialog(
     }
 
     if (isDesktop) {
-        InitiativeDialogContent(
+        SpeedDialogContent(
             onDismiss = handleDismiss,
             isSubDialogOpen = isSubDialogOpen,
             forceBlurEnabled = forceBlurEnabled,
@@ -78,7 +79,7 @@ fun InitiativeDialog(
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             DialogDimStyle(0f)
-            InitiativeDialogContent(
+            SpeedDialogContent(
                 onDismiss = handleDismiss,
                 isSubDialogOpen = isSubDialogOpen,
                 forceBlurEnabled = forceBlurEnabled,
@@ -100,7 +101,7 @@ fun InitiativeDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InitiativeDialogContent(
+fun SpeedDialogContent(
     onDismiss: () -> Unit,
     isSubDialogOpen: Boolean,
     forceBlurEnabled: Boolean,
@@ -135,7 +136,7 @@ fun InitiativeDialogContent(
             Scaffold(
                 topBar = {
                     CenterAlignedTopAppBar(
-                        title = { Text("Инициатива", fontWeight = FontWeight.Black) },
+                        title = { Text("Скорость", fontWeight = FontWeight.Black) },
                         navigationIcon = {
                             IconButton(onClick = onDismiss) {
                                 Icon(Icons.Default.Close, contentDescription = "Закрыть")
@@ -169,7 +170,7 @@ fun InitiativeDialogContent(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Indicator
-                        val calc = remember(activeEntry, statsMap) { calculateEntryTotal(activeEntry, statsMap, "INIT") }
+                        val calc = remember(activeEntry, statsMap) { calculateEntryTotal(activeEntry, statsMap, "SPEED") }
                         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                             AttackBonusIndicator(
                                 bonus = calc.first,
@@ -177,7 +178,7 @@ fun InitiativeDialogContent(
                                 size = 140.dp,
                                 fontSize = 54.sp,
                                 showLabel = false,
-                                showPlus = true,
+                                showPlus = false,
                                 diceSize = 24.dp
                             )
                         }
@@ -188,14 +189,14 @@ fun InitiativeDialogContent(
                                 entry = entry,
                                 isActive = entry.id == activeEntry?.id,
                                 statsMap = statsMap,
-                                statType = "INIT",
+                                statType = "SPEED",
                                 onClick = { onActiveIdChange(entry.id) },
                                 onLongClick = { onEditingEntryChange(entry) }
                             )
                         }
 
                         Button(
-                            onClick = { onAllEntriesChange(allEntries + InitiativeEntry()) },
+                            onClick = { onAllEntriesChange(allEntries + SpeedEntry()) },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -214,9 +215,19 @@ fun InitiativeDialogContent(
                             .padding(16.dp)
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.compositeOver(MaterialTheme.colorScheme.background),
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp,
+                            focusedElevation = 0.dp,
+                            hoveredElevation = 0.dp
+                        )
                     ) {
-                        Text("Готово", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -224,10 +235,10 @@ fun InitiativeDialogContent(
 
         editingEntry?.let { entry ->
             EditVariantDialog(
-                title = "Настройка: ${entry.name.ifBlank { "Инициатива" }}",
+                title = "Настройка: ${entry.name.ifBlank { "Скорость" }}",
                 entry = entry,
                 statsMap = statsMap,
-                statType = "INIT",
+                statType = "SPEED",
                 onSave = { updated ->
                     val newList = allEntries.toMutableList()
                     val idx = newList.indexOfFirst { it.id == updated.id }
@@ -235,7 +246,6 @@ fun InitiativeDialogContent(
                         newList[idx] = updated
                         onAllEntriesChange(newList)
                     }
-                    onEditingEntryChange(null)
                 },
                 onDelete = {
                     val newList = allEntries.toMutableList()

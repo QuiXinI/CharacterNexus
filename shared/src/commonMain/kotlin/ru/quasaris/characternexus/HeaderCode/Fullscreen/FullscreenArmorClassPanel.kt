@@ -12,7 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,13 +23,14 @@ import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpeedDialog(
+fun ArmorClassDialog(
     activeEntry: FormulaEntry?,
     allEntries: List<FormulaEntry>,
     onAllEntriesChange: (List<FormulaEntry>) -> Unit,
@@ -36,27 +39,35 @@ fun SpeedDialog(
     forceBlurEnabled: Boolean,
     onDismiss: () -> Unit,
     onSubDialogOpenChange: (Boolean) -> Unit = {},
+    isShieldActive: Boolean,
+    onShieldActiveChange: (Boolean) -> Unit,
+    activeShield: ShieldEntry?,
+    allShields: List<ShieldEntry>,
+    onShieldChange: (ShieldEntry) -> Unit,
+    onAllShieldsChange: (List<ShieldEntry>) -> Unit,
+    onActiveShieldIdChange: (String?) -> Unit,
     isDesktop: Boolean = false,
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     var editingEntry by remember { mutableStateOf<FormulaEntry?>(null) }
+    var editingShield by remember { mutableStateOf<ShieldEntry?>(null) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
-
+    
     val handleDismiss = {
         focusManager.clearFocus()
         onDismiss()
     }
 
-    val isSubDialogOpen = editingEntry != null
+    val isSubDialogOpen = editingEntry != null || editingShield != null
     LaunchedEffect(isSubDialogOpen) {
         onSubDialogOpenChange(isSubDialogOpen)
     }
 
     if (isDesktop) {
-        SpeedDialogContent(
+        ArmorClassDialogContent(
             onDismiss = handleDismiss,
             isSubDialogOpen = isSubDialogOpen,
             forceBlurEnabled = forceBlurEnabled,
@@ -65,8 +76,16 @@ fun SpeedDialog(
             onAllEntriesChange = onAllEntriesChange,
             onActiveIdChange = onActiveIdChange,
             statsMap = statsMap,
+            isShieldActive = isShieldActive,
+            onShieldActiveChange = onShieldActiveChange,
+            activeShield = activeShield,
+            allShields = allShields,
+            onActiveShieldIdChange = onActiveShieldIdChange,
+            onAllShieldsChange = onAllShieldsChange,
             editingEntry = editingEntry,
             onEditingEntryChange = { editingEntry = it },
+            editingShield = editingShield,
+            onEditingShieldChange = { editingShield = it },
             hazeState = popupHazeState ?: hazeState,
             blurRadius = blurRadius,
             settingsViewModel = settingsViewModel,
@@ -78,7 +97,7 @@ fun SpeedDialog(
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             DialogDimStyle(0f)
-            SpeedDialogContent(
+            ArmorClassDialogContent(
                 onDismiss = handleDismiss,
                 isSubDialogOpen = isSubDialogOpen,
                 forceBlurEnabled = forceBlurEnabled,
@@ -87,8 +106,16 @@ fun SpeedDialog(
                 onAllEntriesChange = onAllEntriesChange,
                 onActiveIdChange = onActiveIdChange,
                 statsMap = statsMap,
+                isShieldActive = isShieldActive,
+                onShieldActiveChange = onShieldActiveChange,
+                activeShield = activeShield,
+                allShields = allShields,
+                onActiveShieldIdChange = onActiveShieldIdChange,
+                onAllShieldsChange = onAllShieldsChange,
                 editingEntry = editingEntry,
                 onEditingEntryChange = { editingEntry = it },
+                editingShield = editingShield,
+                onEditingShieldChange = { editingShield = it },
                 hazeState = popupHazeState ?: hazeState,
                 blurRadius = blurRadius,
                 settingsViewModel = settingsViewModel,
@@ -100,7 +127,7 @@ fun SpeedDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpeedDialogContent(
+fun ArmorClassDialogContent(
     onDismiss: () -> Unit,
     isSubDialogOpen: Boolean,
     forceBlurEnabled: Boolean,
@@ -109,8 +136,16 @@ fun SpeedDialogContent(
     onAllEntriesChange: (List<FormulaEntry>) -> Unit,
     onActiveIdChange: (String?) -> Unit,
     statsMap: Map<String, String>,
+    isShieldActive: Boolean,
+    onShieldActiveChange: (Boolean) -> Unit,
+    activeShield: ShieldEntry?,
+    allShields: List<ShieldEntry>,
+    onActiveShieldIdChange: (String?) -> Unit,
+    onAllShieldsChange: (List<ShieldEntry>) -> Unit,
     editingEntry: FormulaEntry?,
     onEditingEntryChange: (FormulaEntry?) -> Unit,
+    editingShield: ShieldEntry?,
+    onEditingShieldChange: (ShieldEntry?) -> Unit,
     hazeState: HazeState? = null,
     blurRadius: androidx.compose.ui.unit.Dp = 24.dp,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
@@ -135,7 +170,7 @@ fun SpeedDialogContent(
             Scaffold(
                 topBar = {
                     CenterAlignedTopAppBar(
-                        title = { Text("Скорость", fontWeight = FontWeight.Black) },
+                        title = { Text("Класс Доспеха", fontWeight = FontWeight.Black) },
                         navigationIcon = {
                             IconButton(onClick = onDismiss) {
                                 Icon(Icons.Default.Close, contentDescription = "Закрыть")
@@ -168,12 +203,19 @@ fun SpeedDialogContent(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // Indicator
-                        val calc = remember(activeEntry, statsMap) { calculateEntryTotal(activeEntry, statsMap, "SPEED") }
+                        // Total Indicator
+                        val totalCalc = remember(activeEntry, activeShield, isShieldActive, statsMap) {
+                            val baseVal = calculateEntryTotal(activeEntry, statsMap, "AC")
+                            if (isShieldActive && activeShield != null) {
+                                val sVal = calculateEntryTotal(activeShield, statsMap, "SHIELD")
+                                Pair(baseVal.first + sVal.first, baseVal.second + sVal.second)
+                            } else baseVal
+                        }
+
                         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                             AttackBonusIndicator(
-                                bonus = calc.first,
-                                dice = calc.second,
+                                bonus = totalCalc.first,
+                                dice = totalCalc.second,
                                 size = 140.dp,
                                 fontSize = 54.sp,
                                 showLabel = false,
@@ -182,26 +224,64 @@ fun SpeedDialogContent(
                             )
                         }
 
+                        // Variants Section
                         SectionHeader("Варианты")
                         allEntries.forEach { entry ->
                             StatVariantItem(
                                 entry = entry,
                                 isActive = entry.id == activeEntry?.id,
                                 statsMap = statsMap,
-                                statType = "SPEED",
+                                statType = "AC",
                                 onClick = { onActiveIdChange(entry.id) },
                                 onLongClick = { onEditingEntryChange(entry) }
                             )
                         }
 
                         Button(
-                            onClick = { onAllEntriesChange(allEntries + SpeedEntry()) },
+                            onClick = {
+                                onAllEntriesChange(allEntries + ArmorClassEntry())
+                            },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Add, null)
                             Spacer(Modifier.width(8.dp))
                             Text("Добавить вариант")
+                        }
+
+                        // Shield Section
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            SectionHeader("Щит")
+                            Switch(
+                                checked = isShieldActive,
+                                onCheckedChange = onShieldActiveChange,
+                                modifier = Modifier.scale(0.8f)
+                            )
+                        }
+
+                        allShields.forEach { shield ->
+                            StatVariantItem(
+                                entry = shield,
+                                isActive = shield.id == activeShield?.id,
+                                statsMap = statsMap,
+                                statType = "SHIELD",
+                                onClick = { onActiveShieldIdChange(shield.id) },
+                                onLongClick = { onEditingShieldChange(shield) }
+                            )
+                        }
+
+                        Button(
+                            onClick = { onAllShieldsChange(allShields + ShieldEntry()) },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Add, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Добавить щит")
                         }
 
                         Spacer(modifier = Modifier.height(100.dp))
@@ -214,20 +294,31 @@ fun SpeedDialogContent(
                             .padding(16.dp)
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.compositeOver(MaterialTheme.colorScheme.background),
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp,
+                            focusedElevation = 0.dp,
+                            hoveredElevation = 0.dp
+                        )
                     ) {
-                        Text("Готово", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
         }
 
+        // Sub-Dialogs for Editing
         editingEntry?.let { entry ->
             EditVariantDialog(
-                title = "Настройка: ${entry.name.ifBlank { "Скорость" }}",
+                title = "Настройка: ${entry.name.ifBlank { "Класс Доспеха" }}",
                 entry = entry,
                 statsMap = statsMap,
-                statType = "SPEED",
+                statType = "AC",
                 onSave = { updated ->
                     val newList = allEntries.toMutableList()
                     val idx = newList.indexOfFirst { it.id == updated.id }
@@ -235,7 +326,6 @@ fun SpeedDialogContent(
                         newList[idx] = updated
                         onAllEntriesChange(newList)
                     }
-                    onEditingEntryChange(null)
                 },
                 onDelete = {
                     val newList = allEntries.toMutableList()
@@ -245,6 +335,34 @@ fun SpeedDialogContent(
                     onEditingEntryChange(null)
                 },
                 onDismiss = { onEditingEntryChange(null) },
+                forceBlurEnabled = forceBlurEnabled,
+                settingsViewModel = settingsViewModel,
+                asOverlay = isDesktop
+            )
+        }
+
+        editingShield?.let { shield ->
+            EditVariantDialog(
+                title = "Настройка щита: ${shield.name.ifBlank { "Без названия" }}",
+                entry = shield,
+                statsMap = statsMap,
+                statType = "SHIELD",
+                onSave = { updated ->
+                    val newList = allShields.toMutableList()
+                    val idx = newList.indexOfFirst { it.id == updated.id }
+                    if (idx != -1) {
+                        newList[idx] = updated as ShieldEntry
+                        onAllShieldsChange(newList)
+                    }
+                },
+                onDelete = {
+                    val newList = allShields.toMutableList()
+                    newList.removeAll { it.id == shield.id }
+                    if (shield.id == activeShield?.id) onActiveShieldIdChange(null)
+                    onAllShieldsChange(newList)
+                    onEditingShieldChange(null)
+                },
+                onDismiss = { onEditingShieldChange(null) },
                 forceBlurEnabled = forceBlurEnabled,
                 settingsViewModel = settingsViewModel,
                 asOverlay = isDesktop

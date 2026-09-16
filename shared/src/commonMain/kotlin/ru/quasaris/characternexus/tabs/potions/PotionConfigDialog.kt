@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +61,11 @@ fun PotionConfigDialog(
     isDesktop: Boolean = false
 ) {
     var state by remember { mutableStateOf(initialPotion) }
+    
+    LaunchedEffect(state) {
+        onSave(state)
+    }
+
     val focusManager = LocalFocusManager.current
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     
@@ -68,11 +74,6 @@ fun PotionConfigDialog(
         onDismiss()
     }
     
-    val handleSave = {
-        focusManager.clearFocus()
-        onSave(state)
-    }
-
     var sliderStepText by remember { mutableStateOf(initialPotion.quantity.sliderStep?.toString() ?: "") }
     var colorText by remember { mutableStateOf(initialPotion.colorHex) }
     var shortRestAll by remember { mutableStateOf(initialPotion.quantity.shortRest.lowercase() == "all" || initialPotion.quantity.shortRest.lowercase() == "все") }
@@ -96,13 +97,6 @@ fun PotionConfigDialog(
             onDawnRestAllChange = { dawnRestAll = it },
             isPremium = isPremium,
             onDismiss = handleDismiss,
-            onSave = {
-                state = state.copy(
-                    colorHex = colorText.removePrefix("#"),
-                    quantity = state.quantity.copy(sliderStep = sliderStepText.toDoubleOrNull())
-                )
-                handleSave()
-            },
             onDelete = { potionToDelete ->
                 onDelete(potionToDelete)
                 onDismiss()
@@ -135,13 +129,6 @@ fun PotionConfigDialog(
                 onDawnRestAllChange = { dawnRestAll = it },
                 isPremium = isPremium,
                 onDismiss = handleDismiss,
-                onSave = {
-                    state = state.copy(
-                        colorHex = colorText.removePrefix("#"),
-                        quantity = state.quantity.copy(sliderStep = sliderStepText.toDoubleOrNull())
-                    )
-                    handleSave()
-                },
                 onDelete = { potionToDelete ->
                     onDelete(potionToDelete)
                     onDismiss()
@@ -174,7 +161,6 @@ fun PotionConfigDialogContent(
     onDawnRestAllChange: (Boolean) -> Unit,
     isPremium: Boolean,
     onDismiss: () -> Unit,
-    onSave: () -> Unit,
     onDelete: (PotionState) -> Unit,
     forceBlurEnabled: Boolean,
     hazeState: HazeState?,
@@ -561,18 +547,28 @@ fun PotionConfigDialogContent(
 
                         Spacer(modifier = Modifier.height(80.dp))
                     }
-                }
 
-                Button(
-                    onClick = onSave,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                            contentColor = colorScheme.onSurfaceVariant
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp,
+                            focusedElevation = 0.dp,
+                            hoveredElevation = 0.dp
+                        )
+                    ) {
+                        Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    }
                 }
             }
         }

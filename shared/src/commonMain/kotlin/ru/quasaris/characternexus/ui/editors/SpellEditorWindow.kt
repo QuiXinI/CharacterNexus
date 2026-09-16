@@ -44,6 +44,13 @@ fun SpellEditorWindow(
     popupHazeState: HazeState? = null
 ) {
     var state by remember { mutableStateOf(spell) }
+    
+    LaunchedEffect(state) {
+        if (state.name.isNotBlank()) {
+            onSave(state)
+        }
+    }
+
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var englishNameError by remember { mutableStateOf<String?>(null) }
     val allowedCharsRegex = remember { Regex("^[a-zA-Z0-9'\\-._,() ]*$") }
@@ -68,7 +75,6 @@ fun SpellEditorWindow(
             state = state,
             onStateChange = { state = it },
             onDismiss = handleDismiss,
-            onSave = onSave,
             onDelete = { showDeleteConfirm = true },
             onExport = onExport,
             forceBlurEnabled = forceBlurEnabled,
@@ -87,7 +93,6 @@ fun SpellEditorWindow(
                 state = state,
                 onStateChange = { state = it },
                 onDismiss = handleDismiss,
-                onSave = onSave,
                 onDelete = { showDeleteConfirm = true },
                 onExport = onExport,
                 forceBlurEnabled = forceBlurEnabled,
@@ -117,7 +122,6 @@ fun SpellEditorContent(
     state: SpellCard,
     onStateChange: (SpellCard) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (SpellCard) -> Unit,
     onDelete: () -> Unit,
     onExport: (SpellCard) -> Unit,
     forceBlurEnabled: Boolean,
@@ -126,6 +130,7 @@ fun SpellEditorContent(
     onEnglishNameErrorChange: (String?) -> Unit,
     allowedCharsRegex: Regex
 ) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
@@ -1012,11 +1017,20 @@ fun SpellEditorContent(
                 }
 
                 Button(
-                    onClick = { onSave(state) },
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp).fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(8.dp)
+                    onClick = onDismiss,
+                    enabled = state.name.isNotBlank(),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.surfaceVariant,
+                        contentColor = colorScheme.onSurfaceVariant
+                    )
                 ) {
-                    Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Закрыть", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

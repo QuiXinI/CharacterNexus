@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -193,9 +194,19 @@ fun HealthSettingsDialogOverlay(
                         .padding(16.dp)
                         .fillMaxWidth()
                         .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                        contentColor = colorScheme.onSurfaceVariant
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 0.dp,
+                        pressedElevation = 0.dp,
+                        focusedElevation = 0.dp,
+                        hoveredElevation = 0.dp
+                    )
                 ) {
-                    Text("Готово", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -230,26 +241,6 @@ fun HealthSettingsContent(
         (0.299 * it.red + 0.587 * it.green + 0.114 * it.blue) < 0.5
     }
     val warningColor = if (isDarkMode) Color(0xFFEF9A9A) else Color(0xFFD32F2F)
-
-    var lastSavedManual by remember { mutableStateOf(isManual) }
-    var lastSavedMaxHp by remember { mutableStateOf(manualMaxHp) }
-    var lastSavedMulticlass by remember { mutableStateOf(isMulticlass) }
-    var lastSavedHitDie by remember { mutableStateOf(currentHitDie) }
-    var lastSavedLevelData by remember { mutableStateOf(hpLevelData) }
-    var lastSavedManualLevelData by remember { mutableStateOf(manualHPLevelData) }
-    var lastSavedMaxHD by remember { mutableStateOf(manualMaxHitDice) }
-    var lastSavedBonusesAtLevel by remember { mutableStateOf(hpBonusesAtLevel) }
-    var lastSavedBonusesTotal by remember { mutableStateOf(hpBonusesTotal) }
-
-    val isDirty = isManual != lastSavedManual ||
-            manualMaxHp != lastSavedMaxHp ||
-            isMulticlass != lastSavedMulticlass ||
-            currentHitDie != lastSavedHitDie ||
-            hpLevelData != lastSavedLevelData ||
-            manualHPLevelData != lastSavedManualLevelData ||
-            manualMaxHitDice != lastSavedMaxHD ||
-            hpBonusesAtLevel != lastSavedBonusesAtLevel ||
-            hpBonusesTotal != lastSavedBonusesTotal
 
     data class HPGroupState(val className: String, val countText: String, val hitDie: Int)
 
@@ -765,27 +756,6 @@ fun HealthSettingsContent(
                         onHpBonusesTotalChange(hpBonusesTotal + AttackBonus())
                     }
                 }
-
-                if (isDirty) {
-                    Button(
-                        onClick = {
-                            lastSavedManual = isManual
-                            lastSavedMaxHp = manualMaxHp
-                            lastSavedMulticlass = isMulticlass
-                            lastSavedHitDie = currentHitDie
-                            lastSavedLevelData = hpLevelData
-                            lastSavedManualLevelData = manualHPLevelData
-                            lastSavedMaxHD = manualMaxHitDice
-                            lastSavedBonusesAtLevel = hpBonusesAtLevel
-                            lastSavedBonusesTotal = hpBonusesTotal
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Check, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Сохранить")
-                    }
-                }
+                Spacer(modifier = Modifier.height(100.dp))
     }
 }

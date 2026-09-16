@@ -74,7 +74,7 @@ fun CharacterCard(
     val cardColor = if (isSelected) {
         colorScheme.primaryContainer
     } else {
-        adaptedFolderColor?.let { FolderColors.getCardContainerColor(it, isDark) } ?: colorScheme.surfaceVariant
+        adaptedFolderColor?.let { FolderColors.getCardContainerColor(it, isDark) } ?: colorScheme.surfaceContainerLow
     }
     
     val progressBarColor = adaptedFolderColor?.let { FolderColors.getProgressBarColor(it, isDark) } 

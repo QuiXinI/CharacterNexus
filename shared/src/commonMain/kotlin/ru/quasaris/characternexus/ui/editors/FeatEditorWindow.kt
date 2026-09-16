@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import ru.quasaris.characternexus.backend.*
@@ -46,6 +47,20 @@ fun FeatEditorWindow(
     
     var editingFeature by remember { mutableStateOf<GameFeature?>(null) }
 
+    LaunchedEffect(name, id, description, prerequisites, repeatable, features.toList()) {
+        if (name.isNotBlank() && id.isNotBlank()) {
+            val json = JsonConfig.json.encodeToJsonElement(GameFeat(
+                id = id,
+                name = name,
+                description = description,
+                prerequisites = prerequisites,
+                repeatable = repeatable,
+                features = features.toList()
+            ))
+            onSave(json)
+        }
+    }
+
     BackHandler(onBack = onDismiss)
     
     LaunchedEffect(name) {
@@ -65,99 +80,103 @@ fun FeatEditorWindow(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = colorScheme.onSurface)
                     }
                 },
-                actions = {
-                    Button(onClick = {
-                        val json = JsonConfig.json.encodeToJsonElement(GameFeat(
-                            id = id,
-                            name = name,
-                            description = description,
-                            prerequisites = prerequisites,
-                            repeatable = repeatable,
-                            features = features.toList()
-                        ))
-                        onSave(json)
-                    }, modifier = Modifier.padding(horizontal = 8.dp)) {
-                        Text("Сохранить")
-                    }
-                },
+                actions = {},
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                 )
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text("Основная информация", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Название") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-            )
-
-            OutlinedTextField(
-                value = id,
-                onValueChange = { id = it },
-                label = { Text("ID") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-            )
-
-            OutlinedTextField(
-                value = prerequisites,
-                onValueChange = { prerequisites = it },
-                label = { Text("Требования") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-            )
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Повторяемая", modifier = Modifier.weight(1f), color = colorScheme.onSurface)
-                Switch(checked = repeatable, onCheckedChange = { repeatable = it })
-            }
-
-            OutlinedTextField(
-                value = description,
-                onValueChange = { description = it },
-                label = { Text("Описание") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 5,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-            )
-
-            Spacer(Modifier.height(8.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Способности черты", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = colorScheme.onSurface)
-                IconButton(onClick = { 
-                    editingFeature = GameFeature(id = ru.quasaris.characternexus.util.generateUuid()) 
-                }) {
-                    Icon(Icons.Default.Add, null, tint = colorScheme.primary)
-                }
-            }
-
-            features.forEach { feat ->
-                FeatureItem(
-                    feature = feat,
-                    onEdit = { editingFeature = feat },
-                    onDelete = { features.remove(feat) }
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("Основная информация", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                
+                // ... same content ...
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
                 )
+
+                OutlinedTextField(
+                    value = id,
+                    onValueChange = { id = it },
+                    label = { Text("ID") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
+                )
+
+                OutlinedTextField(
+                    value = prerequisites,
+                    onValueChange = { prerequisites = it },
+                    label = { Text("Требования") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Повторяемая", modifier = Modifier.weight(1f), color = colorScheme.onSurface)
+                    Switch(checked = repeatable, onCheckedChange = { repeatable = it })
+                }
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Описание") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 5,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
+                )
+
+                Spacer(Modifier.height(8.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Способности черты", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = colorScheme.onSurface)
+                    IconButton(onClick = { 
+                        editingFeature = GameFeature(id = ru.quasaris.characternexus.util.generateUuid()) 
+                    }) {
+                        Icon(Icons.Default.Add, null, tint = colorScheme.primary)
+                    }
+                }
+
+                features.forEach { feat ->
+                    FeatureItem(
+                        feature = feat,
+                        onEdit = { editingFeature = feat },
+                        onDelete = { features.remove(feat) }
+                    )
+                }
+
+                Spacer(Modifier.height(80.dp))
             }
 
-            Spacer(Modifier.height(80.dp))
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.surfaceVariant,
+                    contentColor = colorScheme.onSurfaceVariant
+                )
+            ) {
+                Text("Закрыть", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 

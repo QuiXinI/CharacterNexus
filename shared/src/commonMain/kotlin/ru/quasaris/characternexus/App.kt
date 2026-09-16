@@ -395,9 +395,6 @@ fun App(
                                                     onCharacterUuidChange(null)
                                                 }
                                             },
-                                            onReorderCharacters = { orderedUuids ->
-                                                characterRepository.updateSummariesOrder(orderedUuids)
-                                            },
                                             getFullCharacter = getFullCharacter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
                                             onCreateFolder = { name, color -> characterRepository.createFolder(name, color) },

@@ -32,6 +32,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -178,9 +179,11 @@ fun DynamicFieldsTab(
 
     var fullscreenFieldIndex by remember { mutableStateOf<Int?>(null) }
     
-    LaunchedEffect(fullscreenFieldIndex) {
+    LaunchedEffect(fullscreenFieldIndex, extraContent, isContentVisible) {
         onFullscreenVisibilityChanged(fullscreenFieldIndex != null)
         state?.activeDynamicField = fullscreenFieldIndex?.let { items.getOrNull(it) }
+        state?.activeDynamicFieldExtraContent = if (fullscreenFieldIndex != null) extraContent else null
+        state?.activeDynamicFieldContentVisible = if (fullscreenFieldIndex != null) isContentVisible(items[fullscreenFieldIndex!!]) else true
         state?.isFullscreenDynamicFieldOpen = fullscreenFieldIndex != null
     }
 
@@ -954,11 +957,17 @@ fun DynamicFieldFullscreenDialog(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     isDesktop: Boolean = false,
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
-    popupHazeState: HazeState? = null
+    popupHazeState: HazeState? = null,
+    extraContent: @Composable (DynamicNoteState) -> Unit = {},
+    isContentVisible: Boolean = true
 ) {
     var title by remember { mutableStateOf(field.title) }
     var contentValue by remember { mutableStateOf(TextFieldValue(field.content)) }
     var isLocked by remember { mutableStateOf(field.isLocked) }
+
+    LaunchedEffect(title, contentValue, isLocked) {
+        onFieldChange(field.copy(title = title, content = contentValue.text, isLocked = isLocked))
+    }
 
     if (isDesktop) {
         DynamicFieldFullscreenContent(
@@ -983,7 +992,9 @@ fun DynamicFieldFullscreenDialog(
             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
             isDesktop = true,
             state = state,
-            popupHazeState = popupHazeState
+            popupHazeState = popupHazeState,
+            extraContent = extraContent,
+            isContentVisible = isContentVisible
         )
     } else {
         Dialog(
@@ -1013,7 +1024,9 @@ fun DynamicFieldFullscreenDialog(
                 statsMap = statsMap,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 isDesktop = false,
-                state = state
+                state = state,
+                extraContent = extraContent,
+                isContentVisible = isContentVisible
             )
         }
     }
@@ -1043,7 +1056,9 @@ fun DynamicFieldFullscreenContent(
     statsMap: Map<String, String>,
     onFullscreenDialogOpenChange: (Boolean) -> Unit,
     isDesktop: Boolean = false,
-    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null
+    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    extraContent: @Composable (DynamicNoteState) -> Unit = {},
+    isContentVisible: Boolean = true
 ) {
     val isOled = MaterialTheme.colorScheme.background == Color.Black
     val effectiveBlur = forceBlurEnabled && !isOled
@@ -1223,15 +1238,15 @@ fun DynamicFieldFullscreenContent(
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) colorScheme.background.copy(alpha = 0.01f) else colorScheme.surface
+                            containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
                         )
                     )
                 },
-                containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) colorScheme.background.copy(alpha = 0.01f) else colorScheme.background,
+                containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
                 modifier = Modifier
                     .fillMaxSize()
                     .run {
-                        if (effectiveBlur && hazeState != null) {
+                        if (effectiveBlur && hazeState != null && !isSubDialogOpen) {
                             this.hazeEffect(state = hazeState) {
                                 style = HazeStyle(
                                     blurRadius = blurRadius,
@@ -1266,11 +1281,14 @@ fun DynamicFieldFullscreenContent(
                             .verticalScroll(rememberScrollState())
                             .padding(16.dp)
                     ) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            color = if (effectiveBlur) colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
-                            else colorScheme.surfaceContainerHighest,
+                        extraContent(field)
+
+                        if (isContentVisible) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                color = if (effectiveBlur) colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+                                else colorScheme.surfaceContainerHighest,
                             shadowElevation = 0.dp,
                             tonalElevation = 0.dp
                         ) {
@@ -1574,6 +1592,7 @@ fun DynamicFieldFullscreenContent(
                                 }
                             }
                         }
+                    }
 
                         Spacer(modifier = Modifier.height(32.dp))
 
@@ -1613,22 +1632,30 @@ fun DynamicFieldFullscreenContent(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Удалить", fontWeight = FontWeight.Bold)
                         }
+
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
 
                     Button(
-                        onClick = {
-                            focusManager.clearFocus()
-                            onFieldChange(field.copy(title = title, content = contentValue.text, isLocked = isLocked))
-                            onDismiss()
-                        },
+                        onClick = onDismiss,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .fillMaxWidth()
                             .height(56.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                            contentColor = colorScheme.onSurfaceVariant
+                        ),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp,
+                            focusedElevation = 0.dp,
+                            hoveredElevation = 0.dp
+                        )
                     ) {
-                        Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }

@@ -225,6 +225,7 @@ class CharacterDetailState(
     )
     var spellSettings by mutableStateOf(initialCharacter?.spellSettings ?: SpellSettings())
     var wallet by mutableStateOf(initialCharacter?.wallet ?: Wallet())
+    var Cargo by mutableStateOf(initialCharacter?.Cargo ?: CargoState())
     var notes by mutableStateOf(initialCharacter?.notes ?: listOf(DynamicNoteState()))
 
     var characterImageData by mutableStateOf(initialCharacter?.imageData)
@@ -264,11 +265,14 @@ class CharacterDetailState(
     var editingAttack by mutableStateOf<AttackEntry?>(null)
     var editingSpell by mutableStateOf<SpellCard?>(null)
     var activeDynamicField by mutableStateOf<DynamicNoteState?>(null)
+    var activeDynamicFieldExtraContent by mutableStateOf<(@Composable (DynamicNoteState) -> Unit)?>(null)
+    var activeDynamicFieldContentVisible by mutableStateOf(true)
     var selectedCurrency by mutableStateOf<Currency?>(null)
     var isResourceConfigOpen by mutableStateOf(false)
     var activeResourceConfig by mutableStateOf<DynamicContentBlock.Resource?>(null)
     var isPotionConfigOpen by mutableStateOf(false)
     var isPotionSelectionOpen by mutableStateOf(false)
+    var isCargoConfigOpen by mutableStateOf(false)
     var activePotionConfig by mutableStateOf<PotionState?>(null)
     var activeResourceIndex by mutableStateOf(-1)
     var activeBonusConfigAttribute by mutableStateOf<Attribute?>(null)
@@ -277,6 +281,8 @@ class CharacterDetailState(
     var isArmorClassSubDialogOpen by mutableStateOf(false)
     var isInitiativeSubDialogOpen by mutableStateOf(false)
     var isSpeedSubDialogOpen by mutableStateOf(false)
+
+    var refreshTrigger by mutableIntStateOf(0)
 
     // Desktop/Hover State
     var activeSection by mutableStateOf("left") // "left" or "right"
@@ -583,6 +589,7 @@ class CharacterDetailState(
             shieldEntries = shieldEntries, activeShieldId = activeShieldId,
             skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
             statBonuses = statsState.statBonuses, skillBonuses = statsState.skillBonuses,
+            Cargo = Cargo,
             themeSeedColorArgb = themeSeedColorArgb, notes = notes, skillsAndTraits = skillsAndTraits,
             inventory = inventory, spells = spells, spellSettings = spellSettings, wallet = wallet,
             bioShortFields = bioShortFields, bioLongSections = bioLongSections, hitDiceEntries = hitDiceEntries,
@@ -812,6 +819,7 @@ class CharacterDetailState(
         isResourceConfigOpen = false
         isPotionConfigOpen = false
         isPotionSelectionOpen = false
+        isCargoConfigOpen = false
         showHpDialog = false
         activeBonusConfigAttribute = null
         activeBonusConfigSkill = null

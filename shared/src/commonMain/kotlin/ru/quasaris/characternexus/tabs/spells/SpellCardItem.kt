@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -165,7 +166,24 @@ fun SpellCardItem(
                         Text(
                             text = spell.englishName,
                             style = MaterialTheme.typography.bodySmall,
+                            fontStyle = FontStyle.Italic,
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                    if (spell.school != SpellSchool.NONE) {
+                        Text(
+                            text = spell.school.displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontStyle = FontStyle.Italic,
+                            color = colorScheme.primary.copy(alpha = 0.75f)
+                        )
+                    }
+                    if (spell.classes.isNotEmpty()) {
+                        Text(
+                            text = spell.classes.joinToString(" • ") { it.displayName },
+                            style = MaterialTheme.typography.labelSmall,
+                            fontStyle = FontStyle.Italic,
+                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     }
                 }

@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -75,17 +76,16 @@ fun BonusConfigDialog(
     var skillProficiencies by remember { mutableStateOf(initialSkillProficiencies) }
     var skillExpertise by remember { mutableStateOf(initialSkillExpertise) }
 
+    LaunchedEffect(baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise) {
+        onSave(baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise)
+    }
+
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     
     val handleDismiss = {
         focusManager.clearFocus()
         onDismiss()
-    }
-    
-    val handleSave = {
-        focusManager.clearFocus()
-        onSave(baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise)
     }
 
     if (isDesktop) {
@@ -109,7 +109,6 @@ fun BonusConfigDialog(
             skillsToDisplay = skillsToDisplay,
             showStatBonuses = showStatBonuses,
             onDismiss = handleDismiss,
-            onSave = handleSave,
             forceBlurEnabled = forceBlurEnabled,
             hazeState = hazeState,
             blurRadius = blurRadius
@@ -140,7 +139,6 @@ fun BonusConfigDialog(
                 skillsToDisplay = skillsToDisplay,
                 showStatBonuses = showStatBonuses,
                 onDismiss = handleDismiss,
-                onSave = handleSave,
                 forceBlurEnabled = forceBlurEnabled,
                 hazeState = hazeState,
                 blurRadius = blurRadius
@@ -171,7 +169,6 @@ fun BonusConfigDialogContent(
     skillsToDisplay: List<String>,
     showStatBonuses: Boolean,
     onDismiss: () -> Unit,
-    onSave: () -> Unit,
     forceBlurEnabled: Boolean,
     hazeState: HazeState? = null,
     blurRadius: androidx.compose.ui.unit.Dp = 24.dp
@@ -378,15 +375,25 @@ fun BonusConfigDialogContent(
             }
 
             Button(
-                onClick = onSave,
+                onClick = onDismiss,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .padding(16.dp)
                     .fillMaxWidth()
                     .height(56.dp),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.compositeOver(MaterialTheme.colorScheme.background),
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp,
+                    pressedElevation = 0.dp,
+                    focusedElevation = 0.dp,
+                    hoveredElevation = 0.dp
+                )
             ) {
-                Text("Сохранить", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
