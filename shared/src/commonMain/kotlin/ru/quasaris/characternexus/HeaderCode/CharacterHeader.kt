@@ -299,7 +299,7 @@ fun CharacterHeader(
                             onExportPortraitClick = onExportPortraitClick,
                             onDeleteClick = onDeletePortraitClick,
                             onDismiss = onDismissAvatarMenu,
-                            hazeState = hazeState,
+                            hazeState = popupHazeState ?: hazeState,
                             isOled = isOled,
                             settingsViewModel = settingsViewModel
                         )
