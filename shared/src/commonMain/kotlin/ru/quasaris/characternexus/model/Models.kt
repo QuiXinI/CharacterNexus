@@ -275,8 +275,16 @@ data class ProficienciesState(
     val sections: List<ProficiencySection> = listOf(
         ProficiencySection(title = "Языки"),
         ProficiencySection(title = "Инструменты"),
-        ProficiencySection(title = "Оружие"),
-        ProficiencySection(title = "Доспехи"),
+        ProficiencySection(title = "Оружие", items = listOf(
+            ProficiencyItem(name = "Простое", isActive = true),
+            ProficiencyItem(name = "Воинское", isActive = false)
+        )),
+        ProficiencySection(title = "Доспехи", items = listOf(
+            ProficiencyItem(name = "Лёгкие", isActive = false),
+            ProficiencyItem(name = "Средние", isActive = false),
+            ProficiencyItem(name = "Тяжёлые", isActive = false),
+            ProficiencyItem(name = "Щиты", isActive = false)
+        )),
         ProficiencySection(title = "Чувства")
     )
 )

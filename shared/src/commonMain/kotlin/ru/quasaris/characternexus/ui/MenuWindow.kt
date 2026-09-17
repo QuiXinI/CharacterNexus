@@ -86,6 +86,7 @@ fun MenuWindow(
 
     val selectedIds = remember { mutableStateListOf<String>() }
     var isEditMode by remember { mutableStateOf(false) }
+    var isManualEditMode by remember { mutableStateOf(false) }
 
     val autoDownload by settingsViewModel?.autoDownloadLssAvatar?.collectAsState() ?: remember { mutableStateOf(false) }
     val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
@@ -96,16 +97,16 @@ fun MenuWindow(
             PlatformUtils.performHapticFeedback(HapticType.CLICK)
         }
     }
-    
+
     var lssAvatarToDownload by remember { mutableStateOf<Character?>(null) }
     var importErrorMessage by remember { mutableStateOf<String?>(null) }
     var showFilePicker by remember { mutableStateOf(false) }
     var showExportSaver by remember { mutableStateOf(false) }
     var exportUuids by remember { mutableStateOf<List<String>>(emptyList()) }
-    
+
     val pendingImportResults = remember { mutableStateListOf<ru.quasaris.characternexus.backend.ImportResult>() }
     var imageToCrop by remember { mutableStateOf<ImageBitmap?>(null) }
-    
+
     var showCreateFolderDialog by remember { mutableStateOf(false) }
 
     val isAnyFullscreenDialogOpen = imageToCrop != null || lssAvatarToDownload != null || importErrorMessage != null || pendingImportResults.isNotEmpty() || showCreateFolderDialog
@@ -113,10 +114,16 @@ fun MenuWindow(
         onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
     }
 
+    LaunchedEffect(selectedIds.size, isManualEditMode) {
+        if (selectedIds.isEmpty() && !isManualEditMode && isEditMode) {
+            isEditMode = false
+        }
+    }
+
     var folderNameInput by remember { mutableStateOf("") }
     var folderColorInput by remember { mutableStateOf<Int?>(null) }
     var customColorHex by remember { mutableStateOf("") }
-    
+
     val isDark = isSystemInDarkTheme()
 
     @Composable
@@ -138,7 +145,7 @@ fun MenuWindow(
                     val color = if (isDark) folderColor.dark else folderColor.light
                     val argb = color.toArgb()
                     val isSelected = selectedColorArgb == argb
-                    
+
                     Box(modifier = Modifier.weight(1f).aspectRatio(1f)) {
                         Surface(
                             onClick = { onColorSelect(argb) },
@@ -180,7 +187,7 @@ fun MenuWindow(
                                     val color = if (isDark) folderColor.dark else folderColor.light
                                     val argb = color.toArgb()
                                     val isSelected = selectedColorArgb == argb
-                                    
+
                                     Box(modifier = Modifier.weight(1f).aspectRatio(1f)) {
                                         Surface(
                                             onClick = { onColorSelect(argb) },
@@ -228,7 +235,7 @@ fun MenuWindow(
                     )
                 }
             }
-            
+
             TextButton(
                 onClick = { onColorSelect(null); onCustomHexChange("") },
                 modifier = Modifier.align(Alignment.End)
@@ -240,14 +247,14 @@ fun MenuWindow(
 
     var folderToManage by remember { mutableStateOf<CharacterFolder?>(null) }
     var showFolderDeleteConfirm by remember { mutableStateOf(false) }
-    
+
     var showMoveToFolderSheet by remember { mutableStateOf(false) }
 
     fun processNextImport() {
         if (pendingImportResults.isEmpty()) return
         val next = pendingImportResults.first()
         val portraitBytes = next.portraitBytes ?: next.originalBytes
-        
+
         if (portraitBytes != null) {
             try {
                 imageToCrop = decodeImageBitmap(portraitBytes)
@@ -297,12 +304,12 @@ fun MenuWindow(
     CommonFilePicker(show = showFilePicker, fileExtensions = listOf("cb", "charbook", "lsskiller", "json")) { file ->
         showFilePicker = false
         if (file == null) return@CommonFilePicker
-        
+
         scope.launch {
             try {
                 val bytes = file.readBytes()
                 val results = ArchiveManager.importCharacters(bytes)
-                
+
                 if (results.isNotEmpty()) {
                     pendingImportResults.clear()
                     pendingImportResults.addAll(results)
@@ -323,7 +330,7 @@ fun MenuWindow(
     ) { saver ->
         showExportSaver = false
         if (saver == null) return@CommonFileSaver
-        
+
         scope.launch {
             val charsToExport = mutableListOf<Character>()
             exportUuids.forEach { uuid ->
@@ -382,9 +389,9 @@ fun MenuWindow(
 
     if (lssAvatarToDownload != null) {
         AlertDialog(
-            onDismissRequest = { 
+            onDismissRequest = {
                 onImportCharacter(lssAvatarToDownload!!)
-                lssAvatarToDownload = null 
+                lssAvatarToDownload = null
             },
             title = { Text("Загрузить аватарку?") },
             text = { Text("Персонаж из Long Story Short имеет аватарку. Хотите скачать её?") },
@@ -450,9 +457,10 @@ fun MenuWindow(
                             textAlign = TextAlign.Center,
                             color = colorScheme.onSurface
                         )
-                        IconButton(onClick = { 
+                        IconButton(onClick = {
                             performClickHaptic()
                             isEditMode = !isEditMode
+                            isManualEditMode = isEditMode
                             if (!isEditMode) selectedIds.clear()
                         }) {
                             Icon(
@@ -478,7 +486,7 @@ fun MenuWindow(
                     ) {
                         if (selectedIds.isNotEmpty()) {
                             selectedIds.clear()
-                            isEditMode = false
+                            if (!isManualEditMode) isEditMode = false
                         }
                     }
             ) {
@@ -488,12 +496,12 @@ fun MenuWindow(
                     globalOrder = globalOrder,
                     selectedIds = selectedIds,
                     isEditMode = isEditMode,
-                    onMoveItem = { itemId, targetFolderId, afterItemId ->
+                    onMoveItem = { itemId, targetFolderId, beforeItemId ->
                         val isChar = characters.any { it.uuid == itemId }
                         if (isChar) {
-                            onMoveCharactersToFolder(listOf(itemId), targetFolderId, afterItemId)
+                            onMoveCharactersToFolder(listOf(itemId), targetFolderId, beforeItemId)
                         } else {
-                            onMoveFolderToFolder(itemId, targetFolderId, afterItemId)
+                            onMoveFolderToFolder(itemId, targetFolderId, beforeItemId)
                         }
                     },
                     onCharacterClick = { uuid ->
@@ -509,6 +517,7 @@ fun MenuWindow(
                         PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
                         if (!isEditMode) {
                             isEditMode = true
+                            isManualEditMode = false
                             selectedIds.add(uuid)
                         } else {
                             if (uuid in selectedIds) selectedIds.remove(uuid)
@@ -524,10 +533,15 @@ fun MenuWindow(
                             onToggleFolderExpansion(uuid)
                         }
                     },
+                    onFolderExpansionToggle = { uuid ->
+                        performClickHaptic()
+                        onToggleFolderExpansion(uuid)
+                    },
                     onFolderLongClick = { uuid ->
                         PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
                         if (!isEditMode) {
                             isEditMode = true
+                            isManualEditMode = false
                             selectedIds.add(uuid)
                         } else {
                             if (uuid in selectedIds) selectedIds.remove(uuid)
@@ -535,12 +549,8 @@ fun MenuWindow(
                         }
                     },
                     onFolderMoreClick = { folder ->
-                        if (isEditMode) {
-                            if (folder.uuid in selectedIds) selectedIds.remove(folder.uuid)
-                            else selectedIds.add(folder.uuid)
-                        } else {
-                            folderToManage = folder
-                        }
+                        performClickHaptic()
+                        folderToManage = folder
                     },
                     modifier = Modifier.weight(1f)
                 )
@@ -650,7 +660,7 @@ fun MenuWindow(
                             PlatformUtils.performHapticFeedback(HapticType.ERROR)
                             val selectedChars = selectedIds.filter { uuid -> characters.any { it.uuid == uuid } }
                             val selectedFolders = selectedIds.filter { uuid -> folders.any { it.uuid == uuid } }
-                            
+
                             if (selectedChars.isNotEmpty()) {
                                 onDeleteCharacters(selectedChars)
                             }
@@ -704,7 +714,7 @@ fun MenuWindow(
 
         if (showCreateFolderDialog) {
             AlertDialog(
-                onDismissRequest = { 
+                onDismissRequest = {
                     showCreateFolderDialog = false
                     folderNameInput = ""
                     folderColorInput = null
@@ -722,7 +732,7 @@ fun MenuWindow(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         )
-                        
+
                         ColorSelectionGrid(
                             selectedColorArgb = folderColorInput,
                             onColorSelect = { folderColorInput = it },
@@ -746,7 +756,7 @@ fun MenuWindow(
                     ) { Text("Создать") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         showCreateFolderDialog = false
                         folderNameInput = ""
                         folderColorInput = null
@@ -776,7 +786,7 @@ fun MenuWindow(
                             onClick = {
                                 newFolderName = folderToManage!!.name
                                 folderColorInput = folderToManage!!.colorArgb
-                                customColorHex = folderToManage!!.colorArgb?.let { 
+                                customColorHex = folderToManage!!.colorArgb?.let {
                                     val hex = it.toUInt().toString(16).uppercase()
                                     if (hex.length >= 6) hex.takeLast(6) else hex.padStart(6, '0')
                                 } ?: ""
@@ -845,8 +855,8 @@ fun MenuWindow(
 
         if (showRenameDialog && folderToManage != null) {
             AlertDialog(
-                onDismissRequest = { 
-                    showRenameDialog = false 
+                onDismissRequest = {
+                    showRenameDialog = false
                     folderColorInput = null
                     customColorHex = ""
                 },
@@ -861,7 +871,7 @@ fun MenuWindow(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         )
-                        
+
                         ColorSelectionGrid(
                             selectedColorArgb = folderColorInput,
                             onColorSelect = { folderColorInput = it },
@@ -882,7 +892,7 @@ fun MenuWindow(
                     }) { Text("Сохранить") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         showRenameDialog = false
                         folderColorInput = null
                         customColorHex = ""
@@ -928,20 +938,20 @@ fun MenuWindow(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         val selectedItemsParents = selectedIds.map { uuid ->
-                            characters.find { it.uuid == uuid }?.folderUuid 
+                            characters.find { it.uuid == uuid }?.folderUuid
                                 ?: folders.find { it.uuid == uuid }?.parentFolderUuid
                         }.toSet()
-                        
+
                         val isAlreadyAtRoot = selectedItemsParents.size == 1 && selectedItemsParents.first() == null
 
                         Surface(
                             onClick = {
                                 val selectedChars = selectedIds.filter { uuid -> characters.any { it.uuid == uuid } }
                                 val selectedFolders = selectedIds.filter { uuid -> folders.any { it.uuid == uuid } }
-                                
+
                                 if (selectedChars.isNotEmpty()) onMoveCharactersToFolder(selectedChars, null, null)
                                 selectedFolders.forEach { onMoveFolderToFolder(it, null, null) }
-                                
+
                                 selectedIds.clear()
                                 showMoveToFolderSheet = false
                             },
@@ -959,7 +969,7 @@ fun MenuWindow(
                                 Icon(Icons.Default.Home, null, tint = colorScheme.onSecondaryContainer.copy(alpha = if (isAlreadyAtRoot) 0.5f else 1f))
                                 Spacer(Modifier.width(16.dp))
                                 Text(
-                                    text = "В корень (без папки)", 
+                                    text = "В корень (без папки)",
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = colorScheme.onSurface.copy(alpha = if (isAlreadyAtRoot) 0.5f else 1f)
                                 )
@@ -977,7 +987,7 @@ fun MenuWindow(
                                 }
                                 false
                             }
-                            
+
                             val isAlreadyParent = selectedItemsParents.size == 1 && selectedItemsParents.first() == folder.uuid
                             val isEnabled = !isCircularTarget && !isAlreadyParent
 
@@ -1004,13 +1014,13 @@ fun MenuWindow(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Folder, 
-                                        contentDescription = null, 
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
                                         tint = colorScheme.primary.copy(alpha = if (isEnabled) 1f else 0.5f)
                                     )
                                     Spacer(Modifier.width(16.dp))
                                     Text(
-                                        text = folder.name, 
+                                        text = folder.name,
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = colorScheme.onSurface.copy(alpha = if (isEnabled) 1f else 0.5f)
                                     )

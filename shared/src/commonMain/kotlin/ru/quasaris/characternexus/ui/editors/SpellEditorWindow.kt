@@ -45,11 +45,7 @@ fun SpellEditorWindow(
 ) {
     var state by remember { mutableStateOf(spell) }
     
-    LaunchedEffect(state) {
-        if (state.name.isNotBlank()) {
-            onSave(state)
-        }
-    }
+
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var englishNameError by remember { mutableStateOf<String?>(null) }
@@ -58,6 +54,9 @@ fun SpellEditorWindow(
     
     val handleDismiss = {
         focusManager.clearFocus()
+        if (state.name.isNotBlank() && state != spell) {
+            onSave(state)
+        }
         onDismiss()
     }
 

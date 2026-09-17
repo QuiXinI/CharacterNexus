@@ -229,6 +229,40 @@ class CharacterDetailState(
     var proficiencies by mutableStateOf(initialCharacter?.proficiencies ?: ProficienciesState())
     var notes by mutableStateOf(initialCharacter?.notes ?: listOf(DynamicNoteState()))
 
+    init {
+        // Ensure default proficiencies for existing characters with empty sections
+        val currentSections = proficiencies.sections.toMutableList()
+        var changed = false
+
+        val weaponIdx = currentSections.indexOfFirst { it.title == "Оружие" }
+        if (weaponIdx != -1 && currentSections[weaponIdx].items.isEmpty()) {
+            currentSections[weaponIdx] = currentSections[weaponIdx].copy(
+                items = listOf(
+                    ProficiencyItem(name = "Простое", isActive = false),
+                    ProficiencyItem(name = "Воинское", isActive = false)
+                )
+            )
+            changed = true
+        }
+
+        val armorIdx = currentSections.indexOfFirst { it.title == "Доспехи" }
+        if (armorIdx != -1 && currentSections[armorIdx].items.isEmpty()) {
+            currentSections[armorIdx] = currentSections[armorIdx].copy(
+                items = listOf(
+                    ProficiencyItem(name = "Лёгкие", isActive = false),
+                    ProficiencyItem(name = "Средние", isActive = false),
+                    ProficiencyItem(name = "Тяжёлые", isActive = false),
+                    ProficiencyItem(name = "Щиты", isActive = false)
+                )
+            )
+            changed = true
+        }
+
+        if (changed) {
+            proficiencies = proficiencies.copy(sections = currentSections)
+        }
+    }
+
     var characterImageData by mutableStateOf(initialCharacter?.imageData)
     var themeSeedColorArgb by mutableStateOf(initialCharacter?.themeSeedColorArgb)
     var bytesToCrop by mutableStateOf<ByteArray?>(null)

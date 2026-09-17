@@ -1,5 +1,7 @@
 package ru.quasaris.characternexus.tabs.proficiencies
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.animateBounds
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.layout.LookaheadScope
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -82,79 +85,85 @@ fun ProficienciesSection(
             state = dndState,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                state.proficiencies.sections.forEachIndexed { sectionIndex, section ->
-                    ProficiencySectionRow(
-                        section = section,
-                        sectionIndex = sectionIndex,
-                        dndState = dndState,
-                        isEditMode = isProficienciesEditMode,
-                        onSectionChange = { updated ->
-                            val newSections = state.proficiencies.sections.toMutableList()
-                            newSections[sectionIndex] = updated
-                            state.proficiencies = state.proficiencies.copy(sections = newSections)
-                        },
-                        onDeleteSection = {
-                            val newSections = state.proficiencies.sections.toMutableList()
-                            newSections.removeAt(sectionIndex)
-                            state.proficiencies = state.proficiencies.copy(sections = newSections)
-                        },
-                        onMoveItem = { draggedData, targetSecIdx, targetItemIdx ->
-                            val itemToMove = draggedData.item
-                            val currentSections = state.proficiencies.sections
+            // Общий LookaheadScope на все секции — именно он определяет
+            // "систему координат", в которой animateBounds отслеживает сдвиги
+            // чипов и плавно их анимирует вместо мгновенного прыжка.
+            LookaheadScope {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    state.proficiencies.sections.forEachIndexed { sectionIndex, section ->
+                        ProficiencySectionRow(
+                            section = section,
+                            sectionIndex = sectionIndex,
+                            dndState = dndState,
+                            lookaheadScope = this@LookaheadScope,
+                            isEditMode = isProficienciesEditMode,
+                            onSectionChange = { updated ->
+                                val newSections = state.proficiencies.sections.toMutableList()
+                                newSections[sectionIndex] = updated
+                                state.proficiencies = state.proficiencies.copy(sections = newSections)
+                            },
+                            onDeleteSection = {
+                                val newSections = state.proficiencies.sections.toMutableList()
+                                newSections.removeAt(sectionIndex)
+                                state.proficiencies = state.proficiencies.copy(sections = newSections)
+                            },
+                            onMoveItem = { draggedData, targetSecIdx, targetItemIdx ->
+                                val itemToMove = draggedData.item
+                                val currentSections = state.proficiencies.sections
 
-                            var sourceSecIdx = -1
-                            var sourceItemIdx = -1
-                            for (i in currentSections.indices) {
-                                val idx = currentSections[i].items.indexOfFirst { it.id == itemToMove.id }
-                                if (idx != -1) {
-                                    sourceSecIdx = i
-                                    sourceItemIdx = idx
-                                    break
-                                }
-                            }
-
-                            if (sourceSecIdx != -1) {
-                                if (!(sourceSecIdx == targetSecIdx && sourceItemIdx == targetItemIdx)) {
-                                    val newSections = currentSections.map { s ->
-                                        s.copy(items = s.items.toMutableList())
-                                    }.toMutableList()
-
-                                    (newSections[sourceSecIdx].items as MutableList<ProficiencyItem>).removeAt(sourceItemIdx)
-
-                                    val targetList = newSections[targetSecIdx].items as MutableList<ProficiencyItem>
-                                    val finalIndex = if (targetItemIdx == -1) {
-                                        targetList.size
-                                    } else {
-                                        targetItemIdx.coerceAtMost(targetList.size)
+                                var sourceSecIdx = -1
+                                var sourceItemIdx = -1
+                                for (i in currentSections.indices) {
+                                    val idx = currentSections[i].items.indexOfFirst { it.id == itemToMove.id }
+                                    if (idx != -1) {
+                                        sourceSecIdx = i
+                                        sourceItemIdx = idx
+                                        break
                                     }
-                                    targetList.add(finalIndex, itemToMove)
+                                }
 
-                                    state.proficiencies = state.proficiencies.copy(sections = newSections)
+                                if (sourceSecIdx != -1) {
+                                    if (!(sourceSecIdx == targetSecIdx && sourceItemIdx == targetItemIdx)) {
+                                        val newSections = currentSections.map { s ->
+                                            s.copy(items = s.items.toMutableList())
+                                        }.toMutableList()
+
+                                        (newSections[sourceSecIdx].items as MutableList<ProficiencyItem>).removeAt(sourceItemIdx)
+
+                                        val targetList = newSections[targetSecIdx].items as MutableList<ProficiencyItem>
+                                        val finalIndex = if (targetItemIdx == -1) {
+                                            targetList.size
+                                        } else {
+                                            targetItemIdx.coerceAtMost(targetList.size)
+                                        }
+                                        targetList.add(finalIndex, itemToMove)
+
+                                        state.proficiencies = state.proficiencies.copy(sections = newSections)
+                                    }
                                 }
                             }
-                        }
+                        )
+                    }
+
+                    // Add Section - Always visible
+                    KeepStyleInput(
+                        placeholder = "Добавить свой раздел",
+                        onSave = { title ->
+                            if (title.isNotBlank()) {
+                                state.proficiencies = state.proficiencies.copy(
+                                    sections = state.proficiencies.sections + ProficiencySection(title = title)
+                                )
+                            }
+                        },
+                        textStyle = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
                     )
                 }
-
-                // Add Section - Always visible
-                KeepStyleInput(
-                    placeholder = "Добавить свой раздел",
-                    onSave = { title ->
-                        if (title.isNotBlank()) {
-                            state.proficiencies = state.proficiencies.copy(
-                                sections = state.proficiencies.sections + ProficiencySection(title = title)
-                            )
-                        }
-                    },
-                    textStyle = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                )
             }
         }
     }
@@ -166,6 +175,7 @@ fun ProficiencySectionRow(
     section: ProficiencySection,
     sectionIndex: Int,
     dndState: DragAndDropState<ProficiencyDragItem>,
+    lookaheadScope: LookaheadScope,
     isEditMode: Boolean,
     onSectionChange: (ProficiencySection) -> Unit,
     onDeleteSection: () -> Unit,
@@ -177,10 +187,6 @@ fun ProficiencySectionRow(
             .dropTarget(
                 key = section.id,
                 state = dndState,
-                // Работает только когда в секции ещё нет чипов — иначе он перекрывает
-                // весь FlowRow (включая зазоры между чипами) и перехватывает hover
-                // у dropTarget-ов отдельных чипов, из-за чего элемент случайно
-                // улетает в конец секции при драге между соседними чипами.
                 canDrop = section.items.isEmpty(),
                 onDragEnter = { draggedItem ->
                     onMoveItem(draggedItem.data, sectionIndex, -1)
@@ -193,7 +199,7 @@ fun ProficiencySectionRow(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(vertical = 4.dp)
+            modifier = Modifier.padding(top = 7.dp, bottom = 7.dp, end = 4.dp)
         ) {
             EditableText(
                 text = section.title,
@@ -224,34 +230,44 @@ fun ProficiencySectionRow(
         section.items.forEachIndexed { itemIndex, item ->
             val isActualDragging = dndState.draggedItem?.key == item.id
 
-            ProficiencyChip(
-                item = item,
-                sectionIndex = sectionIndex,
-                itemIndex = itemIndex,
-                dndState = dndState,
-                isEditMode = isEditMode,
-                isActualDragging = isActualDragging,
-                onToggle = {
-                    val newItems = section.items.toMutableList()
-                    newItems[itemIndex] = item.copy(isActive = !item.isActive)
-                    onSectionChange(section.copy(items = newItems))
-                },
-                onNameChange = { newName ->
-                    val newItems = section.items.toMutableList()
-                    newItems[itemIndex] = item.copy(name = newName)
-                    onSectionChange(section.copy(items = newItems))
-                },
-                onDelete = {
-                    val newItems = section.items.toMutableList()
-                    newItems.removeAt(itemIndex)
-                    onSectionChange(section.copy(items = newItems))
-                },
-                onDragEnter = { draggedData ->
-                    if (draggedData.item.id != item.id) {
-                        onMoveItem(draggedData, sectionIndex, itemIndex)
+            // key(item.id) — стабильная идентичность чипа в composition.
+            // Без него Compose сопоставляет чипы по позиции в forEachIndexed,
+            // а не по item.id: при reorder элемент на позиции N молча
+            // подменяется данными другого элемента вместо того, чтобы
+            // считаться "тем же самым, но подвинувшимся" — из-за этого
+            // и внутреннее состояние чипов может путаться, и animateBounds
+            // не понимает, что именно куда переместилось.
+            key(item.id) {
+                ProficiencyChip(
+                    item = item,
+                    sectionIndex = sectionIndex,
+                    itemIndex = itemIndex,
+                    dndState = dndState,
+                    lookaheadScope = lookaheadScope,
+                    isEditMode = isEditMode,
+                    isActualDragging = isActualDragging,
+                    onToggle = {
+                        val newItems = section.items.toMutableList()
+                        newItems[itemIndex] = item.copy(isActive = !item.isActive)
+                        onSectionChange(section.copy(items = newItems))
+                    },
+                    onNameChange = { newName ->
+                        val newItems = section.items.toMutableList()
+                        newItems[itemIndex] = item.copy(name = newName)
+                        onSectionChange(section.copy(items = newItems))
+                    },
+                    onDelete = {
+                        val newItems = section.items.toMutableList()
+                        newItems.removeAt(itemIndex)
+                        onSectionChange(section.copy(items = newItems))
+                    },
+                    onDragEnter = { draggedData ->
+                        if (draggedData.item.id != item.id) {
+                            onMoveItem(draggedData, sectionIndex, itemIndex)
+                        }
                     }
-                }
-            )
+                )
+            }
         }
 
         // Add Item button - Always visible
@@ -267,12 +283,14 @@ fun ProficiencySectionRow(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ProficiencyChip(
     item: ProficiencyItem,
     sectionIndex: Int,
     itemIndex: Int,
     dndState: DragAndDropState<ProficiencyDragItem>? = null,
+    lookaheadScope: LookaheadScope? = null,
     isEditMode: Boolean = false,
     onToggle: () -> Unit,
     onNameChange: (String) -> Unit,
@@ -288,7 +306,14 @@ fun ProficiencyChip(
     val glowColor = if (item.isActive) accentColor else Color.Gray.copy(alpha = 0.5f)
 
     var chipModifier = if (dndState != null && !isDragging) {
-        Modifier
+        var m = Modifier as Modifier
+        if (lookaheadScope != null) {
+            // animateBounds должен стоять ДО reorderableItem в цепочке —
+            // так модификатор видит и анимирует именно ту позицию, в которую
+            // reorderableItem перекладывает чип при reorder, а не наоборот.
+            m = m.animateBounds(lookaheadScope)
+        }
+        m
             // reorderableItem сам совмещает draggableItem + dropTarget в одном
             // колбэке onDragEnter — то, что раньше делали два отдельных
             // модификатора (и конфликтовали друг с другом при переносе между
@@ -460,13 +485,26 @@ fun KeepStyleInput(
     val focusRequester = remember { FocusRequester() }
     var focusReady by remember { mutableStateOf(false) }
 
+    val contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val inputTextStyle = if (isChip) {
+        TextStyle(
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = contentColor
+        )
+    } else {
+        textStyle.copy(color = MaterialTheme.colorScheme.onSurface)
+    }
+
     if (isEditing) {
         val inputModifier = if (isChip) {
             Modifier
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         } else {
-            Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            Modifier
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp)
         }
 
         Row(
@@ -477,7 +515,7 @@ fun KeepStyleInput(
             BasicTextField(
                 value = value,
                 onValueChange = { value = it },
-                textStyle = if (isChip) TextStyle(fontSize = 14.sp) else textStyle,
+                textStyle = inputTextStyle,
                 modifier = Modifier
                     .weight(1f, fill = !isChip)
                     .widthIn(min = 60.dp)
@@ -533,33 +571,33 @@ fun KeepStyleInput(
             }
         }
     } else {
-        if (isChip) {
-            Surface(
-                onClick = { isEditing = true },
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                modifier = modifier
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Text(placeholder, fontSize = 13.sp)
-                }
-            }
-        } else {
+        Surface(
+            onClick = { isEditing = true },
+            shape = RoundedCornerShape(16.dp),
+            color = if (isChip) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+                    else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.2f),
+            modifier = modifier
+        ) {
             Row(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .clickable { isEditing = true }
-                    .padding(vertical = 8.dp),
+                modifier = Modifier.padding(
+                    horizontal = if (isChip) 8.dp else 12.dp, 
+                    vertical = if (isChip) 6.dp else 8.dp
+                ),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text(placeholder, style = textStyle, color = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Default.Add, 
+                    contentDescription = null, 
+                    modifier = Modifier.size(if (isChip) 16.dp else 18.dp),
+                    tint = if (isChip) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    placeholder, 
+                    fontSize = if (isChip) 13.sp else 14.sp,
+                    fontWeight = if (isChip) FontWeight.Medium else FontWeight.Bold,
+                    color = if (isChip) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
