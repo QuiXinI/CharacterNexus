@@ -226,6 +226,7 @@ class CharacterDetailState(
     var spellSettings by mutableStateOf(initialCharacter?.spellSettings ?: SpellSettings())
     var wallet by mutableStateOf(initialCharacter?.wallet ?: Wallet())
     var Cargo by mutableStateOf(initialCharacter?.Cargo ?: CargoState())
+    var proficiencies by mutableStateOf(initialCharacter?.proficiencies ?: ProficienciesState())
     var notes by mutableStateOf(initialCharacter?.notes ?: listOf(DynamicNoteState()))
 
     var characterImageData by mutableStateOf(initialCharacter?.imageData)
@@ -590,6 +591,7 @@ class CharacterDetailState(
             skilledProficiencies = statsState.skilledProficiencies, skilledExpertise = statsState.skilledExpertise,
             statBonuses = statsState.statBonuses, skillBonuses = statsState.skillBonuses,
             Cargo = Cargo,
+            proficiencies = proficiencies,
             themeSeedColorArgb = themeSeedColorArgb, notes = notes, skillsAndTraits = skillsAndTraits,
             inventory = inventory, spells = spells, spellSettings = spellSettings, wallet = wallet,
             bioShortFields = bioShortFields, bioLongSections = bioLongSections, hitDiceEntries = hitDiceEntries,

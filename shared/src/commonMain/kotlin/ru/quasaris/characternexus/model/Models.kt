@@ -256,6 +256,32 @@ data class CargoState(
 )
 
 @Serializable
+data class ProficiencyItem(
+    val id: String = generateUuid(),
+    val name: String = "",
+    val isActive: Boolean = true
+)
+
+@Serializable
+data class ProficiencySection(
+    val id: String = generateUuid(),
+    val title: String = "",
+    val items: List<ProficiencyItem> = emptyList()
+)
+
+@Serializable
+data class ProficienciesState(
+    val id: String = generateUuid(),
+    val sections: List<ProficiencySection> = listOf(
+        ProficiencySection(title = "Языки"),
+        ProficiencySection(title = "Инструменты"),
+        ProficiencySection(title = "Оружие"),
+        ProficiencySection(title = "Доспехи"),
+        ProficiencySection(title = "Чувства")
+    )
+)
+
+@Serializable
 data class DynamicNoteState(
     val id: String = generateUuid(),
     val title: String = "",
@@ -686,6 +712,7 @@ data class Character(
     val statBonuses: List<StatBonus> = emptyList(),
     val skillBonuses: List<SkillBonus> = emptyList(),
     val Cargo: CargoState = CargoState(),
+    val proficiencies: ProficienciesState = ProficienciesState(),
     val themeSeedColorArgb: Int? = null,
     val attacks: List<AttackEntry> = emptyList(),
     val notes: List<DynamicNoteState> = listOf(DynamicNoteState()),
