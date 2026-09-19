@@ -117,22 +117,41 @@ fun CharacterDetailDialogs(
         if (state.isSpellEditorOpen && state.editingSpell != null) {
             SpellEditorWindow(
                 spell = state.editingSpell!!,
-                onDismiss = { 
+                onDismiss = {
                     state.isSpellEditorOpen = false
                     state.editingSpell = null
                 },
                 onSave = { updated: SpellCard ->
-                    spellbookManager?.addOrUpdateSpell(updated)
-                    if (updated.id !in state.spellSettings.selectedSpellIds) {
-                        onSpellSettingsChange(state.spellSettings.copy(selectedSpellIds = state.spellSettings.selectedSpellIds + updated.id))
+                    // Character Nexus "Override Mode": 
+                    // Save changes to the character's local overrides instead of the global glossary.
+                    val newOverrides = state.spellSettings.spellOverrides.toMutableMap()
+                    newOverrides[updated.id] = updated
+                    
+                    val newSelected = if (updated.id !in state.spellSettings.selectedSpellIds) {
+                        state.spellSettings.selectedSpellIds + updated.id
+                    } else {
+                        state.spellSettings.selectedSpellIds
                     }
+                    
+                    onSpellSettingsChange(state.spellSettings.copy(
+                        spellOverrides = newOverrides,
+                        selectedSpellIds = newSelected
+                    ))
+                    
                     state.refreshTrigger++
                     state.isSpellEditorOpen = false
                     state.editingSpell = null
                 },
                 onDelete = { deleted: SpellCard ->
-                    spellbookManager?.deleteSpell(deleted.id)
-                    onSpellSettingsChange(state.spellSettings.copy(selectedSpellIds = state.spellSettings.selectedSpellIds - deleted.id))
+                    val newOverrides = state.spellSettings.spellOverrides.toMutableMap()
+                    newOverrides.remove(deleted.id)
+                    
+                    onSpellSettingsChange(state.spellSettings.copy(
+                        spellOverrides = newOverrides,
+                        selectedSpellIds = state.spellSettings.selectedSpellIds - deleted.id,
+                        preparedSpellIds = state.spellSettings.preparedSpellIds - deleted.id
+                    ))
+                    
                     state.refreshTrigger++
                     state.isSpellEditorOpen = false
                     state.editingSpell = null
@@ -235,6 +254,7 @@ fun CharacterDetailDialogs(
                         advantageLogic = state.advantageLogic
                     ))
                 },
+                spellOverrides = spellSettings.spellOverrides,
                 settingsViewModel = state.settingsViewModel,
                 isDesktop = isDesktop
             )

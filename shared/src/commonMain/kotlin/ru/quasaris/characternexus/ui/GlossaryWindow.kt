@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.AutoFixNormal
 import androidx.compose.material.icons.filled.Menu
@@ -43,6 +44,7 @@ import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.backend.JsonConfig
 import ru.quasaris.characternexus.ui.GlossaryCategory
+import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
 
 sealed class GlossaryView {
     data object Hub : GlossaryView()
@@ -354,8 +356,10 @@ fun SpellGlossaryList(
     var filterState by remember { mutableStateOf(SpellFilterState()) }
     var showFilters by remember { mutableStateOf(false) }
     var expandedIds by remember { mutableStateOf(setOf<String>()) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    var editingSpell by remember { mutableStateOf<SpellCard?>(null) }
 
-    val allSpells = remember { spellbookManager.loadSpells() }
+    val allSpells = remember(refreshTrigger) { spellbookManager.loadSpells() }
     val filteredSpells = remember(allSpells, searchQuery, filterState) {
         allSpells.filter { it.matches(filterState, searchQuery) }
     }
@@ -366,53 +370,89 @@ fun SpellGlossaryList(
         // No path mirroring for spells as requested
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Поиск...") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Поиск...") },
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = { filterState = filterState.copy(isCompact = !filterState.isCompact) }) {
+                    Icon(
+                        if (filterState.isCompact) Icons.Default.ViewHeadline else Icons.Default.ViewModule,
+                        contentDescription = "Компактный режим",
+                        tint = if (filterState.isCompact) colorScheme.primary else colorScheme.onSurface
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = { showFilters = !showFilters }) {
+                    Icon(
+                        Icons.Default.FilterList,
+                        null,
+                        tint = if (showFilters) colorScheme.primary else colorScheme.onSurface
+                    )
+                }
+            }
+
+            SpellFiltersArea(
+                visible = showFilters,
+                filterState = filterState,
+                onFilterChange = { filterState = it }
             )
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = { filterState = filterState.copy(isCompact = !filterState.isCompact) }) {
-                Icon(
-                    if (filterState.isCompact) Icons.Default.ViewHeadline else Icons.Default.ViewModule,
-                    contentDescription = "Компактный режим",
-                    tint = if (filterState.isCompact) colorScheme.primary else colorScheme.onSurface
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = { showFilters = !showFilters }) {
-                Icon(
-                    Icons.Default.FilterList,
-                    null,
-                    tint = if (showFilters) colorScheme.primary else colorScheme.onSurface
-                )
-            }
+
+            SpellListGrid(settingsViewModel = settingsViewModel,
+                spells = filteredSpells,
+                filterState = filterState,
+                expandedIds = expandedIds,
+                onToggleExpand = { id ->
+                    expandedIds = if (id in expandedIds) expandedIds - id else expandedIds + id
+                },
+                modifier = Modifier.weight(1f),
+                hazeState = hazeState,
+                isEditable = true,
+                onEdit = { editingSpell = it },
+                spellOverrides = emptyMap()
+            )
         }
 
-        SpellFiltersArea(
-            visible = showFilters,
-            filterState = filterState,
-            onFilterChange = { filterState = it }
-        )
+        FloatingActionButton(
+            onClick = { editingSpell = SpellCard() },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = colorScheme.primaryContainer,
+            contentColor = colorScheme.onPrimaryContainer
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Добавить заклинание")
+        }
+    }
 
-        SpellListGrid(settingsViewModel = settingsViewModel, 
-            spells = filteredSpells,
-            filterState = filterState,
-            expandedIds = expandedIds,
-            onToggleExpand = { id ->
-                expandedIds = if (id in expandedIds) expandedIds - id else expandedIds + id
+    if (editingSpell != null) {
+        SpellEditorWindow(
+            spell = editingSpell!!,
+            onDismiss = { editingSpell = null },
+            onSave = { updated ->
+                spellbookManager.addOrUpdateSpell(updated)
+                refreshTrigger++
+                editingSpell = null
             },
-            modifier = Modifier.weight(1f),
-            hazeState = hazeState
+            onDelete = { deleted ->
+                spellbookManager.deleteSpell(deleted.id)
+                refreshTrigger++
+                editingSpell = null
+            },
+            forceBlurEnabled = false,
+            settingsViewModel = settingsViewModel,
+            isDesktop = true // Glossary is mostly desktop for now, but SpellEditorWindow handles it
         )
     }
 }

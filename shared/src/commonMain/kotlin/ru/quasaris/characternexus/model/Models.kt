@@ -464,6 +464,22 @@ data class SpellCard(
     @SerialName("sourceModuleVersion") val sourceModuleVersion: String? = null,
     @SerialName("source") val source: String = ""
 ) {
+    val identityKey: String get() = "${name.lowercase().trim()}|${englishName.lowercase().trim()}|${version.name}"
+
+    fun matchesId(idString: String): Boolean {
+        if (id == idString) return true
+        if (identityKey == idString) return true
+        val slug = englishName.lowercase()
+            .replace(" ", "_")
+            .replace(Regex("[^a-z0-9_'\\-.()]"), "")
+        if (slug.isNotBlank() && slug == idString) return true
+        val nameSlug = name.lowercase()
+            .replace(" ", "_")
+            .replace(Regex("[^a-z0-9_'\\-.()]"), "")
+        if (nameSlug.isNotBlank() && nameSlug == idString) return true
+        return false
+    }
+
     val duration: String get() = if (durationUnit.requiresValue) {
         if (durationValue.isBlank()) durationUnit.displayName else "$durationValue ${durationUnit.displayName}"
     } else {
@@ -598,7 +614,8 @@ data class SpellSettings(
     val isSpellbookEnabled: Boolean = false,
     val levelContent: Map<String, List<SpellLevelItem>> = emptyMap(),
     val spellAbilityOverrides: Map<String, Attribute> = emptyMap(),
-    val allowCantripUpcast: Boolean = false
+    val allowCantripUpcast: Boolean = false,
+    val spellOverrides: Map<String, SpellCard> = emptyMap()
 )
 
 @Serializable

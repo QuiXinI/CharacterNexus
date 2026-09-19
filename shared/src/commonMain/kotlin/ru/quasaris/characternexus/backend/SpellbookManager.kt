@@ -96,7 +96,7 @@ class SpellbookManager {
             }
         
         val spellToSave = if (existingMatch != null) {
-            spell.copy(id = if (spell.englishName.isNotBlank()) slugify(spell.englishName) else existingMatch.id) // Use slug as ID if available
+            spell.copy(id = existingMatch.id) // Keep stable ID
         } else {
             if (spell.englishName.isNotBlank()) spell.copy(id = slugify(spell.englishName)) else spell
         }

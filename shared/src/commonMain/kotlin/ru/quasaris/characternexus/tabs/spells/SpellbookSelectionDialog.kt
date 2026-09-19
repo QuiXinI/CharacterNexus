@@ -50,6 +50,7 @@ fun SpellbookSelectionDialog(
     spellSaveDice: List<DicePart> = emptyList(),
     onRollDamage: (String, String, AdvantageType) -> Unit = { _, _, _ -> },
     onRollAttack: (AdvantageType) -> Unit = {},
+    spellOverrides: Map<String, SpellCard> = emptyMap(),
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
     isDesktop: Boolean = false
 ) {
@@ -110,6 +111,7 @@ fun SpellbookSelectionDialog(
             spellSaveDice = spellSaveDice,
             onRollDamage = onRollDamage,
             onRollAttack = onRollAttack,
+            spellOverrides = spellOverrides,
             settingsViewModel = settingsViewModel,
             blurRadius = blurRadius
         )
@@ -149,6 +151,7 @@ fun SpellbookSelectionDialog(
                 spellSaveDice = spellSaveDice,
                 onRollDamage = onRollDamage,
                 onRollAttack = onRollAttack,
+                spellOverrides = spellOverrides,
                 settingsViewModel = settingsViewModel,
                 blurRadius = blurRadius
             )
@@ -188,14 +191,30 @@ fun SpellbookSelectionContent(
     spellSaveDice: List<DicePart> = emptyList(),
     onRollDamage: (String, String, AdvantageType) -> Unit = { _, _, _ -> },
     onRollAttack: (AdvantageType) -> Unit = {},
+    spellOverrides: Map<String, SpellCard> = emptyMap(),
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
     blurRadius: androidx.compose.ui.unit.Dp = 24.dp
 ) {
-    val allSpells = remember { spellbookManager.loadSpells() }
+    val allSpells = remember(spellOverrides) {
+        val base = spellbookManager.loadSpells()
+        val all = base.map { spellOverrides[it.id] ?: it }.toMutableList()
+        val baseIds = base.map { it.id }.toSet()
+        spellOverrides.values.forEach { overrideSpell ->
+            if (overrideSpell.id !in baseIds) {
+                all.add(overrideSpell)
+            }
+        }
+        all
+    }
+
+    fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
+        return idSet.any { spell.matchesId(it) }
+    }
+
     val filteredSpells = remember(allSpells, searchQuery, filterState, isBookMode, currentSelected) {
         allSpells.filter { spell ->
             val matchesSearch = spell.matches(filterState, searchQuery)
-            if (isBookMode) matchesSearch && spell.id in currentSelected else matchesSearch
+            if (isBookMode) matchesSearch && matchesAny(spell, currentSelected) else matchesSearch
         }
     }
 
@@ -352,7 +371,8 @@ fun SpellbookSelectionContent(
                 onRollAttack = onRollAttack,
                 hazeState = hazeState,
                 forceBlurEnabled = forceBlurEnabled,
-                blurCards = blurCards
+                blurCards = blurCards,
+                spellOverrides = spellOverrides
             )
 
             Button(

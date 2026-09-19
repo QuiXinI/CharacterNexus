@@ -126,14 +126,37 @@ fun SpellsTab(
     var levelInEditMode by remember { mutableStateOf<Float?>(null) }
     var showDividerEditor by remember { mutableStateOf<Pair<Float, SpellLevelDivider?>?>(null) }
 
-    val characterSpells = remember(spellSettings.selectedSpellIds, spellSettings.preparedSpellIds, spellSettings.isSpellbookEnabled, effectiveRefreshTrigger) {
-        val all = spellbookManager?.loadSpells() ?: emptyList()
+    val characterSpells = remember(
+        spellSettings.selectedSpellIds,
+        spellSettings.preparedSpellIds,
+        spellSettings.isSpellbookEnabled,
+        spellSettings.spellOverrides,
+        effectiveRefreshTrigger
+    ) {
+        val baseSpells = spellbookManager?.loadSpells() ?: emptyList()
+        val allAvailable = baseSpells.map { spellSettings.spellOverrides[it.id] ?: it }.toMutableList()
+
+        // Add spells that exist ONLY in overrides (local character spells)
+        val baseIds = baseSpells.map { it.id }.toSet()
+        spellSettings.spellOverrides.values.forEach { overrideSpell ->
+            if (overrideSpell.id !in baseIds) {
+                allAvailable.add(overrideSpell)
+            }
+        }
+
+        val selectedSet = spellSettings.selectedSpellIds.toSet()
+        val preparedSet = spellSettings.preparedSpellIds.toSet()
+
+        fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
+            return idSet.any { spell.matchesId(it) }
+        }
+
         if (spellSettings.isSpellbookEnabled) {
-            all.filter {
-                it.id in spellSettings.preparedSpellIds || (it.id in spellSettings.selectedSpellIds && it.isRitual)
+            allAvailable.filter {
+                matchesAny(it, preparedSet) || (matchesAny(it, selectedSet) && it.isRitual)
             }
         } else {
-            all.filter { it.id in spellSettings.selectedSpellIds }
+            allAvailable.filter { matchesAny(it, selectedSet) }
         }
     }
 
@@ -840,6 +863,7 @@ fun SpellsTab(
                                                             collapseOnEdit = collapseSpellsOnEdit,
                                                             isDragging = isDragging,
                                                             isAnyItemDragging = draggingItemKey != null,
+                                                            isOverridden = card.id in spellSettings.spellOverrides,
                                                             settingsViewModel = settingsViewModel
                                                         )
                                                     }

@@ -84,6 +84,7 @@ fun SpellCardItem(
     isDragging: Boolean = false,
     isAnyItemDragging: Boolean = false,
     isCompact: Boolean = false,
+    isOverridden: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -149,19 +150,35 @@ fun SpellCardItem(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = buildAnnotatedString {
-                            append(spell.name)
-                            if (spell.version != SpellVersion.NONE && !spell.name.contains(spell.version.displayName)) {
-                                withStyle(SpanStyle(color = colorScheme.primary.copy(alpha = 0.6f), fontSize = 12.sp)) {
-                                    append(" [${spell.version.displayName}]")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = buildAnnotatedString {
+                                append(spell.name)
+                                if (spell.version != SpellVersion.NONE && !spell.name.contains(spell.version.displayName)) {
+                                    withStyle(
+                                        SpanStyle(
+                                            color = colorScheme.primary.copy(alpha = 0.6f),
+                                            fontSize = 12.sp
+                                        )
+                                    ) {
+                                        append(" [${spell.version.displayName}]")
+                                    }
                                 }
-                            }
-                        },
-                        style = if (isCompact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface
-                    )
+                            },
+                            style = if (isCompact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurface
+                        )
+                        if (isOverridden) {
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = "Изменено",
+                                modifier = Modifier.size(if (isCompact) 14.dp else 16.dp),
+                                tint = colorScheme.secondary.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
                     if (spell.showEnglishName && spell.englishName.isNotBlank()) {
                         Text(
                             text = spell.englishName,

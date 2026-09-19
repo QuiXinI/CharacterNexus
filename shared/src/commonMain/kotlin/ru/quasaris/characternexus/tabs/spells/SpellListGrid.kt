@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -33,6 +34,9 @@ fun SpellListGrid(
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
     blurCards: Boolean = true,
+    isEditable: Boolean = false,
+    onEdit: (SpellCard) -> Unit = {},
+    spellOverrides: Map<String, SpellCard> = emptyMap(),
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val grouped = spells.groupBy { it.level }
@@ -58,13 +62,16 @@ fun SpellListGrid(
             }
             
             items(grouped[levelStr] ?: emptyList(), key = { it.id }) { spell ->
+                val isSelected = remember(spell, selectedIds) {
+                    selectedIds.any { idString -> spell.matchesId(idString) }
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (onToggleSelect != null) {
                         androidx.compose.material3.Checkbox(
-                            checked = spell.id in selectedIds,
+                            checked = isSelected,
                             onCheckedChange = { onToggleSelect(spell.id, it) }
                         )
                         Spacer(Modifier.width(4.dp))
@@ -75,9 +82,10 @@ fun SpellListGrid(
                         isExpanded = spell.id in expandedIds,
                         onToggleExpand = { onToggleExpand(spell.id) },
                         modifier = Modifier.weight(1f),
-                        isSelected = spell.id in selectedIds,
-                        onLongClick = { onToggleSelect?.invoke(spell.id, spell.id !in selectedIds) },
-                        isEditable = false,
+                        isSelected = isSelected,
+                        onLongClick = { onToggleSelect?.invoke(spell.id, !isSelected) },
+                        onEdit = { onEdit(spell) },
+                        isEditable = isEditable,
                         statsMap = statsMap,
                         characterLevel = characterLevel,
                         spellAttackBonus = spellAttackBonus,
@@ -89,7 +97,8 @@ fun SpellListGrid(
                         hazeState = hazeState,
                         forceBlurEnabled = forceBlurEnabled,
                         blurCards = blurCards,
-                        isCompact = isCompact
+                        isCompact = isCompact,
+                        isOverridden = spell.id in spellOverrides
                     )
                 }
             }
