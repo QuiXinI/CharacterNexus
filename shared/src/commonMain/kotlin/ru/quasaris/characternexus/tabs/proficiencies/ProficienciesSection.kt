@@ -37,6 +37,7 @@ import com.mohamedrejeb.compose.dnd.drop.dropTarget
 import com.mohamedrejeb.compose.dnd.reorder.reorderableItem
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.CharacterDetailState
+import kotlin.time.Duration.Companion.milliseconds
 
 @Immutable
 data class ProficiencyDragItem(
@@ -199,7 +200,9 @@ fun ProficiencySectionRow(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(top = 7.dp, bottom = 7.dp, end = 4.dp)
+            modifier = Modifier
+                .align(Alignment.CenterVertically)
+                .padding(top = 7.dp, bottom = 7.dp, end = 4.dp)
         ) {
             EditableText(
                 text = section.title,
@@ -265,7 +268,8 @@ fun ProficiencySectionRow(
                         if (draggedData.item.id != item.id) {
                             onMoveItem(draggedData, sectionIndex, itemIndex)
                         }
-                    }
+                    },
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 )
             }
         }
@@ -278,7 +282,8 @@ fun ProficiencySectionRow(
                     onSectionChange(section.copy(items = section.items + ProficiencyItem(name = name)))
                 }
             },
-            isChip = true
+            isChip = true,
+            modifier = Modifier.align(Alignment.CenterVertically)
         )
     }
 }
@@ -441,7 +446,7 @@ fun EditableText(
                 focusReady = false
                 repeat(3) {
                     focusRequester.requestFocus()
-                    kotlinx.coroutines.delay(50)
+                    kotlinx.coroutines.delay(50.milliseconds)
                 }
                 focusReady = true
             }
@@ -565,7 +570,7 @@ fun KeepStyleInput(
                 focusReady = false
                 repeat(3) {
                     focusRequester.requestFocus()
-                    kotlinx.coroutines.delay(50)
+                    kotlinx.coroutines.delay(50.milliseconds)
                 }
                 focusReady = true
             }
