@@ -27,7 +27,11 @@ data class GameMagicItem(
     @SerialName("damage_types") val damageTypes: List<ru.quasaris.characternexus.model.DamageType>? = null,
     @SerialName("icon_index") val iconIndex: Int = 1,
     @SerialName("color_hex") val colorHex: String = "FF0000",
-    @SerialName("source_module_id") val sourceModuleId: String? = null
+    @SerialName("source_module_id") val sourceModuleId: String? = null,
+    @SerialName("source") val source: String = "",
+    @SerialName("english_name") val englishName: String? = null,
+    @SerialName("show_english_name") val showEnglishName: Boolean? = null,
+    @SerialName("version") val version: ru.quasaris.characternexus.model.SpellVersion? = null
 )
 
 @Serializable

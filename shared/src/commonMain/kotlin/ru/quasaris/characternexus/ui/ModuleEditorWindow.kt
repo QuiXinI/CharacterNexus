@@ -41,6 +41,7 @@ fun ModuleEditorWindow(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var editingSpell by remember { mutableStateOf<SpellCard?>(null) }
+    var editingMagicItem by remember { mutableStateOf<GameMagicItem?>(null) }
     var editingClass by remember { mutableStateOf<GameClass?>(null) }
     var editingSubclass by remember { mutableStateOf<GameSubclass?>(null) }
     var editingSpecies by remember { mutableStateOf<GameSpecies?>(null) }
@@ -72,10 +73,15 @@ fun ModuleEditorWindow(
             spell = editingSpell!!,
             onDismiss = { editingSpell = null },
             onSave = { updated ->
-                spellbookManager.addOrUpdateSpell(updated)
-                val existing = manifest.contents.find { it.id == updated.id && it.type == "spell" }
-                if (existing == null) {
-                    manifest = manifest.copy(contents = manifest.contents + ModuleContent("spell", updated.id, "${updated.id}.json"))
+                val saved = spellbookManager.addOrUpdateSpell(updated)
+                
+                val existingIdx = manifest.contents.indexOfFirst { it.id == updated.id && it.type == "spell" }
+                if (existingIdx == -1) {
+                    manifest = manifest.copy(contents = manifest.contents + ModuleContent("spell", saved.id, "${saved.id}.json"))
+                } else {
+                    val newContents = manifest.contents.toMutableList()
+                    newContents[existingIdx] = newContents[existingIdx].copy(id = saved.id, file = "${saved.id}.json")
+                    manifest = manifest.copy(contents = newContents)
                 }
                 editingSpell = null
             },
@@ -83,6 +89,36 @@ fun ModuleEditorWindow(
                 spellbookManager.deleteSpell(spellToDelete.id)
                 manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == spellToDelete.id && it.type == "spell" })
                 editingSpell = null
+            },
+            forceBlurEnabled = forceBlurEnabled,
+            settingsViewModel = settingsViewModel
+        )
+        return
+    }
+
+    if (editingMagicItem != null) {
+        MagicItemEditorWindow(
+            item = editingMagicItem!!,
+            onDismiss = { editingMagicItem = null },
+            onSave = { updated ->
+                val manager = MagicItemManager(moduleManager)
+                val saved = manager.addOrUpdateItem(updated)
+                
+                val existingIdx = manifest.contents.indexOfFirst { it.id == updated.id && it.type == "magic_item" }
+                if (existingIdx == -1) {
+                    manifest = manifest.copy(contents = manifest.contents + ModuleContent("magic_item", saved.id ?: "", "${saved.id}.json"))
+                } else {
+                    val newContents = manifest.contents.toMutableList()
+                    newContents[existingIdx] = newContents[existingIdx].copy(id = saved.id ?: "", file = "${saved.id}.json")
+                    manifest = manifest.copy(contents = newContents)
+                }
+                editingMagicItem = null
+            },
+            onDelete = { itemToDelete ->
+                val manager = MagicItemManager(moduleManager)
+                manager.deleteItem(itemToDelete.id ?: "")
+                manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == itemToDelete.id && it.type == "magic_item" })
+                editingMagicItem = null
             },
             forceBlurEnabled = forceBlurEnabled,
             settingsViewModel = settingsViewModel
@@ -249,6 +285,16 @@ fun ModuleEditorWindow(
                                 }
                             )
                             DropdownMenuItem(
+                                text = { Text("Магический предмет") },
+                                onClick = {
+                                    showAddMenu = false
+                                    editingMagicItem = GameMagicItem(
+                                        id = ru.quasaris.characternexus.util.generateUuid(),
+                                        sourceModuleId = manifest.id
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Класс") },
                                 onClick = {
                                     showAddMenu = false
@@ -293,6 +339,9 @@ fun ModuleEditorWindow(
                                     "spell" -> {
                                         editingSpell = spellbookManager.loadSpells().find { it.id == content.id }
                                     }
+                                    "magic_item" -> {
+                                        editingMagicItem = MagicItemManager(moduleManager).loadItems().find { it.id == content.id }
+                                    }
                                     "class" -> {
                                         editingClass = loadItem<GameClass>("classes", content.file)
                                     }
@@ -308,6 +357,11 @@ fun ModuleEditorWindow(
                                 }
                             },
                             onDelete = {
+                                val manager = MagicItemManager(moduleManager)
+                                when (content.type) {
+                                    "spell" -> spellbookManager.deleteSpell(content.id)
+                                    "magic_item" -> manager.deleteItem(content.id)
+                                }
                                 manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == content.id && it.type == content.type })
                             }
                         )
@@ -372,6 +426,7 @@ fun ComponentItem(
             Icon(
                 imageVector = when(content.type) {
                     "spell" -> Icons.Default.AutoFixHigh
+                    "magic_item" -> Icons.Default.Science
                     "class" -> Icons.Default.Shield
                     "subclass" -> Icons.Default.KeyboardDoubleArrowDown
                     "feat" -> Icons.Default.Star

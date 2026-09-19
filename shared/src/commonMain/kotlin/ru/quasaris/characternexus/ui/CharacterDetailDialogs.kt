@@ -404,6 +404,15 @@ fun CharacterDetailDialogs(
                     state.isPotionConfigOpen = false
                     state.activePotionConfig = null
                 },
+                isReadOnlyDefinition = state.activePotionConfig?.let { potion ->
+                    val isSrd = potion.sourceModuleId?.startsWith("srd_") == true
+                    val isCustom = potion.sourceModuleId == "custom_potions" || potion.sourceModuleId == null
+                    val isOwnedByCurrent = potion.source == state.characterUuid
+                    
+                    // Locked if it's SRD OR (it's Custom/Orphaned AND NOT owned by current character)
+                    // If source is blank, we allow editing for legacy support, but it'll be claimed on save.
+                    isSrd || (isCustom && potion.source.isNotBlank() && !isOwnedByCurrent)
+                } ?: false,
                 forceBlurEnabled = forceBlurEnabled,
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
@@ -415,20 +424,46 @@ fun CharacterDetailDialogs(
         if (state.isPotionSelectionOpen && state.magicItemManager != null) {
             PotionSelectionDialog(
                 manager = state.magicItemManager,
+                initialSelectedIds = state.potions.mapNotNull { it.id }.toSet(),
                 onDismiss = { state.isPotionSelectionOpen = false },
-                onSelect = { item ->
-                    val newPotion = PotionState(
-                        name = item.name ?: "Без названия",
-                        formula = item.formula ?: "",
-                        description = item.description ?: "",
-                        type = if (item.damageTypes?.contains(DamageType.HEALING) == true) PotionType.HEALING else PotionType.OTHER,
-                        rarity = item.rarity,
-                        damageTypes = item.damageTypes ?: emptyList(),
-                        iconIndex = item.iconIndex,
-                        colorHex = item.colorHex,
-                        sourceModuleId = item.sourceModuleId
-                    )
-                    state.potions = state.potions + newPotion
+                onSelectBatch = { selectedItems ->
+                    val selectedIds = selectedItems.mapNotNull { it.id }.toSet()
+                    
+                    // 1. Determine which current potions should be REMOVED.
+                    // We only remove items that are "Selectable" from the glossary.
+                    // Items with no sourceModuleId are considered "Local" and should stay unless manually deleted.
+                    val currentPotions = state.potions
+                    val glossaryPotions = currentPotions.filter { it.sourceModuleId != null }
+                    val localPotions = currentPotions.filter { it.sourceModuleId == null }
+                    
+                    val toRemoveIds = glossaryPotions.mapNotNull { it.id }.filter { it !in selectedIds }.toSet()
+                    
+                    var newPotions = currentPotions.filterNot { it.id in toRemoveIds }
+                    
+                    // 2. Add new items that are selected but not in the character list
+                    val currentIds = newPotions.mapNotNull { it.id }.toSet()
+                    selectedItems.forEach { item ->
+                        if (item.id !in currentIds) {
+                            newPotions = newPotions + PotionState(
+                                id = item.id ?: ru.quasaris.characternexus.util.generateUuid(),
+                                name = item.name ?: "Без названия",
+                                formula = item.formula ?: "",
+                                description = item.description ?: "",
+                                type = if (item.damageTypes?.contains(DamageType.HEALING) == true) PotionType.HEALING else PotionType.OTHER,
+                                rarity = item.rarity,
+                                damageTypes = item.damageTypes ?: emptyList(),
+                                iconIndex = item.iconIndex,
+                                colorHex = item.colorHex,
+                                sourceModuleId = item.sourceModuleId,
+                                source = item.source,
+                                englishName = item.englishName ?: "",
+                                showEnglishName = item.showEnglishName ?: false,
+                                version = item.version ?: SpellVersion.HB
+                            )
+                        }
+                    }
+                    
+                    state.potions = newPotions
                     state.isPotionSelectionOpen = false
                 },
                 settingsViewModel = state.settingsViewModel,

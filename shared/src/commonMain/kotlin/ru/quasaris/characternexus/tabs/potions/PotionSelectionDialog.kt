@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.tabs.potions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,8 +42,9 @@ import characternexus.shared.generated.resources.*
 @Composable
 fun PotionSelectionDialog(
     manager: MagicItemManager,
+    initialSelectedIds: Set<String>,
     onDismiss: () -> Unit,
-    onSelect: (GameMagicItem) -> Unit,
+    onSelectBatch: (List<GameMagicItem>) -> Unit,
     settingsViewModel: SettingsViewModel? = null,
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
@@ -49,11 +52,14 @@ fun PotionSelectionDialog(
     isDesktop: Boolean = false
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedIds by remember { mutableStateOf(initialSelectedIds) }
+    
     val allItems = remember { manager.loadItems() }
     val filteredItems = remember(searchQuery, allItems) {
         allItems.filter { 
             it.name?.contains(searchQuery, ignoreCase = true) == true ||
-            it.description?.contains(searchQuery, ignoreCase = true) == true
+            it.description?.contains(searchQuery, ignoreCase = true) == true ||
+            it.englishName?.contains(searchQuery, ignoreCase = true) == true
         }
     }
 
@@ -119,15 +125,27 @@ fun PotionSelectionDialog(
                             ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(filteredItems, key = { it.id ?: it.name ?: "" }) { item ->
-                                PotionSelectionItem(item, onSelect)
+                            items(filteredItems, key = { "${it.sourceModuleId}_${it.id}_${it.name}" }) { item ->
+                                val isSelected = selectedIds.contains(item.id ?: "")
+                                PotionSelectionItem(
+                                    item = item,
+                                    isSelected = isSelected,
+                                    onSelect = { 
+                                        val id = item.id ?: return@PotionSelectionItem
+                                        selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
+                                    }
+                                )
                             }
                         }
                     }
                 }
 
                 Button(
-                    onClick = onDismiss,
+                    onClick = {
+                        val result = allItems.filter { selectedIds.contains(it.id ?: "") }
+                        onSelectBatch(result)
+                        onDismiss()
+                    },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
@@ -135,17 +153,14 @@ fun PotionSelectionDialog(
                         .height(56.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.compositeOver(MaterialTheme.colorScheme.background),
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        containerColor = colorScheme.primary,
+                        contentColor = colorScheme.onPrimary
                     ),
                     elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 0.dp,
-                        pressedElevation = 0.dp,
-                        focusedElevation = 0.dp,
-                        hoveredElevation = 0.dp
+                        defaultElevation = 2.dp
                     )
                 ) {
-                    Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    Text("ВЫБРАТЬ (${selectedIds.size})", fontSize = 16.sp, fontWeight = FontWeight.Black)
                 }
             }
         }
@@ -165,7 +180,11 @@ fun PotionSelectionDialog(
 }
 
 @Composable
-fun PotionSelectionItem(item: GameMagicItem, onSelect: (GameMagicItem) -> Unit) {
+fun PotionSelectionItem(
+    item: GameMagicItem,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
     val colorScheme = MaterialTheme.colorScheme
     
     val potionColor = remember(item.colorHex) {
@@ -201,10 +220,14 @@ fun PotionSelectionItem(item: GameMagicItem, onSelect: (GameMagicItem) -> Unit) 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onSelect(item) },
+            .clickable { onSelect() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            containerColor = if (isSelected) colorScheme.primary.copy(alpha = 0.15f) else colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        ),
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
     ) {
         Row(
@@ -225,12 +248,12 @@ fun PotionSelectionItem(item: GameMagicItem, onSelect: (GameMagicItem) -> Unit) 
                     text = item.name ?: "Без названия",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = colorScheme.onSurface
+                    color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface
                 )
                 Text(
                     text = "${item.rarity.displayName} • ${item.formula?.ifBlank { "Нет формулы" } ?: "Нет формулы"}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.primary
+                    color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant
                 )
             }
         }

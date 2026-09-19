@@ -334,7 +334,11 @@ data class PotionState(
     val iconIndex: Int = 1,
     val colorHex: String = "FF0000",
     val isExpanded: Boolean = false,
-    val sourceModuleId: String? = null
+    val sourceModuleId: String? = null,
+    val source: String = "",
+    val englishName: String = "",
+    val showEnglishName: Boolean = false,
+    val version: SpellVersion = SpellVersion.HB
 )
 
 @Serializable

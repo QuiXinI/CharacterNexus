@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
@@ -54,6 +55,7 @@ fun PotionConfigDialog(
     onDismiss: () -> Unit,
     onSave: (PotionState) -> Unit,
     onDelete: (PotionState) -> Unit,
+    isReadOnlyDefinition: Boolean = false,
     forceBlurEnabled: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     hazeState: HazeState? = null,
@@ -62,8 +64,12 @@ fun PotionConfigDialog(
 ) {
     var state by remember { mutableStateOf(initialPotion) }
     
+    // Use a LaunchedEffect with a small delay to debounce saves during rapid typing
     LaunchedEffect(state) {
-        onSave(state)
+        if (state != initialPotion) {
+            kotlinx.coroutines.delay(300)
+            onSave(state)
+        }
     }
 
     val focusManager = LocalFocusManager.current
@@ -81,14 +87,24 @@ fun PotionConfigDialog(
     var dawnRestAll by remember { mutableStateOf(initialPotion.quantity.dawnRest.lowercase() == "all" || initialPotion.quantity.dawnRest.lowercase() == "все") }
     val isPremium by settingsViewModel?.isPremium?.collectAsState() ?: remember { mutableStateOf(true) }
 
+    var englishNameError by remember { mutableStateOf<String?>(null) }
+    val allowedCharsRegex = remember { Regex("^[a-zA-Z0-9'\\-._,() ]*$") }
+
     if (isDesktop) {
         PotionConfigDialogContent(
             state = state,
             onStateChange = { state = it },
             sliderStepText = sliderStepText,
-            onSliderStepTextChange = { sliderStepText = it },
+            onSliderStepTextChange = { 
+                sliderStepText = it
+                val step = it.replace(',', '.').toDoubleOrNull()
+                state = state.copy(quantity = state.quantity.copy(sliderStep = step))
+            },
             colorText = colorText,
-            onColorTextChange = { colorText = it },
+            onColorTextChange = { 
+                colorText = it
+                state = state.copy(colorHex = it)
+            },
             shortRestAll = shortRestAll,
             onShortRestAllChange = { shortRestAll = it },
             longRestAll = longRestAll,
@@ -101,12 +117,16 @@ fun PotionConfigDialog(
                 onDelete(potionToDelete)
                 onDismiss()
             },
+            isReadOnlyDefinition = isReadOnlyDefinition,
             forceBlurEnabled = forceBlurEnabled,
             hazeState = popupHazeState ?: hazeState,
             blurRadius = blurRadius,
             settingsViewModel = settingsViewModel,
             isNew = initialPotion.name.isBlank(),
-            isDesktop = isDesktop
+            isDesktop = isDesktop,
+            englishNameError = englishNameError,
+            onEnglishNameErrorChange = { englishNameError = it },
+            allowedCharsRegex = allowedCharsRegex
         )
     } else {
         Dialog(
@@ -118,9 +138,16 @@ fun PotionConfigDialog(
                 state = state,
                 onStateChange = { state = it },
                 sliderStepText = sliderStepText,
-                onSliderStepTextChange = { sliderStepText = it },
+                onSliderStepTextChange = { 
+                    sliderStepText = it
+                    val step = it.replace(',', '.').toDoubleOrNull()
+                    state = state.copy(quantity = state.quantity.copy(sliderStep = step))
+                },
                 colorText = colorText,
-                onColorTextChange = { colorText = it },
+                onColorTextChange = { 
+                    colorText = it
+                    state = state.copy(colorHex = it)
+                },
                 shortRestAll = shortRestAll,
                 onShortRestAllChange = { shortRestAll = it },
                 longRestAll = longRestAll,
@@ -133,12 +160,16 @@ fun PotionConfigDialog(
                     onDelete(potionToDelete)
                     onDismiss()
                 },
+                isReadOnlyDefinition = isReadOnlyDefinition,
                 forceBlurEnabled = forceBlurEnabled,
                 hazeState = popupHazeState ?: hazeState,
                 blurRadius = blurRadius,
                 settingsViewModel = settingsViewModel,
                 isNew = initialPotion.name.isBlank(),
-                isDesktop = isDesktop
+                isDesktop = isDesktop,
+                englishNameError = englishNameError,
+                onEnglishNameErrorChange = { englishNameError = it },
+                allowedCharsRegex = allowedCharsRegex
             )
         }
     }
@@ -162,12 +193,16 @@ fun PotionConfigDialogContent(
     isPremium: Boolean,
     onDismiss: () -> Unit,
     onDelete: (PotionState) -> Unit,
+    isReadOnlyDefinition: Boolean = false,
     forceBlurEnabled: Boolean,
     hazeState: HazeState?,
     blurRadius: androidx.compose.ui.unit.Dp = 24.dp,
     settingsViewModel: SettingsViewModel? = null,
     isNew: Boolean = false,
-    isDesktop: Boolean = false
+    isDesktop: Boolean = false,
+    englishNameError: String? = null,
+    onEnglishNameErrorChange: (String?) -> Unit = {},
+    allowedCharsRegex: Regex = Regex(".*")
 ) {
     BackHandler(onBack = onDismiss)
     val colorScheme = MaterialTheme.colorScheme
@@ -235,18 +270,75 @@ fun PotionConfigDialogContent(
                             onValueChange = { onStateChange(state.copy(name = it)) },
                             label = { Text("Название") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isReadOnlyDefinition
                         )
+
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.alpha(if (isReadOnlyDefinition) 0.6f else 1f)) {
+                            Text(
+                                "Английское название",
+                                modifier = Modifier.weight(1f),
+                                color = colorScheme.onSurface
+                            )
+                            Switch(
+                                checked = state.showEnglishName,
+                                onCheckedChange = { onStateChange(state.copy(showEnglishName = it)) },
+                                enabled = !isReadOnlyDefinition
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = state.englishName,
+                            onValueChange = { newValue ->
+                                if (newValue.all { it.toString().matches(allowedCharsRegex) }) {
+                                    onStateChange(state.copy(englishName = newValue))
+                                    onEnglishNameErrorChange(null)
+                                } else {
+                                    onEnglishNameErrorChange("Разрешены только латиница, цифры и знаки ' - . _ , ( )")
+                                }
+                            },
+                            label = { Text("English Name") },
+                            isError = englishNameError != null,
+                            supportingText = {
+                                if (englishNameError != null) {
+                                    Text(englishNameError, color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().alpha(if (state.showEnglishName && !isReadOnlyDefinition) 1f else 0.6f),
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isReadOnlyDefinition
+                        )
+
+                        // Version
+                        Column(modifier = Modifier.alpha(if (isReadOnlyDefinition) 0.6f else 1f)) {
+                            SpellCardSectionTitle("ВЕРСИЯ")
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                SpellVersion.entries.forEachIndexed { index, version ->
+                                    SegmentedButton(
+                                        selected = state.version == version,
+                                        onClick = { onStateChange(state.copy(version = version)) },
+                                        shape = SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = SpellVersion.entries.size
+                                        ),
+                                        enabled = !isReadOnlyDefinition
+                                    ) {
+                                        Text(version.displayName)
+                                    }
+                                }
+                            }
+                        }
 
                         OutlinedTextField(
                             value = state.formula,
                             onValueChange = { onStateChange(state.copy(formula = it)) },
                             label = { Text("Формула (напр. 2d4+2)") },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isReadOnlyDefinition
                         )
 
-                        Column {
+                        Column(modifier = Modifier.run { if (isReadOnlyDefinition) this.alpha(0.6f) else this }) {
                             SpellCardSectionTitle("ТИП ФОРМУЛЫ")
                             DamageTypeMultiSelect(
                                 selectedTypes = state.damageTypes,
@@ -255,11 +347,12 @@ fun PotionConfigDialogContent(
                                     onStateChange(state.copy(damageTypes = newList))
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = "Тип формулы"
+                                label = "Тип формулы",
+                                enabled = !isReadOnlyDefinition
                             )
                         }
 
-                        Column {
+                        Column(modifier = Modifier.run { if (isReadOnlyDefinition) this.alpha(0.6f) else this }) {
                             SpellCardSectionTitle("РЕДКОСТЬ")
                             var rarityExpanded by remember { mutableStateOf(false) }
                             Box(modifier = Modifier.fillMaxWidth()) {
@@ -269,7 +362,7 @@ fun PotionConfigDialogContent(
                                     readOnly = true,
                                     label = { Text("Редкость") },
                                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
-                                    modifier = Modifier.fillMaxWidth().clickable { rarityExpanded = true },
+                                    modifier = Modifier.fillMaxWidth().clickable(enabled = !isReadOnlyDefinition) { rarityExpanded = true },
                                     enabled = false,
                                     colors = OutlinedTextFieldDefaults.colors(
                                         disabledTextColor = MaterialTheme.colorScheme.onSurface,
@@ -279,7 +372,9 @@ fun PotionConfigDialogContent(
                                     ),
                                     shape = RoundedCornerShape(8.dp)
                                 )
-                                Box(modifier = Modifier.matchParentSize().clickable { rarityExpanded = true })
+                                if (!isReadOnlyDefinition) {
+                                    Box(modifier = Modifier.matchParentSize().clickable { rarityExpanded = true })
+                                }
                                 DropdownMenu(
                                     expanded = rarityExpanded,
                                     onDismissRequest = { rarityExpanded = false }) {
@@ -301,13 +396,14 @@ fun PotionConfigDialogContent(
                             label = { Text("Описание") },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 3,
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isReadOnlyDefinition
                         )
 
                         HorizontalDivider()
 
                         // Icon selection
-                        Text("Иконка", fontWeight = FontWeight.Bold)
+                        Text("Иконка", fontWeight = FontWeight.Bold, modifier = Modifier.alpha(if (isReadOnlyDefinition) 0.6f else 1f))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
@@ -330,7 +426,7 @@ fun PotionConfigDialogContent(
                                             color = if (state.iconIndex == index) colorScheme.primary else Color.Transparent,
                                             shape = RoundedCornerShape(12.dp)
                                         )
-                                        .clickable { onStateChange(state.copy(iconIndex = index)) },
+                                        .clickable(enabled = !isReadOnlyDefinition) { onStateChange(state.copy(iconIndex = index)) },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -351,6 +447,7 @@ fun PotionConfigDialogContent(
                             placeholder = { Text("RRGGBB или RRGGBBAA") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
+                            enabled = !isReadOnlyDefinition,
                             trailingIcon = {
                                 Box(
                                     modifier = Modifier
@@ -360,6 +457,15 @@ fun PotionConfigDialogContent(
                                         .border(1.dp, colorScheme.outline, RoundedCornerShape(4.dp))
                                 )
                             }
+                        )
+
+                        OutlinedTextField(
+                            value = state.source,
+                            onValueChange = { onStateChange(state.copy(source = it)) },
+                            label = { Text("Источник / ID владельца") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            enabled = !isReadOnlyDefinition
                         )
 
                         HorizontalDivider()

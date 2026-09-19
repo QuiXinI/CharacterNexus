@@ -81,7 +81,7 @@ class SpellbookManager {
         }
     }
 
-    fun addOrUpdateSpell(spell: SpellCard) {
+    fun addOrUpdateSpell(spell: SpellCard): SpellCard {
         val allSpells = loadSpells()
         
         // Match logic: 
@@ -96,9 +96,9 @@ class SpellbookManager {
             }
         
         val spellToSave = if (existingMatch != null) {
-            spell.copy(id = existingMatch.id) // Preserve existing ID
+            spell.copy(id = if (spell.englishName.isNotBlank()) slugify(spell.englishName) else existingMatch.id) // Use slug as ID if available
         } else {
-            spell
+            if (spell.englishName.isNotBlank()) spell.copy(id = slugify(spell.englishName)) else spell
         }
 
         if (existingMatch != null) {
@@ -111,6 +111,7 @@ class SpellbookManager {
 
         saveSingleSpell(spellToSave)
         cachedSpells = null // Invalidate cache
+        return spellToSave
     }
 
     fun deleteSpell(spellId: String) {
@@ -120,6 +121,15 @@ class SpellbookManager {
             val file = getFileForSpell(it)
             if (platformFileSystem.exists(file)) {
                 platformFileSystem.delete(file)
+            }
+        } ?: run {
+            // Fallback
+            if (platformFileSystem.exists(glossaryDir)) {
+                platformFileSystem.list(glossaryDir).forEach { file ->
+                    if (file.name == "$spellId.json") {
+                        platformFileSystem.delete(file)
+                    }
+                }
             }
         }
         cachedSpells = null // Invalidate cache

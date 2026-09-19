@@ -116,7 +116,7 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
     }
 
     private fun getFileForItem(item: GameMagicItem): Path {
-        val identifier = slugify(item.name ?: item.id ?: "unnamed")
+        val identifier = if (!item.englishName.isNullOrBlank()) slugify(item.englishName) else item.id ?: "unnamed"
         return glossaryDir.div("$identifier.json")
     }
 
@@ -143,11 +143,11 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             e.log()
         }
         
-        cachedItems = items.sortedBy { it.name }.toMutableList()
+        cachedItems = items.distinctBy { it.id ?: it.name }.sortedBy { it.name }.toMutableList()
         return cachedItems!!
     }
 
-    fun addOrUpdateItem(item: GameMagicItem) {
+    fun addOrUpdateItem(item: GameMagicItem): GameMagicItem {
         val allItems = loadItems()
         
         val existingMatch = allItems.find { it.id == item.id }
@@ -157,9 +157,9 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             }
         
         val itemToSave = if (existingMatch != null) {
-            item.copy(id = existingMatch.id ?: item.id)
+            item.copy(id = if (!item.englishName.isNullOrBlank()) slugify(item.englishName) else (existingMatch.id ?: item.id))
         } else {
-            item
+            if (!item.englishName.isNullOrBlank()) item.copy(id = slugify(item.englishName)) else item
         }
 
         if (existingMatch != null) {
@@ -176,11 +176,15 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             platformFileSystem.write(file) {
                 writeUtf8(content)
             }
+            if (itemToSave.sourceModuleId == "custom_potions") {
+                rebuildCustomManifest()
+            }
         } catch (e: Exception) {
             e.log()
         }
         
         cachedItems = null // Invalidate cache
+        return itemToSave
     }
 
     fun deleteItem(itemId: String) {
@@ -191,15 +195,25 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             if (platformFileSystem.exists(file)) {
                 platformFileSystem.delete(file)
             }
+        } ?: run {
+            // Fallback: try to find by ID in file names (exact match with .json)
+            if (platformFileSystem.exists(glossaryDir)) {
+                platformFileSystem.list(glossaryDir).forEach { file ->
+                    if (file.name == "$itemId.json") {
+                        platformFileSystem.delete(file)
+                    }
+                }
+            }
         }
         cachedItems = null // Invalidate cache
+        rebuildCustomManifest()
     }
 
-    fun syncCustomPotions(potions: List<PotionState>) {
+    fun syncCustomItems(potions: List<PotionState>) {
         val customModuleId = "custom_potions"
-        val customPotions = potions.filter { it.sourceModuleId == customModuleId }
+        val customItems = potions.filter { it.sourceModuleId == customModuleId }
         
-        if (customPotions.isNotEmpty()) {
+        if (customItems.isNotEmpty()) {
             val manifest = ModuleManifest(
                 id = customModuleId,
                 name = "Пользовательские предметы",
@@ -209,12 +223,14 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             moduleManager?.addOrUpdateModule(manifest)
         }
 
-        customPotions.forEach { potion ->
+        customItems.forEach { potion ->
             val existingItems = loadItems()
-            val match = existingItems.find { it.name.equals(potion.name, ignoreCase = true) }
+            // Try to match by ID first, then by name within the custom module
+            val match = existingItems.find { it.id == potion.id }
+                ?: existingItems.find { it.name.equals(potion.name, ignoreCase = true) && it.sourceModuleId == customModuleId }
             
             val newItem = GameMagicItem(
-                id = potion.id, // Using potion ID as definition ID for custom ones
+                id = potion.id,
                 name = potion.name,
                 type = MagicItemType.POTION,
                 rarity = potion.rarity,
@@ -223,36 +239,64 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
                 damageTypes = potion.damageTypes,
                 iconIndex = potion.iconIndex,
                 colorHex = potion.colorHex,
-                sourceModuleId = customModuleId
+                sourceModuleId = customModuleId,
+                source = potion.source,
+                englishName = potion.englishName,
+                showEnglishName = potion.showEnglishName,
+                version = potion.version
             )
 
             if (match == null) {
                 addOrUpdateItem(newItem)
-                moduleManager?.addComponentToModule(customModuleId, "magic_item", newItem.id ?: "", slugify(newItem.name ?: "") + ".json")
             } else {
-                // Check if data matches
                 val dataMatches = match.formula == potion.formula &&
                         match.description == potion.description &&
                         match.iconIndex == potion.iconIndex &&
                         match.colorHex == potion.colorHex &&
-                        match.rarity == potion.rarity
+                        match.rarity == potion.rarity &&
+                        match.name == potion.name &&
+                        match.source == potion.source &&
+                        match.englishName == potion.englishName &&
+                        match.showEnglishName == potion.showEnglishName &&
+                        match.version == potion.version
                 
                 if (!dataMatches) {
-                    // Find unique name
-                    var counter = 1
-                    var uniqueName = "${potion.name} ($counter)"
-                    while (existingItems.any { it.name.equals(uniqueName, ignoreCase = true) }) {
-                        counter++
-                        uniqueName = "${potion.name} ($counter)"
-                    }
-                    val uniqueItem = newItem.copy(id = generateUuid(), name = uniqueName)
-                    addOrUpdateItem(uniqueItem)
-                    moduleManager?.addComponentToModule(customModuleId, "magic_item", uniqueItem.id ?: "", slugify(uniqueItem.name ?: "") + ".json")
-                } else {
-                    // Ensure it's in module manifest
-                    moduleManager?.addComponentToModule(customModuleId, "magic_item", match.id ?: "", slugify(match.name ?: "") + ".json")
+                    addOrUpdateItem(newItem)
                 }
             }
         }
+        
+        // Rebuild manifest to ensure ALL custom items from the glossary are included
+        rebuildCustomManifest()
+    }
+
+    private fun rebuildCustomManifest() {
+        val customModuleId = "custom_potions"
+        val installedModules = moduleManager?.getInstalledModules() ?: emptyList()
+        val otherModuleContentIds = installedModules
+            .filter { it.manifest.id != customModuleId }
+            .flatMap { it.manifest.contents }
+            .filter { it.type == "magic_item" }
+            .map { it.id }
+            .toSet()
+
+        // Include items that are NOT in any other installed module
+        val allItems = loadItems().filter { it.id !in otherModuleContentIds }
+        
+        if (allItems.isEmpty()) return
+        
+        val contents = allItems.map { item ->
+            val identifier = if (!item.englishName.isNullOrBlank()) slugify(item.englishName) else item.id ?: ""
+            ModuleContent("magic_item", item.id ?: "", "$identifier.json")
+        }
+        
+        val manifest = ModuleManifest(
+            id = customModuleId,
+            name = "Пользовательские предметы",
+            version = "1.0",
+            description = "Ваши созданные вручную предметы и зелья. Это служебный модуль, не надо его удалять. Его удаление может привести к потере данных",
+            contents = contents
+        )
+        moduleManager?.addOrUpdateModule(manifest)
     }
 }

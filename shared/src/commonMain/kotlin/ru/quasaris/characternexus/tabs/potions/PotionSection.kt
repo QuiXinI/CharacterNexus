@@ -148,7 +148,7 @@ fun PotionSection(
                     Button(
                         onClick = {
                             if (state != null) {
-                                state.activePotionConfig = PotionState(name = "") // New potion
+                                state.activePotionConfig = PotionState(name = "", source = state.characterUuid) // New potion
                                 state.isPotionConfigOpen = true
                             }
                         },

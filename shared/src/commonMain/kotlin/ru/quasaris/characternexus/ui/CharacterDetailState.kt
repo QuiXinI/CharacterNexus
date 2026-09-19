@@ -219,7 +219,7 @@ class CharacterDetailState(
             )
         } else {
             // Sync custom potions definitions to local manager on load
-            magicItemManager?.syncCustomPotions(initialCharacter.potions)
+            magicItemManager?.syncCustomItems(initialCharacter.potions)
             initialCharacter.potions
         }
     )
@@ -742,9 +742,13 @@ class CharacterDetailState(
         } else {
             potions + finalPotion
         }
+
+        if (activePotionConfig?.id == finalPotion.id) {
+            activePotionConfig = finalPotion
+        }
         
         if (finalPotion.sourceModuleId == "custom_potions") {
-            magicItemManager?.syncCustomPotions(listOf(finalPotion))
+            magicItemManager?.syncCustomItems(listOf(finalPotion))
         }
     }
 
