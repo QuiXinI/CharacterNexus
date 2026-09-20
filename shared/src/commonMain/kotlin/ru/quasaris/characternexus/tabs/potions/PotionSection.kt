@@ -133,7 +133,6 @@ fun PotionSection(
                         popupHazeState = popupHazeState,
                         blurCards = blurCards,
                         settingsViewModel = settingsViewModel,
-                        state = state,
                         dragModifier = Modifier.draggableHandle()
                     )
                 }

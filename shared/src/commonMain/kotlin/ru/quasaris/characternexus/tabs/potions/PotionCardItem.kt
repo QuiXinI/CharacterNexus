@@ -56,11 +56,10 @@ fun PotionCardItem(
     popupHazeState: HazeState? = null,
     blurCards: Boolean = true,
     settingsViewModel: SettingsViewModel? = null,
-    state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     dragModifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val isExpanded = potion.isExpanded
+    var isExpanded by remember { mutableStateOf(false) }
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     
     val scale by androidx.compose.animation.core.animateFloatAsState(targetValue = when {
@@ -133,7 +132,7 @@ fun PotionCardItem(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
-                if (!isEditMode) onUpdate(potion.copy(isExpanded = !isExpanded))
+                if (!isEditMode) isExpanded = !isExpanded
             },
         shape = RoundedCornerShape(16.dp),
         color = if (useHaze) Color.Transparent else colorScheme.surfaceContainerHigh
@@ -219,7 +218,11 @@ fun PotionCardItem(
                 )
             }
 
-            AnimatedVisibility(visible = isExpanded && !isEditMode) {
+            AnimatedVisibility(
+                visible = isExpanded && !isEditMode,
+                enter = expandIn(expandFrom = Alignment.TopStart) + fadeIn(),
+                exit = shrinkOut(shrinkTowards = Alignment.TopStart) + fadeOut()
+            ) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
                     HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(8.dp))

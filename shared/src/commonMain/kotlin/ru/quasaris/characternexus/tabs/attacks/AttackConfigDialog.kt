@@ -376,16 +376,6 @@ fun AttackConfigDialogContent(
                     placeholder = { Text("Описание атаки...") },
                     shape = RoundedCornerShape(8.dp)
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onAttackChange(attack.copy(showNotes = !attack.showNotes)) }
-                ) {
-                    Checkbox(
-                        checked = attack.showNotes,
-                        onCheckedChange = { onAttackChange(attack.copy(showNotes = it)) }
-                    )
-                    Text("Отображать Заметки")
-                }
 
                 Spacer(modifier = Modifier.height(32.dp))
 

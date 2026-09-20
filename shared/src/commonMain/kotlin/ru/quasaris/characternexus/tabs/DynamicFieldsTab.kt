@@ -841,10 +841,10 @@ fun DynamicFieldItem(
                                                                                 }
                                                                             },
                                                                             hazeState = hazeState,
-                                                                            popupHazeState = popupHazeState,
+                                                                            // popupHazeState = popupHazeState,
                                                                             forceBlurEnabled = forceBlurEnabled,
                                                                             blurDynamicFields = blurDynamicFields,
-                                                                            blurPopups = blurPopups,
+                                                                            // blurPopups = blurPopups,
                                                                             settingsViewModel = settingsViewModel,
                                                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                                             onSubDialogOpenChange = { /* Item doesn't blur on sub-dialog */ },
@@ -1374,10 +1374,10 @@ fun DynamicFieldFullscreenContent(
                                                             }
                                                         },
                                                         hazeState = null, // Handled by overlay
-                                                        popupHazeState = popupHazeState,
+                                                        // popupHazeState = popupHazeState,
                                                         forceBlurEnabled = effectiveBlur,
                                                         blurDynamicFields = blurDynamicFields,
-                                                        blurPopups = blurPopups,
+                                                        // blurPopups = blurPopups,
                                                         settingsViewModel = settingsViewModel,
                                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                         onSubDialogOpenChange = { },
@@ -1443,8 +1443,8 @@ fun DynamicFieldFullscreenContent(
                                                     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
                                                     val blocks = remember(contentValue.text) {
-                                                        DynamicContentParser.parse(contentValue.text)
-                                                    }
+                                                    DynamicContentParser.parse(contentValue.text)
+                                                }
 
                                                     val marginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
                                                     val customMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
@@ -1552,7 +1552,7 @@ fun DynamicFieldFullscreenContent(
                                                                                 }
                                                                             },
                                                                             hazeState = null, // Handled by overlay
-                                                                            popupHazeState = popupHazeState,
+                                                                            // popupHazeState = popupHazeState,
                                                                             forceBlurEnabled = effectiveBlur,
                                                                             settingsViewModel = settingsViewModel,
                                                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,

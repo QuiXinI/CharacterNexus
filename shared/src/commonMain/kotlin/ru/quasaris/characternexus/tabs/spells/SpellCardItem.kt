@@ -457,7 +457,11 @@ fun SpellCardItem(
                 }
             }
 
-            AnimatedVisibility(visible = isExpanded && (!isEditMode || !collapseOnEdit) && !isCompact) {
+            AnimatedVisibility(
+                visible = isExpanded && (!isEditMode || !collapseOnEdit) && !isCompact,
+                enter = expandIn(expandFrom = Alignment.TopStart) + fadeIn(),
+                exit = shrinkOut(shrinkTowards = Alignment.TopStart) + fadeOut()
+            ) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
                     HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(8.dp))

@@ -1,7 +1,10 @@
 package ru.quasaris.characternexus.tabs
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,10 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,17 +37,16 @@ import ru.quasaris.characternexus.util.PlatformUtils
 import kotlin.math.round
 import kotlin.math.pow
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ResourceBlock(
     resource: DynamicContentBlock.Resource,
     statsMap: Map<String, String>,
     onUpdate: (DynamicContentBlock.Resource) -> Unit,
     hazeState: HazeState? = null,
-    popupHazeState: HazeState? = null,
     onDeleteRequest: () -> Unit,
     forceBlurEnabled: Boolean = false,
     blurDynamicFields: Boolean = true,
-    blurPopups: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onSubDialogOpenChange: (Boolean) -> Unit = {},
@@ -68,8 +67,7 @@ fun ResourceBlock(
             showConfig = false
         }
     }
-    var showInfo by remember { mutableStateOf(false) }
-    var infoIconPosition by remember { mutableStateOf(Offset.Zero) }
+    var isExpanded by remember { mutableStateOf(false) }
 
     val curValue = resource.current.toDoubleOrNull() ?: 0.0
     val maxValue = evaluateFormulaDouble(resource.max, statsMap)
@@ -126,17 +124,22 @@ fun ResourceBlock(
             )
             .clip(RoundedCornerShape(16.dp))
             .background(colorScheme.surfaceVariant.copy(alpha = if (useHaze) 0.6f else 0.4f))
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                performClickHaptic()
-                if (onOpenConfig != null) {
-                    onOpenConfig(resource)
-                } else {
-                    showConfig = true
+                indication = null,
+                onClick = {
+                    performClickHaptic()
+                    isExpanded = !isExpanded
+                },
+                onLongClick = {
+                    performClickHaptic()
+                    if (onOpenConfig != null) {
+                        onOpenConfig(resource)
+                    } else {
+                        showConfig = true
+                    }
                 }
-            }
+            )
             .padding(12.dp)
     ) {
         if (!resource.useSlider) {
@@ -163,8 +166,6 @@ fun ResourceBlock(
                 ) {
                     ResourceActionButtons(
                         resource = resource,
-                        showInfo = { showInfo = true },
-                        onInfoPos = { infoIconPosition = it },
                         uriHandler = uriHandler
                     )
 
@@ -216,8 +217,6 @@ fun ResourceBlock(
                     ) {
                         ResourceActionButtons(
                             resource = resource,
-                            showInfo = { showInfo = true },
-                            onInfoPos = { infoIconPosition = it },
                             uriHandler = uriHandler
                         )
 
@@ -284,6 +283,19 @@ fun ResourceBlock(
                 ResourceRestsInfo(resource, statsMap, pb)
             }
         }
+
+        AnimatedVisibility(
+            visible = isExpanded && resource.notes.isNotEmpty(),
+            enter = expandIn(expandFrom = Alignment.TopStart) + fadeIn(),
+            exit = shrinkOut(shrinkTowards = Alignment.TopStart) + fadeOut()
+        ) {
+            Text(
+                text = resource.notes,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
     }
 
     val currentOnFullscreenDialogOpenChange by rememberUpdatedState(onFullscreenDialogOpenChange)
@@ -311,19 +323,6 @@ fun ResourceBlock(
             },
             isNested = isNested,
             hazeState = hazeState
-        )
-    }
-
-    if (showInfo) {
-        ResourceInfoPopover(
-            title = resource.name,
-            notes = resource.notes,
-            anchorPosition = infoIconPosition,
-            onDismiss = { showInfo = false },
-            hazeState = hazeState,
-            popupHazeState = popupHazeState,
-            forceBlurEnabled = blurPopups,
-            settingsViewModel = settingsViewModel
         )
     }
 }
@@ -370,42 +369,9 @@ private fun ResourceRestsInfo(
 @Composable
 private fun ResourceActionButtons(
     resource: DynamicContentBlock.Resource,
-    showInfo: () -> Unit,
-    onInfoPos: (Offset) -> Unit,
     uriHandler: androidx.compose.ui.platform.UriHandler
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    // Info button
-    if (resource.notes.isNotEmpty() && resource.showNotes) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .outerShadow(
-                    shape = RoundedCornerShape(10.dp),
-                    blur = 2.dp,
-                    offsetY = 1.dp
-                )
-                .clip(RoundedCornerShape(10.dp))
-                .background(colorScheme.primary.copy(alpha = 0.12f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = showInfo
-                )
-                .onGloballyPositioned { coords ->
-                    onInfoPos(coords.positionInWindow())
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Info,
-                contentDescription = "Info",
-                tint = colorScheme.primary.copy(alpha = 0.7f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
-
     // Link button
     if (!resource.link.isNullOrBlank()) {
         Box(
