@@ -8,7 +8,7 @@ object DynamicContentParser {
     private val quoteRegex = Regex("(?s)>> (.*?)(?: <<|$)")
     private val resourceRegex = Regex("(?s)\\{(?:Ресурс|Resource)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
 
-    fun parse(text: String): List<DynamicContentBlock> {
+    fun parse(text: String, resources: Map<String, DynamicContentBlock.Resource> = emptyMap()): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
         var currentPos = 0
 
@@ -33,31 +33,42 @@ object DynamicContentParser {
         resourceRegex.findAll(text).forEach { match ->
             val content = match.groupValues[1]
             val parts = content.split("|").map { it.trim() }
-            val name = if (parts.isNotEmpty() && parts[0].isNotEmpty()) parts[0] else "Ресурс"
             val params = mutableMapOf<String, String>()
+            var namePart = ""
             
-            parts.drop(1).forEach { part ->
+            parts.forEachIndexed { index, part ->
                 val kv = part.split("=", limit = 2)
                 if (kv.size == 2) {
                     params[kv[0].trim().lowercase()] = kv[1].trim()
+                } else if (index == 0) {
+                    namePart = part
                 }
             }
 
-            val block = DynamicContentBlock.Resource(
-                name = name,
-                current = params["cur"] ?: "0",
-                max = params["max"] ?: "0",
-                shortRest = params["sr"] ?: params["shortrest"] ?: "0",
-                longRest = params["lr"] ?: params["longrest"] ?: "0",
-                dawnRest = params["dr"] ?: params["dawnrest"] ?: params["dawn"] ?: "0",
-                link = params["link"],
-                notes = params["notes"] ?: "",
-                showNotes = params["shownotes"]?.toBoolean() ?: false,
-                useSlider = params["slider"]?.toBoolean() ?: false,
-                sliderStep = params["step"]?.toDoubleOrNull(),
-                id = params["id"] ?: ""
-            )
-            allMatches.add(match.range to block)
+            val id = params["id"] ?: ""
+            
+            // If it only has an ID and no other data, it's a Ref
+            val isRef = id.isNotEmpty() && params.size == 1 && namePart.isEmpty()
+            
+            if (isRef) {
+                allMatches.add(match.range to DynamicContentBlock.ResourceRef(id))
+            } else {
+                val block = DynamicContentBlock.Resource(
+                    name = if (namePart.isNotEmpty()) namePart else params["name"] ?: "Ресурс",
+                    current = params["cur"] ?: "0",
+                    max = params["max"] ?: "0",
+                    shortRest = params["sr"] ?: params["shortrest"] ?: "0",
+                    longRest = params["lr"] ?: params["longrest"] ?: "0",
+                    dawnRest = params["dr"] ?: params["dawnrest"] ?: params["dawn"] ?: "0",
+                    link = params["link"],
+                    notes = params["notes"] ?: "",
+                    showNotes = params["shownotes"]?.toBoolean() ?: false,
+                    useSlider = params["slider"]?.toBoolean() ?: false,
+                    sliderStep = params["step"]?.toDoubleOrNull(),
+                    id = id
+                )
+                allMatches.add(match.range to block)
+            }
         }
 
         // Sort matches by start position
@@ -126,7 +137,44 @@ object DynamicContentParser {
                 is DynamicContentBlock.Spoiler -> "::${block.content}::"
                 is DynamicContentBlock.Quote -> ">> ${block.content} <<"
                 is DynamicContentBlock.Resource -> block.toTag()
+                is DynamicContentBlock.ResourceRef -> block.toTag()
             }
         }
+    }
+
+    fun resourceIds(text: String): Set<String> {
+        return resourceRegex.findAll(text).mapNotNull { match ->
+            val content = match.groupValues[1]
+            content.split("|").map { it.trim() }
+                .firstOrNull { it.startsWith("id=") }
+                ?.substringAfter("=")
+        }.toSet()
+    }
+
+    fun rewriteInlineResources(text: String, transform: (DynamicContentBlock.Resource) -> DynamicContentBlock): String {
+        val blocks = parse(text)
+        val updated = blocks.map { block ->
+            if (block is DynamicContentBlock.Resource) transform(block) else block
+        }
+        return render(updated)
+    }
+
+    fun relinkResource(text: String, index: Int, newId: String): String {
+        val blocks = parse(text).toMutableList()
+        if (index in blocks.indices) {
+            val block = blocks[index]
+            if (block is DynamicContentBlock.Resource || block is DynamicContentBlock.ResourceRef) {
+                blocks[index] = DynamicContentBlock.ResourceRef(newId)
+            }
+        }
+        return render(blocks)
+    }
+
+    fun removeResource(text: String, index: Int): String {
+        val blocks = parse(text).toMutableList()
+        if (index in blocks.indices) {
+            blocks.removeAt(index)
+        }
+        return render(blocks)
     }
 }

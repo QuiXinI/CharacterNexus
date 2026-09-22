@@ -48,6 +48,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsViewModel
+import ru.quasaris.characternexus.tabs.resources.ResourceConfigDialog
+import ru.quasaris.characternexus.tabs.resources.ResourceBlock
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.TabControlHeader
@@ -838,21 +840,23 @@ fun DynamicFieldItem(
                                                                                     newBlocks[absoluteIndex] = updatedResource
                                                                                     val newContent = DynamicContentParser.render(newBlocks)
                                                                                     onFieldChange(field.copy(content = newContent))
+                                                                                    if (updatedResource.id.isNotEmpty()) {
+                                                                                        state?.resourceManager?.upsert(updatedResource)
+                                                                                    }
                                                                                 }
                                                                             },
                                                                             hazeState = hazeState,
-                                                                            // popupHazeState = popupHazeState,
                                                                             forceBlurEnabled = forceBlurEnabled,
                                                                             blurDynamicFields = blurDynamicFields,
-                                                                            // blurPopups = blurPopups,
                                                                             settingsViewModel = settingsViewModel,
                                                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                                                            onSubDialogOpenChange = { /* Item doesn't blur on sub-dialog */ },
+                                                                            onSubDialogOpenChange = { },
                                                                             state = state,
                                                                             onOpenConfig = state?.let { s ->
                                                                                 { res ->
                                                                                     s.activeResourceConfig = res
                                                                                     s.activeResourceIndex = absoluteIndex
+                                                                                    s.activeNoteId = field.id
                                                                                     s.isResourceConfigOpen = true
                                                                                 }
                                                                             },
@@ -863,6 +867,34 @@ fun DynamicFieldItem(
                                                                                     val newContent = DynamicContentParser.render(newBlocks)
                                                                                     onFieldChange(field.copy(content = newContent))
                                                                                 }
+                                                                            }
+                                                                        )
+                                                                    }
+                                                                    is DynamicContentBlock.ResourceRef -> {
+                                                                        val resource = state?.resourceManager?.get(block.id) ?: DynamicContentBlock.Resource(name = "Загрузка...", current = "0", max = "0", id = block.id)
+                                                                        ResourceBlock(
+                                                                            resource = resource,
+                                                                            statsMap = statsMap,
+                                                                            onUpdate = { updatedResource ->
+                                                                                state?.resourceManager?.upsert(updatedResource)
+                                                                            },
+                                                                            hazeState = hazeState,
+                                                                            forceBlurEnabled = forceBlurEnabled,
+                                                                            blurDynamicFields = blurDynamicFields,
+                                                                            settingsViewModel = settingsViewModel,
+                                                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                                            onSubDialogOpenChange = { },
+                                                                            state = state,
+                                                                            onOpenConfig = state?.let { s ->
+                                                                                { res ->
+                                                                                    s.activeResourceConfig = res
+                                                                                    s.activeResourceIndex = absoluteIndex
+                                                                                    s.activeNoteId = field.id
+                                                                                    s.isResourceConfigOpen = true
+                                                                                }
+                                                                            },
+                                                                            onDeleteRequest = {
+                                                                                state?.resourceManager?.removePlacement(field.id, absoluteIndex)
                                                                             }
                                                                         )
                                                                     }
@@ -1371,6 +1403,9 @@ fun DynamicFieldFullscreenContent(
                                                                 newBlocks[absoluteIndex] = updatedResource
                                                                 val newContent = DynamicContentParser.render(newBlocks)
                                                                 onContentValueChange(contentValue.copy(text = newContent))
+                                                                if (updatedResource.id.isNotEmpty()) {
+                                                                    state?.resourceManager?.upsert(updatedResource)
+                                                                }
                                                             }
                                                         },
                                                         hazeState = null, // Handled by overlay
@@ -1395,8 +1430,38 @@ fun DynamicFieldFullscreenContent(
                                                             { res ->
                                                                 s.activeResourceConfig = res
                                                                 s.activeResourceIndex = absoluteIndex
+                                                                s.activeNoteId = field.id
                                                                 s.isResourceConfigOpen = true
                                                             }
+                                                        }
+                                                    )
+                                                }
+                                                is DynamicContentBlock.ResourceRef -> {
+                                                    val resource = state?.resourceManager?.get(block.id) ?: DynamicContentBlock.Resource(name = "Загрузка...", current = "0", max = "0", id = block.id)
+                                                    ResourceBlock(
+                                                        resource = resource,
+                                                        statsMap = statsMap,
+                                                        onUpdate = { updatedResource ->
+                                                            state?.resourceManager?.upsert(updatedResource)
+                                                        },
+                                                        hazeState = null,
+                                                        forceBlurEnabled = effectiveBlur,
+                                                        blurDynamicFields = blurDynamicFields,
+                                                        settingsViewModel = settingsViewModel,
+                                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                        onSubDialogOpenChange = { },
+                                                        isNested = true,
+                                                        state = state,
+                                                        onOpenConfig = state?.let { s ->
+                                                            { res ->
+                                                                s.activeResourceConfig = res
+                                                                s.activeResourceIndex = absoluteIndex
+                                                                s.activeNoteId = field.id
+                                                                s.isResourceConfigOpen = true
+                                                            }
+                                                        },
+                                                        onDeleteRequest = {
+                                                            state?.resourceManager?.removePlacement(field.id, absoluteIndex)
                                                         }
                                                     )
                                                 }
@@ -1443,8 +1508,8 @@ fun DynamicFieldFullscreenContent(
                                                     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
                                                     val blocks = remember(contentValue.text) {
-                                                    DynamicContentParser.parse(contentValue.text)
-                                                }
+                                                        DynamicContentParser.parse(contentValue.text, state?.resourceManager?.items?.associateBy { it.id } ?: emptyMap())
+                                                    }
 
                                                     val marginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
                                                     val customMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
@@ -1549,10 +1614,12 @@ fun DynamicFieldFullscreenContent(
                                                                                     newBlocks[absoluteIndex] = updatedResource
                                                                                     val newContent = DynamicContentParser.render(newBlocks)
                                                                                     onContentValueChange(contentValue.copy(text = newContent))
+                                                                                    if (updatedResource.id.isNotEmpty()) {
+                                                                                        state?.resourceManager?.upsert(updatedResource)
+                                                                                    }
                                                                                 }
                                                                             },
                                                                             hazeState = null, // Handled by overlay
-                                                                            // popupHazeState = popupHazeState,
                                                                             forceBlurEnabled = effectiveBlur,
                                                                             settingsViewModel = settingsViewModel,
                                                                             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
@@ -1571,8 +1638,37 @@ fun DynamicFieldFullscreenContent(
                                                                                 { res ->
                                                                                     s.activeResourceConfig = res
                                                                                     s.activeResourceIndex = absoluteIndex
+                                                                                    s.activeNoteId = field.id
                                                                                     s.isResourceConfigOpen = true
                                                                                 }
+                                                                            }
+                                                                        )
+                                                                    }
+                                                                    is DynamicContentBlock.ResourceRef -> {
+                                                                        val resource = state?.resourceManager?.get(block.id) ?: DynamicContentBlock.Resource(name = "Загрузка...", current = "0", max = "0", id = block.id)
+                                                                        ResourceBlock(
+                                                                            resource = resource,
+                                                                            statsMap = statsMap,
+                                                                            onUpdate = { updatedResource ->
+                                                                                state?.resourceManager?.upsert(updatedResource)
+                                                                            },
+                                                                            hazeState = null,
+                                                                            forceBlurEnabled = effectiveBlur,
+                                                                            settingsViewModel = settingsViewModel,
+                                                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                                            onSubDialogOpenChange = { },
+                                                                            isNested = true,
+                                                                            state = state,
+                                                                            onOpenConfig = state?.let { s ->
+                                                                                { res ->
+                                                                                    s.activeResourceConfig = res
+                                                                                    s.activeResourceIndex = absoluteIndex
+                                                                                    s.activeNoteId = field.id
+                                                                                    s.isResourceConfigOpen = true
+                                                                                }
+                                                                            },
+                                                                            onDeleteRequest = {
+                                                                                state?.resourceManager?.removePlacement(field.id, absoluteIndex)
                                                                             }
                                                                         )
                                                                     }
@@ -1666,37 +1762,18 @@ fun DynamicFieldFullscreenContent(
                     onDismiss = {
                         state.isResourceConfigOpen = false
                         state.activeResourceConfig = null
+                        state.activeNoteId = ""
                     },
-                    onSave = { updated ->
+                    onSave = { updated: DynamicContentBlock.Resource ->
                         state.updateResource(updated)
-                        val currentBlocks = DynamicContentParser.parse(contentValue.text).toMutableList()
-                        val resIndex = state.activeResourceIndex
-                        if (resIndex != -1 && resIndex < currentBlocks.size) {
-                            currentBlocks[resIndex] = updated
-                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks)))
-                        } else {
-                            // Fallback to ID matching
-                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks.map {
-                                if (it is DynamicContentBlock.Resource && it.id == updated.id && it.id.isNotEmpty()) updated else it
-                            })))
-                        }
+                        state.resourceManager.normalize()
                         state.isResourceConfigOpen = false
                         state.activeResourceConfig = null
                         state.activeResourceIndex = -1
+                        state.activeNoteId = ""
                     },
-                    onDelete = { deleted ->
-                        state.deleteResource(deleted)
-                        val currentBlocks = DynamicContentParser.parse(contentValue.text).toMutableList()
-                        val resIndex = state.activeResourceIndex
-                        if (resIndex != -1 && resIndex < currentBlocks.size) {
-                            currentBlocks.removeAt(resIndex)
-                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks)))
-                        } else {
-                            // Fallback to ID matching
-                            onContentValueChange(contentValue.copy(text = DynamicContentParser.render(currentBlocks.filter {
-                                !(it is DynamicContentBlock.Resource && it.id == deleted.id && it.id.isNotEmpty())
-                            })))
-                        }
+                    onDelete = { _: DynamicContentBlock.Resource ->
+                        state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex)
                         state.isResourceConfigOpen = false
                         state.activeResourceConfig = null
                         state.activeResourceIndex = -1
@@ -1706,7 +1783,10 @@ fun DynamicFieldFullscreenContent(
                     hazeState = localHazeState,
                     isNested = true,
                     asOverlay = true,
-                    isDesktop = isDesktop
+                    isDesktop = isDesktop,
+                    owner = state,
+                    noteId = state.activeNoteId,
+                    blockIndex = state.activeResourceIndex
                 )
             }
         }

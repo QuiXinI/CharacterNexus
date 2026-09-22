@@ -1,4 +1,4 @@
-package ru.quasaris.characternexus.tabs
+package ru.quasaris.characternexus.tabs.resources
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -34,6 +34,7 @@ import ru.quasaris.characternexus.backend.parseFormulaParts
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.util.HapticType
 import ru.quasaris.characternexus.util.PlatformUtils
+import ru.quasaris.characternexus.ui.CharacterDetailState
 import kotlin.math.round
 import kotlin.math.pow
 

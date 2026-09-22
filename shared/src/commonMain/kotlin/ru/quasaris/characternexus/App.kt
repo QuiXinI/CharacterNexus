@@ -510,6 +510,7 @@ fun App(
                                         CharacterWindow(
                                             character = character,
                                             onNavigateBack = {
+                                                characterRepository.flush()
                                                 navController.popBackStack()
                                             },
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
@@ -524,6 +525,9 @@ fun App(
                                             },
                                             onSaveChanges = { updatedCharacter ->
                                                 updateCharacter(updatedCharacter)
+                                                if (character?.uuid == updatedCharacter.uuid) {
+                                                    character = updatedCharacter
+                                                }
                                                 val index = characters.indexOfFirst { it.uuid == updatedCharacter.uuid }
                                                 if (index != -1) {
                                                     val newSummary = updatedCharacter.toSummary(characters[index].folderUuid)

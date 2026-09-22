@@ -26,8 +26,8 @@ import org.jetbrains.compose.resources.painterResource
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.tabs.spells.SpellDamageButton
-import ru.quasaris.characternexus.tabs.ResourceActionButton
-import ru.quasaris.characternexus.tabs.RestIndicator
+import ru.quasaris.characternexus.tabs.resources.ResourceActionButton
+import ru.quasaris.characternexus.tabs.resources.RestIndicator
 import characternexus.shared.generated.resources.*
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource

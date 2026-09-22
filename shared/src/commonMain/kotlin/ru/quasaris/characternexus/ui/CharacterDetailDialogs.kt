@@ -6,7 +6,7 @@ import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.BonusConfigDialog
 import ru.quasaris.characternexus.tabs.DynamicFieldFullscreenDialog
-import ru.quasaris.characternexus.tabs.ResourceConfigDialog
+import ru.quasaris.characternexus.tabs.resources.ResourceConfigDialog
 import ru.quasaris.characternexus.tabs.cargo.CargoConfigDialog
 import ru.quasaris.characternexus.tabs.potions.PotionConfigDialog
 import ru.quasaris.characternexus.tabs.potions.PotionSelectionDialog
@@ -269,9 +269,10 @@ fun CharacterDetailDialogs(
                 },
                 onSave = { updated: DynamicContentBlock.Resource ->
                     state.updateResource(updated)
+                    state.resourceManager.normalize() // Cleanup text just in case
                 },
-                onDelete = { deleted: DynamicContentBlock.Resource ->
-                    state.deleteResource(deleted)
+                onDelete = { _: DynamicContentBlock.Resource ->
+                    state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex)
                     state.isResourceConfigOpen = false
                     state.activeResourceConfig = null
                 },
@@ -279,7 +280,10 @@ fun CharacterDetailDialogs(
                 settingsViewModel = state.settingsViewModel,
                 isDesktop = isDesktop,
                 hazeState = popupHazeState ?: hazeState,
-                isNested = state.isFullscreenDynamicFieldOpen
+                isNested = state.isFullscreenDynamicFieldOpen,
+                owner = state,
+                noteId = state.activeNoteId,
+                blockIndex = state.activeResourceIndex
             )
         }
 

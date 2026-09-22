@@ -236,7 +236,7 @@ fun CharacterWindow(
         state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions,
         state.race, state.classes, state.isJackOfAllTrades,
         state.deathSaveSuccesses, state.deathSaveFailures,
-        state.proficiencies
+        state.proficiencies, state.resourceManager.items
     ) {
         onSaveChanges(state.toCharacter(character))
     }

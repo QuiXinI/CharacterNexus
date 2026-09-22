@@ -799,7 +799,8 @@ data class Character(
     val classes: List<ClassEntry> = emptyList(),
     val isJackOfAllTrades: Boolean = false,
     val deathSaveSuccesses: Int = 0,
-    val deathSaveFailures: Int = 0
+    val deathSaveFailures: Int = 0,
+    val resources: List<DynamicContentBlock.Resource> = emptyList()
 ) {
     fun toSummary(currentFolderUuid: String? = null): CharacterSummary {
         val displayClass = buildString {

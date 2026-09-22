@@ -229,6 +229,7 @@ fun PotionSelectionItem(
             width = if (isSelected) 2.dp else 1.dp,
             color = if (isSelected) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.5f)
         )
+
     ) {
         Row(
             modifier = Modifier.padding(12.dp),

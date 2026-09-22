@@ -18,6 +18,11 @@ sealed class DynamicContentBlock {
     data class Quote(val content: String) : DynamicContentBlock()
     
     @Serializable
+    data class ResourceRef(val id: String) : DynamicContentBlock() {
+        fun toTag(): String = "{Ресурс: id=$id}"
+    }
+    
+    @Serializable
     data class Resource(
         val name: String,
         val current: String,
