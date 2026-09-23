@@ -1,7 +1,9 @@
 package ru.quasaris.characternexus.model
 
+import androidx.compose.runtime.Immutable
 import ru.quasaris.characternexus.util.generateUuid
 
+@Immutable
 data class NoteBlockState(
     val key: String = generateUuid(),
     val block: DynamicContentBlock

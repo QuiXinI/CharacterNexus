@@ -3,7 +3,6 @@ package ru.quasaris.characternexus.backend.cropper
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
@@ -17,7 +16,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 
 @Composable
 fun ImageCropperPreview(
@@ -25,21 +24,18 @@ fun ImageCropperPreview(
     state: ImageCropState,
     modifier: Modifier = Modifier
 ) {
-    val density = LocalDensity.current
-
-    BoxWithConstraints(
-        modifier = modifier.fillMaxSize(),
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onSizeChanged { layoutSize ->
+                if (layoutSize.width > 0 && layoutSize.height > 0) {
+                    state.containerSize = Size(layoutSize.width.toFloat(), layoutSize.height.toFloat())
+                    state.imageSize = IntSize(image.width, image.height)
+                    state.reset()
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
-        val containerW = maxWidth
-        val containerH = maxHeight
-
-        LaunchedEffect(containerW, containerH, image) {
-            state.containerSize = with(density) { Size(containerW.toPx(), containerH.toPx()) }
-            state.imageSize = IntSize(image.width, image.height)
-            state.reset()
-        }
-
         // 1. Image Layer (Bottom)
         Canvas(modifier = Modifier.fillMaxSize()) {
             withTransform({

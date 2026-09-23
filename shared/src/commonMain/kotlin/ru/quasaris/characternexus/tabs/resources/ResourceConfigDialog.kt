@@ -56,7 +56,9 @@ fun ResourceConfigDialog(
     var configState by remember { mutableStateOf(resource) }
     
     LaunchedEffect(configState) {
-        onSave(configState)
+        if (configState != resource) {
+            onSave(configState)
+        }
     }
 
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current

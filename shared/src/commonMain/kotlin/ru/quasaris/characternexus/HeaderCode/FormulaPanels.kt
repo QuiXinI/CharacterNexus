@@ -29,20 +29,27 @@ import androidx.compose.ui.unit.sp
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.*
 
+private val DICE_CLEANUP_REGEX = Regex("\\b\\d*d\\d+\\b", RegexOption.IGNORE_CASE)
+private val TRAILING_PLUS_REGEX = Regex("\\+\\s*$")
+private val LEADING_PLUS_REGEX = Regex("^\\s*\\+")
+private val LEADING_PLUS_SPACE_REGEX = Regex("^\\s*\\+\\s*")
+private val TRAILING_PLUS_SPACE_REGEX = Regex("\\s*\\+\\s*$")
+
 fun getFullFormula(entry: FormulaEntry): String {
     var full = entry.formula
     val isInitiative = entry is InitiativeEntry
     
     if (!isInitiative) {
-        full = full.replace(Regex("\\b\\d*d\\d+\\b", RegexOption.IGNORE_CASE), "").trim()
-        full = full.replace(Regex("\\+\\s*$"), "").replace(Regex("^\\s*\\+"), "").trim()
+        full = full.replace(DICE_CLEANUP_REGEX, "").trim()
+        full = full.replace(TRAILING_PLUS_REGEX, "").replace(LEADING_PLUS_REGEX, "").trim()
     }
     
-    entry.bonuses.filter { it.isActive }.forEach {
+    entry.bonuses.forEach {
+        if (!it.isActive) return@forEach
         var f = it.formula.trim()
         if (!isInitiative) {
-            f = f.replace(Regex("\\b\\d*d\\d+\\b", RegexOption.IGNORE_CASE), "").trim()
-            f = f.replace(Regex("^\\s*\\+\\s*"), "").replace(Regex("\\s*\\+\\s*$"), "")
+            f = f.replace(DICE_CLEANUP_REGEX, "").trim()
+            f = f.replace(LEADING_PLUS_SPACE_REGEX, "").replace(TRAILING_PLUS_SPACE_REGEX, "")
         }
         
         if (f.isNotEmpty()) {

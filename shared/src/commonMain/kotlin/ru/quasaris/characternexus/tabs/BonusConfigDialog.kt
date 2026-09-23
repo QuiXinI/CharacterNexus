@@ -76,7 +76,12 @@ fun BonusConfigDialog(
     var skillProficiencies by remember { mutableStateOf(initialSkillProficiencies) }
     var skillExpertise by remember { mutableStateOf(initialSkillExpertise) }
 
+    var isInitial by remember { mutableStateOf(true) }
     LaunchedEffect(baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise) {
+        if (isInitial) {
+            isInitial = false
+            return@LaunchedEffect
+        }
         onSave(baseScore, statBonuses, isStatProficient, skillBonuses, skillProficiencies, skillExpertise)
     }
 

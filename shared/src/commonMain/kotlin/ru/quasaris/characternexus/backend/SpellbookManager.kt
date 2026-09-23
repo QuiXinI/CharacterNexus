@@ -30,10 +30,14 @@ class SpellbookManager {
         REPLACE, RENAME, SKIP, CANCEL
     }
 
+    companion object {
+        private val SLUG_REGEX = Regex("[^a-z0-9_'\\-.()]")
+    }
+
     fun slugify(name: String): String {
         return name.lowercase()
             .replace(" ", "_")
-            .replace(Regex("[^a-z0-9_'\\-.()]"), "")
+            .replace(SLUG_REGEX, "")
             .ifBlank { "unnamed" }
     }
 

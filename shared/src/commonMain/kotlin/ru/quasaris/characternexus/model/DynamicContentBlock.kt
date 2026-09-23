@@ -1,27 +1,35 @@
 package ru.quasaris.characternexus.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 import ru.quasaris.characternexus.util.generateUuid
 
+@Immutable
 @Serializable
 sealed class DynamicContentBlock {
+    @Immutable
     @Serializable
     data class Text(val content: String) : DynamicContentBlock()
     
+    @Immutable
     @Serializable
     data object Divider : DynamicContentBlock()
     
+    @Immutable
     @Serializable
     data class Spoiler(val content: String) : DynamicContentBlock()
     
+    @Immutable
     @Serializable
     data class Quote(val content: String) : DynamicContentBlock()
     
+    @Immutable
     @Serializable
     data class ResourceRef(val id: String) : DynamicContentBlock() {
         fun toTag(): String = "{Ресурс: id=$id}"
     }
     
+    @Immutable
     @Serializable
     data class Resource(
         val name: String,

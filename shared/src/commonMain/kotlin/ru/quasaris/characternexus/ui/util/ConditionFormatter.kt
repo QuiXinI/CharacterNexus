@@ -7,6 +7,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 
+private val BOLD_REGEX = Regex("\\*\\*(.*?)\\*\\*")
+
 /**
  * Formats a condition description from Markdown-like syntax.
  * - Lines starting with "- " are converted to bullet points with [accentColor].
@@ -26,9 +28,8 @@ fun formatConditionDescription(text: String, accentColor: Color): AnnotatedStrin
                 l = l.substring(2)
             }
             
-            val boldRegex = Regex("\\*\\*(.*?)\\*\\*")
             var last = 0
-            boldRegex.findAll(l).forEach { m ->
+            BOLD_REGEX.findAll(l).forEach { m ->
                 append(l.substring(last, m.range.first))
                 withStyle(SpanStyle(
                     fontWeight = FontWeight.Bold,

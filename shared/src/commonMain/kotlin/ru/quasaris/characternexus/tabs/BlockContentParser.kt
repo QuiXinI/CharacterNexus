@@ -5,8 +5,14 @@ import ru.quasaris.characternexus.model.NoteBlockState
 
 object BlockContentParser {
 
+    private const val CACHE_MAX_SIZE = 100
+    private val parseCache = mutableMapOf<String, List<DynamicContentBlock>>()
+
     fun toBlocks(text: String): List<DynamicContentBlock> {
         if (text.isEmpty()) return listOf(DynamicContentBlock.Text(""))
+
+        val cached = parseCache[text]
+        if (cached != null) return cached
 
         val initial = DynamicContentParser.parse(text)
         val result = mutableListOf<DynamicContentBlock>()
@@ -32,7 +38,12 @@ object BlockContentParser {
             }
         }
 
-        return if (result.isEmpty()) listOf(DynamicContentBlock.Text("")) else result
+        val finalResult = if (result.isEmpty()) listOf(DynamicContentBlock.Text("")) else result
+        if (parseCache.size >= CACHE_MAX_SIZE) {
+            parseCache.clear()
+        }
+        parseCache[text] = finalResult
+        return finalResult
     }
 
     fun toNoteBlocks(text: String): List<NoteBlockState> = toBlocks(text).map { NoteBlockState(block = it) }

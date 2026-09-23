@@ -1,9 +1,11 @@
 package ru.quasaris.characternexus.model
 
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import ru.quasaris.characternexus.util.generateUuid
 
+@Immutable
 @Serializable
 sealed interface FormulaEntry {
     val id: String
@@ -12,6 +14,7 @@ sealed interface FormulaEntry {
     val bonuses: List<AttackBonus>
 }
 
+@Immutable
 @Serializable
 data class ArmorClassEntry(
     override val id: String = generateUuid(),
@@ -20,6 +23,7 @@ data class ArmorClassEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Immutable
 @Serializable
 data class InitiativeEntry(
     override val id: String = generateUuid(),
@@ -29,6 +33,7 @@ data class InitiativeEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Immutable
 @Serializable
 data class SpeedEntry(
     override val id: String = generateUuid(),
@@ -37,6 +42,7 @@ data class SpeedEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Immutable
 @Serializable
 data class ClassEntry(
     val id: String = generateUuid(),
@@ -64,7 +70,11 @@ enum class Attribute(val fullName: String, val shortName: String) {
     INTELLIGENCE("Интеллект", "ИНТ"),
     WISDOM("Мудрость", "МУД"),
     CHARISMA("Харизма", "ХАР"),
-    NONE("Нет", "НЕТ")
+    NONE("Нет", "НЕТ");
+
+    companion object {
+        val validAttributes: List<Attribute> = entries.filter { it != NONE }
+    }
 }
 
 @Serializable
@@ -112,6 +122,7 @@ enum class ExportFormat {
     WEBP, PNG, JPG
 }
 
+@Immutable
 @Serializable
 data class Condition(val name: String, val description: String)
 
@@ -159,6 +170,7 @@ enum class AdvantagePreference {
     IGNORE_BOTH
 }
 
+@Immutable
 @Serializable
 sealed interface IBonus {
     val id: String
@@ -169,6 +181,7 @@ sealed interface IBonus {
     val advantagePreference: AdvantagePreference
 }
 
+@Immutable
 @Serializable
 data class AttackBonus(
     override val id: String = generateUuid(),
@@ -179,6 +192,7 @@ data class AttackBonus(
     override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE
 ) : IBonus
 
+@Immutable
 @Serializable
 data class SimpleBonus(
     override val id: String = generateUuid(),
@@ -189,6 +203,7 @@ data class SimpleBonus(
     override val advantagePreference: AdvantagePreference = AdvantagePreference.NONE
 ) : IBonus
 
+@Immutable
 @Serializable
 data class DamageBonus(
     override val id: String = generateUuid(),
@@ -207,6 +222,7 @@ enum class StatBonusType {
     CHARACTERISTIC_VALUE
 }
 
+@Immutable
 @Serializable
 data class StatBonus(
     override val id: String = generateUuid(),
@@ -220,6 +236,7 @@ data class StatBonus(
     val applyToSkills: Boolean = false
 ) : IBonus
 
+@Immutable
 @Serializable
 data class SkillBonus(
     override val id: String = generateUuid(),
@@ -241,6 +258,7 @@ enum class CreatureSize(val displayName: String, val carryMultiplier: Float) {
     GARGANTUAN("Громадный", 8.0f)
 }
 
+@Immutable
 @Serializable
 data class CargoState(
     val id: String = generateUuid(),
@@ -255,6 +273,7 @@ data class CargoState(
     val highJumpBonuses: List<SimpleBonus> = emptyList()
 )
 
+@Immutable
 @Serializable
 data class ProficiencyItem(
     val id: String = generateUuid(),
@@ -262,6 +281,7 @@ data class ProficiencyItem(
     val isActive: Boolean = true
 )
 
+@Immutable
 @Serializable
 data class ProficiencySection(
     val id: String = generateUuid(),
@@ -269,6 +289,7 @@ data class ProficiencySection(
     val items: List<ProficiencyItem> = emptyList()
 )
 
+@Immutable
 @Serializable
 data class ProficienciesState(
     val id: String = generateUuid(),
@@ -289,6 +310,7 @@ data class ProficienciesState(
     )
 )
 
+@Immutable
 @Serializable
 data class DynamicNoteState(
     val id: String = generateUuid(),
@@ -316,6 +338,7 @@ enum class PotionRarity(val displayName: String) {
     ARTIFACT("Артефакт")
 }
 
+@Immutable
 @Serializable
 data class PotionState(
     val id: String = generateUuid(),
@@ -341,6 +364,7 @@ data class PotionState(
     val version: SpellVersion = SpellVersion.HB
 )
 
+@Immutable
 @Serializable
 data class AttackEntry(
     val id: String = generateUuid(),
@@ -412,6 +436,7 @@ enum class CastingTimeType(val displayName: String) {
     OTHER("Другое")
 }
 
+@Immutable
 @Serializable
 data class SpellLink(
     @SerialName("id") val id: String = generateUuid(),
@@ -419,6 +444,7 @@ data class SpellLink(
     @SerialName("url") val url: String = ""
 )
 
+@Immutable
 @Serializable
 data class SpellCard(
     @SerialName("name") val name: String = "",
@@ -464,6 +490,10 @@ data class SpellCard(
     @SerialName("sourceModuleVersion") val sourceModuleVersion: String? = null,
     @SerialName("source") val source: String = ""
 ) {
+    companion object {
+        private val SLUG_REGEX = Regex("[^a-z0-9_'\\-.()]")
+    }
+
     val identityKey: String get() = "${name.lowercase().trim()}|${englishName.lowercase().trim()}|${version.name}"
 
     fun matchesId(idString: String): Boolean {
@@ -471,11 +501,11 @@ data class SpellCard(
         if (identityKey == idString) return true
         val slug = englishName.lowercase()
             .replace(" ", "_")
-            .replace(Regex("[^a-z0-9_'\\-.()]"), "")
+            .replace(SLUG_REGEX, "")
         if (slug.isNotBlank() && slug == idString) return true
         val nameSlug = name.lowercase()
             .replace(" ", "_")
-            .replace(Regex("[^a-z0-9_'\\-.()]"), "")
+            .replace(SLUG_REGEX, "")
         if (nameSlug.isNotBlank() && nameSlug == idString) return true
         return false
     }
@@ -542,6 +572,7 @@ enum class SpellComponentFilter {
     NO_VERBAL, NO_SOMATIC, NO_MATERIAL, NO_MATERIAL_COST, NO_MATERIAL_CONSUMED
 }
 
+@Immutable
 data class SpellFilterState(
     val levels: Set<String> = emptySet(),
     val classes: Set<CharacterClass> = emptySet(),
@@ -564,6 +595,7 @@ data class SpellFilterState(
     val isCompact: Boolean = false
 )
 
+@Immutable
 @Serializable
 data class SpecialSlotSettings(
     val id: String = generateUuid(),
@@ -574,6 +606,7 @@ data class SpecialSlotSettings(
     val restoreOnDawn: Boolean = false
 )
 
+@Immutable
 @Serializable
 data class SpellLevelDivider(
     val id: String = generateUuid(),
@@ -581,12 +614,14 @@ data class SpellLevelDivider(
     val ability: Attribute = Attribute.NONE
 )
 
+@Immutable
 @Serializable
 data class SpellLevelItem(
     val spellId: String? = null,
     val divider: SpellLevelDivider? = null
 )
 
+@Immutable
 @Serializable
 data class SpellSettings(
     val isMagicEnabled: Boolean = true,
@@ -618,6 +653,7 @@ data class SpellSettings(
     val spellOverrides: Map<String, SpellCard> = emptyMap()
 )
 
+@Immutable
 @Serializable
 data class Wallet(
     val platinum: Double = 0.0,
@@ -628,6 +664,7 @@ data class Wallet(
     val visibleCurrencies: List<String> = listOf("platinum", "gold", "silver", "copper")
 )
 
+@Immutable
 @Serializable
 data class BioShortField(
     val id: String = generateUuid(),
@@ -637,6 +674,7 @@ data class BioShortField(
     val isCustom: Boolean = false
 )
 
+@Immutable
 @Serializable
 data class BioSection(
     val id: String = generateUuid(),
@@ -645,6 +683,7 @@ data class BioSection(
     val isExpanded: Boolean = true
 )
 
+@Immutable
 @Serializable
 data class HitDiceEntry(
     val id: String = generateUuid(),
@@ -653,6 +692,7 @@ data class HitDiceEntry(
     val spent: Int = 0
 )
 
+@Immutable
 @Serializable
 data class HPLevelEntry(
     val level: Int,
@@ -662,6 +702,7 @@ data class HPLevelEntry(
     val className: String? = null
 )
 
+@Immutable
 @Serializable
 data class CharacterFolder(
     val uuid: String = generateUuid(),
@@ -672,6 +713,7 @@ data class CharacterFolder(
     val parentFolderUuid: String? = null
 )
 
+@Immutable
 @Serializable
 data class CharacterListState(
     val characters: List<CharacterSummary> = emptyList(),
@@ -679,6 +721,7 @@ data class CharacterListState(
     val globalOrder: List<String> = emptyList()
 )
 
+@Immutable
 @Serializable
 data class CharacterSummary(
     val uuid: String = "",
@@ -698,6 +741,7 @@ data class CharacterSummary(
     val folderUuid: String? = null
 )
 
+@Immutable
 @Serializable
 data class Character(
     val uuid: String = generateUuid(),
@@ -843,6 +887,7 @@ data class Character(
     }
 }
 
+@Immutable
 @Serializable
 data class ShieldEntry(
     override val id: String = generateUuid(),
@@ -851,6 +896,7 @@ data class ShieldEntry(
     override val bonuses: List<AttackBonus> = emptyList()
 ) : FormulaEntry
 
+@Immutable
 @Serializable
 data class ModuleContent(
     @SerialName("type") val type: String,
@@ -858,6 +904,7 @@ data class ModuleContent(
     @SerialName("file") val file: String
 )
 
+@Immutable
 @Serializable
 data class ModuleManifest(
     @SerialName("manifest_version") val manifestVersion: String = "1.0",
@@ -869,12 +916,14 @@ data class ModuleManifest(
     @SerialName("contents") val contents: List<ModuleContent> = emptyList()
 )
 
+@Immutable
 @Serializable
 data class InstalledModule(
     val manifest: ModuleManifest,
     val installTimestamp: Long = 0L
 )
 
+@Immutable
 @Serializable
 data class ModuleBundle(
     val manifest: ModuleManifest,

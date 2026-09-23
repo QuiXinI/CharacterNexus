@@ -14,6 +14,8 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 
 object MarkdownHelper {
+    private val AUTO_URL_REGEX = Regex("(?:https?://|www\\.)[\\w:#@%/;$()~_?+\\-=\\.&]+[\\w#@%/;$()~_?+\\-=]")
+
     fun applyMarkdown(value: TextFieldValue, prefix: String, suffix: String): TextFieldValue {
         val selection = value.selection
         val text = value.text
@@ -300,8 +302,7 @@ object MarkdownHelper {
             }
             
             // Automatic link detection (improved regex)
-            val urlRegex = Regex("(?:https?://|www\\.)[\\w:#@%/;$()~_?+\\-=\\.&]+[\\w#@%/;$()~_?+\\-=]")
-            urlRegex.findAll(result.toString()).forEach { match ->
+            AUTO_URL_REGEX.findAll(result.toString()).forEach { match ->
                 // Check if this range is already covered by a markdown link
                 if (linkRanges.none { it.first.first <= match.range.first && it.first.last >= match.range.last }) {
                     val url = match.value

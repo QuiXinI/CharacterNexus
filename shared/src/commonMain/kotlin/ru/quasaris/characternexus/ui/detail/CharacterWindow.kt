@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -253,22 +254,27 @@ fun CharacterWindow(
             state.isArmorClassSubDialogOpen || state.isInitiativeSubDialogOpen || state.isSpeedSubDialogOpen ||
             state.isResourceConfigOpen || state.isPotionConfigOpen || state.isPotionSelectionOpen || state.showHpDialog
 
-    BoxWithConstraints(
+    val density = LocalDensity.current
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { size ->
+                state.windowWidth = with(density) { size.width.toDp() }
+            }
             .pointerInput(Unit) {
                 detectTapGestures {
                     focusManager.clearFocus()
                 }
             }
     ) {
-        state.windowWidth = maxWidth
-        val isDesktopMode by remember(maxWidth, state.interfaceMode) {
+        val windowWidth = state.windowWidth
+        val isDesktopMode by remember(windowWidth, state.interfaceMode) {
             derivedStateOf {
                 when (state.interfaceMode) {
                     AppInterfaceMode.MOBILE -> false
                     AppInterfaceMode.DESKTOP -> true
-                    AppInterfaceMode.AUTO -> maxWidth >= Dimensions.DesktopSplitThreshold
+                    AppInterfaceMode.AUTO -> windowWidth >= Dimensions.DesktopSplitThreshold
                 }
             }
         }
@@ -1300,7 +1306,7 @@ fun CharacterDetailMainContent(
                 HorizontalPager(
                     state = currentPagerState,
                     modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1
+                    beyondViewportPageCount = 0
                 ) { page ->
                     val tab = currentTabs[page % currentTabs.size]
                     TabContent(

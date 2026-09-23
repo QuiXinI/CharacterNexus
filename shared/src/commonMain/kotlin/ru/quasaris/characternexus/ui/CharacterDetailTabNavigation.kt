@@ -301,7 +301,11 @@ fun TabSelectionSheet(
                                 val diff = index - currentIdx
 
                                 scope.launch {
-                                    launch { pagerState.animateScrollToPage(currentP + diff) }
+                                    if (kotlin.math.abs(diff) <= 1) {
+                                        pagerState.animateScrollToPage(currentP + diff)
+                                    } else {
+                                        pagerState.scrollToPage(currentP + diff)
+                                    }
                                     sheetState.hide()
                                     onDismissRequest()
                                 }

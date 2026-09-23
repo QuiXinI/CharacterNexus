@@ -394,8 +394,7 @@ class CharacterDetailState(
         val baseStats = statsState.toStatsMap(level, proficiencyBonus)
         val mutableStats = baseStats.toMutableMap()
 
-        Attribute.entries.forEach { attr ->
-            if (attr == Attribute.NONE) return@forEach
+        Attribute.validAttributes.forEach { attr ->
             val key = attr.name.lowercase()
             val baseScore = baseStats[key] ?: ""
             
@@ -447,8 +446,7 @@ class CharacterDetailState(
         val baseStats = statsState.toStatsMap(level, pbVal.toString()) + ("manualMaxHitDice" to manualMaxHitDice.toString())
         val mutableStats = baseStats.toMutableMap()
 
-        Attribute.entries.forEach { attr ->
-            if (attr == Attribute.NONE) return@forEach
+        Attribute.validAttributes.forEach { attr ->
             val key = attr.name.lowercase()
             val baseScore = baseStats[key] ?: ""
             
@@ -510,13 +508,13 @@ class CharacterDetailState(
     }
 
     val attributeModifiers by derivedStateOf {
-        Attribute.entries.filter { it != Attribute.NONE }.associateWith { attr ->
+        Attribute.validAttributes.associateWith { attr ->
             calculateModifier(statsMap[attr.name.lowercase()] ?: "10")
         }
     }
 
     val acValue by derivedStateOf {
-        ru.quasaris.characternexus.backend.CombatCalculations.calculateAC(activeArmorClassId, armorClassEntries, statsMap, isShieldActive, activeShieldId, shieldEntries)
+        statsMap["ac"] ?: "10"
     }
 
     val initValue by derivedStateOf {

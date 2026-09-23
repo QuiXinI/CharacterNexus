@@ -44,7 +44,9 @@ fun CargoConfigDialog(
     var state by remember { mutableStateOf(Cargo) }
     
     LaunchedEffect(state) {
-        onSave(state)
+        if (state != Cargo) {
+            onSave(state)
+        }
     }
     
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)

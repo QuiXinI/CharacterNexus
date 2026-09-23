@@ -39,8 +39,8 @@ fun SpellListGrid(
     spellOverrides: Map<String, SpellCard> = emptyMap(),
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
-    val grouped = spells.groupBy { it.level }
-    val sortedLevels = grouped.keys.sortedBy { it.toIntOrNull() ?: Int.MAX_VALUE }
+    val grouped = remember(spells) { spells.groupBy { it.level } }
+    val sortedLevels = remember(grouped) { grouped.keys.sortedBy { it.toIntOrNull() ?: Int.MAX_VALUE } }
     val isCompact = filterState.isCompact
 
     LazyVerticalGrid(

@@ -108,10 +108,14 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
         }
     }
 
+    companion object {
+        private val SLUG_REGEX = Regex("[^a-zа-я0-9_'\\-.()]")
+    }
+
     fun slugify(name: String): String {
         return name.lowercase()
             .replace(" ", "_")
-            .replace(Regex("[^a-zа-я0-9_'\\-.()]"), "")
+            .replace(SLUG_REGEX, "")
             .ifBlank { "unnamed" }
     }
 

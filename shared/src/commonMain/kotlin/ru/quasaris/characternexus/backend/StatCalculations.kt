@@ -177,6 +177,23 @@ fun parseFormulaParts(
     return flat to dice
 }
 
+private val DICE_REGEX = Regex("([+-]?\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
+private val TOKEN_REGEX = Regex("\\[([^\\]]+)\\]")
+private val STAT_MAPPING = mapOf(
+    "СИЛ" to listOf("strength", "STR", "СИЛ"),
+    "STR" to listOf("strength", "STR", "СИЛ"),
+    "ЛОВ" to listOf("dexterity", "DEX", "ЛОВ"),
+    "DEX" to listOf("dexterity", "DEX", "ЛОВ"),
+    "ТЕЛ" to listOf("constitution", "CON", "ТЕЛ"),
+    "CON" to listOf("constitution", "CON", "ТЕЛ"),
+    "ИНТ" to listOf("intelligence", "INT", "ИНТ"),
+    "INT" to listOf("intelligence", "INT", "ИНТ"),
+    "МУД" to listOf("wisdom", "WIS", "МУД"),
+    "WIS" to listOf("wisdom", "WIS", "МУД"),
+    "ХАР" to listOf("charisma", "CHA", "ХАР"),
+    "CHA" to listOf("charisma", "CHA", "ХАР")
+)
+
 /**
  * Разбор формулы с сохранением порядка следования элементов.
  */
@@ -187,11 +204,8 @@ fun parseFormulaOrdered(
     val processed = preprocessFormula(formula, stats)
     val result = mutableListOf<FormulaPart>()
     
-    // Регулярное выражение для поиска кубов (например, 1d6, +2d8, -d4)
-    val diceRegex = Regex("([+-]?\\d*)[dkк](\\d+)", RegexOption.IGNORE_CASE)
-    
     // Ищем все вхождения кубов и их позиции
-    val matches = diceRegex.findAll(processed).toList()
+    val matches = DICE_REGEX.findAll(processed).toList()
     var lastIndex = 0
     
     matches.forEach { match ->
@@ -234,23 +248,6 @@ fun parseFormulaOrdered(
  * Предварительная обработка формулы: замена всех текстовых токенов [...] на числовые значения.
  */
 fun preprocessFormula(formula: String, stats: Map<String, String>): String {
-    val tokenRegex = Regex("\\[([^\\]]+)\\]")
-    
-    val statMapping = mapOf(
-        "СИЛ" to listOf("strength", "STR", "СИЛ"),
-        "STR" to listOf("strength", "STR", "СИЛ"),
-        "ЛОВ" to listOf("dexterity", "DEX", "ЛОВ"),
-        "DEX" to listOf("dexterity", "DEX", "ЛОВ"),
-        "ТЕЛ" to listOf("constitution", "CON", "ТЕЛ"),
-        "CON" to listOf("constitution", "CON", "ТЕЛ"),
-        "ИНТ" to listOf("intelligence", "INT", "ИНТ"),
-        "INT" to listOf("intelligence", "INT", "ИНТ"),
-        "МУД" to listOf("wisdom", "WIS", "МУД"),
-        "WIS" to listOf("wisdom", "WIS", "МУД"),
-        "ХАР" to listOf("charisma", "CHA", "ХАР"),
-        "CHA" to listOf("charisma", "CHA", "ХАР")
-    )
-
     fun getStatValue(token: String): String {
         val upperToken = token.uppercase().trim()
         
@@ -261,7 +258,7 @@ fun preprocessFormula(formula: String, stats: Map<String, String>): String {
                 val level = stats["level"] ?: "1"
                 return getProficiencyBonus(level).toString()
             }
-            val keys = statMapping[attr]
+            val keys = STAT_MAPPING[attr]
             if (keys != null) {
                 for (k in keys) {
                     val score = stats["base_$k"] ?: stats[k]
@@ -275,7 +272,7 @@ fun preprocessFormula(formula: String, stats: Map<String, String>): String {
             val isBase = upperToken.startsWith("НАСТ ") || upperToken.startsWith("CUR ")
             val attr = upperToken.removeSuffix(" ЗНАЧ").removeSuffix(" SCR")
                 .removePrefix("НАСТ ").removePrefix("CUR ").trim()
-            val keys = statMapping[attr]
+            val keys = STAT_MAPPING[attr]
             if (keys != null) {
                 for (k in keys) {
                     val key = if (isBase) "base_$k" else k
@@ -287,7 +284,7 @@ fun preprocessFormula(formula: String, stats: Map<String, String>): String {
         }
 
         // 3. Стандартные сокращения модификаторов [STR], [СИЛ] и т.д.
-        statMapping[upperToken]?.let { keys ->
+        STAT_MAPPING[upperToken]?.let { keys ->
             for (k in keys) {
                 stats[k]?.let { return calculateModifier(it).toString() }
             }
@@ -317,7 +314,7 @@ fun preprocessFormula(formula: String, stats: Map<String, String>): String {
         }
     }
 
-    return tokenRegex.replace(formula) { match ->
+    return TOKEN_REGEX.replace(formula) { match ->
         getStatValue(match.groupValues[1])
     }
 }

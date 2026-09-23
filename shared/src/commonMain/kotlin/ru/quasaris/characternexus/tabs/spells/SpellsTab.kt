@@ -50,6 +50,8 @@ import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
 import sh.calvin.reorderable.*
 import kotlin.math.floor
 
+private val LEVEL_NUMBER_REGEX = Regex("([\\d.]+)")
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SpellsTab(
@@ -204,7 +206,7 @@ fun SpellsTab(
         val t = title.lowercase()
         if (t.contains("заговор")) return 0f
         if (t.contains("прочее")) return -1f
-        val match = Regex("([\\d.]+)").find(t)
+        val match = LEVEL_NUMBER_REGEX.find(t)
         return match?.value?.toFloatOrNull() ?: -1f
     }
 

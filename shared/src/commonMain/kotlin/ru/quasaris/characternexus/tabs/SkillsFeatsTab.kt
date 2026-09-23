@@ -5,12 +5,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import dev.chrisbanes.haze.HazeState
@@ -65,11 +67,20 @@ fun SkillsFeatsTab(
         footer = {
             val hasCargoSection = skillsAndTraits.any { it.tag == "Cargo" }
             val hasProficienciesSection = skillsAndTraits.any { it.tag == "Proficiencies" }
+            var footerWidth by remember { mutableStateOf(0.dp) }
+            val density = LocalDensity.current
 
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                val addButtonText = if (maxWidth < 200.dp) "ПОЛЕ" else "ДОБАВИТЬ ПОЛЕ"
-                val cargoButtonText = if (maxWidth < 200.dp) "ГРУЗ" else "ГРУЗ И ПРЫЖКИ"
-                val profButtonText = if (maxWidth < 200.dp) "ВЛАДЕНИЯ" else "БЛОК ВЛАДЕНИЙ"
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .onSizeChanged { size ->
+                        footerWidth = with(density) { size.width.toDp() }
+                    }
+            ) {
+                val addButtonText = if (footerWidth < 200.dp) "ПОЛЕ" else "ДОБАВИТЬ ПОЛЕ"
+                val cargoButtonText = if (footerWidth < 200.dp) "ГРУЗ" else "ГРУЗ И ПРЫЖКИ"
+                val profButtonText = if (footerWidth < 200.dp) "ВЛАДЕНИЯ" else "БЛОК ВЛАДЕНИЙ"
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),

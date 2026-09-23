@@ -37,32 +37,6 @@ fun CharacterDetailDialogs(
     val effectiveBlurFullscreen = forceBlurEnabled
 
     val spellSettings = state.spellSettings
-    val pb = getProficiencyBonus(state.level)
-    val abilityModifier = if (spellSettings.spellcastingAbility != Attribute.NONE) {
-        val statKey = spellSettings.spellcastingAbility.name.lowercase()
-        calculateModifier(statsMap[statKey] ?: "10")
-    } else 0
-
-    val renderDiceInOrder by state.settingsViewModel?.renderDiceInOrder?.collectAsState() ?: remember { mutableStateOf(true) }
-
-    val magicAtkCalculation = remember(spellSettings.spellAttackBonuses, pb, abilityModifier, statsMap, state.exhaustion, renderDiceInOrder) {
-        calculateAttackFormulaParts(
-            baseFlat = pb + abilityModifier,
-            bonuses = spellSettings.spellAttackBonuses,
-            stats = statsMap,
-            renderInOrder = renderDiceInOrder
-        )
-    }
-
-    val magicSaveCalculation = remember(spellSettings.spellSaveDcBonuses, pb, abilityModifier, statsMap, renderDiceInOrder) {
-        calculateAttackFormulaParts(
-            baseFlat = 8 + pb + abilityModifier,
-            bonuses = spellSettings.spellSaveDcBonuses,
-            stats = statsMap,
-            renderInOrder = renderDiceInOrder
-        )
-    }
-
     // --- ALL DIALOGS on RIGHT SIDE for Desktop ---
     if (!isDesktop || targetSection == "right") {
         if (state.showSpellSettings) {
@@ -208,6 +182,32 @@ fun CharacterDetailDialogs(
 
         if (state.isSpellbookSelectionOpen && spellbookManager != null) {
             val blurCards by state.settingsViewModel?.blurCards?.collectAsState() ?: remember { mutableStateOf(true) }
+            val pb = getProficiencyBonus(state.level)
+            val abilityModifier = if (spellSettings.spellcastingAbility != Attribute.NONE) {
+                val statKey = spellSettings.spellcastingAbility.name.lowercase()
+                calculateModifier(statsMap[statKey] ?: "10")
+            } else 0
+
+            val renderDiceInOrder by state.settingsViewModel?.renderDiceInOrder?.collectAsState() ?: remember { mutableStateOf(true) }
+
+            val magicAtkCalculation = remember(spellSettings.spellAttackBonuses, pb, abilityModifier, statsMap, state.exhaustion, renderDiceInOrder) {
+                calculateAttackFormulaParts(
+                    baseFlat = pb + abilityModifier,
+                    bonuses = spellSettings.spellAttackBonuses,
+                    stats = statsMap,
+                    renderInOrder = renderDiceInOrder
+                )
+            }
+
+            val magicSaveCalculation = remember(spellSettings.spellSaveDcBonuses, pb, abilityModifier, statsMap, renderDiceInOrder) {
+                calculateAttackFormulaParts(
+                    baseFlat = 8 + pb + abilityModifier,
+                    bonuses = spellSettings.spellSaveDcBonuses,
+                    stats = statsMap,
+                    renderInOrder = renderDiceInOrder
+                )
+            }
+
             SpellbookSelectionDialog(
                 spellbookManager = spellbookManager,
                 selectedIds = spellSettings.selectedSpellIds,

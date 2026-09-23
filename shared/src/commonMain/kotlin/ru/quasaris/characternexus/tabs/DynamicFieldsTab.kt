@@ -1,6 +1,6 @@
 package ru.quasaris.characternexus.tabs
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
@@ -585,7 +585,12 @@ fun DynamicFieldItem(
                     }
                 }
 
-                AnimatedVisibility(visible = isExpanded && (!isEditMode || !collapseOnEdit)) {
+                AnimatedVisibility(
+                    visible = isExpanded && (!isEditMode || !collapseOnEdit),
+                    enter = fadeIn() + expandVertically(clip = true),
+                    exit = fadeOut() + shrinkVertically(clip = true),
+                    modifier = Modifier.graphicsLayer { clip = true }
+                ) {
                     Column {
                         if (isCollapsible) {
                             extraContent(field)

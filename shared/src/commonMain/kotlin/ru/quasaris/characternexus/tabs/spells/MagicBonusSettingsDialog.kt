@@ -53,7 +53,9 @@ fun MagicBonusSettingsDialog(
     var currentBonuses by remember { mutableStateOf(bonuses) }
     
     LaunchedEffect(currentBonuses) {
-        onSave(currentBonuses)
+        if (currentBonuses != bonuses) {
+            onSave(currentBonuses)
+        }
     }
 
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current

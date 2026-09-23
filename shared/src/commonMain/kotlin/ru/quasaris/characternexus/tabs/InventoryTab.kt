@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.Currency
 import ru.quasaris.characternexus.backend.SettingsViewModel
@@ -97,10 +99,19 @@ fun InventoryTab(
         },
         footer = {
             val hasPotionsSection = inventory.any { it.tag == "potions" }
+            var footerWidth by remember { mutableStateOf(0.dp) }
+            val density = LocalDensity.current
 
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                val estimatedButtonWidth = if (hasPotionsSection) maxWidth else maxWidth * 0.6f
-                val estimatedPotionWidth = maxWidth * 0.4f
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .onSizeChanged { size ->
+                        footerWidth = with(density) { size.width.toDp() }
+                    }
+            ) {
+                val estimatedButtonWidth = if (hasPotionsSection) footerWidth else footerWidth * 0.6f
+                val estimatedPotionWidth = footerWidth * 0.4f
 
                 val addButtonText = when {
                     estimatedButtonWidth < 180.dp -> "ПОЛЕ"

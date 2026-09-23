@@ -68,7 +68,9 @@ fun AttackConfigDialog(
     var state by remember { mutableStateOf(attack) }
     
     LaunchedEffect(state) {
-        onSave(state)
+        if (state != attack) {
+            onSave(state)
+        }
     }
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
