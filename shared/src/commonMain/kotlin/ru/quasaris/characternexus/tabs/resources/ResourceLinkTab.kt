@@ -160,13 +160,21 @@ private fun ResourceCandidateCard(
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.onSurface
                 )
-                val first = candidate.usages.first()
-                val extra = candidate.usages.size - 1
-                Text(
-                    if (extra > 0) "${first.label} и ещё $extra" else first.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colorScheme.onSurfaceVariant
-                )
+                if (candidate.usages.isNotEmpty()) {
+                    val first = candidate.usages.first()
+                    val extra = candidate.usages.size - 1
+                    Text(
+                        if (extra > 0) "${first.label} и ещё $extra" else first.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        "В общем списке ресурсов",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Text(
                 if (hasMax) "${res.current}/${res.max}" else res.current,

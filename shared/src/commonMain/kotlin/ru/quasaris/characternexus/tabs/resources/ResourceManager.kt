@@ -79,10 +79,12 @@ class ResourceManager(
 
     private fun idAt(noteId: String, blockIndex: Int): String? {
         val note = sections().firstNotNullOfOrNull { (_, list) -> list.firstOrNull { it.id == noteId } } ?: return null
-        return when (val block = DynamicContentParser.parse(note.content).getOrNull(blockIndex)) {
+        val blocks = ru.quasaris.characternexus.tabs.BlockContentParser.toBlocks(note.content)
+        return when (val block = blocks.getOrNull(blockIndex)) {
             is DynamicContentBlock.ResourceRef -> block.id
             is DynamicContentBlock.Resource -> block.id.ifEmpty { null }
-            else -> null
+            else -> blocks.filterIsInstance<DynamicContentBlock.ResourceRef>().firstOrNull()?.id
+                ?: blocks.filterIsInstance<DynamicContentBlock.Resource>().firstOrNull()?.id
         }
     }
 
@@ -106,26 +108,26 @@ class ResourceManager(
             .filterNot { it.noteId == noteId && it.blockIndex == blockIndex }
         val candidates = items
             .filter { it.id != resourceId }
-            .mapNotNull { res -> usage[res.id]?.takeIf { it.isNotEmpty() }?.let { ResourceLinkCandidate(res, it) } }
+            .map { res -> ResourceLinkCandidate(res, usage[res.id].orEmpty()) }
             .sortedBy { it.resource.name.lowercase() }
         return ResourceLinkConfig(
             candidates = candidates,
             sharedWith = sharedWith,
-            onLink = { targetId -> relink(noteId, blockIndex, targetId) },
-            onUnlink = { unlink(noteId, blockIndex) }
+            onLink = { targetId -> relink(noteId, blockIndex, targetId, resourceId) },
+            onUnlink = { unlink(noteId, blockIndex, resourceId) }
         )
     }
 
-    fun relink(noteId: String, blockIndex: Int, targetId: String) {
+    fun relink(noteId: String, blockIndex: Int, targetId: String, currentResourceId: String? = null) {
         val target = index[targetId] ?: return
-        val oldId = idAt(noteId, blockIndex)
+        val oldId = currentResourceId ?: idAt(noteId, blockIndex)
         
         // Try notes first
         var foundInNotes = false
         val sections = sections()
         for ((_, list) in sections) {
             if (list.any { it.id == noteId }) {
-                mutateNote(noteId) { DynamicContentParser.relinkResource(it, blockIndex, targetId) }
+                mutateNote(noteId) { DynamicContentParser.relinkResource(it, blockIndex, targetId, oldId) }
                 foundInNotes = true
                 break
             }
@@ -141,8 +143,8 @@ class ResourceManager(
         if (oldId != null && oldId != targetId) dropIfUnused(oldId)
     }
 
-    fun unlink(noteId: String, blockIndex: Int): Resource? {
-        val id = idAt(noteId, blockIndex) ?: return null
+    fun unlink(noteId: String, blockIndex: Int, currentResourceId: String? = null): Resource? {
+        val id = currentResourceId ?: idAt(noteId, blockIndex) ?: return null
         val source = index[id] ?: return null
         val copy = source.copy(id = generateUuid())
         upsert(copy)
@@ -152,7 +154,7 @@ class ResourceManager(
         val sections = sections()
         for ((_, list) in sections) {
             if (list.any { it.id == noteId }) {
-                mutateNote(noteId) { DynamicContentParser.relinkResource(it, blockIndex, copy.id) }
+                mutateNote(noteId) { DynamicContentParser.relinkResource(it, blockIndex, copy.id, id) }
                 foundInNotes = true
                 break
             }
@@ -169,10 +171,33 @@ class ResourceManager(
     }
 
     /** Убрать одно размещение из текста. Данные удаляются, только если это было последнее размещение. */
-    fun removePlacement(noteId: String, blockIndex: Int) {
-        val id = idAt(noteId, blockIndex)
-        mutateNote(noteId) { DynamicContentParser.removeResource(it, blockIndex) }
+    fun removePlacement(noteId: String, blockIndex: Int, targetResourceId: String? = null) {
+        val id = targetResourceId ?: idAt(noteId, blockIndex)
+        mutateNote(noteId) { DynamicContentParser.removeResource(it, blockIndex, id) }
         if (id != null) dropIfUnused(id)
+    }
+
+    /** Полностью удалить ресурс из списка ресурсов и из всех заметок/зелий. */
+    fun deleteResourceCompletely(resourceId: String) {
+        if (resourceId.isEmpty()) return
+        items = items.filterNot { it.id == resourceId }
+        
+        fun List<DynamicNoteState>.cleaned() = map { note ->
+            if (note.content.contains(resourceId)) {
+                note.copy(content = DynamicContentParser.removeResourceById(note.content, resourceId))
+            } else note
+        }
+        
+        owner.notes = owner.notes.cleaned()
+        owner.skillsAndTraits = owner.skillsAndTraits.cleaned()
+        owner.inventory = owner.inventory.cleaned()
+        owner.spells = owner.spells.cleaned()
+        owner.bioLongSections = owner.bioLongSections.cleaned()
+        
+        owner.potions = owner.potions.mapNotNull { potion ->
+            if (potion.quantity.id == resourceId) null
+            else potion
+        }
     }
 
     fun normalize() {

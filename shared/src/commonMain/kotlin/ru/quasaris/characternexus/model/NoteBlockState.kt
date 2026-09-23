@@ -11,18 +11,24 @@ data class NoteBlockState(
             is DynamicContentBlock.Text -> block.content
             is DynamicContentBlock.Spoiler -> block.content
             is DynamicContentBlock.Quote -> block.content
+            is DynamicContentBlock.Divider -> "---"
             else -> null
         }
 
     val isTextLike: Boolean
-        get() = block is DynamicContentBlock.Text || block is DynamicContentBlock.Spoiler || block is DynamicContentBlock.Quote
+        get() = block is DynamicContentBlock.Text || block is DynamicContentBlock.Spoiler || block is DynamicContentBlock.Quote || block is DynamicContentBlock.Divider
 
-    fun withTextContent(newText: String): NoteBlockState = copy(
-        block = when (block) {
-            is DynamicContentBlock.Text -> block.copy(content = newText)
-            is DynamicContentBlock.Spoiler -> block.copy(content = newText)
-            is DynamicContentBlock.Quote -> block.copy(content = newText)
-            else -> block
-        }
-    )
+    fun withTextContent(newText: String): NoteBlockState {
+        val trimmed = newText.trim().replace("\u200B", "").replace("\uFEFF", "")
+        val isDivider = trimmed == "---"
+        return copy(
+            block = when (block) {
+                is DynamicContentBlock.Text -> if (isDivider) DynamicContentBlock.Divider else block.copy(content = newText)
+                is DynamicContentBlock.Spoiler -> if (isDivider) DynamicContentBlock.Divider else block.copy(content = newText)
+                is DynamicContentBlock.Quote -> if (isDivider) DynamicContentBlock.Divider else block.copy(content = newText)
+                is DynamicContentBlock.Divider -> if (isDivider) block else DynamicContentBlock.Text(newText)
+                else -> block
+            }
+        )
+    }
 }

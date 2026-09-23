@@ -1356,7 +1356,7 @@ fun TopMarginSettingsSection(
     val marginStep by settingsViewModel.topMarginStep.collectAsState()
     val customMargin by settingsViewModel.customTopMargin.collectAsState()
     var customMarginText by remember(customMargin) { mutableStateOf(customMargin.toString()) }
-    val isCustomActive = marginStep >= 5
+    val isCustomActive = marginStep >= 4
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -1373,8 +1373,11 @@ fun TopMarginSettingsSection(
                 color = colorScheme.onSurface
             )
             val displayText = when {
-                isCustomActive -> "$customMargin dp (Своё)"
-                else -> "${marginStep * 48} dp"
+                marginStep == 0 -> "0 dp (Без отступа)"
+                marginStep == 1 -> "48 dp (1 строка)"
+                marginStep == 2 -> "96 dp (2 строки - рекомендуемый)"
+                marginStep == 3 -> "144 dp (3 строки)"
+                else -> "$customMargin dp (Своё)"
             }
             Text(
                 text = displayText,
@@ -1385,12 +1388,12 @@ fun TopMarginSettingsSection(
         }
 
         Slider(
-            value = marginStep.coerceIn(1, 5).toFloat(),
+            value = marginStep.coerceIn(0, 4).toFloat(),
             onValueChange = { 
                 val newStep = it.roundToInt()
                 settingsViewModel.updateTopMarginStep(newStep)
             },
-            valueRange = 1f..5f,
+            valueRange = 0f..4f,
             steps = 3,
             modifier = Modifier.fillMaxWidth()
         )
@@ -1421,7 +1424,7 @@ fun TopMarginSettingsSection(
                         settingsViewModel.updateCustomTopMargin(maxOf(0, n))
                     }
                 },
-            label = { Text("Свой отступ в dp (активно при 5+)") },
+            label = { Text("Свой отступ в dp (активно при 4+)") },
             singleLine = true
         )
     }

@@ -271,10 +271,16 @@ fun CharacterDetailDialogs(
                     state.updateResource(updated)
                     state.resourceManager.normalize() // Cleanup text just in case
                 },
-                onDelete = { _: DynamicContentBlock.Resource ->
-                    state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex)
+                onDelete = { res: DynamicContentBlock.Resource ->
+                    if (state.activeNoteId.isNotEmpty() && state.activeResourceIndex != -1) {
+                        state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex, res.id)
+                    } else {
+                        state.resourceManager.deleteResourceCompletely(res.id)
+                    }
                     state.isResourceConfigOpen = false
                     state.activeResourceConfig = null
+                    state.activeResourceIndex = -1
+                    state.activeNoteId = ""
                 },
                 forceBlurEnabled = forceBlurEnabled,
                 settingsViewModel = state.settingsViewModel,

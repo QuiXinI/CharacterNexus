@@ -28,6 +28,8 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import ru.quasaris.characternexus.util.HapticType
+import ru.quasaris.characternexus.util.PlatformUtils
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.PI
@@ -88,13 +90,20 @@ fun DiceRollerFab(
         isOled = isOled,
         alpha = alpha,
         forceBlurEnabled = forceBlurEnabled,
-        onToggleExpand = { isExpanded = !isExpanded },
+        onToggleExpand = {
+            PlatformUtils.performHapticFeedback(HapticType.CLICK)
+            isExpanded = !isExpanded
+        },
         onDiceClick = { sides ->
+            PlatformUtils.performHapticFeedback(HapticType.CLICK)
             dicePool[sides] = (dicePool[sides] ?: 0) + 1
         },
         onDiceLongClick = { sides ->
             val current = dicePool[sides] ?: 0
-            if (current > 0) dicePool[sides] = current - 1
+            if (current > 0) {
+                PlatformUtils.performHapticFeedback(HapticType.ERROR)
+                dicePool[sides] = current - 1
+            }
         },
         onRollClick = {
             onRoll(dicePool.toMap())
@@ -102,10 +111,15 @@ fun DiceRollerFab(
             isExpanded = false
         },
         onResetAndDrag = {
+            PlatformUtils.performHapticFeedback(HapticType.ERROR)
             dicePool.keys.forEach { dicePool[it] = 0 }
             isExpanded = false
+            isDragging = true
         },
-        onDragStart = { isDragging = true },
+        onDragStart = {
+            PlatformUtils.performHapticFeedback(HapticType.LONG_PRESS)
+            isDragging = true
+        },
         isDragging = isDragging,
         onDragEnd = { isDragging = false },
         onPositionChange = { delta ->
@@ -249,8 +263,7 @@ fun DiceRollerFabStateless(
                 .pointerInput(isExpanded) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = {
-                            if (isExpanded) onResetAndDrag()
-                            onDragStart()
+                            if (isExpanded) onResetAndDrag() else onDragStart()
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()

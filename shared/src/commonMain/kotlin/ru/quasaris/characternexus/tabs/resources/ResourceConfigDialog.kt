@@ -266,6 +266,16 @@ fun ResourceConfigDialogContent(
         }
 
         if (showDeleteConfirm) {
+            val usages = owner?.resourceManager?.usages()?.get(state.id).orEmpty()
+            val isShared = usages.size > 1 && noteId.isNotEmpty() && blockIndex != -1
+
+            val dialogTitle = if (isShared) "Удалить размещение ресурса?" else "Удалить ресурс?"
+            val dialogText = if (isShared) {
+                "Этот ресурс связан с другими местами. Будет удалена только эта конкретная инстанция. В остальных местах ресурс сохранится."
+            } else {
+                "Ресурс будет полностью удалён."
+            }
+
             DeleteConfirmationDialog(
                 showDialog = showDeleteConfirm,
                 onDismiss = { showDeleteConfirm = false },
@@ -273,7 +283,8 @@ fun ResourceConfigDialogContent(
                     onDelete(state)
                     showDeleteConfirm = false
                 },
-                title = "Удалить ресурс?",
+                title = dialogTitle,
+                text = dialogText,
                 settingsViewModel = settingsViewModel
             )
         }
@@ -520,6 +531,8 @@ fun ResourceConfigDialogInner(
                         ) {
                             Text("Удалить")
                         }
+
+                        Spacer(modifier = Modifier.height(80.dp))
                     }
                 } else {
                     val linkConfig = remember(state.id) {

@@ -3,7 +3,7 @@ package ru.quasaris.characternexus.tabs
 import ru.quasaris.characternexus.model.DynamicContentBlock
 
 object DynamicContentParser {
-    private val dividerRegex = Regex("^---$", RegexOption.MULTILINE)
+    private val dividerRegex = Regex("^[ \\t\\u200B\\uFEFF]*---[ \\t\\u200B\\uFEFF]*$", RegexOption.MULTILINE)
     private val spoilerRegex = Regex("(?s)::(.*?)::")
     private val quoteRegex = Regex("(?s)>> (.*?)(?: <<|$)")
     private val resourceRegex = Regex("(?s)\\{(?:Ресурс|Resource)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
@@ -159,22 +159,41 @@ object DynamicContentParser {
         return render(updated)
     }
 
-    fun relinkResource(text: String, index: Int, newId: String): String {
-        val blocks = parse(text).toMutableList()
-        if (index in blocks.indices) {
-            val block = blocks[index]
-            if (block is DynamicContentBlock.Resource || block is DynamicContentBlock.ResourceRef) {
-                blocks[index] = DynamicContentBlock.ResourceRef(newId)
-            }
+    fun relinkResource(text: String, index: Int, newId: String, targetResourceId: String? = null): String {
+        val blocks = BlockContentParser.toBlocks(text).toMutableList()
+        var targetIndex = if (index in blocks.indices && isResourceOrRef(blocks[index], targetResourceId)) index else -1
+        if (targetIndex == -1 && !targetResourceId.isNullOrEmpty()) {
+            targetIndex = blocks.indexOfFirst { isResourceOrRef(it, targetResourceId) }
         }
-        return render(blocks)
+        if (targetIndex in blocks.indices) {
+            blocks[targetIndex] = DynamicContentBlock.ResourceRef(newId)
+        }
+        return BlockContentParser.toText(blocks)
     }
 
-    fun removeResource(text: String, index: Int): String {
-        val blocks = parse(text).toMutableList()
-        if (index in blocks.indices) {
-            blocks.removeAt(index)
+    fun removeResource(text: String, index: Int, targetResourceId: String? = null): String {
+        val blocks = BlockContentParser.toBlocks(text).toMutableList()
+        var targetIndex = if (index in blocks.indices && isResourceOrRef(blocks[index], targetResourceId)) index else -1
+        if (targetIndex == -1 && !targetResourceId.isNullOrEmpty()) {
+            targetIndex = blocks.indexOfFirst { isResourceOrRef(it, targetResourceId) }
         }
-        return render(blocks)
+        if (targetIndex in blocks.indices) {
+            blocks.removeAt(targetIndex)
+        }
+        return BlockContentParser.toText(blocks)
+    }
+
+    private fun isResourceOrRef(block: DynamicContentBlock, targetResourceId: String? = null): Boolean = when (block) {
+        is DynamicContentBlock.Resource -> targetResourceId.isNullOrEmpty() || block.id == targetResourceId
+        is DynamicContentBlock.ResourceRef -> targetResourceId.isNullOrEmpty() || block.id == targetResourceId
+        else -> false
+    }
+
+    fun removeResourceById(text: String, id: String): String {
+        val blocks = BlockContentParser.toBlocks(text).filterNot {
+            (it is DynamicContentBlock.Resource && it.id == id) ||
+            (it is DynamicContentBlock.ResourceRef && it.id == id)
+        }
+        return BlockContentParser.toText(blocks)
     }
 }

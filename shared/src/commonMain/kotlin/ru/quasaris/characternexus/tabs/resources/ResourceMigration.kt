@@ -66,7 +66,7 @@ object ResourceMigration {
         for ((sectionTitle, notes) in sections) {
             for (note in notes) {
                 if (note.content.isEmpty()) continue
-                DynamicContentParser.parse(note.content).forEachIndexed { index, block ->
+                ru.quasaris.characternexus.tabs.BlockContentParser.toBlocks(note.content).forEachIndexed { index, block ->
                     val id = when (block) {
                         is DynamicContentBlock.ResourceRef -> block.id
                         is DynamicContentBlock.Resource -> block.id

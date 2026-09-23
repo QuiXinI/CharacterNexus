@@ -13,6 +13,9 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -25,6 +28,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.LinkAnnotation
@@ -59,7 +63,10 @@ fun NotionBlockEditor(
     settingsViewModel: SettingsViewModel? = null,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
-    modifier: Modifier = Modifier
+    viewportTopY: Float = 0f,
+    popupHazeState: HazeState? = null,
+    modifier: Modifier = Modifier,
+    bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -191,16 +198,22 @@ fun NotionBlockEditor(
         val newStates = mutableListOf<NoteBlockState>()
         
         lines.forEachIndexed { i, line ->
-            val block = when {
-                i == 0 -> originalBlock
-                i == lines.lastIndex && line.isEmpty() -> DynamicContentBlock.Text("")
-                else -> originalBlock
-            }
+            val trimmedLine = line.trim().replace("\u200B", "").replace("\uFEFF", "")
+            val isDivider = trimmedLine == "---"
             
-            val finalBlock = when (block) {
-                is DynamicContentBlock.Spoiler -> block.copy(content = line)
-                is DynamicContentBlock.Quote -> block.copy(content = line)
-                else -> DynamicContentBlock.Text(line)
+            val finalBlock = if (isDivider) {
+                DynamicContentBlock.Divider
+            } else {
+                val block = when {
+                    i == 0 -> originalBlock
+                    i == lines.lastIndex && line.isEmpty() -> DynamicContentBlock.Text("")
+                    else -> originalBlock
+                }
+                when (block) {
+                    is DynamicContentBlock.Spoiler -> block.copy(content = line)
+                    is DynamicContentBlock.Quote -> block.copy(content = line)
+                    else -> DynamicContentBlock.Text(line)
+                }
             }
             newStates.add(if (i == 0) blocks[idx].copy(block = finalBlock) else NoteBlockState(block = finalBlock))
         }
@@ -237,6 +250,36 @@ fun NotionBlockEditor(
         emit()
     }
 
+    fun insertBlockAtSelection(newBlock: DynamicContentBlock) {
+        val key = activeKey ?: return
+        val idx = blocks.indexOfFirst { it.key == key }
+        if (idx == -1) return
+        
+        val selection = liveSelections[key] ?: return
+        val text = blocks[idx].textContent ?: ""
+        
+        val before = text.substring(0, selection.min)
+        val after = text.substring(selection.max)
+        
+        val newStates = mutableListOf<NoteBlockState>()
+        if (before.isNotEmpty() || idx == 0) {
+            newStates.add(blocks[idx].withTextContent(before))
+        }
+        
+        val inserted = NoteBlockState(block = newBlock)
+        newStates.add(inserted)
+        
+        val trailing = NoteBlockState(block = DynamicContentBlock.Text(after))
+        newStates.add(trailing)
+        
+        blocks.removeAt(idx)
+        blocks.addAll(idx, newStates)
+        
+        pendingFocusKey = trailing.key
+        pendingFocusOffset = 0
+        emit()
+    }
+
     val activeValue = activeKey?.let { key ->
         val idx = blocks.indexOfFirst { it.key == key }
         if (idx == -1) null else {
@@ -262,15 +305,55 @@ fun NotionBlockEditor(
         )
     }
 
-    Column(modifier = modifier.fillMaxWidth().onFocusChanged { isAnyFocused = it.hasFocus }) {
+    var editorWidthPx by remember { mutableIntStateOf(0) }
+    var editorHeightPx by remember { mutableIntStateOf(0) }
+    var editorLeftPx by remember { mutableFloatStateOf(0f) }
+    var editorTopPx by remember { mutableFloatStateOf(0f) }
+
+    val topMarginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
+    val customTopMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
+    val effectiveTopMargin = if (topMarginStep < 4) topMarginStep * 48 else customTopMargin
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { isAnyFocused = it.hasFocus }
+            .onGloballyPositioned { coords ->
+                editorWidthPx = coords.size.width
+                editorHeightPx = coords.size.height
+                val pos = coords.positionInWindow()
+                editorLeftPx = pos.x
+                editorTopPx = pos.y
+            }
+    ) {
+        if (canEdit && isAnyFocused && effectiveTopMargin > 0) {
+            Spacer(modifier = Modifier.height(effectiveTopMargin.dp))
+        }
         if (canEdit && activeKey != null && activeValue != null) {
+            val isOled = colorScheme.background == Color.Black
             FormattingToolbar(
                 value = activeValue,
                 onValueChange = { spliceBlockValue(activeKey!!, it) },
                 isFocused = true,
                 isSelectionActive = activeValue.selection.length > 0,
                 onLinkRequest = { showLinkDialog = true },
-                onSave = { activeKey = null }
+                onSave = { activeKey = null },
+                viewportTopY = viewportTopY,
+                onInsertResource = {
+                    val res = state?.resourceManager?.create("Новый ресурс")
+                        ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
+                    insertBlockAtSelection(res)
+                },
+                onInsertDivider = {
+                    insertBlockAtSelection(DynamicContentBlock.Divider)
+                },
+                hazeState = popupHazeState ?: hazeState,
+                settingsViewModel = settingsViewModel,
+                isOled = isOled,
+                editorWidthPx = editorWidthPx,
+                editorLeftPx = editorLeftPx,
+                editorTopPx = editorTopPx,
+                editorHeightPx = editorHeightPx
             )
         }
 
@@ -376,7 +459,40 @@ fun NotionBlockEditor(
                                 onBackspaceEmpty = { mergeIntoPrevious(item.key) }
                             )
 
-                            is DynamicContentBlock.Divider -> DividerBlockRow()
+                            is DynamicContentBlock.Divider -> {
+                                if (item.key == activeKey && canEdit && !isReorderMode) {
+                                    LineTextBlockRow(
+                                        item = item,
+                                        text = "---",
+                                        placeholder = null,
+                                        isActive = true,
+                                        canEdit = canEdit,
+                                        selection = liveSelections[item.key] ?: TextRange(3),
+                                        focusRequester = focusRequesterFor(item.key),
+                                        onActivate = { offset ->
+                                            activeKey = item.key
+                                            pendingFocusKey = item.key
+                                            pendingFocusOffset = offset ?: 3
+                                            liveSelections[item.key] = TextRange(pendingFocusOffset)
+                                        },
+                                        onValueChange = { spliceBlockValue(item.key, it) },
+                                        onBackspaceEmpty = { mergeIntoPrevious(item.key) }
+                                    )
+                                } else {
+                                    DividerBlockRow(
+                                        modifier = Modifier.clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) {
+                                            if (canEdit && !isReorderMode) {
+                                                activeKey = item.key
+                                                pendingFocusKey = item.key
+                                                pendingFocusOffset = 3
+                                            }
+                                        }
+                                    )
+                                }
+                            }
 
                             is DynamicContentBlock.Resource -> ResourceBlock(
                                 resource = block,
@@ -449,37 +565,15 @@ fun NotionBlockEditor(
             }
         }
 
-        if (canEdit && !isReorderMode) {
-            Spacer(Modifier.height(4.dp))
-            Row {
-                TextButton(
-                    onClick = { insertAfterActive(DynamicContentBlock.Text("")) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Строка", fontSize = 13.sp)
-                }
-                TextButton(
-                    onClick = { insertAfterActive(DynamicContentBlock.Divider) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                ) {
-                    Icon(Icons.Default.HorizontalRule, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Разделитель", fontSize = 13.sp)
-                }
-                TextButton(
-                    onClick = {
-                        insertAfterActive(DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0"))
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                ) {
-                    Icon(Icons.Default.AddBox, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Ресурс", fontSize = 13.sp)
-                }
+        bottomActionRow?.invoke(
+            { insertAfterActive(DynamicContentBlock.Text("")) },
+            { insertAfterActive(DynamicContentBlock.Divider) },
+            {
+                val res = state?.resourceManager?.create("Новый ресурс")
+                    ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
+                insertAfterActive(res)
             }
-        }
+        )
     }
 }
 
@@ -522,6 +616,40 @@ private fun LineTextBlockRow(
             internalValue = TextFieldValue(text = initialInternalText, selection = initialInternalSelection)
         }
 
+        val bringIntoViewRequester = remember { BringIntoViewRequester() }
+        var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+        val density = LocalDensity.current
+        val imeBottomPx = WindowInsets.ime.getBottom(density)
+
+        LaunchedEffect(isActive, internalValue.selection, internalValue.text, imeBottomPx, layoutResult) {
+            if (isActive) {
+                val topMarginPx = with(density) { 160.dp.toPx() }
+                val bottomMarginPx = with(density) { 64.dp.toPx() }
+                val cursorIndex = internalValue.selection.max.coerceIn(0, internalValue.text.length)
+                val cursorRect = layoutResult?.getCursorRect(cursorIndex)
+
+                val rectToBring = if (cursorRect != null) {
+                    Rect(
+                        left = cursorRect.left,
+                        top = cursorRect.top - topMarginPx,
+                        right = cursorRect.right,
+                        bottom = cursorRect.bottom + bottomMarginPx
+                    )
+                } else {
+                    Rect(
+                        left = 0f,
+                        top = -topMarginPx,
+                        right = 0f,
+                        bottom = bottomMarginPx * 2f
+                    )
+                }
+
+                runCatching {
+                    bringIntoViewRequester.bringIntoView(rectToBring)
+                }
+            }
+        }
+
         BasicTextField(
             value = internalValue,
             onValueChange = { newValue ->
@@ -547,11 +675,13 @@ private fun LineTextBlockRow(
                     onValueChange(TextFieldValue(text = cleanText, selection = cleanSelection))
                 }
             },
+            onTextLayout = { layoutResult = it },
             enabled = canEdit,
             textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp, color = colorScheme.onSurface),
             cursorBrush = SolidColor(colorScheme.primary),
             modifier = Modifier
                 .fillMaxWidth()
+                .bringIntoViewRequester(bringIntoViewRequester)
                 .focusRequester(focusRequester),
             decorationBox = { inner ->
                 Row(verticalAlignment = Alignment.Top) {
@@ -608,9 +738,9 @@ private fun LineTextBlockRow(
 }
 
 @Composable
-private fun DividerBlockRow() {
+private fun DividerBlockRow(modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
         HorizontalDivider(modifier = Modifier.weight(1f).padding(vertical = 8.dp), thickness = 1.dp, color = colorScheme.outlineVariant)
     }
 }

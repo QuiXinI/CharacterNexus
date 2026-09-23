@@ -33,7 +33,10 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalDensity
@@ -148,6 +151,8 @@ fun DynamicFieldsTab(
     }
 
     var fieldToDeleteIndex by remember { mutableStateOf<Int?>(null) }
+    
+    var mainViewportTopY by remember { mutableFloatStateOf(0f) }
 
     val fullscreenEditingOnly by settingsViewModel?.fullscreenEditingOnly?.collectAsState() ?: remember { mutableStateOf(false) }
     val collapseDynamicFieldsOnEditSetting by settingsViewModel?.collapseDynamicFieldsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
@@ -185,6 +190,7 @@ fun DynamicFieldsTab(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .onGloballyPositioned { mainViewportTopY = it.positionInWindow().y }
     ) {
         if (items.isEmpty() && isScrollEnabled) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -249,7 +255,8 @@ fun DynamicFieldsTab(
                         settingsViewModel = settingsViewModel,
                         statsMap = statsMap,
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                        state = state
+                        state = state,
+                        viewportTopY = mainViewportTopY
                     )
                 }
             }
@@ -371,6 +378,7 @@ fun DynamicFieldItem(
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    viewportTopY: Float = 0f,
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
     val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
@@ -407,6 +415,10 @@ fun DynamicFieldItem(
             )
         }
     }
+
+    var contentHeightPx by remember { mutableIntStateOf(0) }
+    val contentHeightDp = with(density) { contentHeightPx.toDp() }
+    val isTallField = isExpanded && contentHeightDp >= 120.dp
 
     val useHaze = hazeState != null && (blurDynamicFields ?: true)
 
@@ -500,34 +512,58 @@ fun DynamicFieldItem(
                                     )
                                 }
                                 innerTextField()
-                                if (field.isLocked || isLockedGlobal) {
-                                    Spacer(Modifier.width(4.dp))
-                                    Icon(
-                                        Icons.Default.Lock,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = colorScheme.primary.copy(alpha = 0.5f)
-                                    )
-                                }
                             }
                         }
                     )
 
                     if (!isEditMode || !collapseOnEdit) {
+                        if (field.isLocked || isLockedGlobal) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 2.dp)
+                                    .size(36.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = "Заблокировано",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+
                         if (canEdit && isExpanded) {
-                            IconToggleButton(checked = isReorderMode, onCheckedChange = { isReorderMode = it }) {
+                            IconToggleButton(
+                                checked = isReorderMode,
+                                onCheckedChange = { isReorderMode = it },
+                                modifier = Modifier.size(36.dp)
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.SwapVert,
                                     contentDescription = "Режим сортировки",
+                                    modifier = Modifier.size(20.dp),
                                     tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                 )
                             }
                         }
 
+                        IconButton(
+                            onClick = { onFullscreenRequest() },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInFull,
+                                contentDescription = "Fullscreen",
+                                modifier = Modifier.size(20.dp),
+                                tint = colorScheme.primary.copy(alpha = 0.6f)
+                            )
+                        }
+
                         if (isCollapsible) {
                             Box(
                                 modifier = Modifier
-                                    .size(56.dp)
+                                    .size(48.dp)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
@@ -559,6 +595,9 @@ fun DynamicFieldItem(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .onGloballyPositioned { coords ->
+                                        contentHeightPx = coords.size.height
+                                    }
                                     .outerShadow(shape = RoundedCornerShape(12.dp), blur = 2.dp, offsetY = 1.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 color = if (useHaze) colorScheme.surfaceContainerHigh.copy(alpha = 0.5f) else colorScheme.surfaceContainerHigh,
@@ -578,19 +617,148 @@ fun DynamicFieldItem(
                                         blurDynamicFields = blurDynamicFields ?: true,
                                         settingsViewModel = settingsViewModel,
                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                        state = state
+                                        state = state,
+                                        viewportTopY = viewportTopY,
+                                        popupHazeState = popupHazeState
                                     )
+                                }
+                            }
 
-                                    IconButton(
-                                        onClick = { onFullscreenRequest() },
-                                        modifier = Modifier.align(Alignment.BottomEnd).size(32.dp)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.padding(start = 8.dp)) {
+                                    if (canEdit && !isReorderMode) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                IconButton(
+                                                    onClick = {
+                                                        val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                        b.add(DynamicContentBlock.Text(""))
+                                                        onFieldChange(field.copy(content = BlockContentParser.toText(b)))
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.PostAdd,
+                                                        contentDescription = "Добавить строку",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                        b.add(DynamicContentBlock.Divider)
+                                                        onFieldChange(field.copy(content = BlockContentParser.toText(b)))
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.HorizontalRule,
+                                                        contentDescription = "Добавить разделитель",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                        val res = state?.resourceManager?.create("Новый ресурс")
+                                                            ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
+                                                        b.add(res)
+                                                        onFieldChange(field.copy(content = BlockContentParser.toText(b)))
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.AddBox,
+                                                        contentDescription = "Добавить ресурс",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (isTallField && (!isEditMode || !collapseOnEdit)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Default.OpenInFull,
-                                            contentDescription = "Fullscreen",
-                                            modifier = Modifier.size(20.dp),
-                                            tint = colorScheme.primary.copy(alpha = 0.6f)
-                                        )
+                                        if (field.isLocked || isLockedGlobal) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .padding(horizontal = 2.dp)
+                                                    .size(36.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Lock,
+                                                    contentDescription = "Заблокировано",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                                )
+                                            }
+                                        }
+
+                                        if (canEdit) {
+                                            IconToggleButton(
+                                                checked = isReorderMode,
+                                                onCheckedChange = { isReorderMode = it },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.SwapVert,
+                                                    contentDescription = "Режим сортировки",
+                                                    modifier = Modifier.size(20.dp),
+                                                    tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                )
+                                            }
+                                        }
+
+                                        IconButton(
+                                            onClick = { onFullscreenRequest() },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.OpenInFull,
+                                                contentDescription = "Fullscreen",
+                                                modifier = Modifier.size(20.dp),
+                                                tint = colorScheme.primary.copy(alpha = 0.6f)
+                                            )
+                                        }
+
+                                        if (isCollapsible) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(48.dp)
+                                                    .clickable(
+                                                        interactionSource = remember { MutableInteractionSource() },
+                                                        indication = null
+                                                    ) { onFieldChange(field.copy(isExpanded = false)) },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(28.dp),
+                                                    tint = colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -720,6 +888,8 @@ fun DynamicFieldFullscreenContent(
     val titleBringIntoViewRequester = remember { BringIntoViewRequester() }
     val localHazeState = remember { HazeState() }
     var isTitleFocused by remember { mutableStateOf(false) }
+    
+    var localViewportTopY by remember { mutableFloatStateOf(0f) }
 
     var isReorderMode by remember { mutableStateOf(false) }
 
@@ -811,6 +981,10 @@ fun DynamicFieldFullscreenContent(
                 containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        val keyboardOffset = imeBottomPx
+                        alpha = if (keyboardOffset >= 0) 1f else 1f
+                    }
                     .run {
                         if (effectiveBlur && hazeState != null && !isSubDialogOpen) {
                             this.hazeEffect(state = hazeState) {
@@ -839,6 +1013,7 @@ fun DynamicFieldFullscreenContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
+                        .onGloballyPositioned { localViewportTopY = it.positionInWindow().y }
                 ) {
                     Column(
                         modifier = Modifier
@@ -870,8 +1045,96 @@ fun DynamicFieldFullscreenContent(
                                         blurDynamicFields = blurDynamicFields,
                                         settingsViewModel = settingsViewModel,
                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                        state = state
+                                        state = state,
+                                        viewportTopY = localViewportTopY,
+                                        popupHazeState = localHazeState
                                     )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!isLocked) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                    b.add(DynamicContentBlock.Text(""))
+                                                    onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.PostAdd,
+                                                    contentDescription = "Добавить строку",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                    b.add(DynamicContentBlock.Divider)
+                                                    onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.HorizontalRule,
+                                                    contentDescription = "Добавить разделитель",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                    val res = state?.resourceManager?.create("Новый ресурс")
+                                                        ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
+                                                    b.add(res)
+                                                    onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.AddBox,
+                                                    contentDescription = "Добавить ресурс",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Spacer(Modifier.width(1.dp))
+                                }
+
+                                if (!isLocked) {
+                                    IconToggleButton(
+                                        checked = isReorderMode,
+                                        onCheckedChange = { isReorderMode = it },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.SwapVert,
+                                            contentDescription = "Режим сортировки",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -958,11 +1221,16 @@ fun DynamicFieldFullscreenContent(
                         state.activeResourceIndex = -1
                         state.activeNoteId = ""
                     },
-                    onDelete = { _: DynamicContentBlock.Resource ->
-                        state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex)
+                    onDelete = { res: DynamicContentBlock.Resource ->
+                        if (state.activeNoteId.isNotEmpty() && state.activeResourceIndex != -1) {
+                            state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex, res.id)
+                        } else {
+                            state.resourceManager.deleteResourceCompletely(res.id)
+                        }
                         state.isResourceConfigOpen = false
                         state.activeResourceConfig = null
                         state.activeResourceIndex = -1
+                        state.activeNoteId = ""
                     },
                     forceBlurEnabled = effectiveBlur,
                     settingsViewModel = settingsViewModel,
