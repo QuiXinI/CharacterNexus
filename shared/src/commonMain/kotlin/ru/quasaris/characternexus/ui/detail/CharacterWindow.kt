@@ -68,6 +68,7 @@ import kotlinx.coroutines.launch
 import dev.chrisbanes.haze.*
 
 import ru.quasaris.characternexus.ui.*
+import ru.quasaris.characternexus.ui.util.LocalDisplayFold
 import ru.quasaris.characternexus.ui.components.SectionOverlay
 import ru.quasaris.characternexus.ui.theme.QuasarisTheme
 import ru.quasaris.characternexus.backend.*
@@ -269,12 +270,13 @@ fun CharacterWindow(
             }
     ) {
         val windowWidth = state.windowWidth
-        val isDesktopMode by remember(windowWidth, state.interfaceMode) {
+        val displayFold = LocalDisplayFold.current
+        val isDesktopMode by remember(windowWidth, state.interfaceMode, displayFold) {
             derivedStateOf {
                 when (state.interfaceMode) {
                     AppInterfaceMode.MOBILE -> false
                     AppInterfaceMode.DESKTOP -> true
-                    AppInterfaceMode.AUTO -> windowWidth >= Dimensions.DesktopSplitThreshold
+                    AppInterfaceMode.AUTO -> windowWidth >= Dimensions.DesktopSplitThreshold || displayFold.isVerticalFold
                 }
             }
         }
@@ -558,10 +560,11 @@ fun CharacterWindow(
         }
     }
 
+    val displayFoldForSheet = LocalDisplayFold.current
     val isDesktopForSheet = when (state.interfaceMode) {
         AppInterfaceMode.MOBILE -> false
         AppInterfaceMode.DESKTOP -> true
-        AppInterfaceMode.AUTO -> state.windowWidth >= Dimensions.DesktopSplitThreshold
+        AppInterfaceMode.AUTO -> state.windowWidth >= Dimensions.DesktopSplitThreshold || displayFoldForSheet.isVerticalFold
     }
 
     TabSelectionSheet(
@@ -1076,29 +1079,99 @@ fun CharacterDetailMainContent(
     val rightHaze = remember { HazeState() }
     val density = LocalDensity.current
 
+    val displayFold = LocalDisplayFold.current
+    val isVerticalFold = displayFold.isVerticalFold
+    val foldTargetWidthDp = if (isVerticalFold) displayFold.boundsLeftDp else null
+    val foldGapDp = if (isVerticalFold) displayFold.boundsWidthDp else 0.dp
+
+    var manualColumnWidthDp by remember { mutableStateOf<Dp?>(null) }
+
+    LaunchedEffect(isVerticalFold) {
+        if (isVerticalFold) {
+            manualColumnWidthDp = null
+        }
+    }
+
+    val baseColumnWidth = manualColumnWidthDp
+        ?: (if (isVerticalFold) foldTargetWidthDp else null)
+        ?: state.desktopLeftColumnWidthDp
+
+    val effectiveLeftColumnWidth = remember(
+        baseColumnWidth,
+        state.windowWidth,
+        foldGapDp
+    ) {
+        Dimensions.clampDesktopLeftColumnWidth(
+            currentWidth = baseColumnWidth,
+            totalWidth = state.windowWidth,
+            foldGapDp = foldGapDp
+        )
+    }
+
+    var isDraggingSplitter by remember { mutableStateOf(false) }
+    var dragStartWidthDp by remember { mutableStateOf(0.dp) }
+    var dragStartPointerXDp by remember { mutableStateOf(0.dp) }
+
+    val desktopHoverSectionModifier = if (isDesktop) {
+        Modifier.pointerInput(effectiveLeftColumnWidth) {
+            awaitPointerEventScope {
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Main)
+                    if (event.type == PointerEventType.Move) {
+                        val position = event.changes.firstOrNull()?.position ?: continue
+                        val thresholdPx = with(density) { effectiveLeftColumnWidth.toPx() }
+                        val newSection = if (position.x < thresholdPx) "left" else "right"
+
+                        if (state.activeSection != newSection) {
+                            state.activeSection = newSection
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        Modifier
+    }
+
+    val splitterDragModifier = Modifier.pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                while (!isDraggingSplitter) {
+                    awaitPointerEvent(PointerEventPass.Main)
+                }
+
+                while (isDraggingSplitter) {
+                    val event = awaitPointerEvent(PointerEventPass.Main)
+                    val change = event.changes.firstOrNull()
+                    if (change == null || !change.pressed) {
+                        isDraggingSplitter = false
+                        val currentWidth = manualColumnWidthDp ?: effectiveLeftColumnWidth
+                        state.updateDesktopLeftColumnWidth(currentWidth)
+                    } else {
+                        change.consume()
+                        val currentPointerXDp = with(density) { change.position.x.toDp() }
+                        val deltaDp = currentPointerXDp - dragStartPointerXDp
+                        val rawNewWidth = dragStartWidthDp + deltaDp
+                        val clampedWidth = Dimensions.clampDesktopLeftColumnWidth(
+                            currentWidth = rawNewWidth,
+                            totalWidth = state.windowWidth,
+                            foldGapDp = foldGapDp
+                        )
+                        manualColumnWidthDp = clampedWidth
+                        state.updateDesktopLeftColumnWidth(clampedWidth)
+                    }
+                }
+            }
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
             .background(Color.Transparent)
-            .pointerInput(isDesktop) {
-                if (!isDesktop) return@pointerInput
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        if (event.type == PointerEventType.Move || event.type == PointerEventType.Enter) {
-                            val position = event.changes.first().position
-                            val thresholdPx = with(density) { Dimensions.DesktopLeftColumnWidth.toPx() }
-                            val newSection = if (position.x < thresholdPx) "left" else "right"
-
-                            if (state.activeSection != newSection) {
-                                state.activeSection = newSection
-                                rootFocusRequester.requestFocus()
-                            }
-                        }
-                    }
-                }
-            }
+            .then(desktopHoverSectionModifier)
+            .then(splitterDragModifier)
             .pointerInput(Unit) {
                 detectTapGestures {
                     focusManager.clearFocus()
@@ -1110,7 +1183,7 @@ fun CharacterDetailMainContent(
             val isLeftActive = state.activeSection == "left"
             Box(
                 modifier = Modifier
-                    .width(Dimensions.DesktopLeftColumnWidth)
+                    .width(effectiveLeftColumnWidth)
                     .fillMaxHeight()
                     .pointerInput(Unit) {
                         detectTapGestures {
@@ -1269,7 +1342,24 @@ fun CharacterDetailMainContent(
                 }
             }
 
-            VerticalDivider(modifier = Modifier.fillMaxHeight(), color = colorScheme.outlineVariant)
+            DesktopSplitterHandle(
+                width = if (isVerticalFold) maxOf(10.dp, foldGapDp) else 10.dp,
+                isDragging = isDraggingSplitter,
+                onDragStart = { pointerXInHandleDp ->
+                    dragStartWidthDp = effectiveLeftColumnWidth
+                    dragStartPointerXDp = effectiveLeftColumnWidth + pointerXInHandleDp
+                    isDraggingSplitter = true
+                },
+                onDoubleTap = {
+                    manualColumnWidthDp = null
+                    val defaultWidth = if (isVerticalFold && foldTargetWidthDp != null) {
+                        foldTargetWidthDp
+                    } else {
+                        Dimensions.DesktopLeftColumnWidth
+                    }
+                    state.updateDesktopLeftColumnWidth(defaultWidth)
+                }
+            )
         }
 
         // RIGHT COLUMN (or full width on mobile)

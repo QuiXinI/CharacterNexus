@@ -13,6 +13,7 @@ androidx-datastore = "1.2.1"
 androidx-palette = "1.0.0"
 androidx-savedstate = "1.5.0"
 androidx-testExt = "1.3.0"
+androidx-window = "1.5.1"
 baselineprofile = "1.5.0"
 benchmark = "1.5.0"
 uiautomator = "2.3.0"
@@ -50,6 +51,7 @@ androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecyc
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "androidx-datastore" }
 androidx-savedstate = { module = "androidx.savedstate:savedstate", version.ref = "androidx-savedstate" }
+androidx-window = { module = "androidx.window:window", version.ref = "androidx-window" }
 androidx-palette = { module = "androidx.palette:palette-ktx", version.ref = "androidx-palette" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }

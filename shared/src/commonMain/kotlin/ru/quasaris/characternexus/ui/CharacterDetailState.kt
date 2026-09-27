@@ -350,12 +350,13 @@ class CharacterDetailState(
         val diceFabEnabledVal by settingsViewModel.diceFabEnabled.collectAsState()
         val advantageLogicVal by settingsViewModel.advantageLogic.collectAsState()
         val interfaceModeVal by settingsViewModel.interfaceMode.collectAsState()
+        val desktopLeftColumnWidthVal by settingsViewModel.desktopLeftColumnWidth.collectAsState()
 
         LaunchedEffect(
             useNewACVal, useNewInitVal, useNewCondVal, useNewSpeedVal,
             diceFabOffsetXVal, diceFabOffsetYVal, diceFabAlphaSettingVal,
             diceFabBlurEnabledVal, masterBlurEnabledVal, diceFabEnabledVal, advantageLogicVal,
-            interfaceModeVal
+            interfaceModeVal, desktopLeftColumnWidthVal
         ) {
             if (useNewAC != useNewACVal) useNewAC = useNewACVal
             if (useNewInit != useNewInitVal) useNewInit = useNewInitVal
@@ -369,6 +370,7 @@ class CharacterDetailState(
             if (diceFabEnabled != diceFabEnabledVal) diceFabEnabled = diceFabEnabledVal
             if (advantageLogic != advantageLogicVal) advantageLogic = advantageLogicVal
             if (interfaceMode != interfaceModeVal) interfaceMode = interfaceModeVal
+            if (desktopLeftColumnWidthDp.value != desktopLeftColumnWidthVal) desktopLeftColumnWidthDp = desktopLeftColumnWidthVal.dp
         }
     }
 
@@ -377,6 +379,12 @@ class CharacterDetailState(
     var useNewCond by mutableStateOf(true)
     var useNewSpeed by mutableStateOf(true)
     var interfaceMode by mutableStateOf(AppInterfaceMode.AUTO)
+    var desktopLeftColumnWidthDp by mutableStateOf(Dimensions.DesktopLeftColumnWidth)
+
+    fun updateDesktopLeftColumnWidth(newWidthDp: Dp) {
+        desktopLeftColumnWidthDp = newWidthDp
+        settingsViewModel?.updateDesktopLeftColumnWidth(newWidthDp.value)
+    }
 
     var diceFabOffsetX by mutableStateOf(-40f)
     var diceFabOffsetY by mutableStateOf(-40f)

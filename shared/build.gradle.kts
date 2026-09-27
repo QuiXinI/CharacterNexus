@@ -101,6 +101,7 @@ kotlin {
             implementation(libs.mpfilepicker)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.palette)
+            implementation(libs.androidx.window)
         }
         commonMain {
             kotlin.srcDir(generateBuildConstants)

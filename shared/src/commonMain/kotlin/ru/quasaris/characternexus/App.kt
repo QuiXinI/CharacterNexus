@@ -39,6 +39,8 @@ import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.ui.*
 import ru.quasaris.characternexus.ui.*
 import ru.quasaris.characternexus.ui.detail.CharacterWindow
+import ru.quasaris.characternexus.ui.util.LocalDisplayFold
+import ru.quasaris.characternexus.ui.util.rememberDisplayFold
 import ru.quasaris.characternexus.util.*
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.*
@@ -125,13 +127,16 @@ fun App(
     val lastCharacter = characters.find { it.uuid == lastCharacterUuid }
     val avatarColor = lastCharacter?.themeSeedColorArgb ?: initialLastCharacterSeedColor
 
+    val displayFold = rememberDisplayFold()
+
     AppScaleProvider(scaleFactor = scaleFactor) {
-        quasarisTheme(
-            themeBehavior = themeBehavior,
-            themeMode = themeMode,
-            avatarColor = avatarColor,
-            m3SeedColor = m3SeedColor
-        ) {
+        CompositionLocalProvider(LocalDisplayFold provides displayFold) {
+            quasarisTheme(
+                themeBehavior = themeBehavior,
+                themeMode = themeMode,
+                avatarColor = avatarColor,
+                m3SeedColor = m3SeedColor
+            ) {
             val colorScheme = MaterialTheme.colorScheme
             val isOled = colorScheme.background == Color.Black
 
@@ -616,4 +621,5 @@ fun App(
             }
         }
     }
+}
 }

@@ -66,6 +66,7 @@ data class AppSettings(
     var collapseDynamicFieldsOnEdit: Boolean = true,
     var veryResponsiveHaptics: Boolean = true,
     var isPremium: Boolean = false,
+    var desktopLeftColumnWidth: Float = 450f,
     var lastCrashLog: String? = null
 )
 
@@ -109,6 +110,7 @@ class SettingsManager {
     var themeMode: AppThemeMode get() = settings.themeMode; set(value) { settings.themeMode = value; save() }
     var themeBehavior: AppThemeBehavior get() = settings.themeBehavior; set(value) { settings.themeBehavior = value; save() }
     var interfaceMode: AppInterfaceMode get() = settings.interfaceMode; set(value) { settings.interfaceMode = value; save() }
+    var desktopLeftColumnWidth: Float get() = settings.desktopLeftColumnWidth; set(value) { settings.desktopLeftColumnWidth = value; save() }
     var m3SeedColor: String get() = settings.m3SeedColor; set(value) { settings.m3SeedColor = value; save() }
     var exportFormat: ExportFormat get() = settings.exportFormat; set(value) { settings.exportFormat = value; save() }
     var lastCharacterUuid: String? get() = settings.lastCharacterUuid; set(value) { settings.lastCharacterUuid = value; save() }

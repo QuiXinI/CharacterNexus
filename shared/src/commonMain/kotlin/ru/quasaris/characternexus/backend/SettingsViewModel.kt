@@ -165,6 +165,9 @@ class SettingsViewModel(
     private val _interfaceMode = MutableStateFlow(settingsManager.settings.interfaceMode)
     val interfaceMode = _interfaceMode.asStateFlow()
 
+    private val _desktopLeftColumnWidth = MutableStateFlow(settingsManager.settings.desktopLeftColumnWidth)
+    val desktopLeftColumnWidth = _desktopLeftColumnWidth.asStateFlow()
+
     private val _m3SeedColor = MutableStateFlow(settingsManager.settings.m3SeedColor)
     val m3SeedColor = _m3SeedColor.asStateFlow()
 
@@ -482,6 +485,12 @@ class SettingsViewModel(
         settingsManager.save()
     }
 
+    fun updateDesktopLeftColumnWidth(widthDp: Float) {
+        _desktopLeftColumnWidth.value = widthDp
+        settingsManager.settings.desktopLeftColumnWidth = widthDp
+        settingsManager.save()
+    }
+
     fun updateM3SeedColor(color: String) {
         _m3SeedColor.value = color
         settingsManager.settings.m3SeedColor = color
@@ -571,6 +580,7 @@ class SettingsViewModel(
         _themeMode.value = s.themeMode
         _themeBehavior.value = s.themeBehavior
         _interfaceMode.value = s.interfaceMode
+        _desktopLeftColumnWidth.value = s.desktopLeftColumnWidth
         _m3SeedColor.value = s.m3SeedColor
         _isPremium.value = s.isPremium
     }

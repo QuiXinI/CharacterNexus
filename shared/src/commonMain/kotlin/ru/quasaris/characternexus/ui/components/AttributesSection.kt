@@ -99,7 +99,7 @@ fun AttributesSection(
                 val stats = listOf(
                     StatInfo(Attribute.STRENGTH, "Сила", effStrength, strProf, onStrengthChange, onStrProfChange, listOf("Атлетика")),
                     StatInfo(Attribute.DEXTERITY, "Ловкость", effDexterity, dexProf, onDexterityChange, onDexProfChange, listOf("Акробатика", "Ловкость рук", "Скрытность")),
-                    StatInfo(Attribute.CONSTITUTION, "Тело.", effConstitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
+                    StatInfo(Attribute.CONSTITUTION, "Телосложение", effConstitution, conProf, onConstitutionChange, onConProfChange, emptyList()),
                     StatInfo(Attribute.INTELLIGENCE, "Интеллект", effIntelligence, intProf, onIntelligenceChange, onIntProfChange, listOf("Анализ", "История", "Магия", "Природа", "Религия")),
                     StatInfo(Attribute.WISDOM, "Мудрость", effWisdom, wisProf, onWisdomChange, onWisProfChange, listOf("Внимательность", "Выживание", "Медицина", "Проницательность", "Уход за животными")),
                     StatInfo(Attribute.CHARISMA, "Харизма", effCharisma, chaProf, onCharismaChange, onChaProfChange, listOf("Выступление", "Запугивание", "Обман", "Убеждение"))
@@ -110,7 +110,8 @@ fun AttributesSection(
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             StatCard(stat.label, stat.value, evalPB, stat.isProf, Modifier.fillMaxWidth(), stat.onValueChange, stat.onProfChange, onClick = { },
                                 exhaustion = exhaustion,
-                                hazeState = hazeState
+                                hazeState = hazeState,
+                                attribute = stat.attribute
                             )
                             stat.skills.forEach { skill ->
                                 SkillSubPlate(skill, stat.attribute, skilledProficiencies.contains(skill), skilledExpertise.contains(skill), evalPB, attributeModifiers, onSkillClick,
@@ -126,31 +127,37 @@ fun AttributesSection(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatCard("Сила", effStrength, evalPB, strProf, Modifier.weight(1f), onStrengthChange, onStrProfChange, onClick = { },
                             exhaustion = exhaustion,
-                            hazeState = hazeState
+                            hazeState = hazeState,
+                            attribute = Attribute.STRENGTH
                         )
                         StatCard("Интеллект", effIntelligence, evalPB, intProf, Modifier.weight(1f), onIntelligenceChange, onIntProfChange, onClick = { },
                             exhaustion = exhaustion,
-                            hazeState = hazeState
+                            hazeState = hazeState,
+                            attribute = Attribute.INTELLIGENCE
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         StatCard("Ловкость", effDexterity, evalPB, dexProf, Modifier.weight(1f), onDexterityChange, onDexProfChange, onClick = { },
                             exhaustion = exhaustion,
-                            hazeState = hazeState
+                            hazeState = hazeState,
+                            attribute = Attribute.DEXTERITY
                         )
                         StatCard("Мудрость", effWisdom, evalPB, wisProf, Modifier.weight(1f), onWisdomChange, onWisProfChange, onClick = { },
                             exhaustion = exhaustion,
-                            hazeState = hazeState
+                            hazeState = hazeState,
+                            attribute = Attribute.WISDOM
                         )
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Тело.", effConstitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange, onClick = { },
+                        StatCard("Телосложение", effConstitution, evalPB, conProf, Modifier.weight(1f), onConstitutionChange, onConProfChange, onClick = { },
                             exhaustion = exhaustion,
-                            hazeState = hazeState
+                            hazeState = hazeState,
+                            attribute = Attribute.CONSTITUTION
                         )
                         StatCard("Харизма", effCharisma, evalPB, chaProf, Modifier.weight(1f), onCharismaChange, onChaProfChange, onClick = { },
                             exhaustion = exhaustion,
-                            hazeState = hazeState
+                            hazeState = hazeState,
+                            attribute = Attribute.CHARISMA
                         )
                     }
                 }
@@ -201,6 +208,30 @@ data class StatInfo(
     val skills: List<String>
 )
 
+private fun getAttributeNames(attribute: Attribute?, label: String): Pair<String, String> {
+    if (attribute != null && attribute != Attribute.NONE) {
+        return when (attribute) {
+            Attribute.STRENGTH -> "Сила" to "Сила"
+            Attribute.DEXTERITY -> "Ловкость" to "Ловк."
+            Attribute.CONSTITUTION -> "Телосложение" to "Тело."
+            Attribute.INTELLIGENCE -> "Интеллект" to "Инт."
+            Attribute.WISDOM -> "Мудрость" to "Мудр."
+            Attribute.CHARISMA -> "Харизма" to "Хар."
+            Attribute.NONE -> label to label
+        }
+    }
+    val clean = label.lowercase().trim().removeSuffix(".")
+    return when (clean) {
+        "сила", "str", "strength" -> "Сила" to "Сила"
+        "ловкость", "ловк", "dex", "dexterity" -> "Ловкость" to "Ловк."
+        "телосложение", "тело", "con", "constitution" -> "Телосложение" to "Тело."
+        "интеллект", "инт", "int", "intelligence" -> "Интеллект" to "Инт."
+        "мудрость", "мудр", "wis", "wisdom" -> "Мудрость" to "Мудр."
+        "харизма", "хар", "cha", "charisma" -> "Харизма" to "Хар."
+        else -> label to label
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StatCard(
@@ -216,7 +247,8 @@ fun StatCard(
     checkBonus: Int = 0,
     exhaustion: Int = 0,
     hazeState: HazeState? = null,
-    isEditable: Boolean = true
+    isEditable: Boolean = true,
+    attribute: Attribute? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val base = calculateModifier(value)
@@ -224,8 +256,58 @@ fun StatCard(
     val totalSave = base + (if (isP) pb else 0) + saveBonus - (exhaustion * 2)
     val totalCheck = base + checkBonus - (exhaustion * 2)
     
+    val (fullName, shortName) = remember(label, attribute) {
+        getAttributeNames(attribute, label)
+    }
+
+    var cardWidthPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+
+    val statLabelStyle = TextStyle(
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Black
+    )
+    val fullLabelWidthPx = remember(fullName, statLabelStyle) {
+        textMeasurer.measure(fullName, statLabelStyle).size.width
+    }
+
+    val saveLabelStyle = TextStyle(
+        fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold
+    )
+    val fullSaveWidthPx = remember(saveLabelStyle) {
+        textMeasurer.measure("Спасбросок", saveLabelStyle).size.width
+    }
+    val shortSaveWidthPx = remember(saveLabelStyle) {
+        textMeasurer.measure("Спас.", saveLabelStyle).size.width
+    }
+
+    val displayLabel = if (cardWidthPx > 0) {
+        val availableStatWidthPx = cardWidthPx - with(density) { 64.dp.roundToPx() }
+        if (fullLabelWidthPx <= availableStatWidthPx) fullName else shortName
+    } else {
+        fullName
+    }
+
+    val displaySaveLabel = if (cardWidthPx > 0) {
+        val availableSaveWidthPx = cardWidthPx - with(density) { 144.dp.roundToPx() }
+        if (fullSaveWidthPx <= availableSaveWidthPx) {
+            "Спасбросок"
+        } else if (shortSaveWidthPx <= availableSaveWidthPx) {
+            "Спас."
+        } else {
+            ""
+        }
+    } else {
+        "Спасбросок"
+    }
+
     Box(modifier = modifier
         .heightIn(min = 100.dp)
+        .onGloballyPositioned { coords ->
+            cardWidthPx = coords.size.width
+        }
         .outerShadow(
             shape = RoundedCornerShape(16.dp),
             blur = 4.dp
@@ -245,10 +327,11 @@ fun StatCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    label,
+                    displayLabel,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Black,
-                    color = colorScheme.onSurfaceVariant
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
 
                 Box(
@@ -336,13 +419,16 @@ fun StatCard(
                             .clip(CircleShape)
                             .background(if (isP) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.4f)),
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Спас",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.onSurfaceVariant
-                    )
+                    if (displaySaveLabel.isNotEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            displaySaveLabel,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
                     Spacer(Modifier.width(8.dp))
                     ModifierBubble(
                         text = if (totalSave >= 0) "+$totalSave" else "$totalSave",
