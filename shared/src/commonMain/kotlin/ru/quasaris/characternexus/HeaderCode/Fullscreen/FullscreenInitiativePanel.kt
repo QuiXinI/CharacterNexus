@@ -22,6 +22,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
@@ -121,9 +122,11 @@ fun InitiativeDialogContent(
     val isOled = colorScheme.background == Color.Black
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
 
-    BackHandler(onBack = onDismiss)
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -261,4 +264,5 @@ fun InitiativeDialogContent(
             )
         }
     }
+}
 }

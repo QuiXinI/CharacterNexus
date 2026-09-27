@@ -1,5 +1,7 @@
 package ru.quasaris.characternexus.ui
 
+import ru.quasaris.characternexus.ui.PredictiveBackBox
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -188,7 +190,11 @@ fun ModuleEditorWindow(
         return
     }
 
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onBack,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Редактор модуля", fontWeight = FontWeight.Black, color = colorScheme.onSurface) },
@@ -388,6 +394,7 @@ fun ModuleEditorWindow(
             }
         }
     }
+}
 }
 
 private fun saveItem(dir: String, id: String, jsonContent: String) {

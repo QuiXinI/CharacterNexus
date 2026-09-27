@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.RectangleShape
 import ru.quasaris.characternexus.ui.outerShadow
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.ui.MorphingPolygonShape
 import ru.quasaris.characternexus.ui.quasarisTheme
@@ -79,7 +80,10 @@ fun CharacterCreationWindow(
 
     val scope = rememberCoroutineScope()
     
-    BackHandler(onBack = onNavigateBack)
+    PredictiveBackBox(
+        onBack = onNavigateBack,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
     var showFilePicker by remember { mutableStateOf(false) }
     
     val characterUuid = remember { generateUuid() }
@@ -273,6 +277,7 @@ fun CharacterCreationWindow(
             )
         }
     }
+}
 }
 
 @Composable

@@ -40,6 +40,7 @@ import ru.quasaris.characternexus.backend.SettingsViewModel
 import characternexus.shared.generated.resources.*
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.util.PayWall
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
@@ -204,8 +205,11 @@ fun PotionConfigDialogContent(
     onEnglishNameErrorChange: (String?) -> Unit = {},
     allowedCharsRegex: Regex = Regex(".*")
 ) {
-    BackHandler(onBack = onDismiss)
-    val colorScheme = MaterialTheme.colorScheme
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
     val focusManager = LocalFocusManager.current
@@ -692,6 +696,7 @@ fun PotionConfigDialogContent(
             )
         }
     }
+}
 }
 
 private fun parseColor(hex: String): Color {

@@ -23,6 +23,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.onGloballyPositioned
+import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import androidx.compose.ui.layout.positionInWindow
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.model.*
@@ -144,11 +146,15 @@ fun SpellEditorContent(
         colorScheme.background
     }
 
-    Surface(
-        color = backgroundColor,
-        contentColor = colorScheme.onSurface,
+    PredictiveBackBox(
+        onBack = onDismiss,
         modifier = Modifier.fillMaxSize()
-    ) {
+    ) { _ ->
+        Surface(
+            color = backgroundColor,
+            contentColor = colorScheme.onSurface,
+            modifier = Modifier.fillMaxSize()
+        ) {
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
@@ -1034,6 +1040,7 @@ fun SpellEditorContent(
             }
         }
     }
+}
 }
 
 @Composable

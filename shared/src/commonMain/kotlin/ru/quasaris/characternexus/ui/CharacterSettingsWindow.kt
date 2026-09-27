@@ -25,6 +25,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.HeaderCode.Fullscreen.HealthSettingsContent
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.*
@@ -86,9 +87,11 @@ fun CharacterSettingsContent(
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Идентичность", "Хиты")
 
-    BackHandler(onBack = onDismiss)
-
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
@@ -185,6 +188,7 @@ fun CharacterSettingsContent(
             }
         }
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

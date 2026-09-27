@@ -156,11 +156,13 @@ fun App(
             ) {
                 val navController = rememberNavController()
                 val focusManager = LocalFocusManager.current
+                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                val scope = rememberCoroutineScope()
 
                 // Global back navigation registration
                 val canPop = navController.previousBackStackEntry != null
-                BackHandler(enabled = canPop) {
-                    navController.popBackStack()
+                BackHandler(enabled = drawerState.isOpen) {
+                    scope.launch { drawerState.close() }
                 }
 
                 // Clear focus when destination changes
@@ -178,9 +180,6 @@ fun App(
                         else fullscreenDialogCount = maxOf(0, fullscreenDialogCount - 1)
                     }
                 }
-
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                val scope = rememberCoroutineScope()
 
                 // Register global drawer toggle
                 LaunchedEffect(drawerState) {
@@ -349,11 +348,16 @@ fun App(
                                 }
                             }
                         ) {
-                            Surface(
-                                modifier = Modifier.fillMaxSize(),
-                                color = Color.Transparent,
-                            ) {
-                                NavHost(
+                            PredictiveBackBox(
+                                enabled = canPop && !drawerState.isOpen,
+                                onBack = { navController.popBackStack() },
+                                modifier = Modifier.fillMaxSize()
+                            ) { _ ->
+                                Surface(
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = Color.Transparent,
+                                ) {
+                                    NavHost(
                                     navController = navController,
                                     startDestination = "menu",
                                     enterTransition = {
@@ -566,6 +570,7 @@ fun App(
                                 }
                             }
                         }
+                    }
                     }
 
                     // OVERLAYS - Moved outside hazeSource for overlayHazeState to avoid StackOverflow loop

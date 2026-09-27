@@ -28,6 +28,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -120,7 +122,7 @@ fun CharacterWindow(
     val scope = rememberCoroutineScope()
     val colorScheme = MaterialTheme.colorScheme
 
-    BackHandler(onBack = onNavigateBack)
+
 
     LaunchedEffect(state.level) {
         state.nextLevelExp = getNextLevelThreshold(state.level)
@@ -737,7 +739,8 @@ fun CharacterDetailTopBar(
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
                 blurPopups = blurPopups,
-                settingsViewModel = settingsViewModel
+                settingsViewModel = settingsViewModel,
+                isDesktop = false
             )
 
             TabNavigationBar(
@@ -1284,7 +1287,8 @@ fun CharacterDetailMainContent(
                         },
                         hazeState = leftHaze,
                         blurPopups = blurPopups,
-                        settingsViewModel = settingsViewModel
+                        settingsViewModel = settingsViewModel,
+                        isDesktop = isDesktop
                     )
 
                     val panelsSpringSpec = remember {

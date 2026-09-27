@@ -1,6 +1,7 @@
 package ru.quasaris.characternexus.ui
 
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -98,15 +99,18 @@ fun GlossaryWindow(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
-    BackHandler(enabled = currentView !is GlossaryView.Hub) {
-        currentView = when (val view = currentView) {
-            is GlossaryView.Detail -> GlossaryView.Category(view.category)
-            is GlossaryView.Category -> GlossaryView.Hub
-            else -> GlossaryView.Hub
-        }
-    }
-
-    Scaffold(
+    PredictiveBackBox(
+        enabled = currentView !is GlossaryView.Hub,
+        onBack = {
+            currentView = when (val view = currentView) {
+                is GlossaryView.Detail -> GlossaryView.Category(view.category)
+                is GlossaryView.Category -> GlossaryView.Hub
+                else -> GlossaryView.Hub
+            }
+        },
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { 
@@ -184,6 +188,7 @@ fun GlossaryWindow(
             }
         }
     }
+}
 }
 
 @Composable

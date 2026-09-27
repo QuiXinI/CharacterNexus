@@ -26,6 +26,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.model.Condition
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
@@ -104,9 +105,11 @@ fun ConditionsDialogContent(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
-    BackHandler(onBack = onDismiss)
-
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
@@ -236,6 +239,7 @@ fun ConditionsDialogContent(
             }
         }
     }
+}
 }
 
 @Composable

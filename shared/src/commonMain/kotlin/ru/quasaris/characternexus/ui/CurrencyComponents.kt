@@ -176,9 +176,11 @@ fun CurrencyEditContent(
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     val verticalScrollState = rememberScrollState()
 
-    BackHandler(onBack = onDismiss)
-
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Кошелек") },
@@ -582,6 +584,7 @@ fun CurrencyEditContent(
             canConfirm = CurrencyUtils.getWalletValue(wallet, conversion.sourceCurrency) >= conversion.sourceAmount
         )
     }
+}
 }
 
 @Composable

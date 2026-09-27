@@ -21,6 +21,13 @@ actual fun BackHandler(enabled: Boolean, onBack: () -> Unit) {
 }
 
 @Composable
+actual fun PredictiveBackHandler(
+    enabled: Boolean,
+    onBack: suspend (progress: kotlinx.coroutines.flow.Flow<BackEventData>) -> Unit
+) {
+}
+
+@Composable
 actual fun CommonFilePicker(
     show: Boolean,
     fileExtensions: List<String>,

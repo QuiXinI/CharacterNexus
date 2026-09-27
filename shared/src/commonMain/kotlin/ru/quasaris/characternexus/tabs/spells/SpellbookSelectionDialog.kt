@@ -19,6 +19,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.backend.SpellbookManager
 import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.tabs.spells.SpellFiltersArea
@@ -218,11 +219,14 @@ fun SpellbookSelectionContent(
         }
     }
 
-    BackHandler(onBack = onDismiss)
-    val colorScheme = MaterialTheme.colorScheme
-    val isOled = colorScheme.background == Color.Black
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        val colorScheme = MaterialTheme.colorScheme
+        val isOled = colorScheme.background == Color.Black
 
-    Scaffold(
+        Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
@@ -389,4 +393,5 @@ fun SpellbookSelectionContent(
             }
         }
     }
+}
 }

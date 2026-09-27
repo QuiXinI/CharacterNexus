@@ -23,6 +23,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.HazeState
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 import ru.quasaris.characternexus.ui.theme.hazePopover
@@ -104,9 +105,11 @@ fun CargoConfigDialogContent(
     // прозрачным БЕЗ реального блюра под ним.
     val isBlurred = forceBlurEnabled && hazeState != null && !isOled
 
-    BackHandler(onBack = onDismiss)
-
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .hazePopover(
@@ -263,6 +266,7 @@ fun CargoConfigDialogContent(
             }
         }
     }
+}
 }
 
 @Composable

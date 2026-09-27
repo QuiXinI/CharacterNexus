@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -131,8 +132,11 @@ fun MagicBonusSettingsContent(
     asOverlay: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
-    BackHandler(onBack = onDismiss)
-    val colorScheme = MaterialTheme.colorScheme
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
 
@@ -237,6 +241,7 @@ fun MagicBonusSettingsContent(
             }
         }
     }
+}
 }
 
 @Composable

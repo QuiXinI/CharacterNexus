@@ -25,6 +25,7 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,10 +44,13 @@ fun AvatarCropperContent(
     val useHaze = (hazeState != null) && forceBlurEnabled
 
     AppScaleProvider(LocalAppScale.current) {
-        BackHandler(onBack = onDismiss)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
+        PredictiveBackBox(
+            onBack = onDismiss,
+            modifier = Modifier.fillMaxSize()
+        ) { _ ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
                 .background(if (useHaze) Color.Black.copy(alpha = 0.0f) else Color.Black)
                 .run {
                     if (useHaze && hazeState != null) {
@@ -146,6 +150,7 @@ fun AvatarCropperContent(
             }
         }
     }
+}
 }
 
 @Composable

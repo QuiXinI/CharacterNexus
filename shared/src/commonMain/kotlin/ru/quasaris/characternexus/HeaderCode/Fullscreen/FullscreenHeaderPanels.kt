@@ -32,6 +32,7 @@ import ru.quasaris.characternexus.tabs.attacks.AttackBonusField
 import ru.quasaris.characternexus.tabs.attacks.AddBonusButton
 import ru.quasaris.characternexus.HeaderCode.getFullFormula
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -157,9 +158,11 @@ fun EditVariantContent(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
-    BackHandler(onBack = onDismiss)
-
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
@@ -296,6 +299,7 @@ fun EditVariantContent(
             }
         }
     }
+}
 }
 
 internal fun calculateEntryTotal(entry: FormulaEntry?, statsMap: Map<String, String>, type: String): Pair<Int, List<DicePart>> {

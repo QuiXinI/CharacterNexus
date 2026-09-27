@@ -53,6 +53,7 @@ import ru.quasaris.characternexus.tabs.resources.ResourceConfigDialog
 import ru.quasaris.characternexus.tabs.resources.ResourceBlock
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.ui.TabControlHeader
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 import dev.chrisbanes.haze.HazeState
@@ -909,9 +910,11 @@ fun DynamicFieldFullscreenContent(
         }
     }
 
-    BackHandler(onBack = onDismiss)
-
-    DisposableEffect(Unit) {
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        DisposableEffect(Unit) {
         currentOnFullscreenDialogOpenChange(true)
         onDispose {
             currentOnFullscreenDialogOpenChange(false)
@@ -1260,4 +1263,5 @@ fun DynamicFieldFullscreenContent(
             settingsViewModel = settingsViewModel
         )
     }
+}
 }

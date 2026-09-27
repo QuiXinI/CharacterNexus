@@ -23,6 +23,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
@@ -155,9 +156,11 @@ fun ArmorClassDialogContent(
     val isOled = colorScheme.background == Color.Black
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
 
-    BackHandler(onBack = onDismiss)
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -362,7 +365,7 @@ fun ArmorClassDialogContent(
                     onAllShieldsChange(newList)
                     onEditingShieldChange(null)
                 },
-                onDismiss = { onEditingShieldChange(null) },
+                    onDismiss = { onEditingShieldChange(null) },
                 forceBlurEnabled = forceBlurEnabled,
                 settingsViewModel = settingsViewModel,
                 asOverlay = isDesktop
@@ -370,3 +373,6 @@ fun ArmorClassDialogContent(
         }
     }
 }
+
+}
+

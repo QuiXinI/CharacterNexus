@@ -109,7 +109,8 @@ fun CharacterHeader(
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     blurPopups: Boolean = false,
-    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    isDesktop: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
@@ -137,7 +138,7 @@ fun CharacterHeader(
     Column(
         modifier = Modifier
             .background(colorScheme.surface)
-            .statusBarsPadding()
+            .run { if (!isDesktop) statusBarsPadding() else this }
             .animateContentSize(animationSpec = panelsSpringSpec)
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(

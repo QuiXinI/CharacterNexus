@@ -45,7 +45,8 @@ fun CharacterIdentitySection(
     onLongRest: () -> Unit = {},
     onDawn: () -> Unit = {},
     hazeState: dev.chrisbanes.haze.HazeState? = null,
-    blurPopups: Boolean = false
+    blurPopups: Boolean = false,
+    isDesktop: Boolean = false
 ) {
     CharacterHeader(
         name = name,
@@ -95,6 +96,7 @@ fun CharacterIdentitySection(
         onLongRest = onLongRest,
         onDawn = onDawn,
         hazeState = hazeState,
-        blurPopups = blurPopups
+        blurPopups = blurPopups,
+        isDesktop = isDesktop
     )
 }

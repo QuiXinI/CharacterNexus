@@ -102,6 +102,7 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.palette)
             implementation(libs.androidx.window)
+            implementation(libs.androidx.activity.compose)
         }
         commonMain {
             kotlin.srcDir(generateBuildConstants)

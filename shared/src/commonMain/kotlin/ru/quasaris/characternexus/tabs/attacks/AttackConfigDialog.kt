@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -182,9 +183,11 @@ fun AttackConfigDialogContent(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
-    BackHandler(onBack = onDismiss)
-
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
@@ -418,4 +421,5 @@ fun AttackConfigDialogContent(
             }
         }
     }
+}
 }

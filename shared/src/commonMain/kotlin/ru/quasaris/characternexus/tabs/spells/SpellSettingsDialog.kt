@@ -36,6 +36,7 @@ import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -364,9 +365,11 @@ fun SpellSettingsDialogContent(
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
     val isSubDialogOpen = showAttackBonusDialog || showSaveDcBonusDialog
 
-    BackHandler(onBack = onDismiss)
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -881,6 +884,7 @@ fun SpellSettingsDialogContent(
             )
         }
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

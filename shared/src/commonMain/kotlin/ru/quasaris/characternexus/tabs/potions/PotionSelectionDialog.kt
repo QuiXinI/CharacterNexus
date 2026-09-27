@@ -34,6 +34,7 @@ import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 import ru.quasaris.characternexus.ui.theme.hazePopover
 import characternexus.shared.generated.resources.*
@@ -69,8 +70,11 @@ fun PotionSelectionDialog(
     val effectiveHazeState = popupHazeState ?: hazeState
 
     val content = @Composable {
-        BackHandler(onBack = onDismiss)
-        Scaffold(
+        PredictiveBackBox(
+            onBack = onDismiss,
+            modifier = Modifier.fillMaxSize()
+        ) { _ ->
+            Scaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .hazePopover(
@@ -165,6 +169,7 @@ fun PotionSelectionDialog(
             }
         }
     }
+}
 
     if (isDesktop) {
         content()

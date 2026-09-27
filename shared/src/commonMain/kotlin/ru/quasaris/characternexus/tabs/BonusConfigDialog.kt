@@ -27,6 +27,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
+import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.tabs.attacks.AddBonusButton
@@ -181,9 +182,11 @@ fun BonusConfigDialogContent(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
-    BackHandler(onBack = onDismiss)
-
-    Scaffold(
+    PredictiveBackBox(
+        onBack = onDismiss,
+        modifier = Modifier.fillMaxSize()
+    ) { _ ->
+        Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
@@ -402,6 +405,7 @@ fun BonusConfigDialogContent(
             }
         }
     }
+}
 }
 
 @Composable
