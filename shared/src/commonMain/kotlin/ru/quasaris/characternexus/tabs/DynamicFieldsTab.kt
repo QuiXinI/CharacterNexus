@@ -686,7 +686,7 @@ fun DynamicFieldItem(
                                                         val b = BlockContentParser.toBlocks(field.content).toMutableList()
                                                         val res = state?.resourceManager?.create("Новый ресурс")
                                                             ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
-                                                        b.add(res)
+                                                        b.add(DynamicContentBlock.ResourceRef(res.id))
                                                         onFieldChange(field.copy(content = BlockContentParser.toText(b)))
                                                     },
                                                     modifier = Modifier.size(32.dp)
@@ -1115,7 +1115,7 @@ fun DynamicFieldFullscreenContent(
                                                     val b = BlockContentParser.toBlocks(field.content).toMutableList()
                                                     val res = state?.resourceManager?.create("Новый ресурс")
                                                         ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
-                                                    b.add(res)
+                                                    b.add(DynamicContentBlock.ResourceRef(res.id))
                                                     onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
                                                 },
                                                 modifier = Modifier.size(32.dp)
@@ -1227,10 +1227,6 @@ fun DynamicFieldFullscreenContent(
                     onSave = { updated: DynamicContentBlock.Resource ->
                         state.updateResource(updated)
                         state.resourceManager.normalize()
-                        state.isResourceConfigOpen = false
-                        state.activeResourceConfig = null
-                        state.activeResourceIndex = -1
-                        state.activeNoteId = ""
                     },
                     onDelete = { res: DynamicContentBlock.Resource ->
                         if (state.activeNoteId.isNotEmpty() && state.activeResourceIndex != -1) {

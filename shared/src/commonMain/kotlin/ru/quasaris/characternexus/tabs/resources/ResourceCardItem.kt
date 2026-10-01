@@ -310,7 +310,6 @@ fun ResourceBlock(
             },
             onSave = {
                 onUpdate(it)
-                showConfig = false
             },
             onDelete = {
                 onDeleteRequest()

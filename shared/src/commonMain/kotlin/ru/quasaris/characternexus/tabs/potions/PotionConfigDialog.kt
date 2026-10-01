@@ -69,7 +69,10 @@ fun PotionConfigDialog(
     LaunchedEffect(state) {
         if (state != initialPotion) {
             kotlinx.coroutines.delay(300)
-            onSave(state)
+            val finalState = if (state.name.isNotBlank() && state.quantity.name != state.name) {
+                state.copy(quantity = state.quantity.copy(name = state.name))
+            } else state
+            onSave(finalState)
         }
     }
 

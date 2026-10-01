@@ -268,6 +268,8 @@ fun CharacterDetailDialogs(
                 onDismiss = { 
                     state.isResourceConfigOpen = false
                     state.activeResourceConfig = null
+                    state.activeResourceIndex = -1
+                    state.activeNoteId = ""
                 },
                 onSave = { updated: DynamicContentBlock.Resource ->
                     state.updateResource(updated)
@@ -476,14 +478,21 @@ fun CharacterDetailDialogs(
                     val currentIds = newPotions.mapNotNull { it.id }.toSet()
                     selectedItems.forEach { item ->
                         if (item.id !in currentIds) {
+                            val potionName = item.name ?: "Без названия"
                             newPotions = newPotions + PotionState(
                                 id = item.id ?: ru.quasaris.characternexus.util.generateUuid(),
-                                name = item.name ?: "Без названия",
+                                name = potionName,
                                 formula = item.formula ?: "",
                                 description = item.description ?: "",
                                 type = if (item.damageTypes?.contains(DamageType.HEALING) == true) PotionType.HEALING else PotionType.OTHER,
                                 rarity = item.rarity,
                                 damageTypes = item.damageTypes ?: emptyList(),
+                                quantity = DynamicContentBlock.Resource(
+                                    name = potionName,
+                                    current = "0",
+                                    max = "0",
+                                    id = ru.quasaris.characternexus.util.generateUuid()
+                                ),
                                 iconIndex = item.iconIndex,
                                 colorHex = item.colorHex,
                                 sourceModuleId = item.sourceModuleId,

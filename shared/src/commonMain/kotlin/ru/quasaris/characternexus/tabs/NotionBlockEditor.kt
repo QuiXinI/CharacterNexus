@@ -105,7 +105,7 @@ fun NotionBlockEditor(
     }
 
     LaunchedEffect(field.content) {
-        if (field.content != lastEmittedText && activeKey == null) {
+        if (field.content != lastEmittedText) {
             val fresh = BlockContentParser.toBlocks(field.content)
             val reconciled = BlockContentParser.reconcile(blocks, fresh)
             
@@ -342,7 +342,7 @@ fun NotionBlockEditor(
                 onInsertResource = {
                     val res = state?.resourceManager?.create("Новый ресурс")
                         ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
-                    insertBlockAtSelection(res)
+                    insertBlockAtSelection(DynamicContentBlock.ResourceRef(res.id))
                 },
                 onInsertDivider = {
                     insertBlockAtSelection(DynamicContentBlock.Divider)
@@ -571,7 +571,7 @@ fun NotionBlockEditor(
             {
                 val res = state?.resourceManager?.create("Новый ресурс")
                     ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
-                insertAfterActive(res)
+                insertAfterActive(DynamicContentBlock.ResourceRef(res.id))
             }
         )
     }

@@ -165,7 +165,7 @@ class CharacterDetailState(
             }
         } else initialCharacter?.spells!!
     )
-    var potions by mutableStateOf(
+    private val _potions = mutableStateOf(
         if (initialCharacter == null || initialCharacter.potions.isEmpty()) {
             val srdModuleId = "srd_potions_5.2"
             val description = "Вы восстанавливаете себе Хиты, когда выпиваете это зелье. Количетсво хитов указано в формуле."
@@ -177,7 +177,7 @@ class CharacterDetailState(
                     type = PotionType.HEALING,
                     rarity = PotionRarity.COMMON,
                     damageTypes = listOf(DamageType.HEALING),
-                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    quantity = DynamicContentBlock.Resource(name = "Зелье лечения", current = "0", max = "0", id = generateUuid()),
                     iconIndex = 1,
                     colorHex = "FF0000",
                     sourceModuleId = srdModuleId
@@ -189,7 +189,7 @@ class CharacterDetailState(
                     type = PotionType.HEALING,
                     rarity = PotionRarity.UNCOMMON,
                     damageTypes = listOf(DamageType.HEALING),
-                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    quantity = DynamicContentBlock.Resource(name = "Большое зелье лечения", current = "0", max = "0", id = generateUuid()),
                     iconIndex = 2,
                     colorHex = "FF0000",
                     sourceModuleId = srdModuleId
@@ -201,7 +201,7 @@ class CharacterDetailState(
                     type = PotionType.HEALING,
                     rarity = PotionRarity.RARE,
                     damageTypes = listOf(DamageType.HEALING),
-                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    quantity = DynamicContentBlock.Resource(name = "Отличное зелье лечения", current = "0", max = "0", id = generateUuid()),
                     iconIndex = 3,
                     colorHex = "FF0000",
                     sourceModuleId = srdModuleId
@@ -213,7 +213,7 @@ class CharacterDetailState(
                     type = PotionType.HEALING,
                     rarity = PotionRarity.VERY_RARE,
                     damageTypes = listOf(DamageType.HEALING),
-                    quantity = DynamicContentBlock.Resource(name = "Количество", current = "0", max = "0", id = generateUuid()),
+                    quantity = DynamicContentBlock.Resource(name = "Превосходное зелье лечения", current = "0", max = "0", id = generateUuid()),
                     iconIndex = 4,
                     colorHex = "FF0000",
                     sourceModuleId = srdModuleId
@@ -225,6 +225,17 @@ class CharacterDetailState(
             initialCharacter.potions
         }
     )
+
+    var potions: List<PotionState>
+        get() = _potions.value
+        set(value) {
+            _potions.value = value
+            value.forEach { potion ->
+                if (potion.quantity.id.isNotEmpty()) {
+                    resourceManager.upsert(potion.quantity)
+                }
+            }
+        }
     var spellSettings by mutableStateOf(initialCharacter?.spellSettings ?: SpellSettings())
     var wallet by mutableStateOf(initialCharacter?.wallet ?: Wallet())
     var Cargo by mutableStateOf(initialCharacter?.Cargo ?: CargoState())
@@ -705,9 +716,14 @@ class CharacterDetailState(
     }
 
     fun updatePotion(updated: PotionState) {
-        val finalPotion = if (updated.sourceModuleId == null) {
-            updated.copy(sourceModuleId = "custom_potions")
-        } else updated
+        val fixedQuantity = if (updated.name.isNotBlank() && updated.quantity.name != updated.name) {
+            updated.quantity.copy(name = updated.name)
+        } else updated.quantity
+        val updatedWithFixedQty = updated.copy(quantity = fixedQuantity)
+
+        val finalPotion = if (updatedWithFixedQty.sourceModuleId == null) {
+            updatedWithFixedQty.copy(sourceModuleId = "custom_potions")
+        } else updatedWithFixedQty
 
         if (finalPotion.quantity.id.isNotEmpty()) {
             resourceManager.upsert(finalPotion.quantity)

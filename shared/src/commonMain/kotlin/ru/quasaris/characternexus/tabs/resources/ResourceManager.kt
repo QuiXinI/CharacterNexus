@@ -33,8 +33,13 @@ class ResourceManager(
         }
         
         // Sync back to potions
-        owner.potions = owner.potions.map { potion ->
-            if (potion.quantity.id == resource.id) potion.copy(quantity = resource) else potion
+        val newPotions = owner.potions.map { potion ->
+            if (potion.quantity.id == resource.id && potion.quantity != resource) {
+                potion.copy(quantity = resource)
+            } else potion
+        }
+        if (newPotions != owner.potions) {
+            owner.potions = newPotions
         }
     }
 
@@ -64,8 +69,8 @@ class ResourceManager(
             if (res.id.isNotEmpty()) {
                 val usage = ResourceUsage(
                     noteId = potion.id,
-                    noteTitle = potion.name,
-                    section = "Зелья",
+                    noteTitle = "Зелья",
+                    section = "Инвентарь",
                     blockIndex = 0 // Potions only have one resource
                 )
                 val list = notesUsage.getOrPut(res.id) { mutableListOf() }.toMutableList()
@@ -211,19 +216,13 @@ class ResourceManager(
         owner.spells = owner.spells.normalized()
         owner.bioLongSections = owner.bioLongSections.normalized()
         
-        // Sync potions and pick up new resources from them if they have IDs
+        // Sync potions into store and pick up new resources from them if they have IDs
         owner.potions = owner.potions.map { potion ->
             val res = potion.quantity
             if (res.id.isNotEmpty()) {
-                val existing = store[res.id]
-                if (existing == null) {
-                    store[res.id] = res
-                    potion
-                } else if (existing != res) {
-                    // Manager has different data, manager wins
-                    potion.copy(quantity = existing)
-                } else potion
-            } else potion
+                store[res.id] = res
+            }
+            potion
         }
 
         val newItems = store.values.toList()
