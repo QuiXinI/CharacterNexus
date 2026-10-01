@@ -38,7 +38,7 @@ import ru.quasaris.characternexus.ui.CharacterDetailState
 import kotlin.math.round
 import kotlin.math.pow
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun ResourceBlock(
     resource: DynamicContentBlock.Resource,
@@ -143,145 +143,293 @@ fun ResourceBlock(
             )
             .padding(12.dp)
     ) {
-        if (!resource.useSlider) {
-            // Original layout
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = resource.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface
-                    )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val isNarrow = maxWidth < 340.dp
 
-                    // Rests info
-                    ResourceRestsInfo(resource, statsMap, pb)
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ResourceActionButtons(
-                        resource = resource,
-                        uriHandler = uriHandler
-                    )
-
-                    // Minus button
-                    ResourceActionButton(
-                        icon = Icons.Default.Remove,
-                        enabled = canDecrement,
-                        onClick = { 
-                            performClickHaptic()
-                            val step = resource.sliderStep ?: 1.0
-                            onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
-                        }
-                    )
-
-                    // Current/Max display
-                    ResourceValueDisplay(curValue, maxValue, resource.max, formatValue = { formatValue(it) })
-
-                    // Plus button
-                    ResourceActionButton(
-                        icon = Icons.Default.Add,
-                        enabled = canIncrement,
-                        onClick = { 
-                            performClickHaptic()
-                            val step = resource.sliderStep ?: 1.0
-                            onUpdate(resource.copy(current = formatValue(curValue + step))) 
-                        }
-                    )
-                }
-            }
-        } else {
-            // Slider layout
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Top row: Name and Info/Link/Value
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = resource.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-
+            if (!resource.useSlider) {
+                if (!isNarrow) {
+                    // Standard non-slider layout
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ResourceActionButtons(
-                            resource = resource,
-                            uriHandler = uriHandler
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = resource.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface
+                            )
+
+                            // Rests info
+                            ResourceRestsInfo(resource, statsMap, pb)
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ResourceActionButtons(
+                                resource = resource,
+                                uriHandler = uriHandler
+                            )
+
+                            // Minus button
+                            ResourceActionButton(
+                                icon = Icons.Default.Remove,
+                                enabled = canDecrement,
+                                onClick = { 
+                                    performClickHaptic()
+                                    val step = resource.sliderStep ?: 1.0
+                                    onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
+                                }
+                            )
+
+                            // Current/Max display
+                            ResourceValueDisplay(curValue, maxValue, resource.max, formatValue = { formatValue(it) })
+
+                            // Plus button
+                            ResourceActionButton(
+                                icon = Icons.Default.Add,
+                                enabled = canIncrement,
+                                onClick = { 
+                                    performClickHaptic()
+                                    val step = resource.sliderStep ?: 1.0
+                                    onUpdate(resource.copy(current = formatValue(curValue + step))) 
+                                }
+                            )
+                        }
+                    }
+                } else {
+                    // Narrow non-slider layout
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = resource.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth()
                         )
 
-                        ResourceValueDisplay(curValue, maxValue, resource.max, formatValue = { formatValue(it) })
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ResourceActionButtons(
+                                resource = resource,
+                                uriHandler = uriHandler
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // Minus button
+                                ResourceActionButton(
+                                    icon = Icons.Default.Remove,
+                                    enabled = canDecrement,
+                                    onClick = { 
+                                        performClickHaptic()
+                                        val step = resource.sliderStep ?: 1.0
+                                        onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
+                                    }
+                                )
+
+                                // Current/Max display
+                                ResourceValueDisplay(curValue, maxValue, resource.max, formatValue = { formatValue(it) })
+
+                                // Plus button
+                                ResourceActionButton(
+                                    icon = Icons.Default.Add,
+                                    enabled = canIncrement,
+                                    onClick = { 
+                                        performClickHaptic()
+                                        val step = resource.sliderStep ?: 1.0
+                                        onUpdate(resource.copy(current = formatValue(curValue + step))) 
+                                    }
+                                )
+                            }
+                        }
+
+                        ResourceRestsInfo(resource, statsMap, pb)
                     }
                 }
+            } else {
+                // Slider layout
+                if (!isNarrow) {
+                    // Standard slider layout
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Top row: Name and Info/Link/Value
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = resource.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
 
-                // Middle row: Slider with buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ResourceActionButton(
-                        icon = Icons.Default.Remove,
-                        enabled = canDecrement,
-                        onClick = { 
-                            performClickHaptic()
-                            val step = resource.sliderStep ?: 1.0
-                            onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
-                        }
-                    )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ResourceActionButtons(
+                                    resource = resource,
+                                    uriHandler = uriHandler
+                                )
 
-                    Slider(
-                        value = curValue.toFloat(),
-                        onValueChange = { 
-                            val step = resource.sliderStep ?: 1.0
-                            val maxLimit = if (hasMax) maxValue else curValue
-                            val rawValue = it.toDouble().coerceIn(0.0, maxLimit)
-                            
-                            // Alignment from maximum:
-                            // We want values like: max, max - step, max - 2*step, ...
-                            val diff = maxLimit - rawValue
-                            val snappedDiff = round(diff / step) * step
-                            val snappedValue = (maxLimit - snappedDiff).coerceIn(0.0, maxLimit)
-                            
-                            val updatedResource = resource.copy(current = formatValue(snappedValue))
-                            if (updatedResource.current != resource.current) {
-                                performClickHaptic()
+                                ResourceValueDisplay(curValue, maxValue, resource.max, formatValue = { formatValue(it) })
                             }
-                            onUpdate(updatedResource)
-                        },
-                        valueRange = 0f..if (hasMax) maxValue.toFloat().coerceAtLeast(0.001f) else curValue.toFloat().coerceAtLeast(0.001f),
-                        modifier = Modifier.weight(1f),
-                        colors = SliderDefaults.colors(
-                            thumbColor = colorScheme.primary,
-                            activeTrackColor = colorScheme.primary,
-                            inactiveTrackColor = colorScheme.primary.copy(alpha = 0.2f)
-                        )
-                    )
-
-                    ResourceActionButton(
-                        icon = Icons.Default.Add,
-                        enabled = canIncrement,
-                        onClick = { 
-                            performClickHaptic()
-                            val step = resource.sliderStep ?: 1.0
-                            onUpdate(resource.copy(current = formatValue(curValue + step))) 
                         }
-                    )
-                }
 
-                // Bottom row: Rests
-                ResourceRestsInfo(resource, statsMap, pb)
+                        // Middle row: Slider with buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ResourceActionButton(
+                                icon = Icons.Default.Remove,
+                                enabled = canDecrement,
+                                onClick = { 
+                                    performClickHaptic()
+                                    val step = resource.sliderStep ?: 1.0
+                                    onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
+                                }
+                            )
+
+                            Slider(
+                                value = curValue.toFloat(),
+                                onValueChange = { 
+                                    val step = resource.sliderStep ?: 1.0
+                                    val maxLimit = if (hasMax) maxValue else curValue
+                                    val rawValue = it.toDouble().coerceIn(0.0, maxLimit)
+                                    
+                                    val diff = maxLimit - rawValue
+                                    val snappedDiff = round(diff / step) * step
+                                    val snappedValue = (maxLimit - snappedDiff).coerceIn(0.0, maxLimit)
+                                    
+                                    val updatedResource = resource.copy(current = formatValue(snappedValue))
+                                    if (updatedResource.current != resource.current) {
+                                        performClickHaptic()
+                                    }
+                                    onUpdate(updatedResource)
+                                },
+                                valueRange = 0f..if (hasMax) maxValue.toFloat().coerceAtLeast(0.001f) else curValue.toFloat().coerceAtLeast(0.001f),
+                                modifier = Modifier.weight(1f),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = colorScheme.primary,
+                                    activeTrackColor = colorScheme.primary,
+                                    inactiveTrackColor = colorScheme.primary.copy(alpha = 0.2f)
+                                )
+                            )
+
+                            ResourceActionButton(
+                                icon = Icons.Default.Add,
+                                enabled = canIncrement,
+                                onClick = { 
+                                    performClickHaptic()
+                                    val step = resource.sliderStep ?: 1.0
+                                    onUpdate(resource.copy(current = formatValue(curValue + step))) 
+                                }
+                            )
+                        }
+
+                        // Bottom row: Rests
+                        ResourceRestsInfo(resource, statsMap, pb)
+                    }
+                } else {
+                    // Narrow slider layout
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Top row: Name
+                        Text(
+                            text = resource.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onSurface,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Link & Value row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ResourceActionButtons(
+                                resource = resource,
+                                uriHandler = uriHandler
+                            )
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            ResourceValueDisplay(curValue, maxValue, resource.max, formatValue = { formatValue(it) })
+                        }
+
+                        // Middle row: Slider with buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            ResourceActionButton(
+                                icon = Icons.Default.Remove,
+                                enabled = canDecrement,
+                                onClick = { 
+                                    performClickHaptic()
+                                    val step = resource.sliderStep ?: 1.0
+                                    onUpdate(resource.copy(current = formatValue((curValue - step).coerceAtLeast(0.0)))) 
+                                }
+                            )
+
+                            Slider(
+                                value = curValue.toFloat(),
+                                onValueChange = { 
+                                    val step = resource.sliderStep ?: 1.0
+                                    val maxLimit = if (hasMax) maxValue else curValue
+                                    val rawValue = it.toDouble().coerceIn(0.0, maxLimit)
+                                    
+                                    val diff = maxLimit - rawValue
+                                    val snappedDiff = round(diff / step) * step
+                                    val snappedValue = (maxLimit - snappedDiff).coerceIn(0.0, maxLimit)
+                                    
+                                    val updatedResource = resource.copy(current = formatValue(snappedValue))
+                                    if (updatedResource.current != resource.current) {
+                                        performClickHaptic()
+                                    }
+                                    onUpdate(updatedResource)
+                                },
+                                valueRange = 0f..if (hasMax) maxValue.toFloat().coerceAtLeast(0.001f) else curValue.toFloat().coerceAtLeast(0.001f),
+                                modifier = Modifier.weight(1f),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = colorScheme.primary,
+                                    activeTrackColor = colorScheme.primary,
+                                    inactiveTrackColor = colorScheme.primary.copy(alpha = 0.2f)
+                                )
+                            )
+
+                            ResourceActionButton(
+                                icon = Icons.Default.Add,
+                                enabled = canIncrement,
+                                onClick = { 
+                                    performClickHaptic()
+                                    val step = resource.sliderStep ?: 1.0
+                                    onUpdate(resource.copy(current = formatValue(curValue + step))) 
+                                }
+                            )
+                        }
+
+                        // Bottom row: Rests
+                        ResourceRestsInfo(resource, statsMap, pb)
+                    }
+                }
             }
         }
 
@@ -294,7 +442,9 @@ fun ResourceBlock(
                 text = resource.notes,
                 style = MaterialTheme.typography.bodyMedium,
                 color = colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
             )
         }
     }
@@ -327,41 +477,48 @@ fun ResourceBlock(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ResourceRestsInfo(
     resource: DynamicContentBlock.Resource,
     statsMap: Map<String, String>,
     pb: Int
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(top = 4.dp)
-    ) {
-        if (resource.shortRest != "0" && resource.shortRest.isNotEmpty()) {
-            RestIndicator(
-                isShort = true,
-                value = resource.shortRest,
-                statsMap = statsMap,
-                proficiencyBonus = pb
-            )
-        }
-        if (resource.longRest != "0" && resource.longRest.isNotEmpty()) {
-            RestIndicator(
-                isShort = false,
-                value = resource.longRest,
-                statsMap = statsMap,
-                proficiencyBonus = pb
-            )
-        }
-        if (resource.dawnRest != "0" && resource.dawnRest.isNotEmpty()) {
-            RestIndicator(
-                isShort = false,
-                isDawn = true,
-                value = resource.dawnRest,
-                statsMap = statsMap,
-                proficiencyBonus = pb
-            )
+    val hasShort = resource.shortRest != "0" && resource.shortRest.isNotEmpty()
+    val hasLong = resource.longRest != "0" && resource.longRest.isNotEmpty()
+    val hasDawn = resource.dawnRest != "0" && resource.dawnRest.isNotEmpty()
+
+    if (hasShort || hasLong || hasDawn) {
+        FlowRow(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 4.dp)
+        ) {
+            if (hasShort) {
+                RestIndicator(
+                    isShort = true,
+                    value = resource.shortRest,
+                    statsMap = statsMap,
+                    proficiencyBonus = pb
+                )
+            }
+            if (hasLong) {
+                RestIndicator(
+                    isShort = false,
+                    value = resource.longRest,
+                    statsMap = statsMap,
+                    proficiencyBonus = pb
+                )
+            }
+            if (hasDawn) {
+                RestIndicator(
+                    isShort = false,
+                    isDawn = true,
+                    value = resource.dawnRest,
+                    statsMap = statsMap,
+                    proficiencyBonus = pb
+                )
+            }
         }
     }
 }

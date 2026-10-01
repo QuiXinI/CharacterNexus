@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,7 +68,7 @@ fun AttackCardItem(
     val scale by animateFloatAsState(
         targetValue = when {
             isDragging -> 1.02f
-            isEditMode -> 0.95f
+            isEditMode -> 0.98f
             else -> 1f
         },
         label = "dragScale"
@@ -77,7 +79,7 @@ fun AttackCardItem(
         label = "backgroundBlur"
     )
 
-    val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp, label = "padding")
+    val padding by animateDpAsState(targetValue = if (isEditMode) 2.dp else 0.dp, label = "padding")
     val renderDiceInOrder by settingsViewModel?.renderDiceInOrder?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion, stats, spellSettings, renderDiceInOrder) {
@@ -144,10 +146,10 @@ fun AttackCardItem(
                     imageVector = Icons.Default.UnfoldMore,
                     contentDescription = "Drag",
                     modifier = Modifier
-                        .padding(start = 4.dp, end = 4.dp)
-                        .size(32.dp)
+                        .padding(end = 2.dp)
+                        .size(24.dp)
                         .then(dragModifier),
-                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             }
 
@@ -211,12 +213,15 @@ fun AttackCardItem(
             if (isEditMode) {
                 IconButton(
                     onClick = onDelete,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp)
+                    modifier = Modifier
+                        .padding(start = 2.dp)
+                        .size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
                         contentDescription = "Delete",
-                        tint = colorScheme.error
+                        tint = colorScheme.error,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -263,10 +268,10 @@ fun AttackCardItem(
                 imageVector = Icons.Default.UnfoldMore,
                 contentDescription = "Drag",
                 modifier = Modifier
-                    .padding(start = 4.dp, end = 4.dp)
-                    .size(32.dp)
+                    .padding(end = 2.dp)
+                    .size(24.dp)
                     .then(dragModifier),
-                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                tint = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
             )
         }
 
@@ -333,7 +338,9 @@ fun AttackCardItem(
                                 text = attack.name.ifBlank { "Безымянная атака" },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = colorScheme.onSurface
+                                color = colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                             AttackBadgesRow(attack = attack, modifier = Modifier.padding(top = 2.dp))
                         }
@@ -378,10 +385,13 @@ fun AttackCardItem(
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
                                         text = (if (isHealing) "Лечение: " else "") + "$fullDamageText ${attack.damageType}".trim(),
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                        fontSize = 15.sp,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                                        fontSize = 14.5.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = colorScheme.onSurface
+                                        color = colorScheme.onSurface,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
                                     )
 
                                     if (showDamagePopup) {
@@ -447,7 +457,7 @@ fun AttackCardItem(
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Column(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
                                         Text(
@@ -458,17 +468,18 @@ fun AttackCardItem(
                                         )
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
                                             Text(
                                                 text = totalAttackBonus.toString(),
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
+                                                fontSize = 16.sp,
                                                 color = colorScheme.onSurface
                                             )
                                             if (attackDice.isNotEmpty()) {
-                                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                    attackDice.forEach { DiceIcon(it) }
+                                                Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                    attackDice.forEach { DiceIcon(it, size = 20.dp) }
                                                 }
                                             }
                                         }
@@ -505,17 +516,18 @@ fun AttackCardItem(
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
                                             AttackBonusIndicator(
                                                 bonus = displayAttackBonus,
                                                 dice = attackDice,
-                                                size = 48.dp,
+                                                size = 46.dp,
                                                 fontSize = 18.sp,
                                                 showLabel = false,
-                                                showDice = true
+                                                showDice = true,
+                                                diceSize = 22.dp
                                             )
                                         }
 
@@ -587,12 +599,15 @@ fun AttackCardItem(
         if (isEditMode) {
             IconButton(
                 onClick = onDelete,
-                modifier = Modifier.padding(start = 4.dp, end = 4.dp)
+                modifier = Modifier
+                    .padding(start = 2.dp)
+                    .size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Clear,
                     contentDescription = "Delete",
-                    tint = colorScheme.error
+                    tint = colorScheme.error,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }

@@ -7,9 +7,11 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -101,12 +103,12 @@ fun AttacksTab(
 
     var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
 
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyStaggeredGridState()
     val items = remember(attacks) { mutableStateListOf<AttackEntry>().apply { addAll(attacks) } }
 
     val collapseActionsOnEdit by settingsViewModel?.collapseActionsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
 
-    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+    val reorderableState = rememberReorderableLazyStaggeredGridState(gridState) { from, to ->
         val fromIdx = from.index - 1
         val toIdx = to.index - 1
         if (fromIdx in items.indices && toIdx in items.indices) {
@@ -126,20 +128,22 @@ fun AttacksTab(
             .imePadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                state = listState,
+            LazyVerticalStaggeredGrid(
+                columns = StaggeredGridCells.Adaptive(minSize = 400.dp),
+                state = gridState,
                 modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds(),
-                contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp, start = 12.dp, end = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalItemSpacing = 8.dp
             ) {
-                item { 
-                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                item(span = StaggeredGridItemSpan.FullLine) { 
+                    Box(modifier = Modifier.padding(horizontal = 4.dp)) {
                         header() 
                     }
                 }
 
                 if (attacks.isEmpty()) {
-                    item {
+                    item(span = StaggeredGridItemSpan.FullLine) {
                         Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                             Text(
                                 "Список атак пуст",
@@ -170,9 +174,7 @@ fun AttacksTab(
                                 forceBlurEnabled = forceBlurEnabled,
                                 blurPopups = blurPopups,
                                 dragModifier = dragModifier,
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp)
-                                    .animateItem(),
+                                modifier = Modifier.animateItem(),
                                 spellSettings = spellSettings,
                                 spellbookManager = spellbookManager,
                                 advantageLogic = advantageLogic,

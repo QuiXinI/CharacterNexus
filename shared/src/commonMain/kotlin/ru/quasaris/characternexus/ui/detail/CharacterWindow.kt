@@ -1383,15 +1383,29 @@ fun CharacterDetailMainContent(
 
             Column(modifier = Modifier.fillMaxSize().hazeSource(state = rightHaze)) {
                 if (isDesktop) {
-                    TabNavigationBar(
+                    DesktopTabNavigationBar(
                         currentTab = currentTab,
-                        onShowTabSheet = onShowTabSheet,
+                        tabs = desktopTabs,
+                        onTabSelected = { selectedTab ->
+                            val targetIndex = desktopTabs.indexOf(selectedTab)
+                            if (targetIndex != -1) {
+                                val currentP = desktopPagerState.currentPage
+                                val currentIdx = currentP % desktopTabs.size
+                                val diff = targetIndex - currentIdx
+                                scope.launch {
+                                    if (kotlin.math.abs(diff) <= 1) {
+                                        desktopPagerState.animateScrollToPage(currentP + diff)
+                                    } else {
+                                        desktopPagerState.scrollToPage(currentP + diff)
+                                    }
+                                }
+                            }
+                        },
                         actions = {
-                            TabActions(
+                            DesktopTabActions(
                                 tab = currentTab,
                                 state = state,
-                                onShowSpellSettings = { state.closeFullscreenDialogs(); state.showSpellSettings = true },
-                                isDesktop = true
+                                onShowSpellSettings = { state.closeFullscreenDialogs(); state.showSpellSettings = true }
                             )
                         }
                     )

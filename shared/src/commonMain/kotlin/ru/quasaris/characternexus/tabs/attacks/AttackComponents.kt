@@ -21,6 +21,7 @@ import ru.quasaris.characternexus.util.log
 import characternexus.shared.generated.resources.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.backend.parseFormulaParts
 import androidx.compose.ui.unit.dp
@@ -713,17 +714,21 @@ fun AttackBadgesRow(
         if (propItems.isNotEmpty()) {
             Text(
                 text = propItems.joinToString(" • "),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                color = colorScheme.primary.copy(alpha = 0.75f)
+                color = colorScheme.primary.copy(alpha = 0.75f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
         if (masteryNames.isNotEmpty()) {
             Text(
                 text = masteryNames.joinToString(" • "),
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
