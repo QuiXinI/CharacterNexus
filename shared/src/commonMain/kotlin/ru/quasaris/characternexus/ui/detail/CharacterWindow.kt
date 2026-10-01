@@ -1522,6 +1522,7 @@ fun TabContent(
                 onToggleEditMode = { state.isEditMode = !state.isEditMode },
                 settingsViewModel = settingsViewModel,
                 spellSettings = state.spellSettings,
+                spellbookManager = spellbookManager,
                 advantageLogic = state.advantageLogic,
                 onAttackConfigOpenChange = { if (it) state.closeFullscreenDialogs(); state.isAttackConfigOpen = it },
                 state = state
@@ -1558,7 +1559,8 @@ fun TabContent(
                 statsMap = state.statsMap,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
-                state = state
+                state = state,
+                isDesktop = isDesktop
             )
         }
         CharacterTab.SKILLS_FEATS -> {
@@ -1673,7 +1675,8 @@ fun TabContent(
                 statsMap = state.statsMap,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
-                state = state
+                state = state,
+                isDesktop = isDesktop
             )
         }
     }

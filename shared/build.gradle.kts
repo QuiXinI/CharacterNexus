@@ -60,6 +60,34 @@ val generateConditionsJson = tasks.register("generateConditionsJson") {
     }
 }
 
+val generateWeaponMasteryJson = tasks.register("generateWeaponMasteryJson") {
+    val weaponMasteryFile = project.file("src/commonMain/composeResources/files/WeaponMastery.md")
+    inputs.file(weaponMasteryFile)
+    val outputDir = layout.buildDirectory.dir("generated/weaponMastery/resources")
+    outputs.dir(outputDir)
+    
+    doLast {
+        if (weaponMasteryFile.exists()) {
+            val content = weaponMasteryFile.readText()
+            val masteries = mutableListOf<String>()
+            
+            content.split(Regex("(^|\\n)##\\s+"))
+                .filter { it.isNotBlank() }
+                .forEach { section ->
+                    val lines = section.trim().lines()
+                    val name = lines.firstOrNull()?.trim()?.replace("\"", "\\\"") ?: ""
+                    val description = lines.drop(1).joinToString("\\n").trim().replace("\"", "\\\"")
+                    masteries.add("{\"name\":\"$name\",\"description\":\"$description\"}")
+                }
+            
+            val json = "[${masteries.joinToString(",")}]"
+            val file = outputDir.get().file("composeResources/characternexus.shared.generated.resources/files/weaponmasteries.json").asFile
+            file.parentFile.mkdirs()
+            file.writeText(json)
+        }
+    }
+}
+
 kotlin {
     listOf(
         iosArm64(),
@@ -107,6 +135,7 @@ kotlin {
         commonMain {
             kotlin.srcDir(generateBuildConstants)
             resources.srcDir(generateConditionsJson)
+            resources.srcDir(generateWeaponMasteryJson)
             dependencies {
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)

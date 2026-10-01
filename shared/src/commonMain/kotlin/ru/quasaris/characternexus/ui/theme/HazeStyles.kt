@@ -23,7 +23,7 @@ fun rememberEffectiveBlurRadius(settingsViewModel: SettingsViewModel?): Dp {
 fun Modifier.hazePopover(
     state: HazeState?,
     blurRadius: Dp,
-    tint: Color = Color.Black,
+    tint: Color = Color.Unspecified,
     alpha: Float = 0.2f,
     forceBlurEnabled: Boolean = true,
     isOled: Boolean = false
@@ -32,7 +32,7 @@ fun Modifier.hazePopover(
         this.hazeEffect(state = state) {
             style = HazeStyle(
                 blurRadius = blurRadius,
-                tints = listOf(HazeTint(tint.copy(alpha = alpha)))
+                tints = if (tint != Color.Unspecified) listOf(HazeTint(tint.copy(alpha = alpha))) else emptyList()
             )
         }
     } else this

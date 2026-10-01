@@ -81,6 +81,7 @@ fun InventoryTab(
         contentPlaceholder = "Содержимое раздела...",
         settingsViewModel = settingsViewModel,
         statsMap = statsMap,
+        isDesktop = isDesktop,
         state = state,
         isContentVisible = { it.tag != "potions" },
         isAddButtonVisible = false,

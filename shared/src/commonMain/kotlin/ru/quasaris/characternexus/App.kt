@@ -221,11 +221,13 @@ fun App(
                                         label = { Text("Главный экран") },
                                         selected = currentRoute == "menu",
                                         onClick = {
-                                            scope.launch { drawerState.close() }
-                                            if (currentRoute != "menu") {
-                                                NavigationPathManager.clear()
-                                                navController.navigate("menu") {
-                                                    popUpTo("menu") { inclusive = true }
+                                            scope.launch {
+                                                drawerState.close()
+                                                if (currentRoute != "menu") {
+                                                    NavigationPathManager.clear()
+                                                    navController.navigate("menu") {
+                                                        popUpTo("menu") { inclusive = true }
+                                                    }
                                                 }
                                             }
                                         },
@@ -238,10 +240,12 @@ fun App(
                                             label = { Text("Последний персонаж") },
                                             selected = false,
                                             onClick = {
-                                                scope.launch { drawerState.close() }
-                                                val lastChar = characters.find { it.uuid == lastCharacterUuid }
-                                                if (lastChar != null) {
-                                                    navController.navigate("edit/${lastChar.uuid}")
+                                                scope.launch {
+                                                    drawerState.close()
+                                                    val lastChar = characters.find { it.uuid == lastCharacterUuid }
+                                                    if (lastChar != null) {
+                                                        navController.navigate("edit/${lastChar.uuid}")
+                                                    }
                                                 }
                                             },
                                             icon = { Icon(Icons.Default.History, null) },
@@ -253,10 +257,12 @@ fun App(
                                         label = { Text("Настройки") },
                                         selected = currentRoute == "settings",
                                         onClick = {
-                                            scope.launch { drawerState.close() }
-                                            if (currentRoute != "settings") {
-                                                NavigationPathManager.clear()
-                                                navController.navigate("settings")
+                                            scope.launch {
+                                                drawerState.close()
+                                                if (currentRoute != "settings") {
+                                                    NavigationPathManager.clear()
+                                                    navController.navigate("settings")
+                                                }
                                             }
                                         },
                                         icon = { Icon(Icons.Default.Settings, null) },
@@ -269,9 +275,11 @@ fun App(
                                         label = { Text("Справочник формул") },
                                         selected = currentRoute == "formula_info",
                                         onClick = {
-                                            scope.launch { drawerState.close() }
-                                            if (currentRoute != "formula_info") {
-                                                navController.navigate("formula_info")
+                                            scope.launch {
+                                                drawerState.close()
+                                                if (currentRoute != "formula_info") {
+                                                    navController.navigate("formula_info")
+                                                }
                                             }
                                         },
                                         icon = { Icon(Icons.Default.Functions, null) },
@@ -283,10 +291,12 @@ fun App(
                                         label = { Text("Глоссарий") },
                                         selected = currentRoute == "glossary",
                                         onClick = {
-                                            scope.launch { drawerState.close() }
-                                            NavigationPathManager.clear()
-                                            navController.navigate("glossary") {
-                                                popUpTo("glossary") { inclusive = true }
+                                            scope.launch {
+                                                drawerState.close()
+                                                NavigationPathManager.clear()
+                                                navController.navigate("glossary") {
+                                                    popUpTo("glossary") { inclusive = true }
+                                                }
                                             }
                                         },
                                         icon = { Icon(Icons.Default.HistoryEdu, null) },
@@ -302,8 +312,10 @@ fun App(
                                                 label = { Text(node.label, fontWeight = FontWeight.Normal) },
                                                 selected = false,
                                                 onClick = {
-                                                    scope.launch { drawerState.close() }
-                                                    node.onClick?.invoke()
+                                                    scope.launch {
+                                                        drawerState.close()
+                                                        node.onClick?.invoke()
+                                                    }
                                                 },
                                                 modifier = Modifier
                                                     .padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -317,10 +329,12 @@ fun App(
                                         label = { Text("Модули") },
                                         selected = currentRoute == "modules",
                                         onClick = {
-                                            scope.launch { drawerState.close() }
-                                            NavigationPathManager.clear()
-                                            navController.navigate("modules") {
-                                                popUpTo("modules") { inclusive = true }
+                                            scope.launch {
+                                                drawerState.close()
+                                                NavigationPathManager.clear()
+                                                navController.navigate("modules") {
+                                                    popUpTo("modules") { inclusive = true }
+                                                }
                                             }
                                         },
                                         icon = { Icon(Icons.Default.Extension, null) },
@@ -336,8 +350,10 @@ fun App(
                                                 label = { Text(node.label, fontWeight = FontWeight.Normal) },
                                                 selected = false,
                                                 onClick = {
-                                                    scope.launch { drawerState.close() }
-                                                    node.onClick?.invoke()
+                                                    scope.launch {
+                                                        drawerState.close()
+                                                        node.onClick?.invoke()
+                                                    }
                                                 },
                                                 modifier = Modifier
                                                     .padding(NavigationDrawerItemDefaults.ItemPadding)

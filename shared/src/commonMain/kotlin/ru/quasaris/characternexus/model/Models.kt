@@ -215,6 +215,14 @@ data class DamageBonus(
     val damageType: String = ""
 ) : IBonus
 
+@Immutable
+@Serializable
+data class WeaponMastery(
+    val id: String = generateUuid(),
+    val name: String = "",
+    val description: String = ""
+)
+
 @Serializable
 enum class StatBonusType {
     SAVING_THROW,
@@ -380,7 +388,15 @@ data class AttackEntry(
     val notes: String = "",
     val showNotes: Boolean = false,
     val isMagic: Boolean = false,
-    val magicType: MagicAttackType = MagicAttackType.ATTACK
+    val magicType: MagicAttackType = MagicAttackType.ATTACK,
+    val spellId: String? = null,
+    val spellCard: SpellCard? = null,
+    val isMelee: Boolean = false,
+    val isRanged: Boolean = false,
+    val reach: String = "",
+    val rangeNormal: String = "",
+    val rangeMax: String = "",
+    val weaponMasteries: List<WeaponMastery> = emptyList()
 )
 
 @Serializable

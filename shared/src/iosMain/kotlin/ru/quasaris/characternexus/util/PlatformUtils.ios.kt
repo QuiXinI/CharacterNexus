@@ -3,7 +3,7 @@ package ru.quasaris.characternexus.util
 import okio.Path
 import platform.Foundation.NSUUID
 
-actual object PlatformUtils {
+actual object   PlatformUtils {
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
         println("[$tag] $message")
         throwable?.printStackTrace()

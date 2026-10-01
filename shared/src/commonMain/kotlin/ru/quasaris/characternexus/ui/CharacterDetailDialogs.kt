@@ -83,6 +83,8 @@ fun CharacterDetailDialogs(
                 settingsViewModel = state.settingsViewModel,
                 stats = statsMap,
                 spellSettings = state.spellSettings,
+                spellbookManager = spellbookManager,
+                existingAttacks = state.attacks,
                 isDesktop = isDesktop,
                 hazeState = popupHazeState ?: hazeState
             )

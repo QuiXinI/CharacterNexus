@@ -459,6 +459,7 @@ fun SpellsTab(
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
                 isDesktop = isDesktop,
+                isSingleColumn = true,
                 state = state,
                 header = header,
                 footer = {

@@ -10,9 +10,11 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -97,6 +99,7 @@ fun DynamicFieldsTab(
     collapseOnEdit: Boolean? = null,
     isAdvancedMode: Boolean = false,
     isDesktop: Boolean = false,
+    isSingleColumn: Boolean = false,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
@@ -104,7 +107,7 @@ fun DynamicFieldsTab(
     footer: @Composable () -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
-    val listState = rememberLazyListState()
+    val gridState = rememberLazyStaggeredGridState()
 
     val items = remember { mutableStateListOf<DynamicNoteState>().apply { addAll(fields) } }
 
@@ -121,7 +124,7 @@ fun DynamicFieldsTab(
         }
     }
 
-    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+    val reorderableState = rememberReorderableLazyStaggeredGridState(gridState) { from, to ->
         val fromIdx = from.index - 1
         val toIdx = to.index - 1
         if (fromIdx in items.indices && toIdx in items.indices) {
@@ -199,20 +202,26 @@ fun DynamicFieldsTab(
             }
         }
 
-        LazyColumn(
-            state = listState,
+        val columns = if (isDesktop && !isSingleColumn) {
+            StaggeredGridCells.Adaptive(minSize = 340.dp)
+        } else {
+            StaggeredGridCells.Fixed(1)
+        }
+
+        LazyVerticalStaggeredGrid(
+            columns = columns,
+            state = gridState,
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding()
                 .clipToBounds(),
             userScrollEnabled = isScrollEnabled,
-            contentPadding = PaddingValues(top = 16.dp, bottom = 40.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp),
+            verticalItemSpacing = 12.dp,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    header()
-                }
+            item(span = StaggeredGridItemSpan.FullLine) {
+                header()
             }
 
             itemsIndexed(items, key = { _, field -> field.id }) { index, field ->
@@ -239,9 +248,7 @@ fun DynamicFieldsTab(
                         onDelete = { fieldToDeleteIndex = index },
                         onFullscreenRequest = { fullscreenFieldIndex = index },
                         dragModifier = dragModifier,
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .animateItem(),
+                        modifier = Modifier.animateItem(),
                         extraContent = extraContent,
                         isCollapsible = isCollapsible,
                         isTitleReadOnly = isTitleReadOnly,
@@ -262,23 +269,19 @@ fun DynamicFieldsTab(
                 }
             }
 
-            item {
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    footer()
-                }
+            item(span = StaggeredGridItemSpan.FullLine) {
+                footer()
             }
 
             if (isAddButtonVisible) {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = {
                             val newFields = items.toList() + DynamicNoteState()
                             onFieldsChange(newFields)
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,

@@ -85,6 +85,7 @@ fun SpellCardItem(
     isAnyItemDragging: Boolean = false,
     isCompact: Boolean = false,
     isOverridden: Boolean = false,
+    isGrayedOut: Boolean = false,
     settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -120,6 +121,9 @@ fun SpellCardItem(
                     Modifier.blur(backgroundBlur) 
                 else Modifier
             )
+            .run {
+                if (isGrayedOut) this.graphicsLayer { alpha = 0.65f } else this
+            }
             .outerShadow(
                 shape = RoundedCornerShape(16.dp),
                 blur = if (isDragging) 6.dp else 2.dp,
@@ -131,19 +135,22 @@ fun SpellCardItem(
                     this.hazePopover(
                         state = hazeState!!,
                         blurRadius = blurRadius,
+                        tint = colorScheme.surfaceContainer,
+                        alpha = 0.6f,
                         isOled = colorScheme.background == Color.Black
                     )
                 } else this
             },
         colors = CardDefaults.cardColors(
             containerColor = if (useHaze) Color.Transparent
+                            else if (isGrayedOut) colorScheme.surfaceContainerLow.copy(alpha = 0.6f)
                             else if (isSelected) colorScheme.primaryContainer
                             else if (isDragging) colorScheme.surfaceVariant
                             else colorScheme.surfaceContainer
         ),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(if (isCompact) 8.dp else 12.dp)) {
+    Column(modifier = Modifier.padding(if (isCompact) 8.dp else 12.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -157,7 +164,7 @@ fun SpellCardItem(
                                 if (spell.version != SpellVersion.NONE && !spell.name.contains(spell.version.displayName)) {
                                     withStyle(
                                         SpanStyle(
-                                            color = colorScheme.primary.copy(alpha = 0.6f),
+                                            color = if (isGrayedOut) Color.Gray else colorScheme.primary.copy(alpha = 0.6f),
                                             fontSize = 12.sp
                                         )
                                     ) {
@@ -167,8 +174,22 @@ fun SpellCardItem(
                             },
                             style = if (isCompact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = colorScheme.onSurface
+                            color = if (isGrayedOut) Color.Gray else colorScheme.onSurface
                         )
+                        if (isGrayedOut) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                color = Color.Gray.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "Снято с подготовки",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                         if (isOverridden) {
                             Spacer(Modifier.width(4.dp))
                             Icon(

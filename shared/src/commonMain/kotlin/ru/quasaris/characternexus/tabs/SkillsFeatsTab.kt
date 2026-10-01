@@ -60,6 +60,7 @@ fun SkillsFeatsTab(
         statsMap = statsMap,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
+        isDesktop = isDesktop,
         state = state,
         isContentVisible = { it.tag != "Cargo" },
         isAddButtonVisible = false,

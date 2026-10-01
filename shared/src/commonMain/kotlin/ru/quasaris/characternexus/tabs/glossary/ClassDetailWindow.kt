@@ -9,7 +9,6 @@ import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.ui.NavNode
 import ru.quasaris.characternexus.ui.NavigationPathManager
-import ru.quasaris.characternexus.ui.BackHandler
 import okio.Path
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
@@ -23,7 +22,6 @@ fun ClassDetailWindow(
     onTitleChange: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    BackHandler(onBack = onBack)
     val gameClass = remember(classFile) {
         try {
             val content = JsonConfig.json.decodeFromString<DtoClassData>(platformFileSystem.read(classFile) { readUtf8() })

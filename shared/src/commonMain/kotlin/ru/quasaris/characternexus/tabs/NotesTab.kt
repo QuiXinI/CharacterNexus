@@ -22,6 +22,7 @@ fun NotesTab(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    isDesktop: Boolean = false,
     header: @Composable () -> Unit = {}
 ) {
     DynamicFieldsTab(
@@ -43,6 +44,7 @@ fun NotesTab(
         statsMap = statsMap,
         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
         onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
+        isDesktop = isDesktop,
         state = state,
         header = header
     )

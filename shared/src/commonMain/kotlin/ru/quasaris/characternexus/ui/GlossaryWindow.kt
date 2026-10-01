@@ -81,19 +81,18 @@ fun GlossaryWindow(
         when (val view = currentView) {
             is GlossaryView.Hub -> {
                 detailTitle = ""
+                NavigationPathManager.updatePath("glossary", path)
             }
             is GlossaryView.Category -> {
                 detailTitle = ""
                 path.add(NavNode("hub", "Глоссарий", 0))
                 path.add(NavNode("cat", view.category.title, 1))
+                NavigationPathManager.updatePath("glossary", path)
             }
             is GlossaryView.Detail -> {
-                path.add(NavNode("hub", "Глоссарий", 0))
-                path.add(NavNode("cat", view.category.title, 1) { currentView = GlossaryView.Category(view.category) })
-                // Item name reported by detail window
+                // Path with detail item title is set by ClassDetailWindow/GlossaryDetailWindow
             }
         }
-        NavigationPathManager.updatePath("glossary", path)
     }
 
     val colorScheme = MaterialTheme.colorScheme
@@ -136,15 +135,9 @@ fun GlossaryWindow(
         containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            AnimatedContent(
+            Crossfade(
                 targetState = currentView,
-                transitionSpec = {
-                    if (initialState is GlossaryView.Hub || (initialState is GlossaryView.Category && targetState is GlossaryView.Detail)) {
-                        (slideInHorizontally { it } + fadeIn(tween(300))).togetherWith(slideOutHorizontally { -it / 2 } + fadeOut(tween(300)))
-                    } else {
-                        (slideInHorizontally { -it / 2 } + fadeIn(tween(300))).togetherWith(slideOutHorizontally { it } + fadeOut(tween(300)))
-                    }.using(SizeTransform(clip = false))
-                },
+                animationSpec = tween(250),
                 label = "GlossaryTransitions"
             ) { view ->
                 when (view) {

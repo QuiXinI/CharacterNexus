@@ -148,3 +148,43 @@ fun calculateTotalBonus(
     }
     return total
 }
+
+fun formatDistanceValue(value: String): String {
+    val trimmed = value.trim()
+    if (trimmed.isEmpty()) return ""
+    return if (trimmed.all { it.isDigit() }) "$trimmed фт." else trimmed
+}
+
+fun formatRangeText(rangeNormal: String, rangeMax: String): String {
+    val normRaw = rangeNormal.trim()
+    val maxRaw = rangeMax.trim()
+
+    val normIsDigits = normRaw.isNotEmpty() && normRaw.all { it.isDigit() }
+    val maxIsDigits = maxRaw.isNotEmpty() && maxRaw.all { it.isDigit() }
+
+    return when {
+        normRaw.isNotEmpty() && maxRaw.isNotEmpty() -> {
+            if (normIsDigits && maxIsDigits) {
+                "$normRaw/$maxRaw фт."
+            } else {
+                val normFormatted = formatDistanceValue(normRaw)
+                val maxFormatted = formatDistanceValue(maxRaw)
+                if (normFormatted.endsWith(" фт.") && maxFormatted.endsWith(" фт.")) {
+                    val normClean = normFormatted.removeSuffix(" фт.").trim()
+                    val maxClean = maxFormatted.removeSuffix(" фт.").trim()
+                    "$normClean/$maxClean фт."
+                } else {
+                    "$normFormatted / $maxFormatted"
+                }
+            }
+        }
+        normRaw.isNotEmpty() -> {
+            formatDistanceValue(normRaw)
+        }
+        maxRaw.isNotEmpty() -> {
+            if (maxIsDigits) "—/$maxRaw фт." else "— / ${formatDistanceValue(maxRaw)}"
+        }
+        else -> ""
+    }
+}
+

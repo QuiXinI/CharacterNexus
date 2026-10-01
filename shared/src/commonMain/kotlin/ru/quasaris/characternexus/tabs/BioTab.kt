@@ -51,6 +51,7 @@ fun BioTab(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    isDesktop: Boolean = false,
     header: @Composable () -> Unit = {}
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -103,243 +104,293 @@ fun BioTab(
         contentPlaceholder = "Текст раздела...",
         settingsViewModel = settingsViewModel,
         statsMap = statsMap,
+        isDesktop = isDesktop,
         state = state,
         header = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, top = 0.dp, end = 8.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                header()
-                Spacer(Modifier.height(0.dp))
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(colorScheme.surfaceVariant)
-                            .clickable { showPortraitMenu = !showPortraitMenu },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (portraitPath != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalPlatformContext.current)
-                                    .data(portraitPath)
-                                    .memoryCacheKey("${portraitPath}_$imageData")
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Портрет персонажа",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AddAPhoto,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Добавить портрет",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = colorScheme.onSurfaceVariant
-                                )
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val containerWidth = maxWidth
+                val isWideLayout = isDesktop || containerWidth >= 520.dp
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 8.dp, top = 0.dp, end = 8.dp, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    header()
+                    Spacer(Modifier.height(0.dp))
+
+                    if (isWideLayout) {
+                        val portraitWidth = maxOf(260.dp, minOf(containerWidth * 0.35f, 600.dp))
+
+                        val allRows = mutableListOf<List<BioShortField>>()
+                        var currentRow = mutableListOf<BioShortField>()
+                        var currentRowWidth = 0f
+
+                        shortFields.forEach { field ->
+                            if (currentRowWidth + field.widthRatio > 1.001f && currentRow.isNotEmpty()) {
+                                allRows.add(currentRow)
+                                currentRow = mutableListOf(field)
+                                currentRowWidth = field.widthRatio
+                            } else {
+                                currentRow.add(field)
+                                currentRowWidth += field.widthRatio
                             }
                         }
-                    }
+                        if (currentRow.isNotEmpty()) {
+                            allRows.add(currentRow)
+                        }
 
-                    // Portrait Actions Dropdown (immediately below portrait)
-                    AnimatedVisibility(
-                        visible = showPortraitMenu,
-                        enter = expandVertically(),
-                        exit = shrinkVertically()
-                    ) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        val maxBesideRows = 4
+                        val besideRows = allRows.take(maxBesideRows)
+                        val overflowFields = allRows.drop(maxBesideRows).flatten()
+
+                        val fullWidthRows = mutableListOf<List<BioShortField>>()
+                        var currentFullRow = mutableListOf<BioShortField>()
+                        var currentFullRowWidth = 0f
+
+                        overflowFields.forEach { field ->
+                            val fullRatio = if (field.widthRatio >= 0.5f) 0.25f else 0.1666f
+                            if (currentFullRowWidth + fullRatio > 1.001f && currentFullRow.isNotEmpty()) {
+                                fullWidthRows.add(currentFullRow)
+                                currentFullRow = mutableListOf(field)
+                                currentFullRowWidth = fullRatio
+                            } else {
+                                currentFullRow.add(field)
+                                currentFullRowWidth += fullRatio
+                            }
+                        }
+                        if (currentFullRow.isNotEmpty()) {
+                            fullWidthRows.add(currentFullRow)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.Top
                         ) {
+                            PortraitSection(
+                                portraitPath = portraitPath,
+                                imageData = imageData,
+                                showPortraitMenu = showPortraitMenu,
+                                onTogglePortraitMenu = { showPortraitMenu = !showPortraitMenu },
+                                onAvatarEditRequest = {
+                                    showPortraitMenu = false
+                                    onAvatarEditRequest()
+                                },
+                                onDeletePortrait = {
+                                    showPortraitMenu = false
+                                    imageData = null
+                                    saveChanges()
+                                },
+                                colorScheme = colorScheme,
+                                modifier = Modifier.width(portraitWidth)
+                            )
+
                             Column(
-                                modifier = Modifier.padding(4.dp),
-                                verticalArrangement = Arrangement.spacedBy(0.dp)
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                if (imageData != null) {
-                                    PortraitMenuItem(
-                                    icon = Icons.Default.SaveAlt,
-                                    text = "Экспортировать",
-                                    onClick = {
-                                        showPortraitMenu = false
-                                        // TODO: Implement export using common ImageExporter or remove if not easily portable
-                                        PlatformUtils.showMessage("Экспорт пока не реализован в общей версии")
+                                besideRows.forEach { rowFields ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        rowFields.forEach { field ->
+                                            BioShortFieldItem(
+                                                field = field,
+                                                isEditMode = isEditMode,
+                                                onValueChange = { newVal ->
+                                                    shortFields = shortFields.map { if (it.id == field.id) it.copy(value = newVal) else it }
+                                                    saveChanges()
+                                                },
+                                                onRenameRequest = {
+                                                    editingShortField = field
+                                                    newShortFieldTitle = field.title
+                                                },
+                                                onChangeRatio = {
+                                                    val newRatio = if (field.widthRatio >= 0.5f) 0.33f else 0.5f
+                                                    shortFields = shortFields.map { if (it.id == field.id) it.copy(widthRatio = newRatio) else it }
+                                                    saveChanges()
+                                                },
+                                                onDelete = {
+                                                    shortFields = shortFields.filter { it.id != field.id }
+                                                    saveChanges()
+                                                },
+                                                colorScheme = colorScheme,
+                                                modifier = Modifier.weight(field.widthRatio)
+                                            )
+                                        }
                                     }
-                                )
-                                PortraitMenuItem(
-                                        icon = Icons.Default.PhotoCamera,
-                                        text = "Заменить портрет",
-                                        onClick = {
-                                            showPortraitMenu = false
-                                            onAvatarEditRequest()
+                                }
+                            }
+                        }
+
+                        if (fullWidthRows.isNotEmpty() || (besideRows.isEmpty() && isEditMode) || (fullWidthRows.isEmpty() && besideRows.isNotEmpty() && isEditMode)) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                fullWidthRows.forEach { rowFields ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        rowFields.forEach { field ->
+                                            val fullRatio = if (field.widthRatio >= 0.5f) 0.25f else 0.1666f
+                                            BioShortFieldItem(
+                                                field = field,
+                                                isEditMode = isEditMode,
+                                                onValueChange = { newVal ->
+                                                    shortFields = shortFields.map { if (it.id == field.id) it.copy(value = newVal) else it }
+                                                    saveChanges()
+                                                },
+                                                onRenameRequest = {
+                                                    editingShortField = field
+                                                    newShortFieldTitle = field.title
+                                                },
+                                                onChangeRatio = {
+                                                    val newRatio = if (field.widthRatio >= 0.5f) 0.33f else 0.5f
+                                                    shortFields = shortFields.map { if (it.id == field.id) it.copy(widthRatio = newRatio) else it }
+                                                    saveChanges()
+                                                },
+                                                onDelete = {
+                                                    shortFields = shortFields.filter { it.id != field.id }
+                                                    saveChanges()
+                                                },
+                                                colorScheme = colorScheme,
+                                                modifier = Modifier.weight(fullRatio)
+                                            )
                                         }
-                                    )
-                                    PortraitMenuItem(
-                                        icon = Icons.Default.Delete,
-                                        text = "Удалить портрет",
-                                        contentColor = colorScheme.error,
+                                    }
+                                }
+
+                                if (isEditMode) {
+                                    Button(
                                         onClick = {
-                                            showPortraitMenu = false
-                                            imageData = null
+                                            val newField = BioShortField(
+                                                title = "Новое поле",
+                                                widthRatio = 0.5f,
+                                                isCustom = true
+                                            )
+                                            shortFields = shortFields + newField
                                             saveChanges()
-                                        }
-                                    )
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Добавить особое поле")
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        val mobilePortraitWidth = minOf(containerWidth - 32.dp, 280.dp)
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            PortraitSection(
+                                portraitPath = portraitPath,
+                                imageData = imageData,
+                                showPortraitMenu = showPortraitMenu,
+                                onTogglePortraitMenu = { showPortraitMenu = !showPortraitMenu },
+                                onAvatarEditRequest = {
+                                    showPortraitMenu = false
+                                    onAvatarEditRequest()
+                                },
+                                onDeletePortrait = {
+                                    showPortraitMenu = false
+                                    imageData = null
+                                    saveChanges()
+                                },
+                                colorScheme = colorScheme,
+                                modifier = Modifier.width(mobilePortraitWidth)
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val rows = mutableListOf<List<BioShortField>>()
+                            var currentRow = mutableListOf<BioShortField>()
+                            var currentRowWidth = 0f
+
+                            shortFields.forEach { field ->
+                                if (currentRowWidth + field.widthRatio > 1.001f && currentRow.isNotEmpty()) {
+                                    rows.add(currentRow)
+                                    currentRow = mutableListOf(field)
+                                    currentRowWidth = field.widthRatio
                                 } else {
-                                    PortraitMenuItem(
-                                        icon = Icons.Default.AddAPhoto,
-                                        text = "Добавить портрет",
-                                        onClick = {
-                                            showPortraitMenu = false
-                                            onAvatarEditRequest()
-                                        }
-                                    )
+                                    currentRow.add(field)
+                                    currentRowWidth += field.widthRatio
+                                }
+                            }
+                            if (currentRow.isNotEmpty()) {
+                                rows.add(currentRow)
+                            }
+
+                            rows.forEach { rowFields ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    rowFields.forEach { field ->
+                                        BioShortFieldItem(
+                                            field = field,
+                                            isEditMode = isEditMode,
+                                            onValueChange = { newVal ->
+                                                shortFields = shortFields.map { if (it.id == field.id) it.copy(value = newVal) else it }
+                                                saveChanges()
+                                            },
+                                            onRenameRequest = {
+                                                editingShortField = field
+                                                newShortFieldTitle = field.title
+                                            },
+                                            onChangeRatio = {
+                                                val newRatio = if (field.widthRatio >= 0.5f) 0.33f else 0.5f
+                                                shortFields = shortFields.map { if (it.id == field.id) it.copy(widthRatio = newRatio) else it }
+                                                saveChanges()
+                                            },
+                                            onDelete = {
+                                                shortFields = shortFields.filter { it.id != field.id }
+                                                saveChanges()
+                                            },
+                                            colorScheme = colorScheme,
+                                            modifier = Modifier.weight(field.widthRatio)
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (isEditMode) {
+                                Button(
+                                    onClick = {
+                                        val newField = BioShortField(
+                                            title = "Новое поле",
+                                            widthRatio = 0.5f,
+                                            isCustom = true
+                                        )
+                                        shortFields = shortFields + newField
+                                        saveChanges()
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Добавить особое поле")
                                 }
                             }
                         }
                     }
+
+                    HorizontalDivider(color = colorScheme.outlineVariant, thickness = 1.dp)
                 }
-
-                // 2. Short text fields
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Group into rows or render with flex/grid.
-                    val rows = mutableListOf<List<BioShortField>>()
-                    var currentRow = mutableListOf<BioShortField>()
-                    var currentRowWidth = 0f
-
-                    shortFields.forEach { field ->
-                        if (currentRowWidth + field.widthRatio > 1.001f && currentRow.isNotEmpty()) {
-                            rows.add(currentRow)
-                            currentRow = mutableListOf(field)
-                            currentRowWidth = field.widthRatio
-                        } else {
-                            currentRow.add(field)
-                            currentRowWidth += field.widthRatio
-                        }
-                    }
-                    if (currentRow.isNotEmpty()) {
-                        rows.add(currentRow)
-                    }
-
-                    rows.forEach { rowFields ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            rowFields.forEach { field ->
-                                val weight = field.widthRatio
-                                OutlinedTextField(
-                                    value = field.value,
-                                    onValueChange = { newVal ->
-                                        shortFields = shortFields.map { if (it.id == field.id) it.copy(value = newVal) else it }
-                                        saveChanges()
-                                    },
-                                    label = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(field.title)
-                                            if (isEditMode) {
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Icon(
-                                                    imageVector = Icons.Default.Edit,
-                                                    contentDescription = "Переименовать",
-                                                    modifier = Modifier
-                                                        .size(14.dp)
-                                                        .clickable {
-                                                            editingShortField = field
-                                                            newShortFieldTitle = field.title
-                                                        },
-                                                    tint = colorScheme.primary
-                                                )
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .weight(weight)
-                                        .heightIn(min = 60.dp),
-                                    shape = RoundedCornerShape(12.dp),
-                                    trailingIcon = if (isEditMode) {
-                                        {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.End,
-                                                modifier = Modifier.padding(end = 2.dp)
-                                            ) {
-                                                IconButton(
-                                                    onClick = {
-                                                        val newRatio = if (field.widthRatio >= 0.5f) 0.33f else 0.5f
-                                                        shortFields = shortFields.map { if (it.id == field.id) it.copy(widthRatio = newRatio) else it }
-                                                        saveChanges()
-                                                    },
-                                                    modifier = Modifier.size(24.dp)
-                                                ) {
-                                                    Text(
-                                                        text = if (field.widthRatio >= 0.5f) "1/2" else "1/3",
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = colorScheme.primary
-                                                    )
-                                                }
-                                                // All fields are now deletable
-                                                IconButton(
-                                                    onClick = {
-                                                        shortFields = shortFields.filter { it.id != field.id }
-                                                        saveChanges()
-                                                    },
-                                                    modifier = Modifier.size(24.dp)
-                                                ) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Close,
-                                                        contentDescription = "Удалить",
-                                                        modifier = Modifier.size(14.dp),
-                                                        tint = colorScheme.error
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    } else null,
-                                    singleLine = true
-                                )
-                            }
-                        }
-                    }
-
-                    if (isEditMode) {
-                        Button(
-                            onClick = {
-                                val newField = BioShortField(
-                                    title = "Новое поле",
-                                    widthRatio = 0.5f,
-                                    isCustom = true
-                                )
-                                shortFields = shortFields + newField
-                                saveChanges()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Добавить особое поле")
-                        }
-                    }
-                }
-
-                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 1.dp)
             }
         }
     )
@@ -377,6 +428,175 @@ fun BioTab(
             }
         )
     }
+}
+
+@Composable
+private fun PortraitSection(
+    portraitPath: Any?,
+    imageData: String?,
+    showPortraitMenu: Boolean,
+    onTogglePortraitMenu: () -> Unit,
+    onAvatarEditRequest: () -> Unit,
+    onDeletePortrait: () -> Unit,
+    colorScheme: ColorScheme,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(colorScheme.surfaceVariant)
+                .clickable { onTogglePortraitMenu() },
+            contentAlignment = Alignment.Center
+        ) {
+            if (portraitPath != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalPlatformContext.current)
+                        .data(portraitPath)
+                        .memoryCacheKey("${portraitPath}_$imageData")
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Портрет персонажа",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddAPhoto,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Добавить портрет",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = showPortraitMenu,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    if (imageData != null) {
+                        PortraitMenuItem(
+                            icon = Icons.Default.SaveAlt,
+                            text = "Экспортировать",
+                            onClick = {
+                                PlatformUtils.showMessage("Экспорт пока не реализован в общей версии")
+                            }
+                        )
+                        PortraitMenuItem(
+                            icon = Icons.Default.PhotoCamera,
+                            text = "Заменить портрет",
+                            onClick = { onAvatarEditRequest() }
+                        )
+                        PortraitMenuItem(
+                            icon = Icons.Default.Delete,
+                            text = "Удалить портрет",
+                            contentColor = colorScheme.error,
+                            onClick = { onDeletePortrait() }
+                        )
+                    } else {
+                        PortraitMenuItem(
+                            icon = Icons.Default.AddAPhoto,
+                            text = "Добавить портрет",
+                            onClick = { onAvatarEditRequest() }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BioShortFieldItem(
+    field: BioShortField,
+    isEditMode: Boolean,
+    onValueChange: (String) -> Unit,
+    onRenameRequest: () -> Unit,
+    onChangeRatio: () -> Unit,
+    onDelete: () -> Unit,
+    colorScheme: ColorScheme,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = field.value,
+        onValueChange = onValueChange,
+        label = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(field.title)
+                if (isEditMode) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Переименовать",
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clickable { onRenameRequest() },
+                        tint = colorScheme.primary
+                    )
+                }
+            }
+        },
+        modifier = modifier.heightIn(min = 60.dp),
+        shape = RoundedCornerShape(12.dp),
+        trailingIcon = if (isEditMode) {
+            {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.padding(end = 2.dp)
+                ) {
+                    IconButton(
+                        onClick = onChangeRatio,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Text(
+                            text = if (field.widthRatio >= 0.5f) "1/2" else "1/3",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.primary
+                        )
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Удалить",
+                            modifier = Modifier.size(14.dp),
+                            tint = colorScheme.error
+                        )
+                    }
+                }
+            }
+        } else null,
+        singleLine = true
+    )
 }
 
 @Composable

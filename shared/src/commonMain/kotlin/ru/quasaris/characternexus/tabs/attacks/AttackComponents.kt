@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import org.jetbrains.compose.resources.painterResource
+import kotlinx.serialization.json.Json
+import ru.quasaris.characternexus.util.log
 import characternexus.shared.generated.resources.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -568,3 +570,202 @@ fun DamageBonusField(
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = colorScheme.outlineVariant)
     }
 }
+
+@Composable
+fun rememberAllWeaponMasteries(): List<WeaponMastery> {
+    var allMasteries by remember { mutableStateOf(emptyList<WeaponMastery>()) }
+    LaunchedEffect(Unit) {
+        try {
+            val bytes = Res.readBytes("files/weaponmasteries.json")
+            val content = bytes.decodeToString()
+            allMasteries = Json.decodeFromString<List<WeaponMastery>>(content)
+        } catch (e: Exception) {
+            e.log("WeaponMastery", "Failed to load weaponmasteries.json")
+        }
+    }
+    return allMasteries
+}
+
+@Composable
+fun PreMadeWeaponMasteryCard(
+    mastery: WeaponMastery,
+    onDelete: () -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = mastery.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = colorScheme.primary
+                )
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Удалить",
+                        tint = colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (mastery.description.isNotBlank()) {
+                Text(
+                    text = mastery.description,
+                    fontSize = 13.sp,
+                    color = colorScheme.onSurfaceVariant,
+                    lineHeight = 17.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WeaponMasteryField(
+    mastery: WeaponMastery,
+    onUpdate: (WeaponMastery) -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = mastery.name,
+                onValueChange = { onUpdate(mastery.copy(name = it)) },
+                label = { Text("Название мастерства") },
+                placeholder = { Text("Задевание, Сбивание...") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp)
+            )
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Close, contentDescription = "Удалить мастерство", tint = Color.Red)
+            }
+        }
+        OutlinedTextField(
+            value = mastery.description,
+            onValueChange = { onUpdate(mastery.copy(description = it)) },
+            label = { Text("Описание мастерства") },
+            placeholder = { Text("Описание эффекта при попадании/промахе...") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            minLines = 2
+        )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+@Composable
+fun AttackBadgesRow(
+    attack: AttackEntry,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    val propItems = remember(attack.attribute, attack.isMelee, attack.reach, attack.isRanged, attack.rangeNormal, attack.rangeMax) {
+        buildList {
+            if (attack.attribute != Attribute.NONE) {
+                add(attack.attribute.fullName)
+            }
+            if (attack.isMelee) {
+                add("Рукопашная")
+            }
+            val formattedReach = formatDistanceValue(attack.reach)
+            if (formattedReach.isNotBlank()) {
+                add("Досягаемость: $formattedReach")
+            }
+            if (attack.isRanged) {
+                add("Дальнобойная")
+            }
+            val rangeText = formatRangeText(attack.rangeNormal, attack.rangeMax)
+            if (rangeText.isNotBlank()) {
+                add(rangeText)
+            }
+        }
+    }
+
+    val masteryNames = remember(attack.weaponMasteries) {
+        attack.weaponMasteries.map { it.name.trim() }.filter { it.isNotEmpty() }
+    }
+
+    if (propItems.isEmpty() && masteryNames.isEmpty()) return
+
+    Column(modifier = modifier) {
+        if (propItems.isNotEmpty()) {
+            Text(
+                text = propItems.joinToString(" • "),
+                style = MaterialTheme.typography.labelSmall,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                color = colorScheme.primary.copy(alpha = 0.75f)
+            )
+        }
+        if (masteryNames.isNotEmpty()) {
+            Text(
+                text = masteryNames.joinToString(" • "),
+                style = MaterialTheme.typography.labelSmall,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+@Composable
+fun WeaponMasteriesSection(
+    masteries: List<WeaponMastery>,
+    modifier: Modifier = Modifier
+) {
+    val validMasteries = remember(masteries) {
+        masteries.filter { it.name.isNotBlank() || it.description.isNotBlank() }
+    }
+
+    if (validMasteries.isEmpty()) return
+
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        validMasteries.forEach { mastery ->
+            Column(modifier = Modifier.padding(top = 8.dp)) {
+                if (mastery.name.isNotBlank()) {
+                    Text(
+                        text = mastery.name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onSurface
+                    )
+                }
+                if (mastery.description.isNotBlank()) {
+                    Text(
+                        text = mastery.description,
+                        fontSize = 14.sp,
+                        lineHeight = 18.sp,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+

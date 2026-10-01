@@ -49,6 +49,8 @@ import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup
 import ru.quasaris.characternexus.ui.TabControlHeader
 import sh.calvin.reorderable.*
 
+import ru.quasaris.characternexus.backend.SpellbookManager
+
 val AttackInfoHazeStyle = HazeStyle(
     blurRadius = 20.dp,
     tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
@@ -72,6 +74,7 @@ fun AttacksTab(
     onToggleEditMode: () -> Unit = {},
     settingsViewModel: SettingsViewModel? = null,
     spellSettings: SpellSettings = SpellSettings(),
+    spellbookManager: SpellbookManager? = null,
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     onAttackConfigOpenChange: (Boolean) -> Unit = {},
     state: CharacterDetailState? = null,
@@ -171,6 +174,7 @@ fun AttacksTab(
                                     .padding(horizontal = 16.dp)
                                     .animateItem(),
                                 spellSettings = spellSettings,
+                                spellbookManager = spellbookManager,
                                 advantageLogic = advantageLogic,
                                 settingsViewModel = settingsViewModel,
                                 collapseActionsOnEdit = collapseActionsOnEdit
@@ -230,7 +234,9 @@ fun AttacksTab(
             exhaustion = exhaustion,
             settingsViewModel = settingsViewModel,
             stats = stats,
-            spellSettings = spellSettings
+            spellSettings = spellSettings,
+            spellbookManager = spellbookManager,
+            existingAttacks = attacks
         )
     }
 }

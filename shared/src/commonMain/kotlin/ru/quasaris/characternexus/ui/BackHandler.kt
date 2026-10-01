@@ -7,13 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 
 @Immutable
 data class BackEventData(
@@ -49,7 +47,6 @@ fun PredictiveBackBox(
     modifier: Modifier = Modifier,
     content: @Composable (predictiveProgress: Float) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
     val animatableProgress = remember { Animatable(0f) }
 
     PredictiveBackHandler(enabled = enabled) { progressFlow ->
@@ -57,20 +54,17 @@ fun PredictiveBackBox(
             progressFlow.collect { backEvent ->
                 animatableProgress.snapTo(backEvent.progress)
             }
+            animatableProgress.snapTo(0f)
             onBack()
-            scope.launch {
-                animatableProgress.snapTo(0f)
-            }
         } catch (e: CancellationException) {
-            scope.launch {
-                animatableProgress.animateTo(
-                    targetValue = 0f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
+            animatableProgress.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
                 )
-            }
+            )
+            throw e
         }
     }
 
