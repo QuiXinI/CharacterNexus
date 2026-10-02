@@ -1539,7 +1539,8 @@ fun TabContent(
                 spellbookManager = spellbookManager,
                 advantageLogic = state.advantageLogic,
                 onAttackConfigOpenChange = { if (it) state.closeFullscreenDialogs(); state.isAttackConfigOpen = it },
-                state = state
+                state = state,
+                isDesktop = isDesktop
             )
         }
         CharacterTab.BIO -> {

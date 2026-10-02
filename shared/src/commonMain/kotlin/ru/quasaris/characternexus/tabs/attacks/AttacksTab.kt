@@ -80,6 +80,8 @@ fun AttacksTab(
     advantageLogic: AdvantageLogic = AdvantageLogic.TOTAL,
     onAttackConfigOpenChange: (Boolean) -> Unit = {},
     state: CharacterDetailState? = null,
+    isDesktop: Boolean = false,
+    isSingleColumn: Boolean = false,
     header: @Composable () -> Unit = {}
 ) {
     val currentHazeState = hazeState ?: remember { HazeState() }
@@ -128,13 +130,22 @@ fun AttacksTab(
             .imePadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            val columns = if (isDesktop && !isSingleColumn) {
+                StaggeredGridCells.Adaptive(minSize = 340.dp)
+            } else {
+                StaggeredGridCells.Fixed(1)
+            }
+
             LazyVerticalStaggeredGrid(
-                columns = StaggeredGridCells.Adaptive(minSize = 400.dp),
+                columns = columns,
                 state = gridState,
-                modifier = Modifier.fillMaxWidth().weight(1f).clipToBounds(),
-                contentPadding = PaddingValues(top = 0.dp, bottom = 80.dp, start = 12.dp, end = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalItemSpacing = 8.dp
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clipToBounds(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
+                verticalItemSpacing = 12.dp,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item(span = StaggeredGridItemSpan.FullLine) { 
                     Box(modifier = Modifier.padding(horizontal = 4.dp)) {

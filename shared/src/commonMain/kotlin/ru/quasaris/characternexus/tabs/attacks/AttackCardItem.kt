@@ -27,14 +27,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup
 import ru.quasaris.characternexus.tabs.spells.SpellCardItem
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.hazePopover
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -65,10 +64,13 @@ fun AttackCardItem(
     val colorScheme = MaterialTheme.colorScheme
     val blurCards by settingsViewModel?.blurCards?.collectAsState() ?: remember { mutableStateOf(true) }
 
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val isCompact = isEditMode && collapseActionsOnEdit
+
     val scale by animateFloatAsState(
         targetValue = when {
             isDragging -> 1.02f
-            isEditMode -> 0.98f
+            isEditMode -> 0.95f
             else -> 1f
         },
         label = "dragScale"
@@ -78,8 +80,6 @@ fun AttackCardItem(
         targetValue = if (isAnyItemDragging && !isDragging) 6.dp else 0.dp,
         label = "backgroundBlur"
     )
-
-    val padding by animateDpAsState(targetValue = if (isEditMode) 2.dp else 0.dp, label = "padding")
     val renderDiceInOrder by settingsViewModel?.renderDiceInOrder?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val attackCalculation = remember(attack, proficiencyBonus, attributeModifiers, exhaustion, stats, spellSettings, renderDiceInOrder) {
@@ -285,37 +285,38 @@ fun AttackCardItem(
                             Modifier.blur(backgroundBlur) 
                         else Modifier
                     )
-                    .padding(padding)
                     .outerShadow(
                         shape = RoundedCornerShape(16.dp),
-                        blur = 6.dp,
-                        offsetY = 3.dp
+                        blur = if (isDragging) 6.dp else 2.dp,
+                        offsetY = if (isDragging) 3.dp else 1.dp
                     )
                     .clip(RoundedCornerShape(16.dp))
                     .run {
                         if (useHaze) {
-                            this.hazeEffect(
+                            this.hazePopover(
                                 state = hazeState!!,
-                                style = HazeStyle(
-                                    blurRadius = 24.dp,
-                                    tints = listOf(HazeTint(colorScheme.surfaceContainer.copy(alpha = 0.6f)))
-                                )
+                                blurRadius = blurRadius,
+                                tint = colorScheme.surfaceContainer,
+                                alpha = 0.6f,
+                                isOled = colorScheme.background == Color.Black
                             )
                         } else this
                     }
-                    .combinedClickable(
-                        enabled = !isEditMode,
-                        onClick = {
-                            performClickHaptic()
-                            isExpanded = !isExpanded
-                        },
-                        onLongClick = {
-                            performClickHaptic()
-                            onEdit()
-                        }
-                    ),
+                    .run {
+                        if (isEditMode && collapseActionsOnEdit) this else combinedClickable(
+                            onClick = {
+                                performClickHaptic()
+                                isExpanded = !isExpanded
+                            },
+                            onLongClick = {
+                                performClickHaptic()
+                                onEdit()
+                            }
+                        )
+                    },
                 colors = CardDefaults.cardColors(
-                    containerColor = if (useHaze) colorScheme.surfaceContainer.copy(alpha = 0.6f)
+                    containerColor = if (useHaze) Color.Transparent
+                                    else if (isDragging) colorScheme.surfaceVariant
                                     else colorScheme.surfaceContainer
                 ),
                 shape = RoundedCornerShape(16.dp),
@@ -325,7 +326,7 @@ fun AttackCardItem(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(if (isCompact) 8.dp else 12.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Row(
@@ -336,7 +337,7 @@ fun AttackCardItem(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = attack.name.ifBlank { "Безымянная атака" },
-                                style = MaterialTheme.typography.titleMedium,
+                                style = if (isCompact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = colorScheme.onSurface,
                                 maxLines = 2,
