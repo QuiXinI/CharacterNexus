@@ -423,6 +423,7 @@ fun App(
                                             getFullCharacter = getFullCharacter,
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
                                             onCreateFolder = { name, color -> characterRepository.createFolder(name, color) },
+                                            onAddFolder = { folder -> characterRepository.addFolder(folder) },
                                             onUpdateFolder = { folder -> characterRepository.updateFolder(folder) },
                                             onDeleteFolder = { uuid, delChars -> characterRepository.deleteFolder(uuid, delChars) },
                                             onMoveCharactersToFolder = { uuids, folderUuid, afterUuid -> 
@@ -446,7 +447,8 @@ fun App(
                                             onOpenDrawer = { scope.launch { drawerState.open() } },
                                             settingsViewModel = settingsViewModel,
                                             hazeState = hazeState,
-                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
+                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                            onCleanupDuplicateFolders = { characterRepository.cleanupDuplicateFolders() }
                                         )
                                     }
 

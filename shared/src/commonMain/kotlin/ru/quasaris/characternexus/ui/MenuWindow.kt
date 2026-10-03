@@ -67,7 +67,8 @@ fun MenuWindow(
     onDeleteCharacters: (List<String>) -> Unit,
     getFullCharacter: suspend (String) -> Character?,
     onOpenDrawer: () -> Unit,
-    onCreateFolder: (String, Int?) -> Unit = { _, _ -> },
+    onCreateFolder: (String, Int?) -> CharacterFolder = { name, color -> CharacterFolder(name = name, colorArgb = color) },
+    onAddFolder: (CharacterFolder) -> Unit = {},
     onUpdateFolder: (CharacterFolder) -> Unit = {},
     onDeleteFolder: (String, Boolean) -> Unit = { _, _ -> },
     onMoveCharactersToFolder: (List<String>, String?, String?) -> Unit = { _, _, _ -> },
@@ -103,6 +104,7 @@ fun MenuWindow(
     var showFilePicker by remember { mutableStateOf(false) }
     var showExportSaver by remember { mutableStateOf(false) }
     var exportUuids by remember { mutableStateOf<List<String>>(emptyList()) }
+    var exportFileName by remember { mutableStateOf("CharactersBundle") }
 
     val pendingImportResults = remember { mutableStateListOf<ru.quasaris.characternexus.backend.ImportResult>() }
     var imageToCrop by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -247,56 +249,56 @@ fun MenuWindow(
 
     var folderToManage by remember { mutableStateOf<CharacterFolder?>(null) }
     var showFolderDeleteConfirm by remember { mutableStateOf(false) }
+    var showFolderDeleteAllConfirm by remember { mutableStateOf(false) }
 
     var showMoveToFolderSheet by remember { mutableStateOf(false) }
 
     fun processNextImport() {
         if (pendingImportResults.isEmpty()) return
-        val next = pendingImportResults.first()
+        val next = pendingImportResults.removeAt(0)
         val portraitBytes = next.portraitBytes ?: next.originalBytes
 
         if (portraitBytes != null) {
-            try {
-                imageToCrop = decodeImageBitmap(portraitBytes)
-            } catch (e: Exception) {
-                onImportCharacter(next.character)
-                pendingImportResults.removeAt(0)
+            scope.launch {
+                try {
+                    val imgId = next.character.imageData ?: generateUuid()
+                    val charWithImg = next.character.copy(imageData = imgId)
+                    ImageManager.saveCharacterImages(
+                        characterUuid = charWithImg.uuid,
+                        originalBytes = next.originalBytes ?: portraitBytes,
+                        portraitBytes = portraitBytes,
+                        croppedBytes = portraitBytes
+                    )
+                    onImportCharacter(charWithImg)
+                } catch (e: Exception) {
+                    onImportCharacter(next.character)
+                }
                 processNextImport()
             }
-        } else if (next.character.avatarUrl != null && next.character.imageData == null) {
-            if (autoDownload) {
-                scope.launch {
+        } else if (next.character.avatarUrl != null) {
+            scope.launch {
+                try {
                     val avatarBytes = LssAvatarService.downloadAvatar(next.character)
                     if (avatarBytes != null) {
-                        try {
-                            imageToCrop = decodeImageBitmap(avatarBytes)
-                            pendingImportResults[0] = next.copy(
-                                character = next.character.copy(imageData = generateUuid()),
-                                portraitBytes = avatarBytes,
-                                originalBytes = avatarBytes
-                            )
-                        } catch (e: Exception) {
-                            onImportCharacter(next.character)
-                            pendingImportResults.removeAt(0)
-                            processNextImport()
-                        }
+                        val imgId = next.character.imageData ?: generateUuid()
+                        val charWithImg = next.character.copy(imageData = imgId)
+                        ImageManager.saveCharacterImages(
+                            characterUuid = charWithImg.uuid,
+                            originalBytes = avatarBytes,
+                            portraitBytes = avatarBytes,
+                            croppedBytes = avatarBytes
+                        )
+                        onImportCharacter(charWithImg)
                     } else {
                         onImportCharacter(next.character)
-                        pendingImportResults.removeAt(0)
-                        processNextImport()
                     }
+                } catch (e: Exception) {
+                    onImportCharacter(next.character)
                 }
-            } else if (pendingImportResults.size == 1) {
-                lssAvatarToDownload = next.character
-                pendingImportResults.clear()
-            } else {
-                onImportCharacter(next.character)
-                pendingImportResults.removeAt(0)
                 processNextImport()
             }
         } else {
             onImportCharacter(next.character)
-            pendingImportResults.removeAt(0)
             processNextImport()
         }
     }
@@ -308,11 +310,49 @@ fun MenuWindow(
         scope.launch {
             try {
                 val bytes = file.readBytes()
-                val results = ArchiveManager.importCharacters(bytes)
+                val fileBaseName = file.path.substringAfterLast("/").substringAfterLast("\\").substringBeforeLast(".")
+                val bundleResult = ArchiveManager.importBundle(bytes)
+                val rawResults = bundleResult.characters
+                val importedFolders = bundleResult.folders
 
-                if (results.isNotEmpty()) {
+                if (rawResults.isNotEmpty()) {
+                    val finalResults = mutableListOf<ru.quasaris.characternexus.backend.ImportResult>()
+
+                    if (importedFolders.isNotEmpty()) {
+                        val uuidMap = mutableMapOf<String, String>()
+                        val newFolders = importedFolders.map { f ->
+                            val newUuid = generateUuid()
+                            uuidMap[f.uuid] = newUuid
+                            CharacterFolder(
+                                uuid = newUuid,
+                                name = f.name,
+                                parentFolderUuid = f.parentFolderUuid,
+                                colorArgb = f.colorArgb,
+                                isExpanded = f.isExpanded
+                            )
+                        }.map { f ->
+                            f.copy(parentFolderUuid = f.parentFolderUuid?.let { uuidMap[it] ?: it })
+                        }
+                        newFolders.forEach { onAddFolder(it) }
+
+                        rawResults.forEach { res ->
+                            val newFolderUuid = res.character.folderUuid?.let { uuidMap[it] }
+                            finalResults.add(res.copy(character = res.character.copy(folderUuid = newFolderUuid)))
+                        }
+                    } else if (rawResults.size > 1) {
+                        val targetFolder = onCreateFolder(fileBaseName, null)
+                        rawResults.forEach { res ->
+                            finalResults.add(res.copy(character = res.character.copy(folderUuid = targetFolder.uuid)))
+                        }
+                    } else {
+                        rawResults.forEach { res ->
+                            val validFolderUuid = res.character.folderUuid?.takeIf { fUuid -> folders.any { it.uuid == fUuid } }
+                            finalResults.add(res.copy(character = res.character.copy(folderUuid = validFolderUuid)))
+                        }
+                    }
+
                     pendingImportResults.clear()
-                    pendingImportResults.addAll(results)
+                    pendingImportResults.addAll(finalResults)
                     processNextImport()
                 } else {
                     importErrorMessage = "Не удалось распознать файл. Пожалуйста, выберите другой файл персонажа."
@@ -325,7 +365,7 @@ fun MenuWindow(
 
     CommonFileSaver(
         show = showExportSaver,
-        fileName = "CharactersBundle",
+        fileName = exportFileName,
         fileExtension = ArchiveManager.EXPORT_EXTENSION
     ) { saver ->
         showExportSaver = false
@@ -339,8 +379,9 @@ fun MenuWindow(
                     charsToExport.add(fullChar)
                 }
             }
-            if (charsToExport.isNotEmpty()) {
-                val bytes = ArchiveManager.getExportBundleBytes(charsToExport)
+            val foldersToExport = getAllFoldersForSelection(selectedIds, folders, characters)
+            if (charsToExport.isNotEmpty() || foldersToExport.isNotEmpty()) {
+                val bytes = ArchiveManager.getExportBundleBytes(charsToExport, foldersToExport, globalOrder)
                 saver.save(bytes)
             }
         }
@@ -691,7 +732,26 @@ fun MenuWindow(
                 ) {
                     Button(
                         onClick = {
-                            exportUuids = selectedIds.toList()
+                            val resolvedCharUuids = getAllCharactersForUuids(selectedIds, folders, characters)
+                            exportUuids = resolvedCharUuids
+
+                            val defaultName = when {
+                                selectedIds.size == 1 -> {
+                                    val singleId = selectedIds.first()
+                                    val folder = folders.find { it.uuid == singleId }
+                                    if (folder != null) {
+                                        folder.name
+                                    } else {
+                                        characters.find { it.uuid == singleId }?.name ?: "Character"
+                                    }
+                                }
+                                resolvedCharUuids.size == 1 -> {
+                                    characters.find { it.uuid == resolvedCharUuids.first() }?.name ?: "Character"
+                                }
+                                else -> "CharactersBundle"
+                            }
+
+                            exportFileName = sanitizeFileName(defaultName)
                             showExportSaver = true
                         },
                         modifier = Modifier
@@ -832,6 +892,27 @@ fun MenuWindow(
                                 showFolderDeleteConfirm = true
                             },
                             shape = RoundedCornerShape(12.dp),
+                            color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Delete, null, tint = colorScheme.onSurfaceVariant)
+                                Spacer(Modifier.width(16.dp))
+                                Column {
+                                    Text("Удалить только папку", style = MaterialTheme.typography.bodyLarge)
+                                    Text("Персонажи останутся в общем списке", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+
+                        Surface(
+                            onClick = {
+                                showFolderDeleteAllConfirm = true
+                            },
+                            shape = RoundedCornerShape(12.dp),
                             color = colorScheme.errorContainer.copy(alpha = 0.2f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -839,9 +920,12 @@ fun MenuWindow(
                                 modifier = Modifier.padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Delete, null, tint = colorScheme.error)
+                                Icon(Icons.Default.DeleteForever, null, tint = colorScheme.error)
                                 Spacer(Modifier.width(16.dp))
-                                Text("Удалить папку", style = MaterialTheme.typography.bodyLarge, color = colorScheme.error)
+                                Column {
+                                    Text("Удалить папку с персонажами", style = MaterialTheme.typography.bodyLarge, color = colorScheme.error)
+                                    Text("Папка и все персонажи внутри будут удалены", style = MaterialTheme.typography.bodySmall, color = colorScheme.error.copy(alpha = 0.8f))
+                                }
                             }
                         }
                     }
@@ -904,7 +988,7 @@ fun MenuWindow(
         if (showFolderDeleteConfirm && folderToManage != null) {
             AlertDialog(
                 onDismissRequest = { showFolderDeleteConfirm = false },
-                title = { Text("Удалить папку?") },
+                title = { Text("Удалить только папку?") },
                 text = { Text("Вы хотите удалить папку '${folderToManage!!.name}'? Персонажи останутся в общем списке.") },
                 confirmButton = {
                     TextButton(onClick = {
@@ -915,6 +999,27 @@ fun MenuWindow(
                 },
                 dismissButton = {
                     TextButton(onClick = { showFolderDeleteConfirm = false }) { Text("Отмена") }
+                }
+            )
+        }
+
+        if (showFolderDeleteAllConfirm && folderToManage != null) {
+            AlertDialog(
+                onDismissRequest = { showFolderDeleteAllConfirm = false },
+                title = { Text("Удалить папку с персонажами?") },
+                text = { Text("Вы уверены, что хотите удалить папку '${folderToManage!!.name}' и всех персонажей внутри неё? Это действие нельзя отменить.") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            onDeleteFolder(folderToManage!!.uuid, true)
+                            showFolderDeleteAllConfirm = false
+                            folderToManage = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Удалить всё") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showFolderDeleteAllConfirm = false }) { Text("Отмена") }
                 }
             )
         }
@@ -1036,4 +1141,81 @@ fun MenuWindow(
             )
         }
     }
+}
+
+private fun getAllCharactersForUuids(
+    selectedUuids: List<String>,
+    folders: List<CharacterFolder>,
+    characterSummaries: List<CharacterSummary>
+): List<String> {
+    val resultCharUuids = mutableSetOf<String>()
+    val allCharUuids = characterSummaries.map { it.uuid }.toSet()
+
+    fun getFolderAndSubfolderUuids(folderUuid: String): Set<String> {
+        val folderUuids = mutableSetOf(folderUuid)
+        val children = folders.filter { it.parentFolderUuid == folderUuid }
+        children.forEach { child ->
+            folderUuids.addAll(getFolderAndSubfolderUuids(child.uuid))
+        }
+        return folderUuids
+    }
+
+    selectedUuids.forEach { uuid ->
+        if (uuid in allCharUuids) {
+            resultCharUuids.add(uuid)
+        } else {
+            val folderUuids = getFolderAndSubfolderUuids(uuid)
+            val charsInFolders = characterSummaries.filter { it.folderUuid in folderUuids }.map { it.uuid }
+            resultCharUuids.addAll(charsInFolders)
+        }
+    }
+
+    return resultCharUuids.toList()
+}
+
+private fun sanitizeFileName(name: String): String {
+    val invalidChars = Regex("[\\\\/:*?\"<>|]")
+    val sanitized = name.replace(invalidChars, "_").trim()
+    return if (sanitized.isBlank()) "Export" else sanitized
+}
+
+private fun getAllFoldersForSelection(
+    selectedUuids: List<String>,
+    folders: List<CharacterFolder>,
+    characterSummaries: List<CharacterSummary> = emptyList()
+): List<CharacterFolder> {
+    val resultFolders = mutableSetOf<CharacterFolder>()
+    val folderMap = folders.associateBy { it.uuid }
+    val characterMap = characterSummaries.associateBy { it.uuid }
+
+    fun addFolderAndSubfolders(folderUuid: String) {
+        val f = folderMap[folderUuid] ?: return
+        if (resultFolders.add(f)) {
+            val children = folders.filter { it.parentFolderUuid == folderUuid }
+            children.forEach { child ->
+                addFolderAndSubfolders(child.uuid)
+            }
+        }
+    }
+
+    fun addFolderAndAncestors(folderUuid: String) {
+        var current: CharacterFolder? = folderMap[folderUuid]
+        while (current != null) {
+            resultFolders.add(current)
+            current = current.parentFolderUuid?.let { folderMap[it] }
+        }
+    }
+
+    selectedUuids.forEach { uuid ->
+        if (folderMap.containsKey(uuid)) {
+            addFolderAndSubfolders(uuid)
+            addFolderAndAncestors(uuid)
+        } else if (characterMap.containsKey(uuid)) {
+            characterMap[uuid]?.folderUuid?.let { folderUuid ->
+                addFolderAndAncestors(folderUuid)
+            }
+        }
+    }
+
+    return resultFolders.toList()
 }

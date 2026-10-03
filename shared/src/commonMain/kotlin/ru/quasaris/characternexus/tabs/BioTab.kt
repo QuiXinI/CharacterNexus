@@ -38,6 +38,7 @@ fun BioTab(
     character: Character,
     onCharacterChange: (Character) -> Unit,
     onAvatarEditRequest: () -> Unit = {},
+    onExportPortraitClick: () -> Unit = {},
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
@@ -178,6 +179,10 @@ fun BioTab(
                                     showPortraitMenu = false
                                     onAvatarEditRequest()
                                 },
+                                onExportPortraitClick = {
+                                    showPortraitMenu = false
+                                    onExportPortraitClick()
+                                },
                                 onDeletePortrait = {
                                     showPortraitMenu = false
                                     imageData = null
@@ -301,6 +306,10 @@ fun BioTab(
                                 onAvatarEditRequest = {
                                     showPortraitMenu = false
                                     onAvatarEditRequest()
+                                },
+                                onExportPortraitClick = {
+                                    showPortraitMenu = false
+                                    onExportPortraitClick()
                                 },
                                 onDeletePortrait = {
                                     showPortraitMenu = false
@@ -437,6 +446,7 @@ private fun PortraitSection(
     showPortraitMenu: Boolean,
     onTogglePortraitMenu: () -> Unit,
     onAvatarEditRequest: () -> Unit,
+    onExportPortraitClick: () -> Unit,
     onDeletePortrait: () -> Unit,
     colorScheme: ColorScheme,
     modifier: Modifier = Modifier
@@ -504,7 +514,7 @@ private fun PortraitSection(
                             icon = Icons.Default.SaveAlt,
                             text = "Экспортировать",
                             onClick = {
-                                PlatformUtils.showMessage("Экспорт пока не реализован в общей версии")
+                                onExportPortraitClick()
                             }
                         )
                         PortraitMenuItem(

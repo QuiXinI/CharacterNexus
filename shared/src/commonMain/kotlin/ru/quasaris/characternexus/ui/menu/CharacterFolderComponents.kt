@@ -1,6 +1,5 @@
 package ru.quasaris.characternexus.ui.menu
 
-import androidx.compose.animation.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -13,11 +12,15 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,6 +38,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -61,16 +65,20 @@ import androidx.compose.foundation.isSystemInDarkTheme
 
 @Composable
 fun HierarchyGuideLine(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.outlineVariant
+    color: Color = MaterialTheme.colorScheme.outlineVariant,
+    modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .width(1.dp)
-            .background(color)
+            .width(2.dp)
+            .background(color, RoundedCornerShape(50))
     )
 }
+
+
+
+
 
 @Immutable
 data class TreeModel(
@@ -154,6 +162,14 @@ sealed class TreeItem {
         override val id: String =
             "drop-slot-${parentId ?: "root"}-${if (isStart) "start" else "end"}"
     }
+
+    data class RowBreak(
+        override val parentId: String?,
+        override val indentation: Int
+    ) : TreeItem() {
+        override val id: String =
+            "row-break-${parentId ?: "root"}-${indentation}"
+    }
 }
 
 @OptIn(ExperimentalDndApi::class)
@@ -173,8 +189,8 @@ fun CharacterFolderTree(
     onFolderMoreClick: (CharacterFolder) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = isSystemInDarkTheme()
     val dndState = rememberDragAndDropState<DragItem>(dragAfterLongPress = true)
-    val listState = rememberLazyListState()
 
     val baseModel = remember(characters, folders, globalOrder) {
         buildTreeModel(characters, folders, globalOrder)
@@ -250,144 +266,111 @@ fun CharacterFolderTree(
         applyMove(draggedId, target.parentId, beforeId)
     }
 
-    val treeItems = remember(model, characters, folders, isDragging) {
-        val result = mutableListOf<TreeItem>()
-
-        fun addChildren(parentUuid: String?, depth: Int) {
-            model.childrenOf(parentUuid).forEach { id ->
-                val character = characters.find { it.uuid == id }
-                if (character != null) {
-                    result.add(TreeItem.Character(character, depth, parentUuid))
-                    return@forEach
-                }
-                val folder = folders.find { it.uuid == id } ?: return@forEach
-                val count = model.childrenOf(folder.uuid)
-                    .count { childId -> characters.any { it.uuid == childId } }
-                result.add(TreeItem.Folder(folder, count, depth, parentUuid))
-                if (folder.isExpanded) {
-                    addChildren(folder.uuid, depth + 1)
-                    if (isDragging) result.add(TreeItem.DropSlot(folder.uuid, depth + 1))
-                }
-            }
-        }
-
-        addChildren(null, 0)
-        if (isDragging) {
-            result.add(0, TreeItem.DropSlot(null, 0, isStart = true))
-            result.add(TreeItem.DropSlot(null, 0))
-        }
-        result
-    }
-
     DragAndDropContainer(
         state = dndState,
         modifier = modifier.fillMaxSize()
     ) {
-        LazyColumn(
-            state = listState,
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .dragAutoScroll(
-                    state = dndState,
-                    lazyListState = listState,
-                    config = DragAutoScrollConfig(
-                        minScrollThreshold = 72.dp,
-                        maxScrollThreshold = 180.dp,
-                        maxScrollSpeed = 1400f
-                    )
-                ),
-            contentPadding = PaddingValues(bottom = 120.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(treeItems, key = { it.id }) { item ->
-                val isActualDragging = dndState.draggedItem?.key == item.id
+            FolderSectionContent(
+                parentUuid = null,
+                depth = 0,
+                model = model,
+                characters = characters,
+                folders = folders,
+                selectedIds = selectedIds,
+                isEditMode = isEditMode,
+                dndState = dndState,
+                isDark = isDark,
+                onCharacterClick = onCharacterClick,
+                onCharacterLongClick = onCharacterLongClick,
+                onFolderToggle = onFolderToggle,
+                onFolderExpansionToggle = onFolderExpansionToggle,
+                onFolderLongClick = onFolderLongClick,
+                onFolderMoreClick = onFolderMoreClick,
+                reorderAround = ::reorderAround,
+                hoverCollapsedFolder = ::hoverCollapsedFolder,
+                moveToStart = ::moveToStart,
+                applyMove = ::applyMove
+            )
+        }
+    }
+}
 
-                val indent by animateDpAsState(
-                    targetValue = (item.indentation * 16).dp,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    )
-                )
+@Composable
+private fun FolderSectionContent(
+    parentUuid: String?,
+    depth: Int,
+    model: TreeModel,
+    characters: List<CharacterSummary>,
+    folders: List<CharacterFolder>,
+    selectedIds: List<String>,
+    isEditMode: Boolean,
+    dndState: DragAndDropState<DragItem>,
+    isDark: Boolean,
+    onCharacterClick: (String) -> Unit,
+    onCharacterLongClick: (String) -> Unit,
+    onFolderToggle: (String) -> Unit,
+    onFolderExpansionToggle: (String) -> Unit,
+    onFolderLongClick: (String) -> Unit,
+    onFolderMoreClick: (CharacterFolder) -> Unit,
+    reorderAround: (String, TreeItem) -> Unit,
+    hoverCollapsedFolder: (String, String) -> Unit,
+    moveToStart: (String) -> Unit,
+    applyMove: (String, String?, String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val childIds = remember(model, parentUuid) { model.childrenOf(parentUuid) }
+    if (childIds.isEmpty()) return
 
-                val enterProgress = remember { Animatable(0f) }
-                LaunchedEffect(item.id) {
-                    enterProgress.animateTo(
-                        targetValue = 1f,
-                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
-                    )
-                }
+    val parentFolder = remember(parentUuid, folders) { folders.find { it.uuid == parentUuid } }
+    val defaultOutline = MaterialTheme.colorScheme.outlineVariant
+    val lineColor = remember(parentFolder, isDark, defaultOutline) {
+        FolderColors.getThemeAdaptedColor(parentFolder?.colorArgb, isDark)
+            ?: defaultOutline
+    }
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .animateItem(
-                            fadeInSpec = null,
-                            placementSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessMediumLow
-                            ),
-                            fadeOutSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-                        )
-                        .graphicsLayer {
-                            alpha = enterProgress.value
-                            translationY = (1f - enterProgress.value) * -size.height * 0.35f
-                        }
-                        .padding(start = indent)
-                ) {
-                    if (item.indentation > 0) {
-                        HierarchyGuideLine(modifier = Modifier.height(IntrinsicSize.Min))
-                        Spacer(Modifier.width(12.dp))
-                    }
+    val isRoot = parentUuid == null
 
-                    when (item) {
-                        is TreeItem.DropSlot -> {
-                            val draggedId = dndState.draggedItem?.data?.id
-                            val canDrop = draggedId == null ||
-                                    !model.isDescendant(item.parentId, draggedId)
-                            val folderColorArgb = folders
-                                .find { it.uuid == item.parentId }?.colorArgb
-                            FolderEndDivider(
-                                folderColorArgb = folderColorArgb,
-                                isRoot = item.parentId == null,
-                                isHovered = dndState.hoveredDropTargetKey == item.id,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .dropTarget(
-                                        key = item.id,
-                                        state = dndState,
-                                        canDrop = canDrop,
-                                        onDragEnter = { dragged ->
-                                            if (item.isStart) moveToStart(dragged.data.id)
-                                            else applyMove(dragged.data.id, item.parentId, null)
-                                        }
-                                    )
-                            )
-                        }
+    val content = @Composable {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            val cardChunk = remember(childIds, characters) { mutableStateListOf<CharacterSummary>() }
 
-                        else -> {
-                            val data: DragItem = when (item) {
-                                is TreeItem.Character -> DragItem.Character(item.id, item.summary)
-                                is TreeItem.Folder -> DragItem.Folder(item.id, item.folder)
-                                else -> error("unreachable")
-                            }
+            @Composable
+            fun FlushCards() {
+                if (cardChunk.isNotEmpty()) {
+                    val currentCards = cardChunk.toList()
+                    cardChunk.clear()
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        currentCards.forEach { character ->
+                            val item = TreeItem.Character(character, depth, parentUuid)
+                            val isActualDragging = dndState.draggedItem?.key == character.uuid
+                            val folderColor = parentFolder?.colorArgb
 
-                            var itemModifier: Modifier = Modifier.weight(1f)
+                            var itemModifier: Modifier = Modifier
+                                .widthIn(min = 280.dp, max = 350.dp)
+                                .weight(1f)
                             val dragEnabled = isEditMode || selectedIds.isNotEmpty()
                             if (dragEnabled) {
                                 itemModifier = itemModifier
                                     .reorderableItem(
-                                        key = item.id,
-                                        data = data,
+                                        key = character.uuid,
+                                        data = DragItem.Character(character.uuid, character),
                                         state = dndState,
                                         onDragEnter = { dragged ->
-                                            val collapsedFolder = item is TreeItem.Folder &&
-                                                    !item.folder.isExpanded
-                                            if (collapsedFolder) {
-                                                hoverCollapsedFolder(dragged.data.id, item.id)
-                                            } else {
-                                                reorderAround(dragged.data.id, item)
-                                            }
+                                            reorderAround(dragged.data.id, item)
                                         },
                                         draggableContent = {
                                             Box(
@@ -395,21 +378,10 @@ fun CharacterFolderTree(
                                                     alpha = 0.8f; scaleX = 1.05f; scaleY = 1.05f
                                                 }
                                             ) {
-                                                when (item) {
-                                                    is TreeItem.Character -> CharacterCardComposable(
-                                                        character = item.summary,
-                                                        isDragging = true
-                                                    )
-                                                    is TreeItem.Folder -> FolderHeader(
-                                                        folder = item.folder,
-                                                        characterCount = item.count,
-                                                        isExpanded = item.folder.isExpanded,
-                                                        onToggleExpand = {},
-                                                        onExpansionToggle = {},
-                                                        onMoreClick = {}
-                                                    )
-                                                    else -> Unit
-                                                }
+                                                CharacterCardComposable(
+                                                    character = character,
+                                                    isDragging = true
+                                                )
                                             }
                                         }
                                     )
@@ -417,40 +389,131 @@ fun CharacterFolderTree(
                             }
 
                             Box(modifier = itemModifier) {
-                                when (item) {
-                                    is TreeItem.Character -> {
-                                        val folderColor = folders
-                                            .find { it.uuid == item.parentId }?.colorArgb
-                                        CharacterCardComposable(
-                                            character = item.summary,
-                                            isSelected = item.id in selectedIds,
-                                            isEditMode = isEditMode,
-                                            folderColorArgb = folderColor,
-                                            onClick = { onCharacterClick(item.id) },
-                                            onLongClick = { onCharacterLongClick(item.id) }
-                                        )
-                                    }
-                                    is TreeItem.Folder -> {
-                                        val hovered = dndState.hoveredDropTargetKey == item.id
-                                        FolderHeader(
-                                            folder = item.folder,
-                                            characterCount = item.count,
-                                            isExpanded = item.folder.isExpanded,
-                                            isSelected = item.id in selectedIds,
-                                            isEditMode = isEditMode,
-                                            isHovered = hovered && isDragging,
-                                            onToggleExpand = { onFolderToggle(item.id) },
-                                            onExpansionToggle = { onFolderExpansionToggle(item.id) },
-                                            onLongClick = { onFolderLongClick(item.id) },
-                                            onMoreClick = { onFolderMoreClick(item.folder) }
-                                        )
-                                    }
-                                    else -> Unit
-                                }
+                                CharacterCardComposable(
+                                    character = character,
+                                    isSelected = character.uuid in selectedIds,
+                                    isEditMode = isEditMode,
+                                    folderColorArgb = folderColor,
+                                    onClick = { onCharacterClick(character.uuid) },
+                                    onLongClick = { onCharacterLongClick(character.uuid) }
+                                )
                             }
                         }
                     }
                 }
+            }
+
+            childIds.forEach { id ->
+                val character = characters.find { it.uuid == id }
+                if (character != null) {
+                    cardChunk.add(character)
+                } else {
+                    val folder = folders.find { it.uuid == id }
+                    if (folder != null) {
+                        FlushCards()
+                        val count = model.childrenOf(folder.uuid)
+                            .count { childId -> characters.any { it.uuid == childId } }
+                        val item = TreeItem.Folder(folder, count, depth, parentUuid)
+                        val isActualDragging = dndState.draggedItem?.key == folder.uuid
+
+                        var itemModifier: Modifier = Modifier.fillMaxWidth()
+                        val dragEnabled = isEditMode || selectedIds.isNotEmpty()
+                        if (dragEnabled) {
+                            itemModifier = itemModifier
+                                .reorderableItem(
+                                    key = folder.uuid,
+                                    data = DragItem.Folder(folder.uuid, folder),
+                                    state = dndState,
+                                    onDragEnter = { dragged ->
+                                        if (!folder.isExpanded) {
+                                            hoverCollapsedFolder(dragged.data.id, folder.uuid)
+                                        } else {
+                                            reorderAround(dragged.data.id, item)
+                                        }
+                                    },
+                                    draggableContent = {
+                                        Box(
+                                            modifier = Modifier.graphicsLayer {
+                                                alpha = 0.8f; scaleX = 1.05f; scaleY = 1.05f
+                                            }
+                                        ) {
+                                            FolderHeader(
+                                                folder = folder,
+                                                characterCount = count,
+                                                isExpanded = folder.isExpanded,
+                                                onToggleExpand = {},
+                                                onExpansionToggle = {},
+                                                onMoreClick = {}
+                                            )
+                                        }
+                                    }
+                                )
+                                .graphicsLayer { alpha = if (isActualDragging) 0f else 1f }
+                        }
+
+                        Box(modifier = itemModifier) {
+                            FolderHeader(
+                                folder = folder,
+                                characterCount = count,
+                                isExpanded = folder.isExpanded,
+                                isSelected = folder.uuid in selectedIds,
+                                isEditMode = isEditMode,
+                                isHovered = dndState.hoveredDropTargetKey == folder.uuid,
+                                onToggleExpand = { onFolderToggle(folder.uuid) },
+                                onExpansionToggle = { onFolderExpansionToggle(folder.uuid) },
+                                onLongClick = { onFolderLongClick(folder.uuid) },
+                                onMoreClick = { onFolderMoreClick(folder) }
+                            )
+                        }
+
+                        if (folder.isExpanded) {
+                            FolderSectionContent(
+                                parentUuid = folder.uuid,
+                                depth = depth + 1,
+                                model = model,
+                                characters = characters,
+                                folders = folders,
+                                selectedIds = selectedIds,
+                                isEditMode = isEditMode,
+                                dndState = dndState,
+                                isDark = isDark,
+                                onCharacterClick = onCharacterClick,
+                                onCharacterLongClick = onCharacterLongClick,
+                                onFolderToggle = onFolderToggle,
+                                onFolderExpansionToggle = onFolderExpansionToggle,
+                                onFolderLongClick = onFolderLongClick,
+                                onFolderMoreClick = onFolderMoreClick,
+                                reorderAround = reorderAround,
+                                hoverCollapsedFolder = hoverCollapsedFolder,
+                                moveToStart = moveToStart,
+                                applyMove = applyMove
+                            )
+                        }
+                    }
+                }
+            }
+            FlushCards()
+        }
+    }
+
+    if (isRoot) {
+        Box(modifier = modifier.fillMaxWidth()) {
+            content()
+        }
+    } else {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp)
+                .height(IntrinsicSize.Min)
+        ) {
+            HierarchyGuideLine(
+                color = lineColor,
+                modifier = Modifier.fillMaxHeight()
+            )
+            Spacer(Modifier.width(12.dp))
+            Box(modifier = Modifier.weight(1f)) {
+                content()
             }
         }
     }
@@ -635,7 +698,9 @@ fun CharacterCardComposable(
                         text = character.name.ifEmpty { "Без имени" },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = colorScheme.onSurface
+                        color = colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     FlowRow(
                         verticalArrangement = Arrangement.Center,
@@ -729,7 +794,9 @@ fun FolderHeader(
                 Text(
                     text = folder.name,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = charactersCountLabel(characterCount),

@@ -6,34 +6,52 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okio.Path.Companion.toPath
 import ru.quasaris.characternexus.model.Character
+import ru.quasaris.characternexus.model.CharacterFolder
 import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.ioDispatcher
 import ru.quasaris.characternexus.util.log
 import ru.quasaris.characternexus.util.generateUuid
-import ru.quasaris.characternexus.util.ImageProcessor
 import ru.quasaris.characternexus.util.ZipUtils
 import ru.quasaris.characternexus.util.Logger
 import okio.ByteString.Companion.decodeBase64
 import kotlinx.serialization.json.*
 
 @Serializable
-data class CharacterManifest(
-    val characters: List<ManifestEntry>,
-    val exportDate: String,
-    val version: Int = 1
+data class CharacterFolderExport(
+    val uuid: String,
+    val name: String,
+    val parentFolderUuid: String? = null,
+    val colorArgb: Int? = null,
+    val isExpanded: Boolean = true
 )
 
 @Serializable
 data class ManifestEntry(
     val uuid: String,
     val name: String,
-    val folder: String
+    val folder: String,
+    val folderUuid: String? = null
+)
+
+@Serializable
+data class CharacterManifest(
+    val characters: List<ManifestEntry>,
+    val folders: List<CharacterFolderExport> = emptyList(),
+    val globalOrder: List<String> = emptyList(),
+    val exportDate: String = "",
+    val version: Int = 2
 )
 
 data class ImportResult(
     val character: Character,
     val portraitBytes: ByteArray? = null,
     val originalBytes: ByteArray? = null
+)
+
+data class ImportBundleResult(
+    val characters: List<ImportResult>,
+    val folders: List<CharacterFolderExport> = emptyList(),
+    val globalOrder: List<String> = emptyList()
 )
 
 object ArchiveManager {
@@ -45,17 +63,21 @@ object ArchiveManager {
         encodeDefaults = true
     }
 
-    suspend fun exportCharacter(character: Character, targetPath: String) = exportCharactersBundle(listOf(character), targetPath)
+    suspend fun exportCharacter(character: Character, targetPath: String) = exportCharactersBundle(listOf(character), emptyList(), targetPath)
 
-    suspend fun getExportBundleBytes(characters: List<Character>): ByteArray = withContext(ioDispatcher) {
+    suspend fun getExportBundleBytes(
+        characters: List<Character>,
+        folders: List<CharacterFolder> = emptyList(),
+        globalOrder: List<String> = emptyList()
+    ): ByteArray = withContext(ioDispatcher) {
         val files = mutableMapOf<String, ByteArray>()
         val manifestEntries = mutableListOf<ManifestEntry>()
 
         characters.forEach { character ->
             val folderName = "${character.name.filter { it.isLetterOrDigit() }}_${character.uuid.take(4)}"
-            val prefix = if (characters.size > 1) "$folderName/" else ""
+            val prefix = if (characters.size > 1 || folders.isNotEmpty()) "$folderName/" else ""
             
-            manifestEntries.add(ManifestEntry(character.uuid, character.name, folderName))
+            manifestEntries.add(ManifestEntry(character.uuid, character.name, folderName, character.folderUuid))
 
             val charJson = json.encodeToString(character)
             files["${prefix}character.json"] = charJson.encodeToByteArray()
@@ -73,10 +95,23 @@ object ArchiveManager {
             }
         }
 
-        if (characters.size > 1) {
+        if (characters.size > 1 || folders.isNotEmpty()) {
+            val exportedUuids = (characters.map { it.uuid } + folders.map { it.uuid }).toSet()
+            val filteredOrder = globalOrder.filter { it in exportedUuids }
+
             val manifest = CharacterManifest(
                 characters = manifestEntries,
-                exportDate = "" // Could add current date if needed
+                folders = folders.map { f ->
+                    CharacterFolderExport(
+                        uuid = f.uuid,
+                        name = f.name,
+                        parentFolderUuid = f.parentFolderUuid,
+                        colorArgb = f.colorArgb,
+                        isExpanded = f.isExpanded
+                    )
+                },
+                globalOrder = filteredOrder,
+                exportDate = ""
             )
             files["manifest.json"] = json.encodeToString(manifest).encodeToByteArray()
         }
@@ -84,7 +119,11 @@ object ArchiveManager {
         ZipUtils.zip(files)
     }
 
-    suspend fun exportCharactersBundle(characters: List<Character>, targetPath: String) = withContext(ioDispatcher) {
+    suspend fun exportCharactersBundle(
+        characters: List<Character>,
+        folders: List<CharacterFolder>,
+        targetPath: String
+    ) = withContext(ioDispatcher) {
         try {
             val path = targetPath.toPath()
             val isJson = targetPath.endsWith(".json", ignoreCase = true)
@@ -94,7 +133,7 @@ object ArchiveManager {
                     writeUtf8(json.encodeToString(characters.first()))
                 }
             } else {
-                val zipBytes = getExportBundleBytes(characters)
+                val zipBytes = getExportBundleBytes(characters, folders)
                 platformFileSystem.write(path) {
                     write(zipBytes)
                 }
@@ -106,8 +145,12 @@ object ArchiveManager {
 
     suspend fun importCharacter(bytes: ByteArray): ImportResult? = importCharacters(bytes).firstOrNull()
 
-    suspend fun importCharacters(bytes: ByteArray): List<ImportResult> = withContext(ioDispatcher) {
+    suspend fun importCharacters(bytes: ByteArray): List<ImportResult> = importBundle(bytes).characters
+
+    suspend fun importBundle(bytes: ByteArray): ImportBundleResult = withContext(ioDispatcher) {
         val results = mutableListOf<ImportResult>()
+        var importedFolders = emptyList<CharacterFolderExport>()
+        var importedGlobalOrder = emptyList<String>()
         
         try {
             var unzippedFiles: Map<String, ByteArray>? = null
@@ -121,6 +164,23 @@ object ArchiveManager {
             }
 
             if (unzippedFiles != null && unzippedFiles.isNotEmpty()) {
+                val manifestBytes = unzippedFiles.entries.find { it.key.equals("manifest.json", ignoreCase = true) }?.value
+                val manifest = if (manifestBytes != null) {
+                    try {
+                        json.decodeFromString<CharacterManifest>(decodeSmart(manifestBytes))
+                    } catch (e: Exception) {
+                        null
+                    }
+                } else null
+
+                if (manifest != null) {
+                    importedFolders = manifest.folders
+                    importedGlobalOrder = manifest.globalOrder
+                }
+
+                val manifestEntryByUuid = manifest?.characters?.associateBy { it.uuid } ?: emptyMap()
+                val manifestEntryByFolder = manifest?.characters?.associateBy { it.folder.lowercase() } ?: emptyMap()
+
                 // Group files by directory
                 val groups = unzippedFiles.keys.groupBy { 
                     val parts = it.split("/")
@@ -129,15 +189,24 @@ object ArchiveManager {
 
                 if (groups.size > 1 || (groups.keys.first().isNotEmpty())) {
                     // Multi-character or single character in a folder
-                    groups.forEach { (_, fileKeys) ->
+                    groups.forEach { (dirName, fileKeys) ->
+                        if (dirName.equals("manifest.json", ignoreCase = true) || dirName.isEmpty()) return@forEach
+
                         val charJsonBytes = unzippedFiles[fileKeys.find { it.endsWith("character.json", ignoreCase = true) }]
                         if (charJsonBytes != null) {
                             val jsonString = decodeSmart(charJsonBytes)
                             val character = parseCharacterContent(jsonString)
                             if (character != null) {
+                                val manifestEntry = manifestEntryByUuid[character.uuid] ?: manifestEntryByFolder[dirName.lowercase()]
+                                val charWithFolder = if (manifestEntry?.folderUuid != null) {
+                                    character.copy(folderUuid = manifestEntry.folderUuid)
+                                } else {
+                                    character
+                                }
+
                                 val portraitBytes = unzippedFiles[fileKeys.find { it.endsWith("portrait.webp", ignoreCase = true) }]
                                 val originalBytes = unzippedFiles[fileKeys.find { it.endsWith("original.webp", ignoreCase = true) }]
-                                results.add(createImportResult(character, portraitBytes, originalBytes))
+                                results.add(createImportResult(charWithFolder, portraitBytes, originalBytes))
                             }
                         }
                     }
@@ -158,24 +227,60 @@ object ArchiveManager {
                 // Handle plain JSON
                 try {
                     val jsonString = decodeSmart(bytes)
-                    if (jsonString.trim().startsWith("{")) {
-                        val character = parseCharacterContent(jsonString)
-                        character?.let { char ->
-                            var portraitBytes: ByteArray? = null
-                            if (char.imageData != null && char.imageData.length > 100) {
-                                try {
-                                    portraitBytes = char.imageData.decodeBase64()?.toByteArray()
-                                } catch (e: Exception) {}
+                    val jsonElement = try {
+                        json.parseToJsonElement(jsonString)
+                    } catch (e: Exception) {
+                        null
+                    }
+
+                    if (jsonElement != null) {
+                        if (LongStoryShortImporter.isLongStoryShort(jsonElement)) {
+                            val chars = LongStoryShortImporter.parseMany(jsonElement)
+                            chars.forEach { char ->
+                                results.add(createImportResult(char, null, null))
                             }
-                            results.add(createImportResult(char, portraitBytes, null))
+                        } else if (jsonElement is JsonArray) {
+                            jsonElement.forEach { item ->
+                                try {
+                                    if (LongStoryShortImporter.isLongStoryShort(item)) {
+                                        LongStoryShortImporter.parse(item)?.let { char ->
+                                            results.add(createImportResult(char, null, null))
+                                        }
+                                    } else {
+                                        val char = json.decodeFromJsonElement<Character>(item)
+                                        var portraitBytes: ByteArray? = null
+                                        if (char.imageData != null && char.imageData.length > 100) {
+                                            try {
+                                                portraitBytes = char.imageData.decodeBase64()?.toByteArray()
+                                            } catch (e: Exception) {}
+                                        }
+                                        results.add(createImportResult(char, portraitBytes, null))
+                                    }
+                                } catch (e: Exception) {
+                                    e.log()
+                                }
+                            }
+                        } else if (jsonElement is JsonObject) {
+                            val character = parseCharacterContent(jsonString)
+                            character?.let { char ->
+                                var portraitBytes: ByteArray? = null
+                                if (char.imageData != null && char.imageData.length > 100) {
+                                    try {
+                                        portraitBytes = char.imageData.decodeBase64()?.toByteArray()
+                                    } catch (e: Exception) {}
+                                }
+                                results.add(createImportResult(char, portraitBytes, null))
+                            }
                         }
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) {
+                    e.log()
+                }
             }
         } catch (e: Exception) {
             Logger.e("ArchiveManager", "Critical failure in importCharacters", e)
         }
-        results
+        ImportBundleResult(results, importedFolders, importedGlobalOrder)
     }
 
     private fun createImportResult(char: Character, portraitBytes: ByteArray?, originalBytes: ByteArray?): ImportResult {
@@ -202,9 +307,6 @@ object ArchiveManager {
         // If it contains multiple replacement characters, it's likely not UTF-8
         if (utf8.count { it == '\uFFFD' } > 3) {
             Logger.d("ArchiveManager", "UTF-8 decode looks like garbage, trying fallback (encoding logic is platform-specific, but using best effort)")
-            // Note: In common code we don't have easy access to Windows-1251. 
-            // However, most modern exports are UTF-8. If it's old legacy, it might stay broken 
-            // unless we add multiplatform encoding support.
         }
         return utf8
     }
@@ -213,7 +315,7 @@ object ArchiveManager {
         return try {
             val jsonElement = json.parseToJsonElement(jsonString)
             if (LongStoryShortImporter.isLongStoryShort(jsonElement)) {
-                LongStoryShortImporter.parse(jsonElement)
+                LongStoryShortImporter.parseMany(jsonElement).firstOrNull()
             } else {
                 json.decodeFromString<Character>(jsonString)
             }

@@ -59,7 +59,8 @@ fun SettingsWindow(
     onOpenDrawer: () -> Unit,
     settingsViewModel: SettingsViewModel,
     hazeState: HazeState? = null,
-    onFullscreenDialogOpenChange: (Boolean) -> Unit = {}
+    onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
+    onCleanupDuplicateFolders: () -> Unit = {}
 ) {
     val themeMode by settingsViewModel.themeMode.collectAsState()
     val isPremium by settingsViewModel.isPremium.collectAsState()
@@ -467,6 +468,24 @@ fun SettingsWindow(
                         Icon(Icons.Default.BugReport, null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Посмотреть логи приложения", fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = { 
+                            onCleanupDuplicateFolders()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.secondaryContainer,
+                            contentColor = colorScheme.onSecondaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Очистить дубликаты папок", fontWeight = FontWeight.Bold)
                     }
                 }
             }

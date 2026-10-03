@@ -860,7 +860,8 @@ data class Character(
     val isJackOfAllTrades: Boolean = false,
     val deathSaveSuccesses: Int = 0,
     val deathSaveFailures: Int = 0,
-    val resources: List<DynamicContentBlock.Resource> = emptyList()
+    val resources: List<DynamicContentBlock.Resource> = emptyList(),
+    val folderUuid: String? = null
 ) {
     fun toSummary(currentFolderUuid: String? = null): CharacterSummary {
         val displayClass = buildString {
@@ -896,7 +897,7 @@ data class Character(
             themeSeedColorArgb = themeSeedColorArgb,
             experience = experience,
             order = order,
-            folderUuid = currentFolderUuid,
+            folderUuid = currentFolderUuid ?: folderUuid,
             deathSaveSuccesses = deathSaveSuccesses,
             deathSaveFailures = deathSaveFailures
         )

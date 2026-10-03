@@ -9,10 +9,26 @@ object LongStoryShortImporter {
 
     fun isLongStoryShort(jsonElement: JsonElement): Boolean {
         return try {
-            if (jsonElement !is JsonObject) return false
-            jsonElement["jsonType"]?.jsonPrimitive?.content == "character" && jsonElement.containsKey("data")
+            when (jsonElement) {
+                is JsonObject -> jsonElement["jsonType"]?.jsonPrimitive?.content == "character" && jsonElement.containsKey("data")
+                is JsonArray -> jsonElement.isNotEmpty() && jsonElement.all { isLongStoryShort(it) }
+                else -> false
+            }
         } catch (e: Exception) {
             false
+        }
+    }
+
+    fun parseMany(jsonElement: JsonElement): List<Character> {
+        return try {
+            when (jsonElement) {
+                is JsonObject -> parse(jsonElement)?.let { listOf(it) } ?: emptyList()
+                is JsonArray -> jsonElement.mapNotNull { parse(it) }
+                else -> emptyList()
+            }
+        } catch (e: Exception) {
+            e.log()
+            emptyList()
         }
     }
 
@@ -31,6 +47,13 @@ object LongStoryShortImporter {
             "set" -> BonusOperation.OVERRIDE
             else -> BonusOperation.ADD
         }
+    }
+
+    private fun isProfActive(elem: JsonElement?): Boolean {
+        if (elem == null) return false
+        if (elem is JsonPrimitive) return elem.booleanOrNull ?: (elem.content == "true" || elem.content == "1")
+        if (elem is JsonObject) return elem["value"]?.jsonPrimitive?.booleanOrNull ?: isProfActive(elem["value"])
+        return false
     }
 
     private val json = Json {
@@ -79,6 +102,16 @@ object LongStoryShortImporter {
             val currentHp = vitality["hp-current"]?.getFieldValue().safeString("0")
             val tempHp = vitality["hp-temp"]?.getFieldValue().safeString("0")
             val isShieldActive = vitality["shield"]?.getFieldValue()?.jsonPrimitive?.booleanOrNull ?: false
+
+            val deathSuccesses = vitality["deathSuccesses"]?.jsonPrimitive?.intOrNull ?: 0
+            val deathFails = vitality["deathFails"]?.jsonPrimitive?.intOrNull ?: 0
+
+            val exhaustionVal = (vitality["exhaustion"]?.safeString()?.toIntOrNull() ?: data["exhaustion"].safeString().toIntOrNull()) ?: 0
+            val selectedConditionsList = (data["conditions"]?.jsonArray ?: vitality["conditions"]?.jsonArray)?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+
+            val inspirationVal = data["inspiration"]?.jsonPrimitive?.booleanOrNull ?: false
+            val profVal = data["proficiency"]?.safeString()?.takeIf { it.isNotBlank() }
+            val proficiencyBonusVal = if (profVal != null) "+$profVal" else "[НАСТ БМ]"
 
             val acFormula = vitality["ac"]?.getFieldValue().safeString("10 + [DEX]")
             val initFormula = vitality["initiative"]?.getFieldValue().safeString("[DEX]")
@@ -141,10 +174,39 @@ object LongStoryShortImporter {
                 }
             }
 
+            // Proficiencies (Armor & Weapon)
+            val lssProf = data["prof"]?.jsonObject ?: vitality["prof"]?.jsonObject
+            val armorLight = isProfActive(lssProf?.get("armor-light"))
+            val armorMedium = isProfActive(lssProf?.get("armor-medium"))
+            val armorHeavy = isProfActive(lssProf?.get("armor-heavy"))
+            val shieldProf = isProfActive(lssProf?.get("shield")) || isProfActive(lssProf?.get("armor-shield"))
+            val weaponSimple = isProfActive(lssProf?.get("weapon-simple"))
+            val weaponMartial = isProfActive(lssProf?.get("weapon-martial"))
+
+            val profState = ProficienciesState(
+                sections = listOf(
+                    ProficiencySection(title = "Языки"),
+                    ProficiencySection(title = "Инструменты"),
+                    ProficiencySection(title = "Оружие", items = listOf(
+                        ProficiencyItem(name = "Простое", isActive = weaponSimple),
+                        ProficiencyItem(name = "Воинское", isActive = weaponMartial)
+                    )),
+                    ProficiencySection(title = "Доспехи", items = listOf(
+                        ProficiencyItem(name = "Лёгкие", isActive = armorLight),
+                        ProficiencyItem(name = "Средние", isActive = armorMedium),
+                        ProficiencyItem(name = "Тяжёлые", isActive = armorHeavy),
+                        ProficiencyItem(name = "Щиты", isActive = shieldProf)
+                    )),
+                    ProficiencySection(title = "Чувства")
+                )
+            )
+
             // Bonuses
             val allBonuses = data["bonuses"]?.jsonArray ?: buildJsonArray {}
             val statBonuses = mutableListOf<StatBonus>()
             val skillBonuses = mutableListOf<SkillBonus>()
+            val hpBonusesTotal = mutableListOf<AttackBonus>()
+            val hpBonusesAtLevel = mutableListOf<AttackBonus>()
             
             val acBonusExprs = mutableListOf<String>()
             val initBonusExprs = mutableListOf<String>()
@@ -165,6 +227,8 @@ object LongStoryShortImporter {
                     target == "ac" -> "Бонус КД"
                     target == "initiative" -> "Бонус Инициативы"
                     target.startsWith("speed") -> "Бонус Скорости"
+                    target.startsWith("hp") -> "Бонус Хитов"
+                    target.startsWith("save.") -> "Бонус Спасброска"
                     target.startsWith("skill.") -> {
                         val skillKey = target.removePrefix("skill.")
                         skillMap[skillKey] ?: "Бонус Навыка"
@@ -203,6 +267,27 @@ object LongStoryShortImporter {
                     target.startsWith("speed") -> {
                         if (isActiveBonus(bonus)) speedBonusExprs.add(expr)
                     }
+                    target == "hp.max" || target == "hp-max" || target == "hp" -> {
+                        hpBonusesTotal.add(AttackBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
+                    }
+                    target == "hp.max-level" || target == "hp-max-level" || target == "hp-level" -> {
+                        hpBonusesAtLevel.add(AttackBonus(name = label, formula = expr, operation = mapMode(mode), isActive = !disabled))
+                    }
+                    target.startsWith("save.") -> {
+                        val statKey = target.removePrefix("save.")
+                        val attribute = when (statKey) {
+                            "str" -> Attribute.STRENGTH
+                            "dex" -> Attribute.DEXTERITY
+                            "con" -> Attribute.CONSTITUTION
+                            "int" -> Attribute.INTELLIGENCE
+                            "wis" -> Attribute.WISDOM
+                            "cha" -> Attribute.CHARISMA
+                            else -> Attribute.NONE
+                        }
+                        if (attribute != Attribute.NONE) {
+                            statBonuses.add(StatBonus(name = label, formula = expr, attribute = attribute, type = StatBonusType.SAVING_THROW, operation = mapMode(mode), isActive = !disabled))
+                        }
+                    }
                     target == "skill-all" -> {
                         skillMap.values.forEach { mpSkillName ->
                             skillBonuses.add(SkillBonus(name = label, formula = expr, skillName = mpSkillName, operation = mapMode(mode), isActive = !disabled))
@@ -225,9 +310,9 @@ object LongStoryShortImporter {
                     }
                     target.startsWith("stat.") -> {
                         val parts = target.split(".")
-                        if (parts.size >= 3) {
+                        if (parts.size >= 2) {
                             val statKey = parts[1]
-                            val typeKey = parts[2]
+                            val typeKey = parts.getOrNull(2) ?: "score"
                             val attribute = when (statKey) {
                                 "str" -> Attribute.STRENGTH
                                 "dex" -> Attribute.DEXTERITY
@@ -247,6 +332,10 @@ object LongStoryShortImporter {
                     }
                 }
             }
+
+            // Calculate manualMaxHp for LSS import
+            val maxHpInt = maxHp.toIntOrNull() ?: 0
+            val manualMaxHpVal = maxHpInt
 
             // Consolidate AC, Initiative and Speed
             if (acBonusExprs.isNotEmpty()) {
@@ -440,6 +529,10 @@ object LongStoryShortImporter {
                 maxHp = maxHp,
                 currentHp = currentHp,
                 tempHp = tempHp,
+                isManualHP = true,
+                manualMaxHp = manualMaxHpVal,
+                hpBonusesTotal = hpBonusesTotal,
+                hpBonusesAtLevel = hpBonusesAtLevel,
                 isShieldActive = isShieldActive,
                 shieldEntries = shieldEntriesList,
                 activeShieldId = shieldEntriesList.firstOrNull()?.id,
@@ -448,6 +541,13 @@ object LongStoryShortImporter {
                 skilledExpertise = skilledExpertise,
                 statBonuses = statBonuses,
                 skillBonuses = skillBonuses,
+                proficiencies = profState,
+                deathSaveSuccesses = deathSuccesses,
+                deathSaveFailures = deathFails,
+                exhaustion = exhaustionVal,
+                selectedConditions = selectedConditionsList,
+                hasInspiration = inspirationVal,
+                proficiencyBonus = proficiencyBonusVal,
                 attacks = mpAttacks,
                 skillsAndTraits = skillsAndTraitsList,
                 inventory = inventoryList,

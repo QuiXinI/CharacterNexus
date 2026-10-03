@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -174,7 +175,9 @@ fun CharacterCard(
                             text = character.name.ifEmpty { "Без имени" },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = colorScheme.onSurface
+                            color = colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                         FlowRow(
                             verticalArrangement = Arrangement.Center,
@@ -263,7 +266,9 @@ fun CharacterCard(
                             text = character.name.ifEmpty { "Без имени" },
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = colorScheme.onSurface
+                            color = colorScheme.onSurface,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                         FlowRow(
                             verticalArrangement = Arrangement.Center,

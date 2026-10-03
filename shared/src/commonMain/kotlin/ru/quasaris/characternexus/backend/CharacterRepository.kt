@@ -72,6 +72,47 @@ class CharacterRepository(
         _charactersSummaryState.value = state.characters
         _foldersState.value = state.folders
         _globalOrderState.value = state.globalOrder
+
+        cleanupDuplicateFolders()
+    }
+
+    fun cleanupDuplicateFolders() {
+        val currentFolders = _foldersState.value
+        val nameMap = mutableMapOf<String, CharacterFolder>()
+        val uuidMapping = mutableMapOf<String, String>()
+
+        val cleanedFolders = mutableListOf<CharacterFolder>()
+
+        currentFolders.forEach { folder ->
+            val key = folder.name.trim().lowercase()
+            if (key.isBlank()) {
+                cleanedFolders.add(folder)
+            } else {
+                val existing = nameMap[key]
+                if (existing == null) {
+                    nameMap[key] = folder
+                    cleanedFolders.add(folder)
+                } else {
+                    uuidMapping[folder.uuid] = existing.uuid
+                }
+            }
+        }
+
+        if (uuidMapping.isNotEmpty()) {
+            _charactersSummaryState.value = _charactersSummaryState.value.map { char ->
+                val newFolderUuid = char.folderUuid?.let { uuidMapping[it] ?: it }
+                if (newFolderUuid != char.folderUuid) char.copy(folderUuid = newFolderUuid) else char
+            }
+
+            _foldersState.value = cleanedFolders.map { f ->
+                val newParentUuid = f.parentFolderUuid?.let { uuidMapping[it] ?: it }
+                if (newParentUuid != f.parentFolderUuid) f.copy(parentFolderUuid = newParentUuid) else f
+            }
+
+            _globalOrderState.value = _globalOrderState.value.filter { it !in uuidMapping.keys }
+
+            saveListState()
+        }
     }
 
     private fun saveListState() {
@@ -87,9 +128,11 @@ class CharacterRepository(
     fun loadCharacters(): List<CharacterSummary> = _charactersSummaryState.value
 
     suspend fun getFullCharacter(uuid: String): Character? {
-        return fullCharactersCache[uuid] ?: storage.loadCharacter(uuid)?.also {
+        val loaded = fullCharactersCache[uuid] ?: storage.loadCharacter(uuid)?.also {
             fullCharactersCache[uuid] = it
         }
+        val currentFolderUuid = _charactersSummaryState.value.find { it.uuid == uuid }?.folderUuid
+        return loaded?.copy(folderUuid = currentFolderUuid ?: loaded.folderUuid)
     }
 
     fun updateCharacter(character: Character) {
@@ -103,11 +146,17 @@ class CharacterRepository(
 
         if (index != -1) {
             currentSummaries[index] = newSummary
+            _charactersSummaryState.value = currentSummaries
         } else {
             currentSummaries.add(newSummary)
-            _globalOrderState.value = _globalOrderState.value + character.uuid
+            _charactersSummaryState.value = currentSummaries
+            if (_globalOrderState.value.none { it == character.uuid }) {
+                _globalOrderState.value = _globalOrderState.value + character.uuid
+            }
+            if (newSummary.folderUuid != null) {
+                updateGlobalOrderAfterMove(listOf(character.uuid), newSummary.folderUuid)
+            }
         }
-        _charactersSummaryState.value = currentSummaries
 
         saveCharacterDebounced(character)
     }
@@ -202,11 +251,20 @@ class CharacterRepository(
         }
     }
 
-    fun createFolder(name: String, colorArgb: Int? = null) {
+    fun createFolder(name: String, colorArgb: Int? = null): CharacterFolder {
         val newFolder = CharacterFolder(name = name, colorArgb = colorArgb)
         _foldersState.value = _foldersState.value + newFolder
         _globalOrderState.value = listOf(newFolder.uuid) + _globalOrderState.value
         saveListState()
+        return newFolder
+    }
+
+    fun addFolder(folder: CharacterFolder) {
+        if (_foldersState.value.none { it.uuid == folder.uuid }) {
+            _foldersState.value = _foldersState.value + folder
+            _globalOrderState.value = listOf(folder.uuid) + _globalOrderState.value
+            saveListState()
+        }
     }
 
     fun updateFolder(folder: CharacterFolder) {
@@ -215,17 +273,38 @@ class CharacterRepository(
     }
 
     fun deleteFolder(folderUuid: String, deleteCharacters: Boolean) {
+        val allFolderUuids = getAllSubfolderUuids(folderUuid)
+
         if (deleteCharacters) {
-            val charsToDelete = _charactersSummaryState.value.filter { it.folderUuid == folderUuid }
+            val charsToDelete = _charactersSummaryState.value.filter { it.folderUuid in allFolderUuids }
             charsToDelete.forEach { deleteCharacter(it.uuid) }
+
+            _foldersState.value = _foldersState.value.filter { it.uuid !in allFolderUuids }
+            _globalOrderState.value = _globalOrderState.value.filter { it !in allFolderUuids }
         } else {
+            val parentUuidOfDeleted = _foldersState.value.find { it.uuid == folderUuid }?.parentFolderUuid
+
+            _foldersState.value = _foldersState.value
+                .filter { it.uuid != folderUuid }
+                .map { if (it.parentFolderUuid == folderUuid) it.copy(parentFolderUuid = parentUuidOfDeleted) else it }
+
             _charactersSummaryState.value = _charactersSummaryState.value.map {
-                if (it.folderUuid == folderUuid) it.copy(folderUuid = null) else it
+                if (it.folderUuid == folderUuid) it.copy(folderUuid = parentUuidOfDeleted) else it
             }
+
+            _globalOrderState.value = _globalOrderState.value.filter { it != folderUuid }
         }
-        _foldersState.value = _foldersState.value.filter { it.uuid != folderUuid }
-        _globalOrderState.value = _globalOrderState.value.filter { it != folderUuid }
+
         saveListState()
+    }
+
+    private fun getAllSubfolderUuids(folderUuid: String): Set<String> {
+        val result = mutableSetOf(folderUuid)
+        val children = _foldersState.value.filter { it.parentFolderUuid == folderUuid }
+        children.forEach { child ->
+            result.addAll(getAllSubfolderUuids(child.uuid))
+        }
+        return result
     }
 
     fun moveCharactersToFolder(uuids: List<String>, folderUuid: String?, beforeUuid: String? = null) {

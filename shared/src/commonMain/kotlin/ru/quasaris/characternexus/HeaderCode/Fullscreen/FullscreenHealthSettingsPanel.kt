@@ -363,7 +363,7 @@ fun HealthSettingsContent(
                     val totalFixedBonus = remember(hpBonusesTotal, statsMap) {
                         hpBonusesTotal.filter { it.isActive }.sumOf { evaluateFormula(it.formula, statsMap) }
                     }
-                    val resultingMaxHp = manualMaxHp + (conMod * level) + (perLevelBonus * level) + totalFixedBonus
+                    val resultingMaxHp = manualMaxHp + (perLevelBonus * level) + totalFixedBonus
 
                     if (manualMaxHp > 0) {
                         Surface(

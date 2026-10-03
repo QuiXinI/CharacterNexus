@@ -157,16 +157,16 @@ fun CharacterWindow(
 
     CommonFileSaver(
         show = showExportPortraitSaver,
-        fileName = "${character.name}_Portrait",
+        fileName = "${character.name}_original",
         fileExtension = "webp"
     ) { saver ->
         showExportPortraitSaver = false
         saver?.let {
             scope.launch {
                 character.imageData?.let { imageId ->
-                    val portraitFile = ImageManager.getPortraitFile(imageId, character.uuid)
-                    if (platformFileSystem.exists(portraitFile)) {
-                        val bytes = platformFileSystem.read(portraitFile) { readByteArray() }
+                    val originalFile = ImageManager.getOriginalFile(imageId, character.uuid)
+                    if (platformFileSystem.exists(originalFile)) {
+                        val bytes = platformFileSystem.read(originalFile) { readByteArray() }
                         it.save(bytes)
                     }
                 }
@@ -1433,7 +1433,8 @@ fun CharacterDetailMainContent(
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                         showImagePicker = showImagePicker,
                         isDesktop = isDesktop,
-                        magicItemManager = magicItemManager
+                        magicItemManager = magicItemManager,
+                        onExportPortraitClick = onExportPortraitClick
                     )
                 }
             }
@@ -1495,7 +1496,8 @@ fun TabContent(
     onFullscreenDialogOpenChange: (Boolean) -> Unit,
     showImagePicker: () -> Unit,
     isDesktop: Boolean = false,
-    magicItemManager: MagicItemManager? = null
+    magicItemManager: MagicItemManager? = null,
+    onExportPortraitClick: () -> Unit = {}
 ) {
     when (tab) {
         CharacterTab.STATS -> {
@@ -1558,6 +1560,7 @@ fun TabContent(
                 onAvatarEditRequest = {
                     showImagePicker()
                 },
+                onExportPortraitClick = onExportPortraitClick,
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
                 forceBlurEnabled = forceBlurEnabled,

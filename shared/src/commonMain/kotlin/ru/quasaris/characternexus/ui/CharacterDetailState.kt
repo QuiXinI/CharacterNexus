@@ -451,7 +451,7 @@ class CharacterDetailState(
         val fixedBonus = applyBonuses(0, hpBonusesTotal, baseStatsMapForHP)
 
         if (isManualHP) {
-            manualMaxHp + (perLevelBonus * levelInt) + (conMod * levelInt) + fixedBonus
+            manualMaxHp + (perLevelBonus * levelInt) + fixedBonus
         } else {
             val dataToUse = hpLevelData.take(levelInt)
             val totalRolls = dataToUse.sumOf { it.rollResult ?: 0 }
