@@ -26,7 +26,10 @@ import androidx.compose.ui.unit.sp
 import characternexus.shared.generated.resources.*
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.*
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.backend.SettingsViewModel
 import dev.chrisbanes.haze.hazeEffect
 import ru.quasaris.characternexus.util.HapticType
 import ru.quasaris.characternexus.util.PlatformUtils
@@ -48,23 +51,21 @@ enum class DiceType(val sides: Int, val iconRes: DrawableResource) {
     D100(100, Res.drawable.ic_d10_dice)
 }
 
-private val HazeFabStyle = HazeStyle(
-    blurRadius = 32.dp,
-    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.15f))),
-    noiseFactor = 0f
-)
+
 
 @Composable
 fun DiceRollerFab(
     onRoll: (Map<Int, Int>) -> Unit,
     hazeState: HazeState?,
+    topHazeState: HazeState? = null,
     modifier: Modifier = Modifier,
     isOled: Boolean = false,
     alpha: Float = 1.0f,
     forceBlurEnabled: Boolean = true,
     initialOffsetX: Float = 0f,
     initialOffsetY: Float = 0f,
-    onPositionChange: (Float, Float) -> Unit = { _, _ -> }
+    onPositionChange: (Float, Float) -> Unit = { _, _ -> },
+    settingsViewModel: SettingsViewModel? = null
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     val dicePool = remember { mutableStateMapOf<Int, Int>() }
@@ -87,6 +88,7 @@ fun DiceRollerFab(
         dicePool = dicePool,
         offset = fabOffset,
         hazeState = hazeState,
+        topHazeState = topHazeState,
         isOled = isOled,
         alpha = alpha,
         forceBlurEnabled = forceBlurEnabled,
@@ -128,7 +130,8 @@ fun DiceRollerFab(
             fabOffset = IntOffset(newX.roundToInt(), newY.roundToInt())
             onPositionChange(newX, newY)
         },
-        modifier = modifier
+        modifier = modifier,
+        settingsViewModel = settingsViewModel
     )
 }
 
@@ -139,6 +142,7 @@ fun DiceRollerFabStateless(
     dicePool: Map<Int, Int>,
     offset: IntOffset,
     hazeState: HazeState?,
+    topHazeState: HazeState?,
     isOled: Boolean,
     alpha: Float,
     forceBlurEnabled: Boolean,
@@ -151,9 +155,11 @@ fun DiceRollerFabStateless(
     isDragging: Boolean = false,
     onDragEnd: () -> Unit = {},
     onPositionChange: (androidx.compose.ui.geometry.Offset) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     val density = LocalDensity.current
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
     val transition = updateTransition(targetState = isExpanded, label = "FabTransition")
 
     val radialRadius by transition.animateDp(
@@ -193,7 +199,13 @@ fun DiceRollerFabStateless(
     Box(
         modifier = modifier
             .offset { offset }
-            .size(72.dp),
+            .size(72.dp)
+            .then(
+                if (topHazeState != null) {
+                    // FAB пишет свой (уже размытый) результат для верхнего оверлея; zIndex выше экрана
+                    Modifier.hazeSource(state = topHazeState, zIndex = 1f)
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         // Контейнер для меню с "unbounded" размером позволяет костям вылетать за пределы якоря
@@ -234,6 +246,7 @@ fun DiceRollerFabStateless(
                         isOled = isOled,
                         alpha = alpha,
                         forceBlurEnabled = forceBlurEnabled,
+                        blurRadius = blurRadius,
                         onClick = { onDiceClick(dice.sides) },
                         onLongClick = { onDiceLongClick(dice.sides) }
                     )
@@ -288,7 +301,7 @@ fun DiceRollerFabStateless(
                         .wrapContentSize(unbounded = true)
                         .size(160.dp)
                         .background(surfaceColor.copy(alpha = alpha * 0.4f))
-                        .hazeEffect(state = hazeState, style = HazeFabStyle)
+                        .hazeEffect(state = hazeState, style = rememberEffectiveHazeStyle(blurRadius = blurRadius, tintAlpha = 0.15f))
                 )
             }
 
@@ -331,6 +344,7 @@ private fun DiceButton(
     isOled: Boolean,
     alpha: Float,
     forceBlurEnabled: Boolean,
+    blurRadius: Dp,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -380,7 +394,7 @@ private fun DiceButton(
                         .wrapContentSize(unbounded = true)
                         .size(80.dp)
                         .background(colorScheme.surface.copy(alpha = alpha * 0.4f))
-                        .hazeEffect(state = hazeState, style = HazeFabStyle)
+                        .hazeEffect(state = hazeState, style = rememberEffectiveHazeStyle(blurRadius = blurRadius, tintAlpha = 0.15f))
                 )
             }
 

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
@@ -181,6 +182,7 @@ fun BonusConfigDialogContent(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     PredictiveBackBox(
         onBack = onDismiss,
@@ -191,12 +193,7 @@ fun BonusConfigDialogContent(
             .fillMaxSize()
             .run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = blurRadius,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                        )
-                    }
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             },
         topBar = {
@@ -208,11 +205,11 @@ fun BonusConfigDialogContent(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
                 )
             )
         },
-        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier

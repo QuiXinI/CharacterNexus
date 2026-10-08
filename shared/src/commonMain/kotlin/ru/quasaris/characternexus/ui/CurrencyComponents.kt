@@ -214,7 +214,7 @@ fun CurrencyEditContent(
             ) {
                 // Top Full List
                 Surface(
-                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -317,7 +317,7 @@ fun CurrencyEditContent(
 
                 // Action Buttons
                 Surface(
-                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else Color.Transparent,
+                    color = Color.Transparent,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -381,7 +381,7 @@ fun CurrencyEditContent(
                 Spacer(Modifier.height(8.dp))
                 
                 Surface(
-                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -469,7 +469,7 @@ fun CurrencyEditContent(
                 Spacer(Modifier.height(8.dp))
                 
                 Surface(
-                    color = if (hazeState != null && !isOled) Color.Black.copy(alpha = 0.3f) else colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {

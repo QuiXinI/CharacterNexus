@@ -226,7 +226,7 @@ fun PotionCardItem(
                 Column(modifier = Modifier.padding(top = 12.dp)) {
                     HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
+                    ru.quasaris.characternexus.tabs.RenderMarkdownContent(
                         text = potion.description,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontSize = 15.sp,

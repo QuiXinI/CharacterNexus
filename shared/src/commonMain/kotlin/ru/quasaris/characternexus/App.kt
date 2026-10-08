@@ -8,8 +8,16 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalUriHandler
+import org.jetbrains.compose.resources.painterResource
+import characternexus.shared.generated.resources.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -37,7 +45,7 @@ import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.ui.*
-import ru.quasaris.characternexus.ui.*
+import ru.quasaris.characternexus.ui.theme.quasarisTheme
 import ru.quasaris.characternexus.ui.detail.CharacterWindow
 import ru.quasaris.characternexus.ui.util.LocalDisplayFold
 import ru.quasaris.characternexus.ui.util.rememberDisplayFold
@@ -82,6 +90,27 @@ fun App(
     val themeMode by settingsViewModel.themeMode.collectAsState()
     val themeBehavior by settingsViewModel.themeBehavior.collectAsState()
     val m3SeedColor by settingsViewModel.m3SeedColor.collectAsState()
+    val customThemeSeed by settingsViewModel.customThemeSeed.collectAsState()
+    val customUseFlexibleColors by settingsViewModel.customUseFlexibleColors.collectAsState()
+    val customPrimary by settingsViewModel.customPrimary.collectAsState()
+    val customOnPrimary by settingsViewModel.customOnPrimary.collectAsState()
+    val customPrimaryContainer by settingsViewModel.customPrimaryContainer.collectAsState()
+    val customOnPrimaryContainer by settingsViewModel.customOnPrimaryContainer.collectAsState()
+    val customSecondary by settingsViewModel.customSecondary.collectAsState()
+    val customOnSecondary by settingsViewModel.customOnSecondary.collectAsState()
+    val customSecondaryContainer by settingsViewModel.customSecondaryContainer.collectAsState()
+    val customOnSecondaryContainer by settingsViewModel.customOnSecondaryContainer.collectAsState()
+    val customTertiary by settingsViewModel.customTertiary.collectAsState()
+    val customOnTertiary by settingsViewModel.customOnTertiary.collectAsState()
+    val customTertiaryContainer by settingsViewModel.customTertiaryContainer.collectAsState()
+    val customOnTertiaryContainer by settingsViewModel.customOnTertiaryContainer.collectAsState()
+    val customBackground by settingsViewModel.customBackground.collectAsState()
+    val customOnBackground by settingsViewModel.customOnBackground.collectAsState()
+    val customSurface by settingsViewModel.customSurface.collectAsState()
+    val customOnSurface by settingsViewModel.customOnSurface.collectAsState()
+    val customSurfaceVariant by settingsViewModel.customSurfaceVariant.collectAsState()
+    val customOnSurfaceVariant by settingsViewModel.customOnSurfaceVariant.collectAsState()
+    val customOutline by settingsViewModel.customOutline.collectAsState()
     var lastCharacterUuid by remember { mutableStateOf(initialLastCharacterUuid) }
     val safeMagicItemManager = magicItemManager ?: remember { MagicItemManager(moduleManager) }
 
@@ -107,6 +136,7 @@ fun App(
 
     val hazeState = remember { HazeState() }
     val overlayHazeState = remember { HazeState() }
+    val topOverlayHazeState = remember { HazeState() }
 
     val characters: SnapshotStateList<CharacterSummary> = remember {
         mutableStateListOf<CharacterSummary>().apply {
@@ -135,514 +165,593 @@ fun App(
                 themeBehavior = themeBehavior,
                 themeMode = themeMode,
                 avatarColor = avatarColor,
-                m3SeedColor = m3SeedColor
+                m3SeedColor = m3SeedColor,
+                customThemeSeed = customThemeSeed,
+                customUseFlexibleColors = customUseFlexibleColors,
+                customPrimary = customPrimary,
+                customOnPrimary = customOnPrimary,
+                customPrimaryContainer = customPrimaryContainer,
+                customOnPrimaryContainer = customOnPrimaryContainer,
+                customSecondary = customSecondary,
+                customOnSecondary = customOnSecondary,
+                customSecondaryContainer = customSecondaryContainer,
+                customOnSecondaryContainer = customOnSecondaryContainer,
+                customTertiary = customTertiary,
+                customOnTertiary = customOnTertiary,
+                customTertiaryContainer = customTertiaryContainer,
+                customOnTertiaryContainer = customOnTertiaryContainer,
+                customBackground = customBackground,
+                customOnBackground = customOnBackground,
+                customSurface = customSurface,
+                customOnSurface = customOnSurface,
+                customSurfaceVariant = customSurfaceVariant,
+                customOnSurfaceVariant = customOnSurfaceVariant,
+                customOutline = customOutline
             ) {
-            val colorScheme = MaterialTheme.colorScheme
-            val isOled = colorScheme.background == Color.Black
+                val colorScheme = MaterialTheme.colorScheme
+                val isOled = colorScheme.background == Color.Black
 
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .onKeyEvent {
-                        if (it.type == KeyEventType.KeyDown && it.key == Key.Tab) {
-                            GlobalActionRegistry.toggleDrawer()
-                            true
-                        } else {
-                            false
-                        }
-                    },
-                color = colorScheme.background,
-                contentColor = colorScheme.onBackground
-            ) {
-                val navController = rememberNavController()
-                val focusManager = LocalFocusManager.current
-                val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-                val scope = rememberCoroutineScope()
-
-                // Global back navigation registration
-                val canPop = navController.previousBackStackEntry != null
-                BackHandler(enabled = drawerState.isOpen) {
-                    scope.launch { drawerState.close() }
-                }
-
-                // Clear focus when destination changes
-                LaunchedEffect(navController) {
-                    navController.currentBackStackEntryFlow.collect {
-                        focusManager.clearFocus()
-                    }
-                }
-
-                var fullscreenDialogCount by remember { mutableIntStateOf(0) }
-                val isFullscreenDialogOpen = fullscreenDialogCount > 0
-                val onFullscreenDialogOpenChange: (Boolean) -> Unit = remember {
-                    { opened ->
-                        if (opened) fullscreenDialogCount++
-                        else fullscreenDialogCount = maxOf(0, fullscreenDialogCount - 1)
-                    }
-                }
-
-                // Register global drawer toggle
-                LaunchedEffect(drawerState) {
-                    GlobalActionRegistry.onToggleDrawer = {
-                        scope.launch {
-                            if (drawerState.isOpen) drawerState.close() else drawerState.open()
-                        }
-                    }
-                }
-
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
-
-                val animDuration = 550
-                val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
-
-                Box(modifier = Modifier.fillMaxSize()) {
-                    // Layer 1: Global Background Source (for cards)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
-                            .hazeSource(state = hazeState)
-                    )
-
-                    // Layer 2: Main UI Source (for popups, FAB and dragged items)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .hazeSource(state = overlayHazeState)
-                    ) {
-                        ModalNavigationDrawer(
-                            drawerState = drawerState,
-                            gesturesEnabled = true, // Enabled globally
-                            drawerContent = {
-                                ModalDrawerSheet {
-                                    Spacer(Modifier.height(12.dp))
-                                    NavigationDrawerItem(
-                                        label = { Text("Главный экран") },
-                                        selected = currentRoute == "menu",
-                                        onClick = {
-                                            scope.launch {
-                                                drawerState.close()
-                                                if (currentRoute != "menu") {
-                                                    NavigationPathManager.clear()
-                                                    navController.navigate("menu") {
-                                                        popUpTo("menu") { inclusive = true }
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Default.Person, null) },
-                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                    )
-
-                                    if (lastCharacterUuid != null) {
-                                        NavigationDrawerItem(
-                                            label = { Text("Последний персонаж") },
-                                            selected = false,
-                                            onClick = {
-                                                scope.launch {
-                                                    drawerState.close()
-                                                    val lastChar = characters.find { it.uuid == lastCharacterUuid }
-                                                    if (lastChar != null) {
-                                                        navController.navigate("edit/${lastChar.uuid}")
-                                                    }
-                                                }
-                                            },
-                                            icon = { Icon(Icons.Default.History, null) },
-                                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                        )
-                                    }
-
-                                    NavigationDrawerItem(
-                                        label = { Text("Настройки") },
-                                        selected = currentRoute == "settings",
-                                        onClick = {
-                                            scope.launch {
-                                                drawerState.close()
-                                                if (currentRoute != "settings") {
-                                                    NavigationPathManager.clear()
-                                                    navController.navigate("settings")
-                                                }
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Default.Settings, null) },
-                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                    )
-
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 28.dp))
-
-                                    NavigationDrawerItem(
-                                        label = { Text("Справочник формул") },
-                                        selected = currentRoute == "formula_info",
-                                        onClick = {
-                                            scope.launch {
-                                                drawerState.close()
-                                                if (currentRoute != "formula_info") {
-                                                    navController.navigate("formula_info")
-                                                }
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Default.Functions, null) },
-                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                    )
-
-                                    // GLOSSARY with Hierarchy
-                                    NavigationDrawerItem(
-                                        label = { Text("Глоссарий") },
-                                        selected = currentRoute == "glossary",
-                                        onClick = {
-                                            scope.launch {
-                                                drawerState.close()
-                                                NavigationPathManager.clear()
-                                                navController.navigate("glossary") {
-                                                    popUpTo("glossary") { inclusive = true }
-                                                }
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Default.HistoryEdu, null) },
-                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                    )
-                                    
-                                    if (NavigationPathManager.currentSection == "glossary") {
-                                        val fullPath = NavigationPathManager.path
-                                        fullPath.dropLast(1).forEach { node ->
-                                            if (node.level == 0 && (node.id == "hub" || node.id == "modules")) return@forEach
-                                            
-                                            NavigationDrawerItem(
-                                                label = { Text(node.label, fontWeight = FontWeight.Normal) },
-                                                selected = false,
-                                                onClick = {
-                                                    scope.launch {
-                                                        drawerState.close()
-                                                        node.onClick?.invoke()
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .padding(NavigationDrawerItemDefaults.ItemPadding)
-                                                    .padding(start = (node.level * 16).dp)
-                                            )
-                                        }
-                                    }
-
-                                    // MODULES with Hierarchy
-                                    NavigationDrawerItem(
-                                        label = { Text("Модули") },
-                                        selected = currentRoute == "modules",
-                                        onClick = {
-                                            scope.launch {
-                                                drawerState.close()
-                                                NavigationPathManager.clear()
-                                                navController.navigate("modules") {
-                                                    popUpTo("modules") { inclusive = true }
-                                                }
-                                            }
-                                        },
-                                        icon = { Icon(Icons.Default.Extension, null) },
-                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                                    )
-
-                                    if (NavigationPathManager.currentSection == "modules") {
-                                        val fullPath = NavigationPathManager.path
-                                        fullPath.dropLast(1).forEach { node ->
-                                            if (node.level == 0 && (node.id == "modules" || node.id == "hub")) return@forEach
-
-                                            NavigationDrawerItem(
-                                                label = { Text(node.label, fontWeight = FontWeight.Normal) },
-                                                selected = false,
-                                                onClick = {
-                                                    scope.launch {
-                                                        drawerState.close()
-                                                        node.onClick?.invoke()
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .padding(NavigationDrawerItemDefaults.ItemPadding)
-                                                    .padding(start = (node.level * 16).dp)
-                                            )
-                                        }
-                                    }
-                                }
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onKeyEvent {
+                            if (it.type == KeyEventType.KeyDown && it.key == Key.Tab) {
+                                GlobalActionRegistry.toggleDrawer()
+                                true
+                            } else {
+                                false
                             }
-                        ) {
-                            PredictiveBackBox(
-                                enabled = canPop && !drawerState.isOpen,
-                                onBack = { navController.popBackStack() },
-                                modifier = Modifier.fillMaxSize()
-                            ) { _ ->
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = Color.Transparent,
-                                ) {
-                                    NavHost(
-                                    navController = navController,
-                                    startDestination = "menu",
-                                    enterTransition = {
-                                        slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                                    },
-                                    exitTransition = {
-                                        slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                                    },
-                                    popEnterTransition = {
-                                        slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
-                                    },
-                                    popExitTransition = {
-                                        slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
-                                    }
-                                ) {
-                                    composable("menu") {
-                                        val folders by characterRepository.foldersState.collectAsState()
-                                        val globalOrder by characterRepository.globalOrderState.collectAsState()
+                        },
+                    color = colorScheme.background,
+                    contentColor = colorScheme.onBackground
+                ) {
+                    val navController = rememberNavController()
+                    val focusManager = LocalFocusManager.current
+                    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+                    val scope = rememberCoroutineScope()
 
-                                        MenuWindow(
-                                            characters = characters,
-                                            folders = folders,
-                                            globalOrder = globalOrder,
-                                            onNavigateToCreate = { navController.navigate("create_setup") },
-                                            onCharacterClick = { characterUuid ->
-                                                val char = characters.find { it.uuid == characterUuid }
-                                                if (char != null) {
-                                                    lastCharacterUuid = char.uuid
-                                                    onCharacterUuidChange(char.uuid)
-                                                    onSeedColorChange(char.themeSeedColorArgb)
-                                                    navController.navigate("edit/${char.uuid}")
-                                                }
-                                            },
-                                            onImportCharacter = { importedCharacter ->
-                                                updateCharacter(importedCharacter)
-                                                characters.clear()
-                                                characters.addAll(loadCharacters())
-                                            },
-                                            onDeleteCharacters = { uuidsToDelete ->
-                                                uuidsToDelete.forEach { deleteCharacter(it) }
-                                                characters.removeAll { it.uuid in uuidsToDelete }
-                                                if (characters.none { it.uuid == lastCharacterUuid }) {
-                                                    lastCharacterUuid = null
-                                                    onCharacterUuidChange(null)
-                                                }
-                                            },
-                                            getFullCharacter = getFullCharacter,
-                                            onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            onCreateFolder = { name, color -> characterRepository.createFolder(name, color) },
-                                            onAddFolder = { folder -> characterRepository.addFolder(folder) },
-                                            onUpdateFolder = { folder -> characterRepository.updateFolder(folder) },
-                                            onDeleteFolder = { uuid, delChars -> characterRepository.deleteFolder(uuid, delChars) },
-                                            onMoveCharactersToFolder = { uuids, folderUuid, afterUuid -> 
-                                                characterRepository.moveCharactersToFolder(uuids, folderUuid, afterUuid)
-                                            },
-                                            onMoveFolderToFolder = { uuid, folderUuid, afterUuid ->
-                                                characterRepository.moveFolderToFolder(uuid, folderUuid, afterUuid)
-                                            },
-                                            onToggleFolderExpansion = { uuid -> characterRepository.toggleFolderExpansion(uuid) },
-                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                            settingsViewModel = settingsViewModel,
-                                            hazeState = hazeState,
-                                            popupHazeState = overlayHazeState,
-                                            forceBlurEnabled = effectiveBlurFullscreen,
-                                            blurPopups = effectiveBlurPopups
-                                        )
-                                    }
+                    // Global back navigation registration
+                    val canPop = navController.previousBackStackEntry != null
+                    BackHandler(enabled = drawerState.isOpen) {
+                        scope.launch { drawerState.close() }
+                    }
 
-                                    composable("settings") {
-                                        SettingsWindow(
-                                            onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            settingsViewModel = settingsViewModel,
-                                            hazeState = hazeState,
-                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                            onCleanupDuplicateFolders = { characterRepository.cleanupDuplicateFolders() }
-                                        )
-                                    }
+                    // Clear focus when destination changes
+                    LaunchedEffect(navController) {
+                        navController.currentBackStackEntryFlow.collect {
+                            focusManager.clearFocus()
+                        }
+                    }
 
-                                    composable("formula_info") {
-                                        FormulaInfoWindow(
-                                            onNavigateBack = { navController.popBackStack() }
-                                        )
-                                    }
+                    var fullscreenDialogCount by remember { mutableIntStateOf(0) }
+                    val isFullscreenDialogOpen = fullscreenDialogCount > 0
+                    val onFullscreenDialogOpenChange: (Boolean) -> Unit = remember {
+                        { opened ->
+                            if (opened) fullscreenDialogCount++
+                            else fullscreenDialogCount = maxOf(0, fullscreenDialogCount - 1)
+                        }
+                    }
 
-                                    composable("spellbook") {
-                                        if (spellbookManager != null && glossaryImporter != null) {
-                                            SpellbookWindow(
-                                                spellbookManager = spellbookManager,
-                                                glossaryImporter = glossaryImporter,
-                                                onOpenDrawer = { scope.launch { drawerState.open() } },
-                                                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                                forceBlurEnabled = effectiveBlurFullscreen,
-                                                settingsViewModel = settingsViewModel
-                                            )
-                                        }
-                                    }
-
-                                    composable("glossary") {
-                                        if (spellbookManager != null && moduleManager != null) {
-                                            GlossaryWindow(
-                                                spellbookManager = spellbookManager,
-                                                moduleManager = moduleManager,
-                                                magicItemManager = safeMagicItemManager,
-                                                onOpenDrawer = { scope.launch { drawerState.open() } },
-                                                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                                forceBlurEnabled = effectiveBlurFullscreen,
-                                                settingsViewModel = settingsViewModel
-                                            )
-                                        }
-                                    }
-
-                                    composable("modules") {
-                                        if (moduleManager != null && glossaryImporter != null && spellbookManager != null) {
-                                            ModulesWindow(
-                                                moduleManager = moduleManager,
-                                                spellbookManager = spellbookManager,
-                                                glossaryImporter = glossaryImporter,
-                                                onOpenDrawer = { scope.launch { drawerState.open() } },
-                                                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                                forceBlurEnabled = effectiveBlurFullscreen,
-                                                settingsViewModel = settingsViewModel
-                                            )
-                                        }
-                                    }
-
-                                    composable("create_setup") {
-                                        CharacterCreationWindow(
-                                            onNavigateBack = { navController.popBackStack() },
-                                            onCharacterCreate = { newChar ->
-                                                updateCharacter(newChar)
-                                                characters.clear()
-                                                characters.addAll(loadCharacters())
-                                                lastCharacterUuid = newChar.uuid
-                                                onCharacterUuidChange(newChar.uuid)
-                                                onSeedColorChange(newChar.themeSeedColorArgb)
-                                                navController.navigate("edit/${newChar.uuid}") {
-                                                    popUpTo("menu")
-                                                }
-                                            },
-                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                            hazeState = hazeState,
-                                            popupHazeState = overlayHazeState,
-                                            forceBlurEnabled = effectiveBlurFullscreen,
-                                            blurPopups = effectiveBlurPopups
-                                        )
-                                    }
-
-                                    composable(
-                                        route = "edit/{characterUuid}",
-                                        arguments = listOf(navArgument("characterUuid") { type = NavType.StringType })
-                                    ) { backStackEntry ->
-                                        val characterUuid = backStackEntry.arguments?.read { getString("characterUuid") }
-                                        var character by remember { mutableStateOf<Character?>(null) }
-
-                                        LaunchedEffect(characterUuid) {
-                                            if (characterUuid != null) {
-                                                character = getFullCharacter(characterUuid)
-                                            }
-                                        }
-
-                                        CharacterWindow(
-                                            character = character,
-                                            onNavigateBack = {
-                                                characterRepository.flush()
-                                                navController.popBackStack()
-                                            },
-                                            onOpenDrawer = { scope.launch { drawerState.open() } },
-                                            onDeleteCharacter = { charToDelete ->
-                                                deleteCharacter(charToDelete.uuid)
-                                                characters.removeAll { it.uuid == charToDelete.uuid }
-                                                if (lastCharacterUuid == charToDelete.uuid) {
-                                                    lastCharacterUuid = null
-                                                    onCharacterUuidChange(null)
-                                                }
-                                                navController.popBackStack()
-                                            },
-                                            onSaveChanges = { updatedCharacter ->
-                                                updateCharacter(updatedCharacter)
-                                                if (character?.uuid == updatedCharacter.uuid) {
-                                                    character = updatedCharacter
-                                                }
-                                                val index = characters.indexOfFirst { it.uuid == updatedCharacter.uuid }
-                                                if (index != -1) {
-                                                    val newSummary = updatedCharacter.toSummary(characters[index].folderUuid)
-                                                    if (characters[index] != newSummary) {
-                                                        characters[index] = newSummary
-                                                    }
-                                                    if (updatedCharacter.uuid == lastCharacterUuid) {
-                                                        onSeedColorChange(updatedCharacter.themeSeedColorArgb)
-                                                    }
-                                                }
-                                            },
-                                            onRoll = { res ->
-                                                val hapticType = when {
-                                                    res.isCriticalSuccess -> HapticType.SUCCESS
-                                                    res.isCriticalFailure -> HapticType.ERROR
-                                                    else -> HapticType.CLICK
-                                                }
-                                                PlatformUtils.performHapticFeedback(hapticType)
-                                                rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
-                                            },
-                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                            hazeState = hazeState,
-                                            popupHazeState = overlayHazeState,
-                                            forceBlurEnabled = effectiveBlurFullscreen,
-                                            blurPopups = effectiveBlurPopups,
-                                            settingsViewModel = settingsViewModel,
-                                            spellbookManager = spellbookManager,
-                                            magicItemManager = safeMagicItemManager
-                                        )
-                                    }
-                                }
+                    // Register global drawer toggle
+                    LaunchedEffect(drawerState) {
+                        GlobalActionRegistry.onToggleDrawer = {
+                            scope.launch {
+                                if (drawerState.isOpen) drawerState.close() else drawerState.open()
                             }
                         }
                     }
-                    }
 
-                    // OVERLAYS - Moved outside hazeSource for overlayHazeState to avoid StackOverflow loop
-                    val density = LocalDensity.current
-                    val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
-                    val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true
+                    val navBackStackEntry by navController.currentBackStackEntryAsState()
+                    val currentRoute = navBackStackEntry?.destination?.route
 
-                    if (!isKeyboardVisible && diceFabEnabled && isOnCharacterScreen && !isFullscreenDialogOpen) {
-                        DiceRollerFab(
-                            onRoll = { pool: Map<Int, Int> ->
-                                val res = DiceRoller.rollPool(pool)
-                                val hapticType = when {
-                                    res.isCriticalSuccess -> HapticType.SUCCESS
-                                    res.isCriticalFailure -> HapticType.ERROR
-                                    else -> HapticType.CLICK
-                                }
-                                PlatformUtils.performHapticFeedback(hapticType)
-                                rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
-                            },
-                            hazeState = overlayHazeState,
-                            modifier = Modifier.align(Alignment.BottomEnd),
-                            isOled = isOled,
-                            alpha = diceFabAlpha,
-                            forceBlurEnabled = masterBlurEnabled && diceFabBlurEnabled,
-                            initialOffsetX = diceFabOffsetX * density.density,
-                            initialOffsetY = diceFabOffsetY * density.density,
-                            onPositionChange = { x, y ->
-                                settingsViewModel.updateDiceFabPosition(
-                                    x / density.density,
-                                    y / density.density
-                                )
-                            }
-                        )
-                    }
+                    val animDuration = 550
+                    val navHostOffsetSpec = tween<IntOffset>(durationMillis = animDuration, easing = FastOutSlowInEasing)
 
-                    if (rollHistory.isNotEmpty() && isOnCharacterScreen && !isKeyboardVisible && !isFullscreenDialogOpen) {
-                        DiceRollOverlay(
-                            history = rollHistory,
-                            onClose = { rollHistory = emptyList() },
-                            themeMode = themeMode,
-                            forceBlurEnabled = effectiveBlurRolls,
-                            hazeState = overlayHazeState,
-                            alpha = if (effectiveBlurRolls) 0f else rollAlpha,
-                            isPassThrough = rollPassThrough,
-                            position = rollPosition,
-                            closeButtonPosition = rollCloseButtonPos,
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Layer 1: Global Background Source (for cards)
+                        Box(
                             modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .navigationBarsPadding()
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background)
+                                .hazeSource(state = hazeState)
                         )
+
+                        // Layer 2: Main UI Source (for popups, FAB, dragged items and dice result overlay)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .hazeSource(state = topOverlayHazeState, zIndex = 0f)
+                                .hazeSource(state = overlayHazeState, zIndex = 0f)
+                        ) {
+                            ModalNavigationDrawer(
+                                drawerState = drawerState,
+                                gesturesEnabled = true, // Enabled globally
+                                drawerContent = {
+                                    ModalDrawerSheet {
+                                        val uriHandler = LocalUriHandler.current
+                                        val colorScheme = MaterialTheme.colorScheme
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .padding(vertical = 12.dp),
+                                            verticalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .verticalScroll(rememberScrollState())
+                                            ) {
+                                                Spacer(Modifier.height(4.dp))
+                                                NavigationDrawerItem(
+                                                    label = { Text("Главный экран") },
+                                                    selected = currentRoute == "menu",
+                                                    onClick = {
+                                                        scope.launch {
+                                                            drawerState.close()
+                                                            if (currentRoute != "menu") {
+                                                                NavigationPathManager.clear()
+                                                                navController.navigate("menu") {
+                                                                    popUpTo("menu") { inclusive = true }
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    icon = { Icon(Icons.Default.Person, null) },
+                                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                )
+
+                                                if (lastCharacterUuid != null) {
+                                                    NavigationDrawerItem(
+                                                        label = { Text("Последний персонаж") },
+                                                        selected = false,
+                                                        onClick = {
+                                                            scope.launch {
+                                                                drawerState.close()
+                                                                val lastChar = characters.find { it.uuid == lastCharacterUuid }
+                                                                if (lastChar != null) {
+                                                                    navController.navigate("edit/${lastChar.uuid}")
+                                                                }
+                                                            }
+                                                        },
+                                                        icon = { Icon(Icons.Default.History, null) },
+                                                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                    )
+                                                }
+
+                                                NavigationDrawerItem(
+                                                    label = { Text("Настройки") },
+                                                    selected = currentRoute == "settings",
+                                                    onClick = {
+                                                        scope.launch {
+                                                            drawerState.close()
+                                                            if (currentRoute != "settings") {
+                                                                NavigationPathManager.clear()
+                                                                navController.navigate("settings")
+                                                            }
+                                                        }
+                                                    },
+                                                    icon = { Icon(Icons.Default.Settings, null) },
+                                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                )
+
+                                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 28.dp))
+
+                                                NavigationDrawerItem(
+                                                    label = { Text("Справочник формул") },
+                                                    selected = currentRoute == "formula_info",
+                                                    onClick = {
+                                                        scope.launch {
+                                                            drawerState.close()
+                                                            if (currentRoute != "formula_info") {
+                                                                navController.navigate("formula_info")
+                                                            }
+                                                        }
+                                                    },
+                                                    icon = { Icon(Icons.Default.Functions, null) },
+                                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                )
+
+                                                // GLOSSARY with Hierarchy
+                                                NavigationDrawerItem(
+                                                    label = { Text("Глоссарий") },
+                                                    selected = currentRoute == "glossary",
+                                                    onClick = {
+                                                        scope.launch {
+                                                            drawerState.close()
+                                                            NavigationPathManager.clear()
+                                                            navController.navigate("glossary") {
+                                                                popUpTo("glossary") { inclusive = true }
+                                                            }
+                                                        }
+                                                    },
+                                                    icon = { Icon(Icons.Default.HistoryEdu, null) },
+                                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                )
+
+                                                if (NavigationPathManager.currentSection == "glossary") {
+                                                    val fullPath = NavigationPathManager.path
+                                                    fullPath.dropLast(1).forEach { node ->
+                                                        if (node.level == 0 && (node.id == "hub" || node.id == "modules")) return@forEach
+
+                                                        NavigationDrawerItem(
+                                                            label = { Text(node.label, fontWeight = FontWeight.Normal) },
+                                                            selected = false,
+                                                            onClick = {
+                                                                scope.launch {
+                                                                    drawerState.close()
+                                                                    node.onClick?.invoke()
+                                                                }
+                                                            },
+                                                            modifier = Modifier
+                                                                .padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                                .padding(start = (node.level * 16).dp)
+                                                        )
+                                                    }
+                                                }
+
+                                                // MODULES with Hierarchy
+                                                NavigationDrawerItem(
+                                                    label = { Text("Модули") },
+                                                    selected = currentRoute == "modules",
+                                                    onClick = {
+                                                        scope.launch {
+                                                            drawerState.close()
+                                                            NavigationPathManager.clear()
+                                                            navController.navigate("modules") {
+                                                                popUpTo("modules") { inclusive = true }
+                                                            }
+                                                        }
+                                                    },
+                                                    icon = { Icon(Icons.Default.Extension, null) },
+                                                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                )
+
+                                                if (NavigationPathManager.currentSection == "modules") {
+                                                    val fullPath = NavigationPathManager.path
+                                                    fullPath.dropLast(1).forEach { node ->
+                                                        if (node.level == 0 && (node.id == "modules" || node.id == "hub")) return@forEach
+
+                                                        NavigationDrawerItem(
+                                                            label = { Text(node.label, fontWeight = FontWeight.Normal) },
+                                                            selected = false,
+                                                            onClick = {
+                                                                scope.launch {
+                                                                    drawerState.close()
+                                                                    node.onClick?.invoke()
+                                                                }
+                                                            },
+                                                            modifier = Modifier
+                                                                .padding(NavigationDrawerItemDefaults.ItemPadding)
+                                                                .padding(start = (node.level * 16).dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            // Bottom Social Links Row
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 12.dp),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Image(
+                                                        painter = painterResource(Res.drawable.ic_github),
+                                                        contentDescription = "GitHub",
+                                                        colorFilter = ColorFilter.tint(colorScheme.primary),
+                                                        modifier = Modifier
+                                                            .size(28.dp)
+                                                            .clickable { uriHandler.openUri("https://github.com/QuiXinI/CharacterNexus") }
+                                                    )
+                                                    Image(
+                                                        painter = painterResource(Res.drawable.ic_reddit),
+                                                        contentDescription = "Reddit",
+                                                        colorFilter = ColorFilter.tint(colorScheme.primary),
+                                                        modifier = Modifier
+                                                            .size(28.dp)
+                                                            .clickable { uriHandler.openUri("https://www.reddit.com/r/CharacterNexus/") }
+                                                    )
+                                                    Image(
+                                                        painter = painterResource(Res.drawable.ic_telegram),
+                                                        contentDescription = "Telegram",
+                                                        colorFilter = ColorFilter.tint(colorScheme.primary),
+                                                        modifier = Modifier
+                                                            .size(28.dp)
+                                                            .clickable { uriHandler.openUri("https://t.me/CharacterNexus") }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ) {
+                                PredictiveBackBox(
+                                    enabled = canPop && !drawerState.isOpen,
+                                    onBack = { navController.popBackStack() },
+                                    modifier = Modifier.fillMaxSize()
+                                ) { _ ->
+                                    Surface(
+                                        modifier = Modifier.fillMaxSize(),
+                                        color = Color.Transparent,
+                                    ) {
+                                        NavHost(
+                                            navController = navController,
+                                            startDestination = "menu",
+                                            enterTransition = {
+                                                slideInHorizontally(initialOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                                            },
+                                            exitTransition = {
+                                                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                                            },
+                                            popEnterTransition = {
+                                                slideInHorizontally(initialOffsetX = { -it }, animationSpec = navHostOffsetSpec)
+                                            },
+                                            popExitTransition = {
+                                                slideOutHorizontally(targetOffsetX = { it }, animationSpec = navHostOffsetSpec)
+                                            }
+                                        ) {
+                                            composable("menu") {
+                                                val folders by characterRepository.foldersState.collectAsState()
+                                                val globalOrder by characterRepository.globalOrderState.collectAsState()
+
+                                                MenuWindow(
+                                                    characters = characters,
+                                                    folders = folders,
+                                                    globalOrder = globalOrder,
+                                                    onNavigateToCreate = { navController.navigate("create_setup") },
+                                                    onCharacterClick = { characterUuid ->
+                                                        val char = characters.find { it.uuid == characterUuid }
+                                                        if (char != null) {
+                                                            lastCharacterUuid = char.uuid
+                                                            onCharacterUuidChange(char.uuid)
+                                                            onSeedColorChange(char.themeSeedColorArgb)
+                                                            navController.navigate("edit/${char.uuid}")
+                                                        }
+                                                    },
+                                                    onImportCharacter = { importedCharacter ->
+                                                        updateCharacter(importedCharacter)
+                                                        characters.clear()
+                                                        characters.addAll(loadCharacters())
+                                                    },
+                                                    onDeleteCharacters = { uuidsToDelete ->
+                                                        uuidsToDelete.forEach { deleteCharacter(it) }
+                                                        characters.removeAll { it.uuid in uuidsToDelete }
+                                                        if (characters.none { it.uuid == lastCharacterUuid }) {
+                                                            lastCharacterUuid = null
+                                                            onCharacterUuidChange(null)
+                                                        }
+                                                    },
+                                                    getFullCharacter = getFullCharacter,
+                                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                    onCreateFolder = { name, color -> characterRepository.createFolder(name, color) },
+                                                    onAddFolder = { folder -> characterRepository.addFolder(folder) },
+                                                    onUpdateFolder = { folder -> characterRepository.updateFolder(folder) },
+                                                    onDeleteFolder = { uuid, delChars -> characterRepository.deleteFolder(uuid, delChars) },
+                                                    onMoveCharactersToFolder = { uuids, folderUuid, afterUuid ->
+                                                        characterRepository.moveCharactersToFolder(uuids, folderUuid, afterUuid)
+                                                    },
+                                                    onMoveFolderToFolder = { uuid, folderUuid, afterUuid ->
+                                                        characterRepository.moveFolderToFolder(uuid, folderUuid, afterUuid)
+                                                    },
+                                                    onToggleFolderExpansion = { uuid -> characterRepository.toggleFolderExpansion(uuid) },
+                                                    onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                    settingsViewModel = settingsViewModel,
+                                                    hazeState = hazeState,
+                                                    popupHazeState = overlayHazeState,
+                                                    forceBlurEnabled = effectiveBlurFullscreen,
+                                                    blurPopups = effectiveBlurPopups
+                                                )
+                                            }
+
+                                            composable("settings") {
+                                                SettingsWindow(
+                                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                    settingsViewModel = settingsViewModel,
+                                                    hazeState = hazeState,
+                                                    onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                    onCleanupDuplicateFolders = { characterRepository.cleanupDuplicateFolders() }
+                                                )
+                                            }
+
+                                            composable("formula_info") {
+                                                FormulaInfoWindow(
+                                                    onNavigateBack = { navController.popBackStack() }
+                                                )
+                                            }
+
+                                            composable("spellbook") {
+                                                if (spellbookManager != null && glossaryImporter != null) {
+                                                    SpellbookWindow(
+                                                        spellbookManager = spellbookManager,
+                                                        glossaryImporter = glossaryImporter,
+                                                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                        forceBlurEnabled = effectiveBlurFullscreen,
+                                                        settingsViewModel = settingsViewModel
+                                                    )
+                                                }
+                                            }
+
+                                            composable("glossary") {
+                                                if (spellbookManager != null && moduleManager != null) {
+                                                    GlossaryWindow(
+                                                        spellbookManager = spellbookManager,
+                                                        moduleManager = moduleManager,
+                                                        magicItemManager = safeMagicItemManager,
+                                                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                        forceBlurEnabled = effectiveBlurFullscreen,
+                                                        settingsViewModel = settingsViewModel
+                                                    )
+                                                }
+                                            }
+
+                                            composable("modules") {
+                                                if (moduleManager != null && glossaryImporter != null && spellbookManager != null) {
+                                                    ModulesWindow(
+                                                        moduleManager = moduleManager,
+                                                        spellbookManager = spellbookManager,
+                                                        glossaryImporter = glossaryImporter,
+                                                        onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                        forceBlurEnabled = effectiveBlurFullscreen,
+                                                        settingsViewModel = settingsViewModel
+                                                    )
+                                                }
+                                            }
+
+                                            composable("create_setup") {
+                                                CharacterCreationWindow(
+                                                    onNavigateBack = { navController.popBackStack() },
+                                                    onCharacterCreate = { newChar ->
+                                                        updateCharacter(newChar)
+                                                        characters.clear()
+                                                        characters.addAll(loadCharacters())
+                                                        lastCharacterUuid = newChar.uuid
+                                                        onCharacterUuidChange(newChar.uuid)
+                                                        onSeedColorChange(newChar.themeSeedColorArgb)
+                                                        navController.navigate("edit/${newChar.uuid}") {
+                                                            popUpTo("menu")
+                                                        }
+                                                    },
+                                                    onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                    hazeState = hazeState,
+                                                    popupHazeState = overlayHazeState,
+                                                    forceBlurEnabled = effectiveBlurFullscreen,
+                                                    blurPopups = effectiveBlurPopups
+                                                )
+                                            }
+
+                                            composable(
+                                                route = "edit/{characterUuid}",
+                                                arguments = listOf(navArgument("characterUuid") { type = NavType.StringType })
+                                            ) { backStackEntry ->
+                                                val characterUuid = backStackEntry.arguments?.read { getString("characterUuid") }
+                                                var character by remember { mutableStateOf<Character?>(null) }
+
+                                                LaunchedEffect(characterUuid) {
+                                                    if (characterUuid != null) {
+                                                        character = getFullCharacter(characterUuid)
+                                                    }
+                                                }
+
+                                                CharacterWindow(
+                                                    character = character,
+                                                    onNavigateBack = {
+                                                        characterRepository.flush()
+                                                        navController.popBackStack()
+                                                    },
+                                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                                    onDeleteCharacter = { charToDelete ->
+                                                        deleteCharacter(charToDelete.uuid)
+                                                        characters.removeAll { it.uuid == charToDelete.uuid }
+                                                        if (lastCharacterUuid == charToDelete.uuid) {
+                                                            lastCharacterUuid = null
+                                                            onCharacterUuidChange(null)
+                                                        }
+                                                        navController.popBackStack()
+                                                    },
+                                                    onSaveChanges = { updatedCharacter ->
+                                                        updateCharacter(updatedCharacter)
+                                                        if (character?.uuid == updatedCharacter.uuid) {
+                                                            character = updatedCharacter
+                                                        }
+                                                        val index = characters.indexOfFirst { it.uuid == updatedCharacter.uuid }
+                                                        if (index != -1) {
+                                                            val newSummary = updatedCharacter.toSummary(characters[index].folderUuid)
+                                                            if (characters[index] != newSummary) {
+                                                                characters[index] = newSummary
+                                                            }
+                                                            if (updatedCharacter.uuid == lastCharacterUuid) {
+                                                                onSeedColorChange(updatedCharacter.themeSeedColorArgb)
+                                                            }
+                                                        }
+                                                    },
+                                                    onRoll = { res ->
+                                                        val hapticType = when {
+                                                            res.isCriticalSuccess -> HapticType.SUCCESS
+                                                            res.isCriticalFailure -> HapticType.ERROR
+                                                            else -> HapticType.CLICK
+                                                        }
+                                                        PlatformUtils.performHapticFeedback(hapticType)
+                                                        rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
+                                                    },
+                                                    onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                                    hazeState = hazeState,
+                                                    popupHazeState = overlayHazeState,
+                                                    forceBlurEnabled = effectiveBlurFullscreen,
+                                                    blurPopups = effectiveBlurPopups,
+                                                    settingsViewModel = settingsViewModel,
+                                                    spellbookManager = spellbookManager,
+                                                    magicItemManager = safeMagicItemManager
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // OVERLAYS - Moved outside hazeSource for overlayHazeState to avoid StackOverflow loop
+                        val density = LocalDensity.current
+                        val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
+                        val isOnCharacterScreen = currentRoute?.startsWith("edit/") == true
+
+                        if (!isKeyboardVisible && diceFabEnabled && isOnCharacterScreen && !isFullscreenDialogOpen) {
+                            DiceRollerFab(
+                                onRoll = { pool: Map<Int, Int> ->
+                                    val res = DiceRoller.rollPool(pool)
+                                    val hapticType = when {
+                                        res.isCriticalSuccess -> HapticType.SUCCESS
+                                        res.isCriticalFailure -> HapticType.ERROR
+                                        else -> HapticType.CLICK
+                                    }
+                                    PlatformUtils.performHapticFeedback(hapticType)
+                                    rollHistory = (listOf(res) + rollHistory).take(maxOf(1, historyLimit))
+                                },
+                                hazeState = overlayHazeState,
+                                topHazeState = topOverlayHazeState,
+                                modifier = Modifier.align(Alignment.BottomEnd),
+                                isOled = isOled,
+                                alpha = diceFabAlpha,
+                                forceBlurEnabled = masterBlurEnabled && diceFabBlurEnabled,
+                                initialOffsetX = diceFabOffsetX * density.density,
+                                initialOffsetY = diceFabOffsetY * density.density,
+                                onPositionChange = { x, y ->
+                                    settingsViewModel.updateDiceFabPosition(
+                                        x / density.density,
+                                        y / density.density
+                                    )
+                                },
+                                settingsViewModel = settingsViewModel
+                            )
+                        }
+
+                        if (rollHistory.isNotEmpty() && isOnCharacterScreen && !isKeyboardVisible && !isFullscreenDialogOpen) {
+                            DiceRollOverlay(
+                                history = rollHistory,
+                                onClose = { rollHistory = emptyList() },
+                                themeMode = themeMode,
+                                forceBlurEnabled = effectiveBlurRolls,
+                                hazeState = topOverlayHazeState,
+                                alpha = if (effectiveBlurRolls) 0f else rollAlpha,
+                                isPassThrough = rollPassThrough,
+                                position = rollPosition,
+                                closeButtonPosition = rollCloseButtonPos,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .navigationBarsPadding(),
+                                settingsViewModel = settingsViewModel
+                            )
+                        }
                     }
                 }
             }
         }
     }
-}
 }

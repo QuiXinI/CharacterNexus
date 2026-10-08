@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import ru.quasaris.characternexus.ui.outerShadow
+import ru.quasaris.characternexus.ui.theme.LocalAppThemeMode
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -72,14 +73,22 @@ fun CharacterCard(
 
     val imageExists = imagePath != null
 
-    val cardColor = if (isSelected) {
-        colorScheme.primaryContainer
-    } else {
-        adaptedFolderColor?.let { FolderColors.getCardContainerColor(it, isDark) } ?: colorScheme.surfaceContainerLow
+    val themeMode = LocalAppThemeMode.current
+    val isBlack = themeMode == AppThemeMode.OFF
+    val isWhite = themeMode == AppThemeMode.WHITE
+
+    val cardColor = when {
+        isBlack -> Color.Black
+        isWhite -> Color.White
+        isSelected -> colorScheme.primaryContainer
+        else -> adaptedFolderColor?.let { FolderColors.getCardContainerColor(it, isDark) } ?: colorScheme.surfaceContainerLow
     }
     
-    val progressBarColor = adaptedFolderColor?.let { FolderColors.getProgressBarColor(it, isDark) } 
-        ?: colorScheme.primary.copy(alpha = 0.2f)
+    val progressBarColor = when {
+        isBlack -> Color.White.copy(alpha = 0.2f)
+        isWhite -> Color.Black.copy(alpha = 0.2f)
+        else -> adaptedFolderColor?.let { FolderColors.getProgressBarColor(it, isDark) } ?: colorScheme.primary.copy(alpha = 0.2f)
+    }
 
     val levelStr = character.level.filter { it.isDigit() }.ifEmpty { "1" }
     val expStr = character.experience.filter { it.isDigit() }.ifEmpty { "0" }
@@ -102,13 +111,22 @@ fun CharacterCard(
         Color(0xFFF44336) // Red
     }
     
-    val hpColor = lerp(baseHpColor, colorScheme.onSurfaceVariant, 0.5f)
+    val hpColor = when {
+        isBlack -> Color.White
+        isWhite -> Color.Black
+        else -> lerp(baseHpColor, colorScheme.onSurfaceVariant, 0.5f)
+    }
 
     Card(
         modifier = modifier.fillMaxWidth()
             .outerShadow(RoundedCornerShape(16.dp), blur = if (isSelected) 4.dp else 2.dp),
         shape = RoundedCornerShape(16.dp),
-        border = if (isSelected) BorderStroke(2.dp, colorScheme.primary) else null,
+        border = when {
+            isBlack -> BorderStroke(1.dp, Color.White.copy(alpha = 0.4f))
+            isWhite -> BorderStroke(1.dp, Color.Black.copy(alpha = 0.3f))
+            isSelected -> BorderStroke(2.dp, colorScheme.primary)
+            else -> null
+        },
         colors = CardDefaults.cardColors(
             containerColor = cardColor
         ),
@@ -211,7 +229,7 @@ fun CharacterCard(
                                         text = " (+$tempHp)",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF64B5F6)
+                                        color = if (isBlack) Color.White else if (isWhite) Color.Black else Color(0xFF64B5F6)
                                     )
                                 }
                             }
@@ -302,7 +320,7 @@ fun CharacterCard(
                                         text = " (+$tempHp)",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF64B5F6)
+                                        color = if (isBlack) Color.White else if (isWhite) Color.Black else Color(0xFF64B5F6)
                                     )
                                 }
                             }

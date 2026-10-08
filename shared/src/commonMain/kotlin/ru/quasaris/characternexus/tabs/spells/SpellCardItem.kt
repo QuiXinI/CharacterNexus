@@ -531,11 +531,11 @@ fun SpellCardItem(
                         )
                     }
 
-                    Text(
+                    ru.quasaris.characternexus.tabs.RenderMarkdownContent(
                         text = spell.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 20.sp,
-                        color = colorScheme.onSurface
+                        color = colorScheme.onSurface,
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     if (spell.notes.isNotBlank()) {
@@ -544,12 +544,11 @@ fun SpellCardItem(
                             colors = CardDefaults.cardColors(containerColor = colorScheme.primaryContainer.copy(alpha = 0.3f)),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text(
+                            ru.quasaris.characternexus.tabs.RenderMarkdownContent(
                                 text = spell.notes,
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(8.dp)
-                                    .fillMaxWidth(),
-                                color = colorScheme.onPrimaryContainer
+                                color = colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(8.dp).fillMaxWidth()
                             )
                         }
                     }

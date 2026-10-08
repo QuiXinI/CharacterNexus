@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import ru.quasaris.characternexus.ui.DialogDimStyle
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import org.jetbrains.compose.resources.painterResource
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.LocalContentColor
@@ -203,25 +206,7 @@ fun AttackConfigDialogContent(
 
     val preparedSpells = remember(spellSettings, spellbookManager) {
         val baseSpells = spellbookManager?.loadSpells() ?: emptyList()
-        val allAvailable = baseSpells.map { spellSettings.spellOverrides[it.id] ?: it }.toMutableList()
-        val baseIds = baseSpells.map { it.id }.toSet()
-        spellSettings.spellOverrides.values.forEach { overrideSpell ->
-            if (overrideSpell.id !in baseIds) {
-                allAvailable.add(overrideSpell)
-            }
-        }
-        val selectedSet = spellSettings.selectedSpellIds.toSet()
-        val preparedSet = spellSettings.preparedSpellIds.toSet()
-
-        fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
-            return idSet.any { spell.matchesId(it) }
-        }
-
-        val filtered = if (spellSettings.isSpellbookEnabled) {
-            allAvailable.filter { matchesAny(it, preparedSet) || (matchesAny(it, selectedSet) && it.isRitual) }
-        } else {
-            allAvailable.filter { matchesAny(it, selectedSet) }
-        }
+        val filtered = spellSettings.getCharacterSpells(baseSpells)
 
         filtered.sortedWith(
             compareBy<SpellCard> { it.level.toIntOrNull() ?: 99 }
@@ -235,21 +220,42 @@ fun AttackConfigDialogContent(
         }
     }
 
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    var isInputFocused by remember { mutableStateOf(false) }
+
+    val handleBack = {
+        if (isInputFocused) {
+            focusManager.clearFocus()
+        } else {
+            onDismiss()
+        }
+    }
+
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = 24.dp)
+
     PredictiveBackBox(
-        onBack = onDismiss,
-        modifier = Modifier.fillMaxSize()
+        onBack = handleBack,
+        modifier = Modifier
+            .fillMaxSize()
+            .onFocusChanged { focusState ->
+                isInputFocused = focusState.hasFocus
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                    if (isInputFocused) {
+                        focusManager.clearFocus()
+                        return@onPreviewKeyEvent true
+                    }
+                }
+                false
+            }
     ) { _ ->
         Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = 24.dp,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.4f)))
-                        )
-                    }
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             },
         topBar = {
@@ -262,7 +268,7 @@ fun AttackConfigDialogContent(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
                     )
                 )
                 if (attack.isMagic) {
@@ -286,7 +292,7 @@ fun AttackConfigDialogContent(
                 }
             }
         },
-        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -594,15 +600,26 @@ fun AttackConfigDialogContent(
 
                     // Notes Section
                     SectionHeader("Заметки")
-                    OutlinedTextField(
-                        value = attack.notes,
-                        onValueChange = { onAttackChange(attack.copy(notes = it)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 100.dp),
-                        placeholder = { Text("Описание атаки...") },
-                        shape = RoundedCornerShape(8.dp)
-                    )
+                    val attackNoteState = remember(attack.id, attack.notes) {
+                        ru.quasaris.characternexus.model.DynamicNoteState(id = "attack_notes_${attack.id}", content = attack.notes)
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.5f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(modifier = Modifier.padding(12.dp)) {
+                            ru.quasaris.characternexus.tabs.NotionBlockEditor(
+                                field = attackNoteState,
+                                onFieldChange = { updated -> onAttackChange(attack.copy(notes = updated.content)) },
+                                canEdit = true,
+                                isReorderMode = false,
+                                contentPlaceholder = "Описание атаки...",
+                                isBasicMode = true
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(32.dp))
 

@@ -12,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -31,6 +34,42 @@ import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 
+val InfoBoxIcon: ImageVector = ImageVector.Builder(
+    name = "InfoBox",
+    defaultWidth = 24.dp,
+    defaultHeight = 24.dp,
+    viewportWidth = 24f,
+    viewportHeight = 24f
+).apply {
+    path(
+        fill = SolidColor(Color.Black),
+        pathFillType = PathFillType.EvenOdd
+    ) {
+        moveTo(19f, 3f)
+        lineTo(5f, 3f)
+        curveTo(3.9f, 3f, 3f, 3.9f, 3f, 5f)
+        lineTo(3f, 19f)
+        curveTo(3f, 20.1f, 3.9f, 21f, 5f, 21f)
+        lineTo(19f, 21f)
+        curveTo(20.1f, 21f, 21f, 20.1f, 21f, 19f)
+        lineTo(21f, 5f)
+        curveTo(21f, 3.9f, 20.1f, 3f, 19f, 3f)
+        close()
+
+        moveTo(11f, 6.5f)
+        lineTo(13f, 6.5f)
+        lineTo(13f, 8.5f)
+        lineTo(11f, 8.5f)
+        close()
+
+        moveTo(11f, 10f)
+        lineTo(13f, 10f)
+        lineTo(13f, 17f)
+        lineTo(11f, 17f)
+        close()
+    }
+}.build()
+
 @Composable
 fun FormattingToolbar(
     value: TextFieldValue,
@@ -41,6 +80,7 @@ fun FormattingToolbar(
     onSave: () -> Unit = {},
     viewportTopY: Float = 0f,
     onInsertResource: (() -> Unit)? = null,
+    onInsertInfoBlock: (() -> Unit)? = null,
     onInsertDivider: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     settingsViewModel: SettingsViewModel? = null,
@@ -49,6 +89,9 @@ fun FormattingToolbar(
     editorLeftPx: Float = 0f,
     editorTopPx: Float = 0f,
     editorHeightPx: Int = 0,
+    isBasicMode: Boolean = false,
+    isPlainTextMode: Boolean = false,
+    onTogglePlainText: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (!isFocused) return
@@ -59,10 +102,15 @@ fun FormattingToolbar(
     val useBlur = hazeState != null && !isOled && masterBlurEnabled && blurRadius > 0.dp
 
     var myHeightPx by remember { mutableIntStateOf(0) }
+    val toolbarHeight = if (myHeightPx > 0) myHeightPx else with(density) { 44.dp.roundToPx() }
 
-    val rawOffset = if (editorTopPx < viewportTopY) viewportTopY - editorTopPx else 0f
+    val rawOffset = if (editorTopPx < viewportTopY) {
+        viewportTopY - editorTopPx
+    } else {
+        with(density) { 4.dp.toPx() }
+    }
 
-    val maxOffset = (editorHeightPx - myHeightPx).coerceAtLeast(0)
+    val maxOffset = (editorHeightPx - toolbarHeight).coerceAtLeast(0)
     val popupOffsetY = rawOffset.roundToInt().coerceAtMost(maxOffset)
 
     Popup(
@@ -135,18 +183,20 @@ fun FormattingToolbar(
                         enabled = isSelectionActive,
                         onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "~~", "~~")) }
                     )
-                    FormattingButton(
-                        icon = Icons.Default.VisibilityOff,
-                        isActive = MarkdownHelper.isFormatActive(value, "::", "::"),
-                        enabled = isSelectionActive,
-                        onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "::", "::")) }
-                    )
-                    FormattingButton(
-                        icon = Icons.Default.FormatQuote,
-                        isActive = MarkdownHelper.isFormatActive(value, ">> ", " <<"),
-                        enabled = isSelectionActive,
-                        onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, ">> ", " <<")) }
-                    )
+                    if (!isBasicMode) {
+                        FormattingButton(
+                            icon = Icons.Default.VisibilityOff,
+                            isActive = MarkdownHelper.isFormatActive(value, "::", "::"),
+                            enabled = isSelectionActive,
+                            onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, "::", "::")) }
+                        )
+                        FormattingButton(
+                            icon = Icons.Default.FormatQuote,
+                            isActive = MarkdownHelper.isFormatActive(value, ">> ", " <<"),
+                            enabled = isSelectionActive,
+                            onClick = { onValueChange(MarkdownHelper.applyMarkdown(value, ">> ", " <<")) }
+                        )
+                    }
                     FormattingButton(
                         icon = Icons.Default.Link,
                         isActive = MarkdownHelper.isFormatActive(value, "[", "]("),
@@ -175,27 +225,54 @@ fun FormattingToolbar(
                             }
                         }
                     )
-                    FormattingButton(
-                        icon = Icons.Default.AddBox,
-                        isActive = false,
-                        enabled = true,
-                        onClick = {
-                            if (onInsertResource != null) {
-                                onInsertResource()
-                            } else {
-                                val id = ru.quasaris.characternexus.util.generateUuid()
-                                val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
-                                val insert = prefix + "{Ресурс: Новый ресурс | cur=0 | max=0 | id=$id}\n"
-                                val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                                onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                    if (!isBasicMode) {
+                        FormattingButton(
+                            icon = Icons.Default.AddBox,
+                            isActive = false,
+                            enabled = true,
+                            onClick = {
+                                if (onInsertResource != null) {
+                                    onInsertResource()
+                                } else {
+                                    val id = ru.quasaris.characternexus.util.generateUuid()
+                                    val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                                    val insert = prefix + "{Ресурс: id=$id}\n"
+                                    val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                                    onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                                }
                             }
-                        }
-                    )
+                        )
+                        FormattingButton(
+                            icon = InfoBoxIcon,
+                            isActive = false,
+                            enabled = true,
+                            onClick = {
+                                if (onInsertInfoBlock != null) {
+                                    onInsertInfoBlock()
+                                } else {
+                                    val id = ru.quasaris.characternexus.util.generateUuid()
+                                    val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                                    val insert = prefix + "{Инфоблок: id=$id}\n"
+                                    val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                                    onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                                }
+                            }
+                        )
 
-                    VerticalDivider(
-                        modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                    )
+                        VerticalDivider(
+                            modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                        )
+                    }
+
+                    if (onTogglePlainText != null) {
+                        FormattingButton(
+                            icon = Icons.Default.Code,
+                            isActive = isPlainTextMode,
+                            enabled = true,
+                            onClick = onTogglePlainText
+                        )
+                    }
 
                     FormattingButton(
                         icon = Icons.Default.Done,

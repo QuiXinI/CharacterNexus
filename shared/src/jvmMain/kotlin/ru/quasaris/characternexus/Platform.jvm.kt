@@ -12,7 +12,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import ru.quasaris.characternexus.ui.buildColorSchemeFromSeed
+import ru.quasaris.characternexus.ui.theme.buildColorSchemeFromSeed
 
 class JVMPlatform: Platform {
     override val name: String = "JVM ${System.getProperty("java.version")}"

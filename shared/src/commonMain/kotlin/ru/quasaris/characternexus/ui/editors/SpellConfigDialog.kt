@@ -1,8 +1,8 @@
 package ru.quasaris.characternexus.ui.editors
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +15,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -22,18 +24,17 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.layout.onGloballyPositioned
-import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
-import androidx.compose.ui.layout.positionInWindow
 import dev.chrisbanes.haze.*
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.*
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpellEditorWindow(
+fun SpellConfigDialog(
     spell: SpellCard,
     onDismiss: () -> Unit,
     onSave: (SpellCard) -> Unit,
@@ -46,14 +47,12 @@ fun SpellEditorWindow(
     popupHazeState: HazeState? = null
 ) {
     var state by remember { mutableStateOf(spell) }
-    
-
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var englishNameError by remember { mutableStateOf<String?>(null) }
     val allowedCharsRegex = remember { Regex("^[a-zA-Z0-9'\\-._,() ]*$") }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    
+
     val handleDismiss = {
         focusManager.clearFocus()
         if (state.name.isNotBlank() && state != spell) {
@@ -71,7 +70,7 @@ fun SpellEditorWindow(
     }
 
     if (isDesktop) {
-        SpellEditorContent(
+        SpellConfigContent(
             spell = spell,
             state = state,
             onStateChange = { state = it },
@@ -82,14 +81,15 @@ fun SpellEditorWindow(
             hazeState = hazeState,
             englishNameError = englishNameError,
             onEnglishNameErrorChange = { englishNameError = it },
-            allowedCharsRegex = allowedCharsRegex
+            allowedCharsRegex = allowedCharsRegex,
+            settingsViewModel = settingsViewModel
         )
     } else {
         Dialog(
             onDismissRequest = handleDismiss,
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            SpellEditorContent(
+            SpellConfigContent(
                 spell = spell,
                 state = state,
                 onStateChange = { state = it },
@@ -100,7 +100,8 @@ fun SpellEditorWindow(
                 hazeState = popupHazeState ?: hazeState,
                 englishNameError = englishNameError,
                 onEnglishNameErrorChange = { englishNameError = it },
-                allowedCharsRegex = allowedCharsRegex
+                allowedCharsRegex = allowedCharsRegex,
+                settingsViewModel = settingsViewModel
             )
         }
     }
@@ -116,9 +117,36 @@ fun SpellEditorWindow(
     )
 }
 
+@Composable
+fun SpellEditorWindow(
+    spell: SpellCard,
+    onDismiss: () -> Unit,
+    onSave: (SpellCard) -> Unit,
+    onDelete: (SpellCard) -> Unit,
+    onExport: (SpellCard) -> Unit = {},
+    forceBlurEnabled: Boolean = false,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    isDesktop: Boolean = false,
+    hazeState: HazeState? = null,
+    popupHazeState: HazeState? = null
+) {
+    SpellConfigDialog(
+        spell = spell,
+        onDismiss = onDismiss,
+        onSave = onSave,
+        onDelete = onDelete,
+        onExport = onExport,
+        forceBlurEnabled = forceBlurEnabled,
+        settingsViewModel = settingsViewModel,
+        isDesktop = isDesktop,
+        hazeState = hazeState,
+        popupHazeState = popupHazeState
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SpellEditorContent(
+fun SpellConfigContent(
     spell: SpellCard,
     state: SpellCard,
     onStateChange: (SpellCard) -> Unit,
@@ -129,11 +157,15 @@ fun SpellEditorContent(
     hazeState: HazeState?,
     englishNameError: String?,
     onEnglishNameErrorChange: (String?) -> Unit,
-    allowedCharsRegex: Regex
+    allowedCharsRegex: Regex,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    var isInputFocused by remember { mutableStateOf(false) }
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     val surfaceColor = if (forceBlurEnabled && !isOled && hazeState != null) {
         Color.Transparent.copy(alpha = 0.0f)
@@ -146,9 +178,30 @@ fun SpellEditorContent(
         colorScheme.background
     }
 
+    val handleBack = {
+        if (isInputFocused) {
+            focusManager.clearFocus()
+        } else {
+            onDismiss()
+        }
+    }
+
     PredictiveBackBox(
-        onBack = onDismiss,
-        modifier = Modifier.fillMaxSize()
+        onBack = handleBack,
+        modifier = Modifier
+            .fillMaxSize()
+            .onFocusChanged { focusState ->
+                isInputFocused = focusState.hasFocus
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                    if (isInputFocused) {
+                        focusManager.clearFocus()
+                        return@onPreviewKeyEvent true
+                    }
+                }
+                false
+            }
     ) { _ ->
         Surface(
             color = backgroundColor,
@@ -160,12 +213,7 @@ fun SpellEditorContent(
                 .fillMaxSize()
                 .run {
                     if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.hazeEffect(state = hazeState) {
-                            style = HazeStyle(
-                                blurRadius = 24.dp,
-                                tints = listOf(HazeTint(Color.Black.copy(alpha = 0.4f)))
-                            )
-                        }
+                        this.hazeEffect(state = hazeState, style = hazeStyle)
                     } else this
                 },
             topBar = {
@@ -576,14 +624,29 @@ fun SpellEditorContent(
                     }
 
                     // Description
-                    OutlinedTextField(
-                        value = state.description,
-                        onValueChange = { onStateChange(state.copy(description = it)) },
-                        label = { Text("Описание") },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp)
-                            .alpha(if (state.description.isBlank()) 0.7f else 1f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
+                    val spellDescState = remember(state.name, state.description) {
+                        DynamicNoteState(id = "spell_desc_${state.name}", content = state.description)
+                    }
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("Описание", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(modifier = Modifier.padding(12.dp)) {
+                                ru.quasaris.characternexus.tabs.NotionBlockEditor(
+                                    field = spellDescState,
+                                    onFieldChange = { updated -> onStateChange(state.copy(description = updated.content)) },
+                                    canEdit = true,
+                                    isReorderMode = false,
+                                    contentPlaceholder = "Описание заклинания...",
+                                    isBasicMode = true
+                                )
+                            }
+                        }
+                    }
 
                     if (state.level == "0") {
                         Column(
@@ -949,13 +1012,29 @@ fun SpellEditorContent(
                     )
 
                     // Notes and Link
-                    OutlinedTextField(
-                        value = state.notes,
-                        onValueChange = { onStateChange(state.copy(notes = it)) },
-                        label = { Text("Заметки") },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp).alpha(if (state.notes.isBlank()) 0.7f else 1f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
+                    val spellNotesState = remember(state.name, state.notes) {
+                        DynamicNoteState(id = "spell_notes_${state.name}", content = state.notes)
+                    }
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("Заметки", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(modifier = Modifier.padding(12.dp)) {
+                                ru.quasaris.characternexus.tabs.NotionBlockEditor(
+                                    field = spellNotesState,
+                                    onFieldChange = { updated -> onStateChange(state.copy(notes = updated.content)) },
+                                    canEdit = true,
+                                    isReorderMode = false,
+                                    contentPlaceholder = "Заметки...",
+                                    isBasicMode = true
+                                )
+                            }
+                        }
+                    }
 
                     OutlinedTextField(
                         value = state.link ?: "",
@@ -1111,5 +1190,36 @@ fun SpellCardSectionTitle(text: String) {
         fontWeight = FontWeight.Black,
         letterSpacing = 1.5.sp,
         modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+fun SpellEditorContent(
+    spell: SpellCard,
+    state: SpellCard,
+    onStateChange: (SpellCard) -> Unit,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit,
+    onExport: (SpellCard) -> Unit,
+    forceBlurEnabled: Boolean,
+    hazeState: HazeState?,
+    englishNameError: String?,
+    onEnglishNameErrorChange: (String?) -> Unit,
+    allowedCharsRegex: Regex,
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+) {
+    SpellConfigContent(
+        spell = spell,
+        state = state,
+        onStateChange = onStateChange,
+        onDismiss = onDismiss,
+        onDelete = onDelete,
+        onExport = onExport,
+        forceBlurEnabled = forceBlurEnabled,
+        hazeState = hazeState,
+        englishNameError = englishNameError,
+        onEnglishNameErrorChange = onEnglishNameErrorChange,
+        allowedCharsRegex = allowedCharsRegex,
+        settingsViewModel = settingsViewModel
     )
 }

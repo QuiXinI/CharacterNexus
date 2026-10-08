@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -13,9 +14,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
+import ru.quasaris.characternexus.ui.colourpicker.ColourPickerDialog
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -23,6 +28,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
+import kotlinx.coroutines.launch
+import ru.quasaris.characternexus.backend.ImageManager
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
+import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.HeaderCode.Fullscreen.HealthSettingsContent
 import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
@@ -40,7 +50,8 @@ fun CharacterSettingsWindow(
     forceBlurEnabled: Boolean = false,
     isDesktop: Boolean = false,
     hazeState: HazeState? = null,
-    popupHazeState: HazeState? = null
+    popupHazeState: HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val handleDismiss = {
@@ -54,7 +65,8 @@ fun CharacterSettingsWindow(
             statsMap = statsMap,
             onDismiss = handleDismiss,
             forceBlurEnabled = forceBlurEnabled,
-            hazeState = popupHazeState ?: hazeState
+            hazeState = popupHazeState ?: hazeState,
+            settingsViewModel = settingsViewModel
         )
     } else {
         Dialog(
@@ -67,7 +79,8 @@ fun CharacterSettingsWindow(
                 statsMap = statsMap,
                 onDismiss = handleDismiss,
                 forceBlurEnabled = forceBlurEnabled,
-                hazeState = popupHazeState ?: hazeState
+                hazeState = popupHazeState ?: hazeState,
+                settingsViewModel = settingsViewModel
             )
         }
     }
@@ -80,10 +93,13 @@ fun CharacterSettingsContent(
     statsMap: Map<String, String>,
     onDismiss: () -> Unit,
     forceBlurEnabled: Boolean,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Идентичность", "Хиты")
 
@@ -96,12 +112,7 @@ fun CharacterSettingsContent(
             .fillMaxSize()
             .run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = 24.dp,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.4f)))
-                        )
-                    }
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             },
         topBar = {
@@ -435,7 +446,121 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
             }
         }
 
+        SectionHeader("Цветовая схема")
+
+        val coroutineScope = rememberCoroutineScope()
+        var hexInputText by remember(state.themeSeedColorArgb, state.isThemeSeedManual) {
+            mutableStateOf(formatColorToHex(state.themeSeedColorArgb))
+        }
+        var showColourPicker by remember { mutableStateOf(false) }
+
+        if (showColourPicker) {
+            val currentColor = state.themeSeedColorArgb?.let { Color(it) } ?: colorScheme.primary
+            ColourPickerDialog(
+                initialColor = currentColor,
+                onDismiss = { showColourPicker = false },
+                onColorConfirmed = { chosenColor ->
+                    val argb = chosenColor.toArgb()
+                    state.themeSeedColorArgb = argb
+                    state.isThemeSeedManual = true
+                    hexInputText = formatColorToHex(argb)
+                },
+                showAlpha = false,
+                title = "Выбор цвета темы"
+            )
+        }
+
+        OutlinedTextField(
+            value = hexInputText,
+            onValueChange = { input ->
+                hexInputText = input
+                val parsed = parseHexColor(input)
+                if (parsed != null) {
+                    state.themeSeedColorArgb = parsed
+                    state.isThemeSeedManual = true
+                } else if (input.isBlank()) {
+                    state.themeSeedColorArgb = null
+                    state.isThemeSeedManual = true
+                } else {
+                    state.isThemeSeedManual = true
+                }
+            },
+            label = { Text("Сид цвета темы (HEX)") },
+            placeholder = { Text("#6750A4") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true,
+            leadingIcon = {
+                val displayColor = state.themeSeedColorArgb?.let { Color(it) } ?: colorScheme.primary
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .clickable { showColourPicker = true }
+                        .background(displayColor, CircleShape)
+                        .border(1.dp, colorScheme.outline.copy(alpha = 0.5f), CircleShape)
+                )
+            },
+            trailingIcon = {
+                if (state.isThemeSeedManual) {
+                    IconButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                state.isThemeSeedManual = false
+                                val imageId = state.characterImageData
+                                var newSeed: Int? = null
+                                if (!imageId.isNullOrBlank()) {
+                                    try {
+                                        val path = ImageManager.getPortraitFile(imageId, state.characterUuid)
+                                        if (platformFileSystem.exists(path)) {
+                                            val bytes = platformFileSystem.read(path) { readByteArray() }
+                                            newSeed = PaletteHelper.extractSeedColor(bytes)
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                                state.themeSeedColorArgb = newSeed
+                                hexInputText = formatColorToHex(newSeed)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Сбросить к автоматическому сиду",
+                            tint = colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            supportingText = {
+                if (state.isThemeSeedManual) {
+                    Text("Цвет переписан вручную", color = colorScheme.primary)
+                } else if (state.themeSeedColorArgb != null) {
+                    Text("Цвет автоматически извлечен из аватарки")
+                } else {
+                    Text("Используется стандартная тема")
+                }
+            }
+        )
+
         Spacer(Modifier.height(100.dp))
     }
+}
+
+private fun formatColorToHex(colorInt: Int?): String {
+    if (colorInt == null) return ""
+    val rgb = colorInt and 0xFFFFFF
+    return "#" + rgb.toString(16).padStart(6, '0').uppercase()
+}
+
+private fun parseHexColor(hex: String): Int? {
+    val clean = hex.removePrefix("#").trim()
+    if (clean.length == 6) {
+        val rgb = clean.toLongOrNull(16) ?: return null
+        return (0xFF000000.toInt() or rgb.toInt())
+    } else if (clean.length == 8) {
+        val argb = clean.toLongOrNull(16) ?: return null
+        return argb.toInt()
+    }
+    return null
 }
 

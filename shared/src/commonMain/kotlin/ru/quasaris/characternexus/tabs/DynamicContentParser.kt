@@ -7,6 +7,7 @@ object DynamicContentParser {
     private val spoilerRegex = Regex("(?s)::(.*?)::")
     private val quoteRegex = Regex("(?s)>> (.*?)(?: <<|$)")
     private val resourceRegex = Regex("(?s)\\{(?:Ресурс|Resource)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
+    private val infoBlockRegex = Regex("(?s)\\{(?:Инфоблок|InfoBlock)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
 
     fun parse(text: String, resources: Map<String, DynamicContentBlock.Resource> = emptyMap()): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
@@ -65,6 +66,38 @@ object DynamicContentParser {
                     showNotes = params["shownotes"]?.toBoolean() ?: false,
                     useSlider = params["slider"]?.toBoolean() ?: false,
                     sliderStep = params["step"]?.toDoubleOrNull(),
+                    id = id
+                )
+                allMatches.add(match.range to block)
+            }
+        }
+
+        // Find infoblocks using flexible parser
+        infoBlockRegex.findAll(text).forEach { match ->
+            val content = match.groupValues[1]
+            val parts = content.split("|").map { it.trim() }
+            val params = mutableMapOf<String, String>()
+            var titlePart = ""
+
+            parts.forEachIndexed { index, part ->
+                val kv = part.split("=", limit = 2)
+                if (kv.size == 2) {
+                    params[kv[0].trim().lowercase()] = kv[1].trim()
+                } else if (index == 0) {
+                    titlePart = part
+                }
+            }
+
+            val id = params["id"] ?: ""
+            val isRef = id.isNotEmpty() && params.size == 1 && titlePart.isEmpty()
+
+            if (isRef) {
+                allMatches.add(match.range to DynamicContentBlock.InfoBlockRef(id))
+            } else {
+                val block = DynamicContentBlock.InfoBlock(
+                    title = if (titlePart.isNotEmpty()) titlePart else params["title"] ?: params["name"] ?: "Инфоблок",
+                    link = params["link"],
+                    description = params["desc"] ?: params["description"] ?: params["notes"] ?: "",
                     id = id
                 )
                 allMatches.add(match.range to block)
@@ -138,6 +171,8 @@ object DynamicContentParser {
                 is DynamicContentBlock.Quote -> ">> ${block.content} <<"
                 is DynamicContentBlock.Resource -> block.toTag()
                 is DynamicContentBlock.ResourceRef -> block.toTag()
+                is DynamicContentBlock.InfoBlock -> block.toTag()
+                is DynamicContentBlock.InfoBlockRef -> block.toTag()
             }
         }
     }
@@ -151,10 +186,27 @@ object DynamicContentParser {
         }.toSet()
     }
 
+    fun infoBlockIds(text: String): Set<String> {
+        return infoBlockRegex.findAll(text).mapNotNull { match ->
+            val content = match.groupValues[1]
+            content.split("|").map { it.trim() }
+                .firstOrNull { it.startsWith("id=") }
+                ?.substringAfter("=")
+        }.toSet()
+    }
+
     fun rewriteInlineResources(text: String, transform: (DynamicContentBlock.Resource) -> DynamicContentBlock): String {
         val blocks = parse(text)
         val updated = blocks.map { block ->
             if (block is DynamicContentBlock.Resource) transform(block) else block
+        }
+        return render(updated)
+    }
+
+    fun rewriteInlineInfoBlocks(text: String, transform: (DynamicContentBlock.InfoBlock) -> DynamicContentBlock): String {
+        val blocks = parse(text)
+        val updated = blocks.map { block ->
+            if (block is DynamicContentBlock.InfoBlock) transform(block) else block
         }
         return render(updated)
     }
@@ -183,9 +235,27 @@ object DynamicContentParser {
         return BlockContentParser.toText(blocks)
     }
 
+    fun removeInfoBlock(text: String, index: Int, targetInfoBlockId: String? = null): String {
+        val blocks = BlockContentParser.toBlocks(text).toMutableList()
+        var targetIndex = if (index in blocks.indices && isInfoBlockOrRef(blocks[index], targetInfoBlockId)) index else -1
+        if (targetIndex == -1 && !targetInfoBlockId.isNullOrEmpty()) {
+            targetIndex = blocks.indexOfFirst { isInfoBlockOrRef(it, targetInfoBlockId) }
+        }
+        if (targetIndex in blocks.indices) {
+            blocks.removeAt(targetIndex)
+        }
+        return BlockContentParser.toText(blocks)
+    }
+
     private fun isResourceOrRef(block: DynamicContentBlock, targetResourceId: String? = null): Boolean = when (block) {
         is DynamicContentBlock.Resource -> targetResourceId.isNullOrEmpty() || block.id == targetResourceId
         is DynamicContentBlock.ResourceRef -> targetResourceId.isNullOrEmpty() || block.id == targetResourceId
+        else -> false
+    }
+
+    private fun isInfoBlockOrRef(block: DynamicContentBlock, targetInfoBlockId: String? = null): Boolean = when (block) {
+        is DynamicContentBlock.InfoBlock -> targetInfoBlockId.isNullOrEmpty() || block.id == targetInfoBlockId
+        is DynamicContentBlock.InfoBlockRef -> targetInfoBlockId.isNullOrEmpty() || block.id == targetInfoBlockId
         else -> false
     }
 
@@ -193,6 +263,24 @@ object DynamicContentParser {
         val blocks = BlockContentParser.toBlocks(text).filterNot {
             (it is DynamicContentBlock.Resource && it.id == id) ||
             (it is DynamicContentBlock.ResourceRef && it.id == id)
+        }
+        return BlockContentParser.toText(blocks)
+    }
+
+    fun removeInfoBlockById(text: String, id: String): String {
+        val blocks = BlockContentParser.toBlocks(text).filterNot {
+            (it is DynamicContentBlock.InfoBlock && it.id == id) ||
+            (it is DynamicContentBlock.InfoBlockRef && it.id == id)
+        }
+        return BlockContentParser.toText(blocks)
+    }
+
+    fun replaceInfoBlockRefWithResourceRef(text: String, id: String): String {
+        val blocks = BlockContentParser.toBlocks(text).map { block ->
+            if ((block is DynamicContentBlock.InfoBlockRef && block.id == id) ||
+                (block is DynamicContentBlock.InfoBlock && block.id == id)) {
+                DynamicContentBlock.ResourceRef(id)
+            } else block
         }
         return BlockContentParser.toText(blocks)
     }

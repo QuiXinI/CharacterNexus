@@ -18,6 +18,7 @@ import ru.quasaris.characternexus.HeaderCode.HealthPanel
 import ru.quasaris.characternexus.ui.RestPanel
 import ru.quasaris.characternexus.model.HitDiceEntry
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,18 +38,14 @@ fun LevelPanelOverlay(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
                 if (hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = blurRadius,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                        )
-                    }
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             },
         topBar = {
@@ -60,11 +57,11 @@ fun LevelPanelOverlay(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = if (hazeState != null && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                    containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.surface
                 )
             )
         },
-        containerColor = if (hazeState != null && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+        containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -112,18 +109,14 @@ fun HealthPanelOverlay(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
                 if (hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = blurRadius,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                        )
-                    }
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             },
         topBar = {
@@ -135,11 +128,11 @@ fun HealthPanelOverlay(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = if (hazeState != null && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                    containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.surface
                 )
             )
         },
-        containerColor = if (hazeState != null && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+        containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -188,18 +181,14 @@ fun RestPanelOverlay(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     Scaffold(
         modifier = Modifier
             .fillMaxSize()
             .run {
                 if (hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = blurRadius,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                        )
-                    }
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             },
         topBar = {
@@ -211,11 +200,11 @@ fun RestPanelOverlay(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = if (hazeState != null && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                    containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.surface
                 )
             )
         },
-        containerColor = if (hazeState != null && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+        containerColor = if (hazeState != null && !isOled) Color.Transparent else colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier

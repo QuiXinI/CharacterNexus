@@ -5,11 +5,17 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import ru.quasaris.characternexus.ui.colourpicker.ColourPickerDialog
+import ru.quasaris.characternexus.ui.colourpicker.ColourUtils
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
@@ -112,8 +118,10 @@ fun MenuWindow(
     var showCreateFolderDialog by remember { mutableStateOf(false) }
 
     val isAnyFullscreenDialogOpen = imageToCrop != null || lssAvatarToDownload != null || importErrorMessage != null || pendingImportResults.isNotEmpty() || showCreateFolderDialog
-    LaunchedEffect(isAnyFullscreenDialogOpen) {
-        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen)
+    // Пока тащим карточку/папку, боковое меню (свайп) должно быть заблокировано
+    var isItemDragging by remember { mutableStateOf(false) }
+    LaunchedEffect(isAnyFullscreenDialogOpen, isItemDragging) {
+        onFullscreenDialogOpenChange(isAnyFullscreenDialogOpen || isItemDragging)
     }
 
     LaunchedEffect(selectedIds.size, isManualEditMode) {
@@ -215,6 +223,24 @@ fun MenuWindow(
                         }
                     }
 
+                    var showColourPicker by remember { mutableStateOf(false) }
+
+                    if (showColourPicker) {
+                        val currentColor = selectedColorArgb?.let { Color(it) } ?: colorScheme.primary
+                        ColourPickerDialog(
+                            initialColor = currentColor,
+                            onDismiss = { showColourPicker = false },
+                            onColorConfirmed = { chosenColor ->
+                                val argb = chosenColor.toArgb()
+                                onColorSelect(argb)
+                                val hex = ColourUtils.colorToHex(chosenColor, includeAlpha = false).removePrefix("#")
+                                onCustomHexChange(hex)
+                            },
+                            showAlpha = false,
+                            title = "Цвет папки"
+                        )
+                    }
+
                     OutlinedTextField(
                         value = customHex,
                         onValueChange = { input ->
@@ -233,7 +259,18 @@ fun MenuWindow(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        trailingIcon = {
+                            val displayColor = selectedColorArgb?.let { Color(it) } ?: colorScheme.primary
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .clickable { showColourPicker = true }
+                                    .background(displayColor, CircleShape)
+                                    .border(1.dp, colorScheme.outline.copy(alpha = 0.5f), CircleShape)
+                            )
+                        }
                     )
                 }
             }
@@ -593,6 +630,7 @@ fun MenuWindow(
                         performClickHaptic()
                         folderToManage = folder
                     },
+                    onDragActiveChange = { isItemDragging = it },
                     modifier = Modifier.weight(1f)
                 )
 

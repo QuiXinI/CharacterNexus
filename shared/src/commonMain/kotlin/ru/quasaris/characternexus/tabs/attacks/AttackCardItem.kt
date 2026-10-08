@@ -583,10 +583,9 @@ fun AttackCardItem(
                     ) {
                         Column(modifier = Modifier.padding(top = 8.dp)) {
                             if (attack.notes.isNotEmpty()) {
-                                Text(
+                                ru.quasaris.characternexus.tabs.RenderMarkdownContent(
                                     text = attack.notes,
-                                    fontSize = 14.sp,
-                                    lineHeight = 18.sp,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 18.sp),
                                     color = colorScheme.onSurfaceVariant
                                 )
                             }

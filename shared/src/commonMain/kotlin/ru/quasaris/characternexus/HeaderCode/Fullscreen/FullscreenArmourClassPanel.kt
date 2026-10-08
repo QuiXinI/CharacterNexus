@@ -22,12 +22,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
-import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
-import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -155,6 +154,7 @@ fun ArmorClassDialogContent(
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     PredictiveBackBox(
         onBack = onDismiss,
@@ -180,21 +180,16 @@ fun ArmorClassDialogContent(
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                            containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isSubDialogOpen) Color.Transparent else colorScheme.surface
                         )
                     )
                 },
-                containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
+                containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isSubDialogOpen) Color.Transparent else colorScheme.background,
                 modifier = Modifier
                     .fillMaxSize()
                     .run {
                         if (forceBlurEnabled && hazeState != null && !isOled) {
-                            this.hazeEffect(state = hazeState) {
-                                style = HazeStyle(
-                                    blurRadius = blurRadius,
-                                    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                                )
-                            }
+                            this.hazeEffect(state = hazeState, style = hazeStyle)
                         } else this
                     }
             ) { paddingValues ->

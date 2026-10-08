@@ -6,7 +6,6 @@ import ru.quasaris.characternexus.backend.storage.CharacterStorage
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ioDispatcher
 import ru.quasaris.characternexus.runBlockingPlatform
-import ru.quasaris.characternexus.runBlockingPlatform
 
 class CharacterRepository(
     private val storage: CharacterStorage,
@@ -200,7 +199,8 @@ class CharacterRepository(
             }
             storage.saveListState(CharacterListState(
                 characters = _charactersSummaryState.value,
-                folders = _foldersState.value
+                folders = _foldersState.value,
+                globalOrder = _globalOrderState.value
             ))
 
             ImageManager.cleanupOrphanedCharacters(_charactersSummaryState.value.map { it.uuid })
@@ -352,17 +352,41 @@ class CharacterRepository(
 
         currentOrder.removeAll { it in allMovedUuids }
 
-        val insertIndex = when {
-            beforeUuid != null -> currentOrder.indexOf(beforeUuid).takeIf { it != -1 } ?: currentOrder.size
-            targetFolderUuid != null -> {
-                val folderIndex = currentOrder.indexOf(targetFolderUuid)
-                if (folderIndex != -1) folderIndex + 1 else currentOrder.size
-            }
-            else -> currentOrder.size
+        // beforeUuid == null означает «в конец родителя». Раньше для папки здесь вставлялось
+        // сразу после самой папки, т.е. в её НАЧАЛО — отсюда «прыжок наверх».
+        val endIndex = if (targetFolderUuid != null) endOfFolderIndex(currentOrder, targetFolderUuid) else currentOrder.size
+        val insertIndex = if (beforeUuid != null) {
+            currentOrder.indexOf(beforeUuid).takeIf { it != -1 } ?: endIndex
+        } else {
+            endIndex
         }
 
         currentOrder.addAll(insertIndex, allMovedUuids)
         _globalOrderState.value = currentOrder
+    }
+
+    private fun parentOfId(id: String): String? =
+        _charactersSummaryState.value.firstOrNull { it.uuid == id }?.folderUuid
+            ?: _foldersState.value.firstOrNull { it.uuid == id }?.parentFolderUuid
+
+    private fun isInsideFolder(id: String, folderUuid: String): Boolean {
+        var cur = parentOfId(id)
+        var guard = 0
+        while (cur != null && guard++ < 128) {
+            if (cur == folderUuid) return true
+            cur = parentOfId(cur)
+        }
+        return false
+    }
+
+    /** Индекс сразу после последнего потомка папки (или после самой папки, если она пуста). */
+    private fun endOfFolderIndex(order: List<String>, folderUuid: String): Int {
+        var last = order.indexOf(folderUuid)
+        if (last == -1) return order.size
+        order.forEachIndexed { i, id ->
+            if (i > last && isInsideFolder(id, folderUuid)) last = i
+        }
+        return last + 1
     }
 
     fun toggleFolderExpansion(folderUuid: String) {

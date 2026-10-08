@@ -128,37 +128,37 @@ fun SpellsTab(
     var levelInEditMode by remember { mutableStateOf<Float?>(null) }
     var showDividerEditor by remember { mutableStateOf<Pair<Float, SpellLevelDivider?>?>(null) }
 
+    val baseSpells = remember(effectiveRefreshTrigger) {
+        spellbookManager?.loadSpells() ?: emptyList()
+    }
+
     val characterSpells = remember(
+        spells,
+        baseSpells,
         spellSettings.selectedSpellIds,
         spellSettings.preparedSpellIds,
         spellSettings.isSpellbookEnabled,
-        spellSettings.spellOverrides,
-        effectiveRefreshTrigger
+        spellSettings.spellOverrides
     ) {
-        val baseSpells = spellbookManager?.loadSpells() ?: emptyList()
-        val allAvailable = baseSpells.map { spellSettings.spellOverrides[it.id] ?: it }.toMutableList()
+        spellSettings.getCharacterSpells(baseSpells, spells)
+    }
 
-        // Add spells that exist ONLY in overrides (local character spells)
-        val baseIds = baseSpells.map { it.id }.toSet()
-        spellSettings.spellOverrides.values.forEach { overrideSpell ->
-            if (overrideSpell.id !in baseIds) {
-                allAvailable.add(overrideSpell)
+    LaunchedEffect(characterSpells) {
+        if (characterSpells.isNotEmpty()) {
+            val charSpellIds = characterSpells.map { it.id }.toSet()
+            val missingSelected = charSpellIds.filter { id ->
+                !spellSettings.selectedSpellIds.any { selectedId ->
+                    characterSpells.find { it.id == id }?.matchesId(selectedId) == true
+                }
             }
-        }
-
-        val selectedSet = spellSettings.selectedSpellIds.toSet()
-        val preparedSet = spellSettings.preparedSpellIds.toSet()
-
-        fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
-            return idSet.any { spell.matchesId(it) }
-        }
-
-        if (spellSettings.isSpellbookEnabled) {
-            allAvailable.filter {
-                matchesAny(it, preparedSet) || (matchesAny(it, selectedSet) && it.isRitual)
+            if (missingSelected.isNotEmpty()) {
+                val updatedSelected = (spellSettings.selectedSpellIds + missingSelected).distinct()
+                val updatedPrepared = (spellSettings.preparedSpellIds + missingSelected).distinct()
+                onSpellSettingsChange(spellSettings.copy(
+                    selectedSpellIds = updatedSelected,
+                    preparedSpellIds = updatedPrepared
+                ))
             }
-        } else {
-            allAvailable.filter { matchesAny(it, selectedSet) }
         }
     }
 
@@ -592,7 +592,20 @@ fun SpellsTab(
                                 else cardLevel == levelStr
                             }.map { it.id }.toSet()
 
-                            val result = savedItems.filter { it.divider != null || (it.spellId != null && it.spellId in currentSpellIds) }.toMutableList()
+                            val result = savedItems.filter {
+                                it.divider != null || (it.spellId != null && (it.spellId in currentSpellIds || characterSpells.any { spell -> spell.matchesId(it.spellId) }))
+                            }.toMutableList()
+
+                            for (i in result.indices) {
+                                val item = result[i]
+                                if (item.spellId != null && item.spellId !in currentSpellIds) {
+                                    val matchingSpell = characterSpells.find { it.matchesId(item.spellId) }
+                                    if (matchingSpell != null) {
+                                        result[i] = item.copy(spellId = matchingSpell.id)
+                                    }
+                                }
+                            }
+
                             val handledSpellIds = result.mapNotNull { it.spellId }.toSet()
                             currentSpellIds.filter { it !in handledSpellIds }.forEach {
                                 result.add(SpellLevelItem(spellId = it))
@@ -1068,16 +1081,25 @@ fun SpellsTab(
             spell = editingSpell!!,
             onDismiss = { editingSpell = null },
             onSave = { updated ->
-                spellbookManager?.addOrUpdateSpell(updated)
-                if (updated.id !in spellSettings.selectedSpellIds) {
-                    onSpellSettingsChange(spellSettings.copy(selectedSpellIds = spellSettings.selectedSpellIds + updated.id))
-                }
+                val saved = spellbookManager?.addOrUpdateSpell(updated) ?: updated
+                val idToAdd = saved.id
+                val newSelected = if (!spellSettings.selectedSpellIds.any { saved.matchesId(it) }) spellSettings.selectedSpellIds + idToAdd else spellSettings.selectedSpellIds
+                val newPrepared = if (!spellSettings.preparedSpellIds.any { saved.matchesId(it) }) spellSettings.preparedSpellIds + idToAdd else spellSettings.preparedSpellIds
+                onSpellSettingsChange(spellSettings.copy(
+                    selectedSpellIds = newSelected,
+                    preparedSpellIds = newPrepared
+                ))
                 editingSpell = null
                 refreshTrigger++
             },
             onDelete = { deletedSpell ->
                 spellbookManager?.deleteSpell(deletedSpell.id)
-                onSpellSettingsChange(spellSettings.copy(selectedSpellIds = spellSettings.selectedSpellIds - deletedSpell.id))
+                val newSelected = spellSettings.selectedSpellIds.filter { !deletedSpell.matchesId(it) }
+                val newPrepared = spellSettings.preparedSpellIds.filter { !deletedSpell.matchesId(it) }
+                onSpellSettingsChange(spellSettings.copy(
+                    selectedSpellIds = newSelected,
+                    preparedSpellIds = newPrepared
+                ))
                 editingSpell = null
                 refreshTrigger++
             },

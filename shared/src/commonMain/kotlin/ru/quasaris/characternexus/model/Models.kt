@@ -104,7 +104,7 @@ enum class SlotFillDirection {
 
 @Serializable
 enum class AppThemeMode {
-    STOCK, M3, OFF, CHARACTER
+    STOCK, M3, OFF, CHARACTER, WHITE, CUSTOM
 }
 
 @Serializable
@@ -513,16 +513,19 @@ data class SpellCard(
     val identityKey: String get() = "${name.lowercase().trim()}|${englishName.lowercase().trim()}|${version.name}"
 
     fun matchesId(idString: String): Boolean {
-        if (id == idString) return true
-        if (identityKey == idString) return true
-        val slug = englishName.lowercase()
-            .replace(" ", "_")
-            .replace(SLUG_REGEX, "")
-        if (slug.isNotBlank() && slug == idString) return true
-        val nameSlug = name.lowercase()
-            .replace(" ", "_")
-            .replace(SLUG_REGEX, "")
-        if (nameSlug.isNotBlank() && nameSlug == idString) return true
+        if (idString.isBlank()) return false
+        val target = idString.trim()
+        if (id.equals(target, ignoreCase = true)) return true
+        if (identityKey.equals(target, ignoreCase = true)) return true
+        if (name.equals(target, ignoreCase = true)) return true
+        if (englishName.isNotBlank() && englishName.equals(target, ignoreCase = true)) return true
+
+        val engSlug = if (englishName.isNotBlank()) slugifySpellName(englishName) else ""
+        if (engSlug.isNotBlank() && engSlug.equals(target, ignoreCase = true)) return true
+
+        val rusSlug = if (name.isNotBlank()) slugifySpellName(name) else ""
+        if (rusSlug.isNotBlank() && rusSlug.equals(target, ignoreCase = true)) return true
+
         return false
     }
 
@@ -668,6 +671,119 @@ data class SpellSettings(
     val allowCantripUpcast: Boolean = false,
     val spellOverrides: Map<String, SpellCard> = emptyMap()
 )
+
+fun transliterateCyrillic(text: String): String {
+    val map = mapOf(
+        'а' to "a", 'б' to "b", 'в' to "v", 'г' to "g", 'д' to "d",
+        'е' to "e", 'ё' to "yo", 'ж' to "zh", 'з' to "z", 'и' to "i",
+        'й' to "y", 'к' to "k", 'л' to "l", 'м' to "m", 'н' to "n",
+        'о' to "o", 'п' to "p", 'р' to "r", 'с' to "s", 'т' to "t",
+        'у' to "u", 'ф' to "f", 'х' to "kh", 'ц' to "ts", 'ч' to "ch",
+        'ш' to "sh", 'щ' to "shch", 'ъ' to "", 'ы' to "y", 'ь' to "",
+        'э' to "e", 'ю' to "yu", 'я' to "ya"
+    )
+    val sb = StringBuilder()
+    for (ch in text.lowercase()) {
+        sb.append(map[ch] ?: ch)
+    }
+    return sb.toString()
+}
+
+private val GLOBAL_SLUG_REGEX = Regex("[^a-z0-9_'\\-.()]")
+
+fun slugifySpellName(name: String): String {
+    val transliterated = transliterateCyrillic(name)
+    return transliterated.lowercase()
+        .replace(" ", "_")
+        .replace(GLOBAL_SLUG_REGEX, "")
+        .trim('_')
+}
+
+fun SpellSettings.findOverrideFor(spell: SpellCard): SpellCard? {
+    spellOverrides[spell.id]?.let { return it }
+    return spellOverrides.values.find { override ->
+        override.id == spell.id || override.matchesId(spell.id) || spell.matchesId(override.id)
+    }
+}
+
+fun SpellSettings.getAvailableSpells(baseSpells: List<SpellCard>): List<SpellCard> {
+    val matchedOverrideIds = mutableSetOf<String>()
+    val result = baseSpells.map { baseSpell ->
+        val override = findOverrideFor(baseSpell)
+        if (override != null) {
+            matchedOverrideIds.add(override.id)
+            override
+        } else {
+            baseSpell
+        }
+    }.toMutableList()
+
+    spellOverrides.values.forEach { override ->
+        if (override.id !in matchedOverrideIds && !baseSpells.any { it.matchesId(override.id) }) {
+            result.add(override)
+        }
+    }
+    return result
+}
+
+fun extractSpellNamesFromNotes(spellsNotes: List<DynamicNoteState>): Set<String> {
+    val result = mutableSetOf<String>()
+    val markdownLinkRegex = Regex("\\[([^\\]]+)\\]\\([^\\)]+\\)")
+    spellsNotes.forEach { note ->
+        note.content.lines().forEach { line ->
+            var lineText = line
+            markdownLinkRegex.findAll(lineText).forEach { match ->
+                val name = match.groupValues[1].trim()
+                if (name.isNotBlank()) result.add(name)
+            }
+            lineText = lineText.replace(markdownLinkRegex, "")
+            val clean = lineText.trim().removePrefix("-").removePrefix("•").trim()
+            if (clean.isNotBlank() && !clean.startsWith("_**") && !clean.startsWith("#") && !clean.startsWith("http")) {
+                result.add(clean)
+            }
+        }
+    }
+    return result
+}
+
+fun SpellSettings.getCharacterSpells(
+    baseSpells: List<SpellCard>,
+    spellsNotes: List<DynamicNoteState> = emptyList()
+): List<SpellCard> {
+    val allAvailable = getAvailableSpells(baseSpells)
+    val selectedSet = selectedSpellIds.toSet()
+    val preparedSet = preparedSpellIds.toSet()
+
+    fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
+        return idSet.any { spell.matchesId(it) }
+    }
+
+    val extractedNames = if (spellsNotes.isNotEmpty()) extractSpellNamesFromNotes(spellsNotes) else emptySet()
+
+    fun isSelected(spell: SpellCard): Boolean {
+        if (matchesAny(spell, selectedSet)) return true
+        if (extractedNames.isNotEmpty()) {
+            return extractedNames.any { spell.matchesId(it) || spell.name.equals(it, ignoreCase = true) || (spell.englishName.isNotBlank() && spell.englishName.equals(it, ignoreCase = true)) }
+        }
+        return false
+    }
+
+    fun isPrepared(spell: SpellCard): Boolean {
+        if (matchesAny(spell, preparedSet)) return true
+        if (extractedNames.isNotEmpty()) {
+            return extractedNames.any { spell.matchesId(it) || spell.name.equals(it, ignoreCase = true) || (spell.englishName.isNotBlank() && spell.englishName.equals(it, ignoreCase = true)) }
+        }
+        return false
+    }
+
+    return if (isSpellbookEnabled) {
+        allAvailable.filter {
+            isPrepared(it) || (isSelected(it) && it.isRitual)
+        }
+    } else {
+        allAvailable.filter { isSelected(it) }
+    }
+}
 
 @Immutable
 @Serializable
@@ -858,9 +974,11 @@ data class Character(
     val race: String = "",
     val classes: List<ClassEntry> = emptyList(),
     val isJackOfAllTrades: Boolean = false,
+    val isThemeSeedManual: Boolean = false,
     val deathSaveSuccesses: Int = 0,
     val deathSaveFailures: Int = 0,
     val resources: List<DynamicContentBlock.Resource> = emptyList(),
+    val infoBlocks: List<DynamicContentBlock.InfoBlock> = emptyList(),
     val folderUuid: String? = null
 ) {
     fun toSummary(currentFolderUuid: String? = null): CharacterSummary {

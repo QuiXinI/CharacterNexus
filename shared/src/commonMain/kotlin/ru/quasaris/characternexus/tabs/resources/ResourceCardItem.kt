@@ -438,7 +438,7 @@ fun ResourceBlock(
             enter = expandIn(expandFrom = Alignment.TopStart) + fadeIn(),
             exit = shrinkOut(shrinkTowards = Alignment.TopStart) + fadeOut()
         ) {
-            Text(
+            ru.quasaris.characternexus.tabs.RenderMarkdownContent(
                 text = resource.notes,
                 style = MaterialTheme.typography.bodyMedium,
                 color = colorScheme.onSurfaceVariant,

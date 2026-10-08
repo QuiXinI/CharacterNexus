@@ -171,6 +171,69 @@ class SettingsViewModel(
     private val _m3SeedColor = MutableStateFlow(settingsManager.settings.m3SeedColor)
     val m3SeedColor = _m3SeedColor.asStateFlow()
 
+    private val _customThemeSeed = MutableStateFlow(settingsManager.settings.customThemeSeed)
+    val customThemeSeed = _customThemeSeed.asStateFlow()
+
+    private val _customUseFlexibleColors = MutableStateFlow(settingsManager.settings.customUseFlexibleColors)
+    val customUseFlexibleColors = _customUseFlexibleColors.asStateFlow()
+
+    private val _customPrimary = MutableStateFlow(settingsManager.settings.customPrimary)
+    val customPrimary = _customPrimary.asStateFlow()
+
+    private val _customOnPrimary = MutableStateFlow(settingsManager.settings.customOnPrimary)
+    val customOnPrimary = _customOnPrimary.asStateFlow()
+
+    private val _customPrimaryContainer = MutableStateFlow(settingsManager.settings.customPrimaryContainer)
+    val customPrimaryContainer = _customPrimaryContainer.asStateFlow()
+
+    private val _customOnPrimaryContainer = MutableStateFlow(settingsManager.settings.customOnPrimaryContainer)
+    val customOnPrimaryContainer = _customOnPrimaryContainer.asStateFlow()
+
+    private val _customSecondary = MutableStateFlow(settingsManager.settings.customSecondary)
+    val customSecondary = _customSecondary.asStateFlow()
+
+    private val _customOnSecondary = MutableStateFlow(settingsManager.settings.customOnSecondary)
+    val customOnSecondary = _customOnSecondary.asStateFlow()
+
+    private val _customSecondaryContainer = MutableStateFlow(settingsManager.settings.customSecondaryContainer)
+    val customSecondaryContainer = _customSecondaryContainer.asStateFlow()
+
+    private val _customOnSecondaryContainer = MutableStateFlow(settingsManager.settings.customOnSecondaryContainer)
+    val customOnSecondaryContainer = _customOnSecondaryContainer.asStateFlow()
+
+    private val _customTertiary = MutableStateFlow(settingsManager.settings.customTertiary)
+    val customTertiary = _customTertiary.asStateFlow()
+
+    private val _customOnTertiary = MutableStateFlow(settingsManager.settings.customOnTertiary)
+    val customOnTertiary = _customOnTertiary.asStateFlow()
+
+    private val _customTertiaryContainer = MutableStateFlow(settingsManager.settings.customTertiaryContainer)
+    val customTertiaryContainer = _customTertiaryContainer.asStateFlow()
+
+    private val _customOnTertiaryContainer = MutableStateFlow(settingsManager.settings.customOnTertiaryContainer)
+    val customOnTertiaryContainer = _customOnTertiaryContainer.asStateFlow()
+
+    private val _customBackground = MutableStateFlow(settingsManager.settings.customBackground)
+    val customBackground = _customBackground.asStateFlow()
+
+    private val _customOnBackground = MutableStateFlow(settingsManager.settings.customOnBackground)
+    val customOnBackground = _customOnBackground.asStateFlow()
+
+    private val _customSurface = MutableStateFlow(settingsManager.settings.customSurface)
+    val customSurface = _customSurface.asStateFlow()
+
+    private val _customOnSurface = MutableStateFlow(settingsManager.settings.customOnSurface)
+    val customOnSurface = _customOnSurface.asStateFlow()
+
+    private val _customSurfaceVariant = MutableStateFlow(settingsManager.settings.customSurfaceVariant)
+    val customSurfaceVariant = _customSurfaceVariant.asStateFlow()
+
+    private val _customOnSurfaceVariant = MutableStateFlow(settingsManager.settings.customOnSurfaceVariant)
+    val customOnSurfaceVariant = _customOnSurfaceVariant.asStateFlow()
+
+    private val _customOutline = MutableStateFlow(settingsManager.settings.customOutline)
+    val customOutline = _customOutline.asStateFlow()
+
     private val _isPremium = MutableStateFlow(settingsManager.settings.isPremium)
     val isPremium = _isPremium.asStateFlow()
 
@@ -471,6 +534,65 @@ class SettingsViewModel(
         _themeMode.value = mode
         settingsManager.settings.themeMode = mode
         settingsManager.save()
+    }
+
+    fun updateCustomThemeSeed(seed: String) {
+        _customThemeSeed.value = seed
+        settingsManager.customThemeSeed = seed
+    }
+
+    fun updateCustomUseFlexibleColors(use: Boolean) {
+        _customUseFlexibleColors.value = use
+        settingsManager.customUseFlexibleColors = use
+    }
+
+    fun updateCustomColor(field: String, color: String) {
+        when (field) {
+            "primary" -> { _customPrimary.value = color; settingsManager.customPrimary = color }
+            "onPrimary" -> { _customOnPrimary.value = color; settingsManager.customOnPrimary = color }
+            "primaryContainer" -> { _customPrimaryContainer.value = color; settingsManager.customPrimaryContainer = color }
+            "onPrimaryContainer" -> { _customOnPrimaryContainer.value = color; settingsManager.customOnPrimaryContainer = color }
+            "secondary" -> { _customSecondary.value = color; settingsManager.customSecondary = color }
+            "onSecondary" -> { _customOnSecondary.value = color; settingsManager.customOnSecondary = color }
+            "secondaryContainer" -> { _customSecondaryContainer.value = color; settingsManager.customSecondaryContainer = color }
+            "onSecondaryContainer" -> { _customOnSecondaryContainer.value = color; settingsManager.customOnSecondaryContainer = color }
+            "tertiary" -> { _customTertiary.value = color; settingsManager.customTertiary = color }
+            "onTertiary" -> { _customOnTertiary.value = color; settingsManager.customOnTertiary = color }
+            "tertiaryContainer" -> { _customTertiaryContainer.value = color; settingsManager.customTertiaryContainer = color }
+            "onTertiaryContainer" -> { _customOnTertiaryContainer.value = color; settingsManager.customOnTertiaryContainer = color }
+            "background" -> { _customBackground.value = color; settingsManager.customBackground = color }
+            "onBackground" -> { _customOnBackground.value = color; settingsManager.customOnBackground = color }
+            "surface" -> { _customSurface.value = color; settingsManager.customSurface = color }
+            "onSurface" -> { _customOnSurface.value = color; settingsManager.customOnSurface = color }
+            "surfaceVariant" -> { _customSurfaceVariant.value = color; settingsManager.customSurfaceVariant = color }
+            "onSurfaceVariant" -> { _customOnSurfaceVariant.value = color; settingsManager.customOnSurfaceVariant = color }
+            "outline" -> { _customOutline.value = color; settingsManager.customOutline = color }
+        }
+    }
+
+    fun resetCustomThemeColors() {
+        val def = AppSettings()
+        updateCustomThemeSeed(def.customThemeSeed)
+        updateCustomUseFlexibleColors(def.customUseFlexibleColors)
+        updateCustomColor("primary", def.customPrimary)
+        updateCustomColor("onPrimary", def.customOnPrimary)
+        updateCustomColor("primaryContainer", def.customPrimaryContainer)
+        updateCustomColor("onPrimaryContainer", def.customOnPrimaryContainer)
+        updateCustomColor("secondary", def.customSecondary)
+        updateCustomColor("onSecondary", def.customOnSecondary)
+        updateCustomColor("secondaryContainer", def.customSecondaryContainer)
+        updateCustomColor("onSecondaryContainer", def.customOnSecondaryContainer)
+        updateCustomColor("tertiary", def.customTertiary)
+        updateCustomColor("onTertiary", def.customOnTertiary)
+        updateCustomColor("tertiaryContainer", def.customTertiaryContainer)
+        updateCustomColor("onTertiaryContainer", def.customOnTertiaryContainer)
+        updateCustomColor("background", def.customBackground)
+        updateCustomColor("onBackground", def.customOnBackground)
+        updateCustomColor("surface", def.customSurface)
+        updateCustomColor("onSurface", def.customOnSurface)
+        updateCustomColor("surfaceVariant", def.customSurfaceVariant)
+        updateCustomColor("onSurfaceVariant", def.customOnSurfaceVariant)
+        updateCustomColor("outline", def.customOutline)
     }
 
     fun updateThemeBehavior(behavior: AppThemeBehavior) {

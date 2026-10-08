@@ -3,6 +3,7 @@ package ru.quasaris.characternexus.tabs.potions
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +28,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,6 +48,8 @@ import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.util.PayWall
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 import ru.quasaris.characternexus.ui.theme.hazePopover
+import ru.quasaris.characternexus.ui.colourpicker.ColourPickerDialog
+import ru.quasaris.characternexus.ui.colourpicker.ColourUtils
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.editors.DamageTypeMultiSelect
 import ru.quasaris.characternexus.ui.editors.SpellCardSectionTitle
@@ -208,15 +213,38 @@ fun PotionConfigDialogContent(
     onEnglishNameErrorChange: (String?) -> Unit = {},
     allowedCharsRegex: Regex = Regex(".*")
 ) {
+    val focusManager = LocalFocusManager.current
+    var isInputFocused by remember { mutableStateOf(false) }
+
+    val handleBack = {
+        if (isInputFocused) {
+            focusManager.clearFocus()
+        } else {
+            onDismiss()
+        }
+    }
+
     PredictiveBackBox(
-        onBack = onDismiss,
-        modifier = Modifier.fillMaxSize()
+        onBack = handleBack,
+        modifier = Modifier
+            .fillMaxSize()
+            .onFocusChanged { focusState ->
+                isInputFocused = focusState.hasFocus
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                    if (isInputFocused) {
+                        focusManager.clearFocus()
+                        return@onPreviewKeyEvent true
+                    }
+                }
+                false
+            }
     ) { _ ->
         val colorScheme = MaterialTheme.colorScheme
-    val isOled = colorScheme.background == Color.Black
-    val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
-    val focusManager = LocalFocusManager.current
-    var showDeleteConfirm by remember { mutableStateOf(false) }
+        val isOled = colorScheme.background == Color.Black
+        val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+        var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -237,14 +265,6 @@ fun PotionConfigDialogContent(
                         forceBlurEnabled = forceBlurEnabled,
                         isOled = isOled
                     )
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDrag = { change, _ ->
-                                change.consume()
-                                focusManager.clearFocus()
-                            }
-                        )
-                    }
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null
@@ -397,15 +417,29 @@ fun PotionConfigDialogContent(
                             }
                         }
 
-                        OutlinedTextField(
-                            value = state.description,
-                            onValueChange = { onStateChange(state.copy(description = it)) },
-                            label = { Text("Описание") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3,
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = !isReadOnlyDefinition
-                        )
+                        val potionDescState = remember(state.name, state.description) {
+                            DynamicNoteState(id = "potion_desc_${state.name}", content = state.description)
+                        }
+                        Column(modifier = Modifier.fillMaxWidth().alpha(if (isReadOnlyDefinition) 0.6f else 1f)) {
+                            Text("Описание", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Box(modifier = Modifier.padding(12.dp)) {
+                                    ru.quasaris.characternexus.tabs.NotionBlockEditor(
+                                        field = potionDescState,
+                                        onFieldChange = { updated -> if (!isReadOnlyDefinition) onStateChange(state.copy(description = updated.content)) },
+                                        canEdit = !isReadOnlyDefinition,
+                                        isReorderMode = false,
+                                        contentPlaceholder = "Описание зелья...",
+                                        isBasicMode = true
+                                    )
+                                }
+                            }
+                        }
 
                         HorizontalDivider()
 
@@ -447,24 +481,69 @@ fun PotionConfigDialogContent(
                         }
 
                         // Color Selection
-                        OutlinedTextField(
-                            value = colorText,
-                            onValueChange = onColorTextChange,
-                            label = { Text("Цвет (HEX)") },
-                            placeholder = { Text("RRGGBB или RRGGBBAA") },
+                        var showColourPicker by remember { mutableStateOf(false) }
+
+                        if (showColourPicker) {
+                            val currentColor = parseColor(colorText)
+                            ColourPickerDialog(
+                                initialColor = currentColor,
+                                onDismiss = { showColourPicker = false },
+                                onColorConfirmed = { chosenColor ->
+                                    val newHex = ColourUtils.colorToHex(chosenColor, includeAlpha = true)
+                                    onColorTextChange(newHex)
+                                },
+                                showAlpha = true,
+                                title = "Цвет зелья",
+                                hazeState = hazeState,
+                                isOled = isOled,
+                                settingsViewModel = settingsViewModel
+                            )
+                        }
+
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            enabled = !isReadOnlyDefinition,
-                            trailingIcon = {
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = colorText,
+                                onValueChange = onColorTextChange,
+                                label = { Text("Цвет (HEX)") },
+                                placeholder = { Text("RRGGBB или RRGGBBAA") },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                enabled = !isReadOnlyDefinition
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, colorScheme.outline, RoundedCornerShape(8.dp))
+                                    .clickable(enabled = !isReadOnlyDefinition) { showColourPicker = true }
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val squareSize = 6.dp.toPx()
+                                    val cols = (size.width / squareSize).toInt() + 1
+                                    val rows = (size.height / squareSize).toInt() + 1
+                                    for (i in 0 until cols) {
+                                        for (j in 0 until rows) {
+                                            val c = if ((i + j) % 2 == 0) Color.LightGray else Color.White
+                                            drawRect(
+                                                color = c,
+                                                topLeft = androidx.compose.ui.geometry.Offset(i * squareSize, j * squareSize),
+                                                size = androidx.compose.ui.geometry.Size(squareSize, squareSize)
+                                            )
+                                        }
+                                    }
+                                }
                                 Box(
                                     modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(RoundedCornerShape(4.dp))
+                                        .fillMaxSize()
                                         .background(parseColor(colorText))
-                                        .border(1.dp, colorScheme.outline, RoundedCornerShape(4.dp))
                                 )
                             }
-                        )
+                        }
 
                         OutlinedTextField(
                             value = state.source,

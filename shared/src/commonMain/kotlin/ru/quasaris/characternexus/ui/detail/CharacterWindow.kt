@@ -72,7 +72,6 @@ import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.*
 import ru.quasaris.characternexus.ui.util.LocalDisplayFold
 import ru.quasaris.characternexus.ui.components.SectionOverlay
-import ru.quasaris.characternexus.ui.theme.QuasarisTheme
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.model.Character
@@ -255,7 +254,7 @@ fun CharacterWindow(
             state.isAttackConfigOpen || state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
             state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen || state.isSpellbookSelectionOpen ||
             state.isArmorClassSubDialogOpen || state.isInitiativeSubDialogOpen || state.isSpeedSubDialogOpen ||
-            state.isResourceConfigOpen || state.isPotionConfigOpen || state.isPotionSelectionOpen || state.showHpDialog
+            state.isResourceConfigOpen || state.isInfoBlockConfigOpen || state.isPotionConfigOpen || state.isPotionSelectionOpen || state.showHpDialog
 
     val density = LocalDensity.current
 
@@ -319,15 +318,15 @@ fun CharacterWindow(
                         val action = keybinds.entries.find { it.value.keyCode == event.key.keyCode }?.key
 
                         if (event.key == Key.Escape) {
+                            if (!isRootFocused) {
+                                focusManager.clearFocus()
+                                rootFocusRequester.requestFocus()
+                                return@onPreviewKeyEvent true
+                            }
                             val isAnyDesktopOverlayOpen = isDesktop && (isAnyFullscreenDialogOpen || state.isAnyPanelVisible)
                             if (isAnyDesktopOverlayOpen) {
                                 if (isAnyFullscreenDialogOpen) state.closeFullscreenDialogs()
                                 else state.closeWidgets()
-                                return@onPreviewKeyEvent true
-                            }
-                            if (!isRootFocused) {
-                                focusManager.clearFocus()
-                                rootFocusRequester.requestFocus()
                                 return@onPreviewKeyEvent true
                             }
                         }
@@ -601,7 +600,9 @@ fun CharacterWindow(
                     val seedColor = PaletteHelper.extractSeedColor(croppedBytes)
 
                     state.characterImageData = generateUuid() // Using fresh UUID as "version" string
-                    state.themeSeedColorArgb = seedColor
+                    if (!state.isThemeSeedManual) {
+                        state.themeSeedColorArgb = seedColor
+                    }
                     state.imageToCrop = null
                     state.bytesToCrop = null
                 }
@@ -1444,7 +1445,7 @@ fun CharacterDetailMainContent(
                 val isDialogVisible = state.showSpellSettings || state.isAttackConfigOpen ||
                         state.isSpellEditorOpen || state.isMagicBonusSettingsOpen ||
                         state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen ||
-                        state.isSpellbookSelectionOpen || state.isResourceConfigOpen ||
+                        state.isSpellbookSelectionOpen || state.isResourceConfigOpen || state.isInfoBlockConfigOpen ||
                         state.isPotionConfigOpen || state.isPotionSelectionOpen ||
                         state.isCargoConfigOpen ||
                         state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed ||

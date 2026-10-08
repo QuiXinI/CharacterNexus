@@ -256,9 +256,11 @@ fun GlossaryCategoryList(
     }
 
     var searchQuery by remember { mutableStateOf("") }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) { refreshTrigger++ }
     val colorScheme = MaterialTheme.colorScheme
     
-    val items = remember(category, searchQuery) {
+    val items = remember(category, searchQuery, refreshTrigger) {
         val baseDir = getAppDataDir().resolve("glossary/${category.dirName}")
         if (!platformFileSystem.exists(baseDir)) return@remember emptyList<GlossaryListItem>()
         

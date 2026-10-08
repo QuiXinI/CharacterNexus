@@ -14,6 +14,27 @@ data class AppSettings(
     var themeBehavior: AppThemeBehavior = AppThemeBehavior.SYSTEM,
     var interfaceMode: AppInterfaceMode = AppInterfaceMode.AUTO,
     var m3SeedColor: String = "#6750A4",
+    var customThemeSeed: String = "#6750A4",
+    var customUseFlexibleColors: Boolean = false,
+    var customPrimary: String = "#6750A4",
+    var customOnPrimary: String = "#FFFFFF",
+    var customPrimaryContainer: String = "#EADDFF",
+    var customOnPrimaryContainer: String = "#21005D",
+    var customSecondary: String = "#625B71",
+    var customOnSecondary: String = "#FFFFFF",
+    var customSecondaryContainer: String = "#E8DEF8",
+    var customOnSecondaryContainer: String = "#1D192B",
+    var customTertiary: String = "#7D5260",
+    var customOnTertiary: String = "#FFFFFF",
+    var customTertiaryContainer: String = "#FFD8E4",
+    var customOnTertiaryContainer: String = "#31111D",
+    var customBackground: String = "#FFFBFE",
+    var customOnBackground: String = "#1C1B1F",
+    var customSurface: String = "#FFFBFE",
+    var customOnSurface: String = "#1C1B1F",
+    var customSurfaceVariant: String = "#E7E0EC",
+    var customOnSurfaceVariant: String = "#49454F",
+    var customOutline: String = "#79747E",
     var exportFormat: ExportFormat = ExportFormat.WEBP,
     var exportDirectoryUri: String? = null,
     var lastCharacterUuid: String? = null,
@@ -112,6 +133,27 @@ class SettingsManager {
     var interfaceMode: AppInterfaceMode get() = settings.interfaceMode; set(value) { settings.interfaceMode = value; save() }
     var desktopLeftColumnWidth: Float get() = settings.desktopLeftColumnWidth; set(value) { settings.desktopLeftColumnWidth = value; save() }
     var m3SeedColor: String get() = settings.m3SeedColor; set(value) { settings.m3SeedColor = value; save() }
+    var customThemeSeed: String get() = settings.customThemeSeed; set(value) { settings.customThemeSeed = value; save() }
+    var customUseFlexibleColors: Boolean get() = settings.customUseFlexibleColors; set(value) { settings.customUseFlexibleColors = value; save() }
+    var customPrimary: String get() = settings.customPrimary; set(value) { settings.customPrimary = value; save() }
+    var customOnPrimary: String get() = settings.customOnPrimary; set(value) { settings.customOnPrimary = value; save() }
+    var customPrimaryContainer: String get() = settings.customPrimaryContainer; set(value) { settings.customPrimaryContainer = value; save() }
+    var customOnPrimaryContainer: String get() = settings.customOnPrimaryContainer; set(value) { settings.customOnPrimaryContainer = value; save() }
+    var customSecondary: String get() = settings.customSecondary; set(value) { settings.customSecondary = value; save() }
+    var customOnSecondary: String get() = settings.customOnSecondary; set(value) { settings.customOnSecondary = value; save() }
+    var customSecondaryContainer: String get() = settings.customSecondaryContainer; set(value) { settings.customSecondaryContainer = value; save() }
+    var customOnSecondaryContainer: String get() = settings.customOnSecondaryContainer; set(value) { settings.customOnSecondaryContainer = value; save() }
+    var customTertiary: String get() = settings.customTertiary; set(value) { settings.customTertiary = value; save() }
+    var customOnTertiary: String get() = settings.customOnTertiary; set(value) { settings.customOnTertiary = value; save() }
+    var customTertiaryContainer: String get() = settings.customTertiaryContainer; set(value) { settings.customTertiaryContainer = value; save() }
+    var customOnTertiaryContainer: String get() = settings.customOnTertiaryContainer; set(value) { settings.customOnTertiaryContainer = value; save() }
+    var customBackground: String get() = settings.customBackground; set(value) { settings.customBackground = value; save() }
+    var customOnBackground: String get() = settings.customOnBackground; set(value) { settings.customOnBackground = value; save() }
+    var customSurface: String get() = settings.customSurface; set(value) { settings.customSurface = value; save() }
+    var customOnSurface: String get() = settings.customOnSurface; set(value) { settings.customOnSurface = value; save() }
+    var customSurfaceVariant: String get() = settings.customSurfaceVariant; set(value) { settings.customSurfaceVariant = value; save() }
+    var customOnSurfaceVariant: String get() = settings.customOnSurfaceVariant; set(value) { settings.customOnSurfaceVariant = value; save() }
+    var customOutline: String get() = settings.customOutline; set(value) { settings.customOutline = value; save() }
     var exportFormat: ExportFormat get() = settings.exportFormat; set(value) { settings.exportFormat = value; save() }
     var lastCharacterUuid: String? get() = settings.lastCharacterUuid; set(value) { settings.lastCharacterUuid = value; save() }
     var lastCharacterSeedColor: Int? get() = settings.lastCharacterSeedColor; set(value) { settings.lastCharacterSeedColor = value; save() }

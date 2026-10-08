@@ -62,12 +62,8 @@ import kotlin.math.sin
 import kotlin.math.PI
 
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import ru.quasaris.characternexus.ui.theme.hazePopover
-
-val DiceRollHazeStyle = HazeStyle(
-    blurRadius = 24.dp,
-    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-)
 
 @Composable
 fun DiceRollOverlay(
@@ -80,7 +76,8 @@ fun DiceRollOverlay(
     isPassThrough: Boolean = true,
     position: DiceRollPosition = DiceRollPosition.BOTTOM_LEFT,
     closeButtonPosition: DiceRollPosition = DiceRollPosition.TOP_RIGHT,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    settingsViewModel: SettingsViewModel? = null
 ) {
     if (history.isEmpty()) return
 
@@ -88,25 +85,31 @@ fun DiceRollOverlay(
     val latest = remember(history, history.size) { history.firstOrNull() }
     val previous = remember(history, history.size) { history.drop(1).reversed() }
     val colorScheme = MaterialTheme.colorScheme
+    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+    val diceRollHazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     Box(modifier = modifier.padding(16.dp)) {
         Box(
             modifier = Modifier
                 .widthIn(min = 280.dp, max = 340.dp)
+                .outerShadow(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.Black.copy(alpha = if (isOled) 0.6f else 0.25f),
+                    blur = 10.dp,
+                    offsetY = 4.dp
+                )
+                .clip(RoundedCornerShape(24.dp))
                 .run {
                     if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.clip(RoundedCornerShape(24.dp))
-                            .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
+                        this.hazeEffect(state = hazeState, style = diceRollHazeStyle)
                             .background(colorScheme.surface.copy(alpha = 0.2f))
                     } else {
-                        this.outerShadow(shape = RoundedCornerShape(24.dp), blur = 8.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(
-                                color = when {
-                                    isOled -> Color.Black
-                                    else -> colorScheme.surface.copy(alpha = alpha)
-                                }
-                            )
+                        this.background(
+                            color = when {
+                                isOled -> Color.Black
+                                else -> colorScheme.surface.copy(alpha = alpha)
+                            }
+                        )
                     }
                 }
                 .border(1.dp, Color.White.copy(alpha = if (isOled) 0.3f else 0.1f), RoundedCornerShape(24.dp))
@@ -160,7 +163,7 @@ fun DiceRollOverlay(
                 .run {
                     if (forceBlurEnabled && hazeState != null && !isOled) {
                         this.clip(RoundedCornerShape(12.dp))
-                            .hazeEffect(state = hazeState, style = DiceRollHazeStyle)
+                            .hazeEffect(state = hazeState, style = diceRollHazeStyle)
                     } else this
                 }
                 .clip(RoundedCornerShape(12.dp))

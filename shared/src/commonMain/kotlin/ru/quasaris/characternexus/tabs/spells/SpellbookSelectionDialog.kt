@@ -25,6 +25,7 @@ import ru.quasaris.characternexus.backend.DicePart
 import ru.quasaris.characternexus.tabs.spells.SpellFiltersArea
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeStyle
@@ -198,14 +199,7 @@ fun SpellbookSelectionContent(
 ) {
     val allSpells = remember(spellOverrides) {
         val base = spellbookManager.loadSpells()
-        val all = base.map { spellOverrides[it.id] ?: it }.toMutableList()
-        val baseIds = base.map { it.id }.toSet()
-        spellOverrides.values.forEach { overrideSpell ->
-            if (overrideSpell.id !in baseIds) {
-                all.add(overrideSpell)
-            }
-        }
-        all
+        SpellSettings(spellOverrides = spellOverrides).getAvailableSpells(base)
     }
 
     fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
@@ -282,12 +276,8 @@ fun SpellbookSelectionContent(
             .fillMaxSize()
             .run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = blurRadius,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                        )
-                    }
+                    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             }
     ) { paddingValues ->

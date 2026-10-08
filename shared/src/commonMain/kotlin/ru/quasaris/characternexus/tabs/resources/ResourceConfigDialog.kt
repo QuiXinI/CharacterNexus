@@ -18,6 +18,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.chrisbanes.haze.*
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
@@ -160,15 +163,38 @@ fun ResourceConfigDialogContent(
     noteId: String = "",
     blockIndex: Int = -1
 ) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    var isInputFocused by remember { mutableStateOf(false) }
+
+    val handleBack = {
+        if (isInputFocused) {
+            focusManager.clearFocus()
+        } else {
+            onDismiss()
+        }
+    }
+
     PredictiveBackBox(
-        onBack = onDismiss,
-        modifier = Modifier.fillMaxSize()
+        onBack = handleBack,
+        modifier = Modifier
+            .fillMaxSize()
+            .onFocusChanged { focusState ->
+                isInputFocused = focusState.hasFocus
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                    if (isInputFocused) {
+                        focusManager.clearFocus()
+                        return@onPreviewKeyEvent true
+                    }
+                }
+                false
+            }
     ) { _ ->
         val colorScheme = MaterialTheme.colorScheme
-    val isOled = colorScheme.background == Color.Black
-    val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    var showDeleteConfirm by remember { mutableStateOf(false) }
+        val isOled = colorScheme.background == Color.Black
+        val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+        var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val innerContent = @Composable {
         ResourceConfigDialogInner(
@@ -224,26 +250,14 @@ fun ResourceConfigDialogContent(
                     }
                 }
             } else {
+                val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
                 Scaffold(
                     modifier = Modifier
                         .fillMaxSize()
                         .run {
                             if (forceBlurEnabled && hazeState != null && !isOled && !isNested) {
-                                this.hazeEffect(state = hazeState) {
-                                    style = HazeStyle(
-                                        blurRadius = blurRadius,
-                                        tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                                    )
-                                }
+                                this.hazeEffect(state = hazeState, style = hazeStyle)
                             } else this
-                        }
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDrag = { change, _ ->
-                                    change.consume()
-                                    focusManager.clearFocus()
-                                }
-                            )
                         }
                         .clickable(
                             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
@@ -258,11 +272,11 @@ fun ResourceConfigDialogContent(
                                 }
                             },
                             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isNested && !showDeleteConfirm) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                                containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isNested && !showDeleteConfirm) Color.Transparent else colorScheme.surface
                             )
                         )
                     },
-                    containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isNested && !showDeleteConfirm) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
+                    containerColor = if (forceBlurEnabled && !isOled && hazeState != null && !isNested && !showDeleteConfirm) Color.Transparent else colorScheme.background
                 ) { paddingValues ->
                     Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
                         innerContent()
@@ -518,14 +532,29 @@ fun ResourceConfigDialogInner(
                             }
                         }
 
-                        OutlinedTextField(
-                            value = state.notes,
-                            onValueChange = { onStateChange(state.copy(notes = it)) },
-                            label = { Text("Поле для заметок") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3,
-                            shape = RoundedCornerShape(8.dp)
-                        )
+                        val resourceNoteState = remember(state.id, state.notes) {
+                            ru.quasaris.characternexus.model.DynamicNoteState(id = "resource_notes_${state.id}", content = state.notes)
+                        }
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text("Описание", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 4.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                border = BorderStroke(1.dp, colorScheme.outline.copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Box(modifier = Modifier.padding(12.dp)) {
+                                    ru.quasaris.characternexus.tabs.NotionBlockEditor(
+                                        field = resourceNoteState,
+                                        onFieldChange = { updated -> onStateChange(state.copy(notes = updated.content)) },
+                                        canEdit = true,
+                                        isReorderMode = false,
+                                        contentPlaceholder = "Заметки...",
+                                        isBasicMode = true
+                                    )
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(32.dp))
 

@@ -47,7 +47,7 @@ fun ResourceInfoPopover(
                 modifier = Modifier
                     .padding(8.dp)
                     .widthIn(max = 260.dp)
-                    .then(if (!isOled) Modifier.outerShadow(RoundedCornerShape(16.dp), blur = 8.dp) else Modifier)
+                    .then(Modifier.outerShadow(RoundedCornerShape(16.dp), blur = 8.dp, color = if (isOled) Color.White.copy(alpha = 0.3f) else Color(0x80000000)))
                     .clip(RoundedCornerShape(16.dp))
                     .hazePopover(
                         state = popupHazeState ?: hazeState,

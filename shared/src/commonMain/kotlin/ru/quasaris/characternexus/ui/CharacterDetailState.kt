@@ -10,6 +10,7 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.model.Character
 import ru.quasaris.characternexus.tabs.resources.ResourceManager
 import ru.quasaris.characternexus.tabs.resources.ResourceMigration
+import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockManager
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -243,10 +244,12 @@ class CharacterDetailState(
     var notes by mutableStateOf(initialCharacter?.notes ?: listOf(DynamicNoteState()))
 
     val resourceManager = ResourceManager(this, initialCharacter?.resources ?: emptyList())
+    val infoBlockManager = InfoBlockManager(this, initialCharacter?.infoBlocks ?: emptyList())
 
     init {
         // Migration and Sync
         resourceManager.normalize()
+        infoBlockManager.normalize()
 
         // Ensure default proficiencies for existing characters with empty sections
         val currentSections = proficiencies.sections.toMutableList()
@@ -283,6 +286,7 @@ class CharacterDetailState(
 
     var characterImageData by mutableStateOf(initialCharacter?.imageData)
     var themeSeedColorArgb by mutableStateOf(initialCharacter?.themeSeedColorArgb)
+    var isThemeSeedManual by mutableStateOf(initialCharacter?.isThemeSeedManual ?: false)
     var bytesToCrop by mutableStateOf<ByteArray?>(null)
     var imageToCrop by mutableStateOf<ImageBitmap?>(null)
 
@@ -323,6 +327,8 @@ class CharacterDetailState(
     var selectedCurrency by mutableStateOf<Currency?>(null)
     var isResourceConfigOpen by mutableStateOf(false)
     var activeResourceConfig by mutableStateOf<DynamicContentBlock.Resource?>(null)
+    var isInfoBlockConfigOpen by mutableStateOf(false)
+    var activeInfoBlockConfig by mutableStateOf<DynamicContentBlock.InfoBlock?>(null)
     var isPotionConfigOpen by mutableStateOf(false)
     var isPotionSelectionOpen by mutableStateOf(false)
     var isCargoConfigOpen by mutableStateOf(false)
@@ -663,9 +669,11 @@ class CharacterDetailState(
             hpBonusesAtLevel = hpBonusesAtLevel, hpBonusesTotal = hpBonusesTotal,
             hasInspiration = hasInspiration,
             isJackOfAllTrades = isJackOfAllTrades,
+            isThemeSeedManual = isThemeSeedManual,
             deathSaveSuccesses = deathSaveSuccesses,
             deathSaveFailures = deathSaveFailures,
-            resources = resourceManager.items
+            resources = resourceManager.items,
+            infoBlocks = infoBlockManager.items
         )
     }
 

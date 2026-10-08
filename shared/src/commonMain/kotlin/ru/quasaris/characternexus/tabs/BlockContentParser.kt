@@ -58,6 +58,8 @@ object BlockContentParser {
         is DynamicContentBlock.Quote -> ">> ${block.content} <<"
         is DynamicContentBlock.Resource -> block.toTag()
         is DynamicContentBlock.ResourceRef -> block.toTag()
+        is DynamicContentBlock.InfoBlock -> block.toTag()
+        is DynamicContentBlock.InfoBlockRef -> block.toTag()
     }
 
     fun reconcile(previous: List<NoteBlockState>, freshBlocks: List<DynamicContentBlock>): List<NoteBlockState> {
@@ -76,5 +78,7 @@ object BlockContentParser {
         is DynamicContentBlock.Quote -> "Q:${block.content}"
         is DynamicContentBlock.Resource -> "R:${block.id}:${block.name}:${block.current}:${block.max}"
         is DynamicContentBlock.ResourceRef -> "RR:${block.id}"
+        is DynamicContentBlock.InfoBlock -> "IB:${block.id}:${block.title}:${block.description}:${block.link}"
+        is DynamicContentBlock.InfoBlockRef -> "IBR:${block.id}"
     }
 }

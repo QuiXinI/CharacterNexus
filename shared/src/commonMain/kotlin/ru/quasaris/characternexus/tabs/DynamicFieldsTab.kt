@@ -53,11 +53,13 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.tabs.resources.ResourceConfigDialog
 import ru.quasaris.characternexus.tabs.resources.ResourceBlock
+import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockConfigDialog
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.ui.TabControlHeader
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -901,6 +903,7 @@ fun DynamicFieldFullscreenContent(
     var localViewportTopY by remember { mutableFloatStateOf(0f) }
 
     var isReorderMode by remember { mutableStateOf(false) }
+    var isPlainTextMode by remember { mutableStateOf(false) }
 
     val imeBottomPx = WindowInsets.ime.getBottom(density)
     val scrollMarginPx = with(density) { 40.dp.toPx() }
@@ -926,7 +929,7 @@ fun DynamicFieldFullscreenContent(
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    val isSubDialogOpen = showDeleteConfirm || state?.isResourceConfigOpen == true
+    val isSubDialogOpen = showDeleteConfirm || state?.isResourceConfigOpen == true || state?.isInfoBlockConfigOpen == true
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
@@ -975,6 +978,13 @@ fun DynamicFieldFullscreenContent(
                         },
                         actions = {
                             if (!isLocked && isContentVisible) {
+                                IconToggleButton(checked = isPlainTextMode, onCheckedChange = { isPlainTextMode = it }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Code,
+                                        contentDescription = "Простой текст",
+                                        tint = if (isPlainTextMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
                                 IconToggleButton(checked = isReorderMode, onCheckedChange = { isReorderMode = it }) {
                                     Icon(
                                         imageVector = Icons.Default.SwapVert,
@@ -998,12 +1008,8 @@ fun DynamicFieldFullscreenContent(
                     }
                     .run {
                         if (effectiveBlur && hazeState != null && !isSubDialogOpen) {
-                            this.hazeEffect(state = hazeState) {
-                                style = HazeStyle(
-                                    blurRadius = blurRadius,
-                                    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                                )
-                            }
+                            val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
+                            this.hazeEffect(state = hazeState, style = hazeStyle)
                         } else this
                     }
                     .hazeSource(state = localHazeState)
@@ -1049,6 +1055,8 @@ fun DynamicFieldFullscreenContent(
                                         onFieldChange = onFieldChange,
                                         canEdit = !isLocked,
                                         isReorderMode = isReorderMode,
+                                        isPlainTextMode = isPlainTextMode,
+                                        onIsPlainTextModeChange = { isPlainTextMode = it },
                                         contentPlaceholder = contentPlaceholder,
                                         statsMap = statsMap,
                                         hazeState = hazeState,
@@ -1125,6 +1133,17 @@ fun DynamicFieldFullscreenContent(
                                                     contentDescription = "Добавить ресурс",
                                                     modifier = Modifier.size(18.dp),
                                                     tint = colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = { isPlainTextMode = !isPlainTextMode },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Code,
+                                                    contentDescription = "Простой текст",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = if (isPlainTextMode) colorScheme.primary else colorScheme.onSurfaceVariant
                                                 )
                                             }
                                         }
@@ -1248,6 +1267,41 @@ fun DynamicFieldFullscreenContent(
                     owner = state,
                     noteId = state.activeNoteId,
                     blockIndex = state.activeResourceIndex
+                )
+            }
+
+            if (state?.isInfoBlockConfigOpen == true && state.activeInfoBlockConfig != null) {
+                InfoBlockConfigDialog(
+                    infoBlock = state.activeInfoBlockConfig!!,
+                    onDismiss = {
+                        state.isInfoBlockConfigOpen = false
+                        state.activeInfoBlockConfig = null
+                        state.activeNoteId = ""
+                    },
+                    onSave = { updated: DynamicContentBlock.InfoBlock ->
+                        state.infoBlockManager.upsert(updated)
+                        state.infoBlockManager.normalize()
+                    },
+                    onConvertToResource = { info: DynamicContentBlock.InfoBlock ->
+                        state.infoBlockManager.convertToResource(info.id)
+                        state.isInfoBlockConfigOpen = false
+                        state.activeInfoBlockConfig = null
+                        state.activeResourceIndex = -1
+                        state.activeNoteId = ""
+                    },
+                    onDelete = { info: DynamicContentBlock.InfoBlock ->
+                        state.infoBlockManager.deleteCompletely(info.id)
+                        state.isInfoBlockConfigOpen = false
+                        state.activeInfoBlockConfig = null
+                        state.activeResourceIndex = -1
+                        state.activeNoteId = ""
+                    },
+                    forceBlurEnabled = effectiveBlur,
+                    settingsViewModel = settingsViewModel,
+                    hazeState = localHazeState,
+                    isNested = true,
+                    asOverlay = true,
+                    isDesktop = isDesktop
                 )
             }
         }

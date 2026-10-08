@@ -164,7 +164,11 @@ object ArchiveManager {
             }
 
             if (unzippedFiles != null && unzippedFiles.isNotEmpty()) {
-                val manifestBytes = unzippedFiles.entries.find { it.key.equals("manifest.json", ignoreCase = true) }?.value
+                val normalizedFiles = unzippedFiles.mapKeys { it.key.replace('\\', '/') }
+
+                val manifestBytes = normalizedFiles.entries.find { 
+                    it.key.equals("manifest.json", ignoreCase = true) || it.key.endsWith("/manifest.json", ignoreCase = true) 
+                }?.value
                 val manifest = if (manifestBytes != null) {
                     try {
                         json.decodeFromString<CharacterManifest>(decodeSmart(manifestBytes))
@@ -181,45 +185,54 @@ object ArchiveManager {
                 val manifestEntryByUuid = manifest?.characters?.associateBy { it.uuid } ?: emptyMap()
                 val manifestEntryByFolder = manifest?.characters?.associateBy { it.folder.lowercase() } ?: emptyMap()
 
-                // Group files by directory
-                val groups = unzippedFiles.keys.groupBy { 
-                    val parts = it.split("/")
-                    if (parts.size > 1) parts.dropLast(1).joinToString("/") else ""
+                val charJsonEntries = normalizedFiles.filterKeys { 
+                    it.equals("character.json", ignoreCase = true) || it.endsWith("/character.json", ignoreCase = true) 
                 }
 
-                if (groups.size > 1 || (groups.keys.first().isNotEmpty())) {
-                    // Multi-character or single character in a folder
-                    groups.forEach { (dirName, fileKeys) ->
-                        if (dirName.equals("manifest.json", ignoreCase = true) || dirName.isEmpty()) return@forEach
-
-                        val charJsonBytes = unzippedFiles[fileKeys.find { it.endsWith("character.json", ignoreCase = true) }]
-                        if (charJsonBytes != null) {
-                            val jsonString = decodeSmart(charJsonBytes)
-                            val character = parseCharacterContent(jsonString)
-                            if (character != null) {
-                                val manifestEntry = manifestEntryByUuid[character.uuid] ?: manifestEntryByFolder[dirName.lowercase()]
-                                val charWithFolder = if (manifestEntry?.folderUuid != null) {
-                                    character.copy(folderUuid = manifestEntry.folderUuid)
-                                } else {
-                                    character
-                                }
-
-                                val portraitBytes = unzippedFiles[fileKeys.find { it.endsWith("portrait.webp", ignoreCase = true) }]
-                                val originalBytes = unzippedFiles[fileKeys.find { it.endsWith("original.webp", ignoreCase = true) }]
-                                results.add(createImportResult(charWithFolder, portraitBytes, originalBytes))
-                            }
-                        }
-                    }
-                } else {
-                    // Legacy single character at root
-                    val charJsonBytes = unzippedFiles.entries.find { it.key.equals("character.json", ignoreCase = true) }?.value
-                    if (charJsonBytes != null) {
+                if (charJsonEntries.isNotEmpty()) {
+                    charJsonEntries.forEach { (charJsonPath, charJsonBytes) ->
                         val jsonString = decodeSmart(charJsonBytes)
                         val character = parseCharacterContent(jsonString)
                         if (character != null) {
-                            val portraitBytes = unzippedFiles.entries.find { it.key.equals("portrait.webp", ignoreCase = true) }?.value
-                            val originalBytes = unzippedFiles.entries.find { it.key.equals("original.webp", ignoreCase = true) }?.value
-                            results.add(createImportResult(character, portraitBytes, originalBytes))
+                            val prefix = if (charJsonPath.contains("/")) charJsonPath.substringBeforeLast("/") + "/" else ""
+                            val dirName = prefix.removeSuffix("/").substringAfterLast("/")
+
+                            val manifestEntry = manifestEntryByUuid[character.uuid] 
+                                ?: manifestEntryByFolder[dirName.lowercase()]
+                                ?: manifestEntryByFolder[prefix.removeSuffix("/").lowercase()]
+
+                            val charWithFolder = if (manifestEntry?.folderUuid != null) {
+                                character.copy(folderUuid = manifestEntry.folderUuid)
+                            } else {
+                                character
+                            }
+
+                            val portraitBytes = normalizedFiles["${prefix}portrait.webp"] 
+                                ?: normalizedFiles.entries.find { it.key.startsWith(prefix, ignoreCase = true) && it.key.endsWith("portrait.webp", ignoreCase = true) }?.value
+                            val originalBytes = normalizedFiles["${prefix}original.webp"] 
+                                ?: normalizedFiles.entries.find { it.key.startsWith(prefix, ignoreCase = true) && it.key.endsWith("original.webp", ignoreCase = true) }?.value
+
+                            results.add(createImportResult(charWithFolder, portraitBytes, originalBytes))
+                        }
+                    }
+                } else {
+                    // Try parsing any JSON file as a character (excluding manifest.json)
+                    normalizedFiles.forEach { (filePath, fileBytes) ->
+                        if (filePath.endsWith(".json", ignoreCase = true) && !filePath.endsWith("manifest.json", ignoreCase = true)) {
+                            try {
+                                val jsonString = decodeSmart(fileBytes)
+                                val character = parseCharacterContent(jsonString)
+                                if (character != null) {
+                                    val prefix = if (filePath.contains("/")) filePath.substringBeforeLast("/") + "/" else ""
+                                    val portraitBytes = normalizedFiles["${prefix}portrait.webp"] 
+                                        ?: normalizedFiles.entries.find { it.key.startsWith(prefix, ignoreCase = true) && it.key.endsWith("portrait.webp", ignoreCase = true) }?.value
+                                    val originalBytes = normalizedFiles["${prefix}original.webp"] 
+                                        ?: normalizedFiles.entries.find { it.key.startsWith(prefix, ignoreCase = true) && it.key.endsWith("original.webp", ignoreCase = true) }?.value
+                                    results.add(createImportResult(character, portraitBytes, originalBytes))
+                                }
+                            } catch (e: Exception) {
+                                e.log()
+                            }
                         }
                     }
                 }

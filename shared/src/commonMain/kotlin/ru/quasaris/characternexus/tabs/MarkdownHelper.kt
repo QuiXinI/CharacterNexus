@@ -12,6 +12,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import ru.quasaris.characternexus.model.DynamicContentBlock
 
 object MarkdownHelper {
     private val AUTO_URL_REGEX = Regex("(?:https?://|www\\.)[\\w:#@%/;$()~_?+\\-=\\.&]+[\\w#@%/;$()~_?+\\-=]")
@@ -325,3 +332,71 @@ object MarkdownHelper {
         }
     }
 }
+
+@Composable
+fun RenderMarkdownContent(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.bodyMedium,
+    color: Color = Color.Unspecified
+) {
+    if (text.isBlank()) return
+    val colorScheme = MaterialTheme.colorScheme
+    val resolvedColor = if (color != Color.Unspecified) color else colorScheme.onSurface
+    val blocks = remember(text) { BlockContentParser.toBlocks(text) }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        blocks.forEach { block ->
+            when (block) {
+                is DynamicContentBlock.Text -> {
+                    if (block.content.isNotBlank()) {
+                        val annotated = remember(block.content, resolvedColor) {
+                            MarkdownHelper.parseMarkdown(block.content, resolvedColor, isEditing = false)
+                        }
+                        Text(
+                            text = annotated,
+                            style = style,
+                            color = resolvedColor,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                is DynamicContentBlock.Spoiler -> {
+                    if (block.content.isNotBlank()) {
+                        val annotated = remember(block.content, resolvedColor) {
+                            MarkdownHelper.parseMarkdown(block.content, resolvedColor, isEditing = false)
+                        }
+                        Text(
+                            text = annotated,
+                            style = style,
+                            color = resolvedColor,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                is DynamicContentBlock.Quote -> {
+                    if (block.content.isNotBlank()) {
+                        val annotated = remember(block.content, resolvedColor) {
+                            MarkdownHelper.parseMarkdown(block.content, resolvedColor, isEditing = false)
+                        }
+                        Text(
+                            text = annotated,
+                            style = style,
+                            color = resolvedColor,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                is DynamicContentBlock.Divider -> {
+                    HorizontalDivider(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        thickness = 1.dp,
+                        color = colorScheme.outlineVariant
+                    )
+                }
+                else -> {}
+            }
+        }
+    }
+}
+

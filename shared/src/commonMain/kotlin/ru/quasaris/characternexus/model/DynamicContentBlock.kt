@@ -66,4 +66,29 @@ sealed class DynamicContentBlock {
             return "{Ресурс: ${parts.joinToString(" | ")}}"
         }
     }
+
+    @Immutable
+    @Serializable
+    data class InfoBlockRef(val id: String) : DynamicContentBlock() {
+        fun toTag(): String = "{Инфоблок: id=$id}"
+    }
+
+    @Immutable
+    @Serializable
+    data class InfoBlock(
+        val title: String,
+        val link: String? = null,
+        val description: String = "",
+        val id: String = ""
+    ) : DynamicContentBlock() {
+        fun toTag(): String {
+            val parts = mutableListOf<String>()
+            parts.add(title)
+            if (!link.isNullOrBlank()) parts.add("link=$link")
+            if (description.isNotEmpty()) parts.add("desc=$description")
+            val actualId = id.ifEmpty { generateUuid() }
+            parts.add("id=$actualId")
+            return "{Инфоблок: ${parts.joinToString(" | ")}}"
+        }
+    }
 }

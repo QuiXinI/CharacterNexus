@@ -2,6 +2,7 @@ package ru.quasaris.characternexus.ui.editors
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +28,8 @@ import androidx.compose.ui.draw.alpha
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.*
+import ru.quasaris.characternexus.ui.colourpicker.ColourPickerDialog
+import ru.quasaris.characternexus.ui.colourpicker.ColourUtils
 import ru.quasaris.characternexus.backend.GameMagicItem
 import ru.quasaris.characternexus.backend.MagicItemType
 import org.jetbrains.compose.resources.painterResource
@@ -362,27 +365,72 @@ fun MagicItemEditorContent(
                 }
 
                 // Color Selection
-                var colorText by remember { mutableStateOf(state.colorHex) }
-                OutlinedTextField(
-                    value = colorText,
-                    onValueChange = { 
-                        colorText = it
-                        onStateChange(state.copy(colorHex = it))
-                    },
-                    label = { Text("Цвет (HEX)") },
-                    placeholder = { Text("RRGGBB или RRGGBBAA") },
+                var colorText by remember(state.colorHex) { mutableStateOf(state.colorHex) }
+                var showColourPicker by remember { mutableStateOf(false) }
+
+                if (showColourPicker) {
+                    val currentColor = parseColor(colorText)
+                    ColourPickerDialog(
+                        initialColor = currentColor,
+                        onDismiss = { showColourPicker = false },
+                        onColorConfirmed = { chosenColor ->
+                            val newHex = ColourUtils.colorToHex(chosenColor, includeAlpha = true)
+                            colorText = newHex
+                            onStateChange(state.copy(colorHex = newHex))
+                        },
+                        showAlpha = true,
+                        title = "Цвет предмета",
+                        hazeState = hazeState,
+                        isOled = isOled
+                    )
+                }
+
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp),
-                    trailingIcon = {
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = colorText,
+                        onValueChange = { 
+                            colorText = it
+                            onStateChange(state.copy(colorHex = it))
+                        },
+                        label = { Text("Цвет (HEX)") },
+                        placeholder = { Text("RRGGBB или RRGGBBAA") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, colorScheme.outline, RoundedCornerShape(8.dp))
+                            .clickable { showColourPicker = true }
+                    ) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val squareSize = 6.dp.toPx()
+                            val cols = (size.width / squareSize).toInt() + 1
+                            val rows = (size.height / squareSize).toInt() + 1
+                            for (i in 0 until cols) {
+                                for (j in 0 until rows) {
+                                    val c = if ((i + j) % 2 == 0) Color.LightGray else Color.White
+                                    drawRect(
+                                        color = c,
+                                        topLeft = androidx.compose.ui.geometry.Offset(i * squareSize, j * squareSize),
+                                        size = androidx.compose.ui.geometry.Size(squareSize, squareSize)
+                                    )
+                                }
+                            }
+                        }
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedCornerShape(4.dp))
+                                .fillMaxSize()
                                 .background(parseColor(colorText))
-                                .border(1.dp, colorScheme.outline, RoundedCornerShape(4.dp))
                         )
                     }
-                )
+                }
 
                 OutlinedTextField(
                     value = state.source ?: "",

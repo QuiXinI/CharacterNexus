@@ -7,6 +7,7 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.BonusConfigDialog
 import ru.quasaris.characternexus.tabs.DynamicFieldFullscreenDialog
 import ru.quasaris.characternexus.tabs.resources.ResourceConfigDialog
+import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockConfigDialog
 import ru.quasaris.characternexus.tabs.cargo.CargoConfigDialog
 import ru.quasaris.characternexus.tabs.potions.PotionConfigDialog
 import ru.quasaris.characternexus.tabs.potions.PotionSelectionDialog
@@ -103,7 +104,7 @@ fun CharacterDetailDialogs(
                     val newOverrides = state.spellSettings.spellOverrides.toMutableMap()
                     newOverrides[updated.id] = updated
                     
-                    val newSelected = if (updated.id !in state.spellSettings.selectedSpellIds) {
+                    val newSelected = if (!state.spellSettings.selectedSpellIds.any { updated.matchesId(it) }) {
                         state.spellSettings.selectedSpellIds + updated.id
                     } else {
                         state.spellSettings.selectedSpellIds
@@ -120,12 +121,16 @@ fun CharacterDetailDialogs(
                 },
                 onDelete = { deleted: SpellCard ->
                     val newOverrides = state.spellSettings.spellOverrides.toMutableMap()
-                    newOverrides.remove(deleted.id)
+                    val matchingKey = newOverrides.keys.find { key -> key == deleted.id || deleted.matchesId(key) } ?: deleted.id
+                    newOverrides.remove(matchingKey)
                     
+                    val newSelected = state.spellSettings.selectedSpellIds.filter { !deleted.matchesId(it) }
+                    val newPrepared = state.spellSettings.preparedSpellIds.filter { !deleted.matchesId(it) }
+
                     onSpellSettingsChange(state.spellSettings.copy(
                         spellOverrides = newOverrides,
-                        selectedSpellIds = state.spellSettings.selectedSpellIds - deleted.id,
-                        preparedSpellIds = state.spellSettings.preparedSpellIds - deleted.id
+                        selectedSpellIds = newSelected,
+                        preparedSpellIds = newPrepared
                     ))
                     
                     state.refreshTrigger++
@@ -294,6 +299,41 @@ fun CharacterDetailDialogs(
                 owner = state,
                 noteId = state.activeNoteId,
                 blockIndex = state.activeResourceIndex
+            )
+        }
+
+        if (state.isInfoBlockConfigOpen && state.activeInfoBlockConfig != null && !state.isFullscreenDynamicFieldOpen) {
+            InfoBlockConfigDialog(
+                infoBlock = state.activeInfoBlockConfig!!,
+                onDismiss = { 
+                    state.isInfoBlockConfigOpen = false
+                    state.activeInfoBlockConfig = null
+                    state.activeResourceIndex = -1
+                    state.activeNoteId = ""
+                },
+                onSave = { updated: DynamicContentBlock.InfoBlock ->
+                    state.infoBlockManager.upsert(updated)
+                    state.infoBlockManager.normalize()
+                },
+                onConvertToResource = { info: DynamicContentBlock.InfoBlock ->
+                    state.infoBlockManager.convertToResource(info.id)
+                    state.isInfoBlockConfigOpen = false
+                    state.activeInfoBlockConfig = null
+                    state.activeResourceIndex = -1
+                    state.activeNoteId = ""
+                },
+                onDelete = { info: DynamicContentBlock.InfoBlock ->
+                    state.infoBlockManager.deleteCompletely(info.id)
+                    state.isInfoBlockConfigOpen = false
+                    state.activeInfoBlockConfig = null
+                    state.activeResourceIndex = -1
+                    state.activeNoteId = ""
+                },
+                forceBlurEnabled = forceBlurEnabled,
+                settingsViewModel = state.settingsViewModel,
+                isDesktop = isDesktop,
+                hazeState = popupHazeState ?: hazeState,
+                isNested = state.isFullscreenDynamicFieldOpen
             )
         }
 
@@ -538,7 +578,8 @@ fun CharacterDetailDialogs(
                 forceBlurEnabled = blurPopups,
                 isDesktop = isDesktop,
                 hazeState = hazeState,
-                popupHazeState = popupHazeState
+                popupHazeState = popupHazeState,
+                settingsViewModel = state.settingsViewModel
             )
         }
 

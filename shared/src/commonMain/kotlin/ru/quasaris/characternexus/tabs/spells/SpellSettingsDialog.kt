@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import dev.chrisbanes.haze.*
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.BackHandler
@@ -364,6 +365,7 @@ fun SpellSettingsDialogContent(
     val localHazeState = remember { HazeState() }
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
     val isSubDialogOpen = showAttackBonusDialog || showSaveDcBonusDialog
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     PredictiveBackBox(
         onBack = onDismiss,
@@ -392,21 +394,16 @@ fun SpellSettingsDialogContent(
                             }
                         },
                         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (forceBlurEnabled && !isOled && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                            containerColor = if (forceBlurEnabled && !isOled && !isSubDialogOpen) Color.Transparent else colorScheme.surface
                         )
                     )
                 },
-                containerColor = if (forceBlurEnabled && !isOled && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
+                containerColor = if (forceBlurEnabled && !isOled && !isSubDialogOpen) Color.Transparent else colorScheme.background,
                 modifier = Modifier
                     .fillMaxSize()
                     .run {
                         if (forceBlurEnabled && hazeState != null && !isOled) {
-                            this.hazeEffect(state = hazeState) {
-                                style = HazeStyle(
-                                    blurRadius = blurRadius,
-                                    tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                                )
-                            }
+                            this.hazeEffect(state = hazeState, style = hazeStyle)
                         } else this
                     }
                     .hazeSource(state = localHazeState)

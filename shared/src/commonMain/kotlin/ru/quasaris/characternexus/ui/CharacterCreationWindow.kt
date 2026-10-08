@@ -32,7 +32,7 @@ import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.PredictiveBackBox
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.ui.MorphingPolygonShape
-import ru.quasaris.characternexus.ui.quasarisTheme
+import ru.quasaris.characternexus.ui.theme.quasarisTheme
 import ru.quasaris.characternexus.backend.ImageManager
 import ru.quasaris.characternexus.backend.cropper.AvatarCropperWindow
 import dev.chrisbanes.haze.HazeState

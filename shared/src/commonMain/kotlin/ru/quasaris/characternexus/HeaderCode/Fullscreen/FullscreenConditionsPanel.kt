@@ -30,6 +30,8 @@ import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.model.Condition
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
+import androidx.compose.ui.graphics.luminance
 import ru.quasaris.characternexus.ui.util.formatConditionDescription
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
 
@@ -104,6 +106,8 @@ fun ConditionsDialogContent(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
+    val isLight = colorScheme.background.luminance() > 0.5f
+    val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
 
     PredictiveBackBox(
         onBack = onDismiss,
@@ -114,12 +118,7 @@ fun ConditionsDialogContent(
             .fillMaxSize()
             .run {
                 if (forceBlurEnabled && hazeState != null && !isOled) {
-                    this.hazeEffect(state = hazeState) {
-                        style = HazeStyle(
-                            blurRadius = blurRadius,
-                            tints = listOf(HazeTint(Color.Black.copy(alpha = 0.2f)))
-                        )
-                    }
+                    this.hazeEffect(state = hazeState, style = hazeStyle)
                 } else this
             },
         topBar = {
@@ -131,11 +130,11 @@ fun ConditionsDialogContent(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = if (forceBlurEnabled && !isOled && hazeState != null) Color.Transparent.copy(alpha = 0.1f) else colorScheme.surface
+                    containerColor = if (forceBlurEnabled && !isOled && hazeState != null) Color.Transparent else colorScheme.surface
                 )
             )
         },
-        containerColor = if (forceBlurEnabled && !isOled && hazeState != null) Color.Transparent.copy(alpha = 0.1f) else colorScheme.background
+        containerColor = if (forceBlurEnabled && !isOled && hazeState != null) Color.Transparent else colorScheme.background
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             Column(

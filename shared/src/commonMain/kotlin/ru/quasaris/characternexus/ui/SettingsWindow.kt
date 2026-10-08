@@ -1,9 +1,6 @@
 package ru.quasaris.characternexus.ui
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,47 +8,28 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.DialogProperties
-import ru.quasaris.characternexus.model.*
-import ru.quasaris.characternexus.backend.SettingsManager
-import ru.quasaris.characternexus.backend.SettingsViewModel
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.SettingsBrightness
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.BrightnessAuto
-import androidx.compose.material.icons.filled.DesktopWindows
-import androidx.compose.material.icons.filled.BugReport
-import ru.quasaris.characternexus.getDynamicColorScheme
-import ru.quasaris.characternexus.ui.util.PayWall
 import dev.chrisbanes.haze.HazeState
-import kotlin.math.roundToInt
+import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.generated.BuildConstants
-
-private const val SHOW_DEBUG_SETTINGS = true
+import ru.quasaris.characternexus.model.ExportFormat
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,23 +40,36 @@ fun SettingsWindow(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onCleanupDuplicateFolders: () -> Unit = {}
 ) {
-    val themeMode by settingsViewModel.themeMode.collectAsState()
     val isPremium by settingsViewModel.isPremium.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
 
-    val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
-    val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
-
     var showResetDialog by remember { mutableStateOf(false) }
     var showKeybindSettings by remember { mutableStateOf(false) }
-    var showDebugLogs by remember { mutableStateOf(false) }
+    var showAppearanceSettings by remember { mutableStateOf(false) }
+    var showAdvancedSettings by remember { mutableStateOf(false) }
 
     val forceBlurEnabled by settingsViewModel.blurFullscreen.collectAsState()
     val masterBlurEnabled by settingsViewModel.masterBlurEnabled.collectAsState()
     val effectiveBlurFullscreen = masterBlurEnabled && forceBlurEnabled
 
-    LaunchedEffect(showKeybindSettings, showDebugLogs) {
-        onFullscreenDialogOpenChange(showKeybindSettings || showDebugLogs)
+    LaunchedEffect(showKeybindSettings, showAppearanceSettings, showAdvancedSettings) {
+        onFullscreenDialogOpenChange(showKeybindSettings || showAppearanceSettings || showAdvancedSettings)
+    }
+
+    if (showAppearanceSettings) {
+        AppearanceSettingsWindow(
+            settingsViewModel = settingsViewModel,
+            onDismiss = { showAppearanceSettings = false }
+        )
+    }
+
+    if (showAdvancedSettings) {
+        AdvancedSettingsWindow(
+            settingsViewModel = settingsViewModel,
+            onDismiss = { showAdvancedSettings = false },
+            onCleanupDuplicateFolders = onCleanupDuplicateFolders,
+            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange
+        )
     }
 
     if (showKeybindSettings) {
@@ -87,19 +78,6 @@ fun SettingsWindow(
             onDismiss = { showKeybindSettings = false },
             forceBlurEnabled = effectiveBlurFullscreen
         )
-    }
-
-    AnimatedVisibility(
-        visible = showDebugLogs,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-    ) {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            DebugLogScreen(
-                onDismiss = { showDebugLogs = false },
-                settingsViewModel = settingsViewModel
-            )
-        }
     }
 
     if (showResetDialog) {
@@ -151,162 +129,59 @@ fun SettingsWindow(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Кнопки перехода в категорийные окна
             Text(
-                text = "Интерфейс",
+                text = "Разделы настроек",
                 style = MaterialTheme.typography.titleMedium,
                 color = colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
-            
-            Column(
+
+            Button(
+                onClick = { showAppearanceSettings = true },
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.secondaryContainer,
+                    contentColor = colorScheme.onSecondaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    text = "Цвета приложения",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                
-                val cornerRadius = 16.dp
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy((-9).dp)
-                ) {
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = themeMode == AppThemeMode.STOCK,
-                            onClick = { 
-                                settingsViewModel.updateThemeMode(AppThemeMode.STOCK)
-                            },
-                            shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp),
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Stock") }
-                        SegmentedButton(
-                            selected = themeMode == AppThemeMode.M3,
-                            onClick = { 
-                                settingsViewModel.updateThemeMode(AppThemeMode.M3)
-                            },
-                            shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp),
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Material You") }
-                    }
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        PayWall(isLocked = !isPremium, modifier = Modifier.weight(1f)) {
-                            SegmentedButton(
-                                selected = themeMode == AppThemeMode.OFF,
-                                onClick = { 
-                                    settingsViewModel.updateThemeMode(AppThemeMode.OFF)
-                                },
-                                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius),
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text("BLACK") }
-                        }
-                        PayWall(isLocked = !isPremium, modifier = Modifier.weight(1f)) {
-                            SegmentedButton(
-                                selected = themeMode == AppThemeMode.CHARACTER,
-                                onClick = { 
-                                    settingsViewModel.updateThemeMode(AppThemeMode.CHARACTER)
-                                },
-                                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) { Text("Персонаж") }
-                        }
-                    }
-                }
+                Icon(Icons.Default.Palette, null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Внешний вид", fontWeight = FontWeight.Bold)
+            }
 
-                if (themeMode == AppThemeMode.M3) {
-                    val behavior by settingsViewModel.themeBehavior.collectAsState()
-                    val darkTheme = if (behavior == AppThemeBehavior.SYSTEM) isSystemInDarkTheme() else behavior == AppThemeBehavior.DARK
-                    val dynamicScheme = getDynamicColorScheme(darkTheme)
-                    
-                    if (dynamicScheme == null) {
-                        val m3SeedColor by settingsViewModel.m3SeedColor.collectAsState()
-                        var hexText by remember(m3SeedColor) { mutableStateOf(m3SeedColor) }
-                        
-                        OutlinedTextField(
-                            value = hexText,
-                            onValueChange = { 
-                                hexText = it
-                                if (it.length == 7 && it.startsWith("#")) {
-                                    settingsViewModel.updateM3SeedColor(it)
-                                }
-                            },
-                            label = { Text("HEX цвет темы (напр. #6750A4)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-                }
+            Button(
+                onClick = { showAdvancedSettings = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.secondaryContainer,
+                    contentColor = colorScheme.onSecondaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Tune, null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Продвинутые настройки", fontWeight = FontWeight.Bold)
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Поведение темы",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                
-                val themeBehavior by settingsViewModel.themeBehavior.collectAsState()
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = themeBehavior == AppThemeBehavior.LIGHT && themeMode != AppThemeMode.OFF,
-                        onClick = { settingsViewModel.updateThemeBehavior(AppThemeBehavior.LIGHT) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                        enabled = themeMode != AppThemeMode.OFF,
-                        icon = { Icon(Icons.Default.LightMode, null) }
-                    ) { Text("Светлая") }
-                    SegmentedButton(
-                        selected = themeBehavior == AppThemeBehavior.SYSTEM && themeMode != AppThemeMode.OFF,
-                        onClick = { settingsViewModel.updateThemeBehavior(AppThemeBehavior.SYSTEM) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                        enabled = themeMode != AppThemeMode.OFF,
-                        icon = { Icon(Icons.Default.SettingsBrightness, null) }
-                    ) { Text("Система") }
-                    SegmentedButton(
-                        selected = themeBehavior == AppThemeBehavior.DARK || themeMode == AppThemeMode.OFF,
-                        onClick = { settingsViewModel.updateThemeBehavior(AppThemeBehavior.DARK) },
-                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                        enabled = themeMode != AppThemeMode.OFF,
-                        icon = { Icon(Icons.Default.DarkMode, null) }
-                    ) { Text("Темная") }
-                }
+            Button(
+                onClick = { showKeybindSettings = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorScheme.secondaryContainer,
+                    contentColor = colorScheme.onSecondaryContainer
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Keyboard, null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Изменить горячие клавиши", fontWeight = FontWeight.Bold)
             }
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
-            Text(
-                text = "Режим интерфейса",
-                style = MaterialTheme.typography.titleMedium,
-                color = colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-
-            val interfaceMode by settingsViewModel.interfaceMode.collectAsState()
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = interfaceMode == AppInterfaceMode.MOBILE,
-                    onClick = { settingsViewModel.updateInterfaceMode(AppInterfaceMode.MOBILE) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
-                    icon = { Icon(Icons.Default.Smartphone, null) }
-                ) { Text("Мобильный") }
-                SegmentedButton(
-                    selected = interfaceMode == AppInterfaceMode.AUTO,
-                    onClick = { settingsViewModel.updateInterfaceMode(AppInterfaceMode.AUTO) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
-                    icon = { Icon(Icons.Default.BrightnessAuto, null) }
-                ) { Text("Авто") }
-                SegmentedButton(
-                    selected = interfaceMode == AppInterfaceMode.DESKTOP,
-                    onClick = { settingsViewModel.updateInterfaceMode(AppInterfaceMode.DESKTOP) },
-                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
-                    icon = { Icon(Icons.Default.DesktopWindows, null) }
-                ) { Text("Десктоп") }
-            }
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
+            // Character Nexus Premium
             Text(
                 text = "Character Nexus Premium",
                 style = MaterialTheme.typography.titleMedium,
@@ -332,173 +207,59 @@ fun SettingsWindow(
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
-            Button(
-                onClick = { showKeybindSettings = true },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorScheme.secondaryContainer,
-                    contentColor = colorScheme.onSecondaryContainer
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Keyboard, null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Изменить горячие клавиши", fontWeight = FontWeight.Bold)
-            }
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
+            // Экспорт
             ExportSettingsSection(settingsViewModel = settingsViewModel)
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            // История бросков
             RollHistorySettingsSection(
                 settingsViewModel = settingsViewModel
             )
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
-            ScaleSettingsSection(
-                scaleFactor = scaleFactor,
-                onScaleChange = { settingsViewModel.updateScaleFactor(it) }
-            )
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
-            BlurSettingsSection(
-                settingsViewModel = settingsViewModel
-            )
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
-            DiceRollSettingsSection(
-                settingsViewModel = settingsViewModel
-            )
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
+            // Предупреждение об удалении
             DeletionWarningSettingsSection(
                 settingsViewModel = settingsViewModel
             )
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
-            HapticSettingsSection(
-                settingsViewModel = settingsViewModel
-            )
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
-            NewHeaderInterfaceSettingsSection(
-                settingsViewModel = settingsViewModel
-            )
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
-            MainMenuSettingsSection(
-                settingsViewModel = settingsViewModel
-            )
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
+            // Полноэкранное редактирование
             FullscreenEditingSettingsSection(
                 settingsViewModel = settingsViewModel
             )
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            // LSS импорт
             LssImportSettingsSection(
                 settingsViewModel = settingsViewModel
             )
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
+            // Форматирование текста
             Text(
                 text = "Форматирование текста",
                 style = MaterialTheme.typography.titleMedium,
                 color = colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
-            
+
             TopMarginSettingsSection(settingsViewModel = settingsViewModel)
 
             HorizontalDivider(color = colorScheme.outlineVariant)
 
-            SlotAlignmentSettingsSection(settingsViewModel = settingsViewModel)
-
-            if (SHOW_DEBUG_SETTINGS) {
-                HorizontalDivider(color = colorScheme.outlineVariant)
-
-                Text(
-                    text = "Отладка",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Включить информацию для отладки",
-                        fontSize = 16.sp,
-                        color = colorScheme.onSurface
-                    )
-                    Switch(
-                        checked = debugInfoEnabled,
-                        onCheckedChange = { settingsViewModel.updateDebugInfoEnabled(it) }
-                    )
-                }
-
-                if (debugInfoEnabled) {
-                    Button(
-                        onClick = { 
-                            ru.quasaris.characternexus.util.Logger.i("SettingsWindow", "View Logs button clicked")
-                            showDebugLogs = true 
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.secondaryContainer,
-                            contentColor = colorScheme.onSecondaryContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.BugReport, null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Посмотреть логи приложения", fontWeight = FontWeight.Bold)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = { 
-                            onCleanupDuplicateFolders()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.secondaryContainer,
-                            contentColor = colorScheme.onSecondaryContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Очистить дубликаты папок", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            
-            HorizontalDivider(color = colorScheme.outlineVariant)
-            
+            // О приложении
             Text(
                 text = "О приложении",
                 style = MaterialTheme.typography.titleMedium,
                 color = colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Text(
                 text = "Мастер Персонажей\nВерсия ${BuildConstants.VERSION}",
                 fontSize = 14.sp,
@@ -532,16 +293,6 @@ fun ExportSettingsSection(settingsViewModel: SettingsViewModel) {
     val colorScheme = MaterialTheme.colorScheme
     val exportFormat by settingsViewModel.exportFormat.collectAsState()
     val exportDirectoryUri by settingsViewModel.exportDirectoryUri.collectAsState()
-    
-    /*
-    val directoryPicker = rememberDirectoryPickerLauncher(
-        title = "Выберите папку для экспорта"
-    ) { directory ->
-        directory?.let {
-            settingsViewModel.updateExportDirectoryUri(it.uri.toString())
-        }
-    }
-    */
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -596,7 +347,7 @@ fun ExportSettingsSection(settingsViewModel: SettingsViewModel) {
                 Icon(Icons.Default.FolderOpen, contentDescription = "Выбрать папку", tint = colorScheme.primary)
             }
         }
-        
+
         if (exportDirectoryUri != null) {
             TextButton(
                 onClick = { settingsViewModel.updateExportDirectoryUri(null) },
@@ -605,558 +356,6 @@ fun ExportSettingsSection(settingsViewModel: SettingsViewModel) {
             ) {
                 Text("Сбросить к папке по умолчанию")
             }
-        }
-    }
-}
-
-@Composable
-fun BlurSettingsSection(
-    settingsViewModel: SettingsViewModel
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val masterBlurEnabled by settingsViewModel.masterBlurEnabled.collectAsState()
-    val blurRolls by settingsViewModel.blurRolls.collectAsState()
-    val blurFullscreen by settingsViewModel.blurFullscreen.collectAsState()
-    val blurPopups by settingsViewModel.blurPopups.collectAsState()
-    val blurCards by settingsViewModel.blurCards.collectAsState()
-    val blurDynamicFields by settingsViewModel.blurDynamicFields.collectAsState()
-    val rollAlpha by settingsViewModel.rollInterfaceAlpha.collectAsState()
-    val diceFabAlpha by settingsViewModel.diceFabAlpha.collectAsState()
-    val diceFabBlur by settingsViewModel.diceFabBlurEnabled.collectAsState()
-    val debugInfoEnabled by settingsViewModel.debugInfoEnabled.collectAsState()
-    val performanceClass = settingsViewModel.performanceClass
-    
-    var showWarningDialog by remember { mutableStateOf(false) }
-    var pendingSetting by remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
-
-    val onToggle: (Boolean, (Boolean) -> Unit) -> Unit = { checked, updateFn ->
-        if (checked && performanceClass < 33) {
-            pendingSetting = updateFn
-            showWarningDialog = true
-        } else {
-            updateFn(checked)
-        }
-    }
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Эффекты размытия",
-                style = MaterialTheme.typography.titleMedium,
-                color = colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-            Switch(
-                checked = masterBlurEnabled,
-                onCheckedChange = { settingsViewModel.updateMasterBlurEnabled(it) }
-            )
-        }
-
-        if (SHOW_DEBUG_SETTINGS && debugInfoEnabled) {
-            Text(
-                text = "Класс мощности устройства: $performanceClass",
-                fontSize = 12.sp,
-                color = colorScheme.onSurfaceVariant
-            )
-        }
-
-        AnimatedVisibility(visible = masterBlurEnabled) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                BlurSwitchRow(
-                    label = "Интерфейс броска",
-                    checked = blurRolls,
-                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurRolls(it) } }
-                )
-
-                BlurSwitchRow(
-                    label = "Кнопка броска (к20)",
-                    checked = diceFabBlur,
-                    onCheckedChange = { onToggle(it) { settingsViewModel.updateDiceFabBlurEnabled(it) } }
-                )
-
-                BlurSwitchRow(
-                    label = "Полноэкранные окна",
-                    checked = blurFullscreen,
-                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurFullscreen(it) } }
-                )
-
-                BlurSwitchRow(
-                    label = "Всплывающие окна",
-                    checked = blurPopups,
-                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurPopups(it) } }
-                )
-
-                BlurSwitchRow(
-                    label = "Карточки",
-                    checked = blurCards,
-                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurCards(it) } }
-                )
-
-                BlurSwitchRow(
-                    label = "Большие поля",
-                    checked = blurDynamicFields,
-                    onCheckedChange = { onToggle(it) { settingsViewModel.updateBlurDynamicFields(it) } }
-                )
-
-                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                BlurRadiusSection(settingsViewModel)
-            }
-        }
-
-        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val isAlphaDisabled = masterBlurEnabled && blurRolls
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Прозрачность интерфейса броска",
-                    fontSize = 16.sp,
-                    color = if (isAlphaDisabled) colorScheme.onSurface.copy(alpha = 0.38f) else colorScheme.onSurface
-                )
-                Text(
-                    text = "${((1f - rollAlpha) * 100).roundToInt()}%",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isAlphaDisabled) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.primary
-                )
-            }
-            Slider(
-                value = 1f - rollAlpha,
-                onValueChange = { settingsViewModel.updateRollInterfaceAlpha(1f - it) },
-                enabled = !isAlphaDisabled,
-                valueRange = 0f..1f,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val isFabAlphaDisabled = masterBlurEnabled && diceFabBlur
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Прозрачность кнопки броска",
-                    fontSize = 16.sp,
-                    color = if (isFabAlphaDisabled) colorScheme.onSurface.copy(alpha = 0.38f) else colorScheme.onSurface
-                )
-                Text(
-                    text = "${((1f - diceFabAlpha) * 100).roundToInt()}%",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isFabAlphaDisabled) colorScheme.primary.copy(alpha = 0.38f) else colorScheme.primary
-                )
-            }
-            Slider(
-                value = 1f - diceFabAlpha,
-                onValueChange = { settingsViewModel.updateDiceFabAlpha(1f - it) },
-                enabled = !isFabAlphaDisabled,
-                valueRange = 0f..1f,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
-
-        Button(
-            onClick = { settingsViewModel.updateDiceFabPosition(-10f, -10f) },
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = colorScheme.surfaceVariant,
-                contentColor = colorScheme.primary
-            )
-        ) {
-            Text("Сбросить положение кнопки броска кубов")
-        }
-    }
-
-    if (showWarningDialog) {
-        WarningBlurDialog(
-            onConfirm = {
-                pendingSetting?.invoke(true)
-                showWarningDialog = false
-            },
-            onDismiss = {
-                showWarningDialog = false
-            }
-        )
-    }
-}
-
-@Composable
-fun DiceRollSettingsSection(
-    settingsViewModel: SettingsViewModel
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val rollPassThrough by settingsViewModel.rollPassThrough.collectAsState()
-    val rollPosition by settingsViewModel.rollPosition.collectAsState()
-    val diceFabEnabled by settingsViewModel.diceFabEnabled.collectAsState()
-    val renderDiceInOrder by settingsViewModel.renderDiceInOrder.collectAsState()
-    val collapseActionsOnEdit by settingsViewModel.collapseActionsOnEdit.collectAsState()
-    val collapseSpellsOnEdit by settingsViewModel.collapseSpellsOnEdit.collectAsState()
-    val collapseDynamicFieldsOnEdit by settingsViewModel.collapseDynamicFieldsOnEdit.collectAsState()
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Интерфейс броска",
-            style = MaterialTheme.typography.titleMedium,
-            color = colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Сворачивать атаки при редактировании",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Автоматически сворачивает карточки атак в режиме сортировки",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = collapseActionsOnEdit,
-                onCheckedChange = { settingsViewModel.updateCollapseActionsOnEdit(it) }
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Сворачивать заклинания при редактировании",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Автоматически сворачивает карточки заклинаний в режиме сортировки",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = collapseSpellsOnEdit,
-                onCheckedChange = { settingsViewModel.updateCollapseSpellsOnEdit(it) }
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Сворачивать поля при редактировании",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Автоматически сворачивает динамические поля в режиме сортировки",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = collapseDynamicFieldsOnEdit,
-                onCheckedChange = { settingsViewModel.updateCollapseDynamicFieldsOnEdit(it) }
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Кнопка броска (FAB)",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Позволяет быстро бросать кубы из любого места",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = diceFabEnabled,
-                onCheckedChange = { settingsViewModel.updateDiceFabEnabled(it) }
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Отображать кубы по порядку",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Рендерит кубы в порядке их написания в формуле, а не по размеру",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = renderDiceInOrder,
-                onCheckedChange = { settingsViewModel.updateRenderDiceInOrder(it) }
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Сквозное нажатие",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Позволяет нажимать на элементы под интерфейсом броска",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = rollPassThrough,
-                onCheckedChange = { settingsViewModel.updateRollPassThrough(it) }
-            )
-        }
-
-        Text(
-            text = "Положение интерфейса",
-            fontSize = 16.sp,
-            color = colorScheme.onSurface
-        )
-
-        val cornerRadius = 16.dp
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy((-9).dp)
-        ) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = rollPosition == DiceRollPosition.TOP_LEFT,
-                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.TOP_LEFT) },
-                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
-                ) { Text("Слева-вверху", fontSize = 12.sp) }
-
-                SegmentedButton(
-                    selected = rollPosition == DiceRollPosition.TOP_RIGHT,
-                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.TOP_RIGHT) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp)
-                ) { Text("Справа-вверху", fontSize = 12.sp) }
-            }
-
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = rollPosition == DiceRollPosition.BOTTOM_LEFT,
-                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.BOTTOM_LEFT) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius)
-                ) { Text("Слева-внизу", fontSize = 12.sp) }
-
-                SegmentedButton(
-                    selected = rollPosition == DiceRollPosition.BOTTOM_RIGHT,
-                    onClick = { settingsViewModel.updateRollPosition(DiceRollPosition.BOTTOM_RIGHT) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
-                ) { Text("Справа-внизу", fontSize = 12.sp) }
-            }
-        }
-
-        Text(
-            text = "Положение кнопки закрытия",
-            fontSize = 16.sp,
-            color = colorScheme.onSurface
-        )
-
-        val closeButtonPosition by settingsViewModel.rollCloseButtonPosition.collectAsState()
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy((-9).dp)
-        ) {
-            // TOP ROW
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = closeButtonPosition == DiceRollPosition.TOP_LEFT,
-                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.TOP_LEFT) },
-                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
-                ) { Text("Слева-вверху", fontSize = 12.sp) }
-
-                SegmentedButton(
-                    selected = closeButtonPosition == DiceRollPosition.TOP_RIGHT,
-                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.TOP_RIGHT) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp)
-                ) { Text("Справа-вверху", fontSize = 12.sp) }
-            }
-
-            // BOTTOM ROW
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = closeButtonPosition == DiceRollPosition.BOTTOM_LEFT,
-                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.BOTTOM_LEFT) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius)
-                ) { Text("Слева-внизу", fontSize = 12.sp) }
-
-                SegmentedButton(
-                    selected = closeButtonPosition == DiceRollPosition.BOTTOM_RIGHT,
-                    onClick = { settingsViewModel.updateRollCloseButtonPosition(DiceRollPosition.BOTTOM_RIGHT) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
-                ) { Text("Справа-внизу", fontSize = 12.sp) }
-            }
-        }
-
-        HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
-
-        val advantageLogic by settingsViewModel.advantageLogic.collectAsState()
-        Text(
-            text = "Логика преимущества",
-            fontSize = 16.sp,
-            color = colorScheme.onSurface
-        )
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy((-9).dp)
-        ) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = advantageLogic == AdvantageLogic.TOTAL,
-                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.TOTAL) },
-                    shape = RoundedCornerShape(topStart = cornerRadius, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp)
-                ) { Text("Общее", fontSize = 12.sp) }
-
-                SegmentedButton(
-                    selected = advantageLogic == AdvantageLogic.INDIVIDUAL,
-                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.INDIVIDUAL) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = cornerRadius, bottomEnd = 0.dp, bottomStart = 0.dp)
-                ) { Text("Покубово", fontSize = 12.sp) }
-            }
-
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = advantageLogic == AdvantageLogic.SOURCE,
-                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.SOURCE) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = cornerRadius)
-                ) { Text("Источник", fontSize = 12.sp) }
-
-                SegmentedButton(
-                    selected = advantageLogic == AdvantageLogic.POOL,
-                    onClick = { settingsViewModel.updateAdvantageLogic(AdvantageLogic.POOL) },
-                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = cornerRadius, bottomStart = 0.dp)
-                ) { Text("Пулл", fontSize = 12.sp) }
-            }
-        }
-        val description = when(advantageLogic) {
-            AdvantageLogic.TOTAL -> "Сравнение двух полных сумм всех кубов и бонусов"
-            AdvantageLogic.INDIVIDUAL -> "Выбор лучшего значения для каждого отдельного кубика"
-            AdvantageLogic.SOURCE -> "Независимый выбор лучшей суммы для каждой части формулы"
-            AdvantageLogic.POOL -> "Выбор N лучших кубиков из 2N брошенных для каждой группы"
-        }
-        Text(
-            text = description,
-            fontSize = 12.sp,
-            color = colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-fun BlurSwitchRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = 16.sp,
-            color = colorScheme.onSurface
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-    }
-}
-
-@Composable
-fun HapticSettingsSection(settingsViewModel: SettingsViewModel) {
-    val veryResponsive by settingsViewModel.veryResponsiveHaptics.collectAsState()
-    val colorScheme = MaterialTheme.colorScheme
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = "Хаптика",
-            style = MaterialTheme.typography.titleMedium,
-            color = colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Очень отзывчивая хаптика",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Добавляет тактильный отклик на каждое нажатие и свайп",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = veryResponsive,
-                onCheckedChange = { settingsViewModel.updateVeryResponsiveHaptics(it) }
-            )
         }
     }
 }
@@ -1234,49 +433,6 @@ fun FullscreenEditingSettingsSection(
 }
 
 @Composable
-fun MainMenuSettingsSection(
-    settingsViewModel: SettingsViewModel
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val useOldAvatarStyle by settingsViewModel.useOldAvatarStyle.collectAsState()
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Главное меню",
-            style = MaterialTheme.typography.titleMedium,
-            color = colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Старое отображение аватарок",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Text(
-                    text = "Возвращает классический вид иконок персонажей в списке",
-                    fontSize = 12.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = useOldAvatarStyle,
-                onCheckedChange = { settingsViewModel.updateUseOldAvatarStyle(it) }
-            )
-        }
-    }
-}
-
-@Composable
 fun LssImportSettingsSection(
     settingsViewModel: SettingsViewModel
 ) {
@@ -1310,61 +466,6 @@ fun LssImportSettingsSection(
             )
         }
     }
-}
-
-@Composable
-fun WarningBlurDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .border(2.dp, colorScheme.error, RoundedCornerShape(28.dp)),
-        containerColor = colorScheme.surface,
-        tonalElevation = 8.dp,
-        title = {
-            Text(
-                text = "⚠️ ВНИМАНИЕ: ОПАСНО ДЛЯ УСТРОЙСТВА",
-                color = colorScheme.error,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
-            )
-        },
-        text = {
-            val annotatedString = buildAnnotatedString {
-                append("Вы собираетесь принудительно включить эффекты размытия на неподдерживаемом устройстве. Это может привести к дикому троттлингу, лагам, критическому перегреву и даже выходу из строя железа при долгой партии. Вы рискуете ")
-                withStyle(style = SpanStyle(color = colorScheme.error, fontWeight = FontWeight.Bold)) {
-                    append("своим железом")
-                }
-                append(" по собственной воле! Команда ")
-                withStyle(style = SpanStyle(color = Color(0xFF00E1FF), fontWeight = FontWeight.Black)) {
-                    append("Quasaris")
-                }
-                append(" не несет вообще никакой ответственности за ваши расплавленные процессоры и вздувшиеся аккумуляторы. Продолжаем?")
-            }
-            Text(
-                text = annotatedString,
-                color = colorScheme.onSurface,
-                fontSize = 16.sp
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Да, я понимаю риски и беру ответственность на себя", color = colorScheme.error, fontWeight = FontWeight.Black)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Не включать", color = colorScheme.onSurface)
-            }
-        },
-        shape = RoundedCornerShape(28.dp),
-    )
 }
 
 @Composable
@@ -1408,7 +509,7 @@ fun TopMarginSettingsSection(
 
         Slider(
             value = marginStep.coerceIn(0, 4).toFloat(),
-            onValueChange = { 
+            onValueChange = {
                 val newStep = it.roundToInt()
                 settingsViewModel.updateTopMarginStep(newStep)
             },
@@ -1417,7 +518,7 @@ fun TopMarginSettingsSection(
             modifier = Modifier.fillMaxWidth()
         )
 
-        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+        val focusManager = LocalFocusManager.current
         OutlinedTextField(
             value = customMarginText,
             onValueChange = {
@@ -1483,7 +584,7 @@ fun RollHistorySettingsSection(
 
         Slider(
             value = historySize.coerceIn(1, 10).toFloat(),
-            onValueChange = { 
+            onValueChange = {
                 val newSize = it.roundToInt()
                 settingsViewModel.updateRollHistorySize(newSize)
             },
@@ -1519,350 +620,6 @@ fun RollHistorySettingsSection(
                     }
                 },
             label = { Text("Свое количество (активно при 10+)") },
-            singleLine = true
-        )
-    }
-}
-
-@Composable
-fun ScaleSettingsSection(
-    scaleFactor: Float,
-    onScaleChange: (Float) -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Масштаб интерфейса",
-                fontSize = 16.sp,
-                color = colorScheme.onSurface
-            )
-            Text(
-                text = "${(scaleFactor * 100).roundToInt()}%",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.primary
-            )
-        }
-        
-        Slider(
-            value = scaleFactor,
-            onValueChange = onScaleChange,
-            valueRange = 0.7f..1.5f,
-            steps = 7, // (1.5 - 0.7) / 0.1 - 1 = 8 - 1 = 7 steps
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-fun NewHeaderInterfaceSettingsSection(
-    settingsViewModel: SettingsViewModel
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val useNewAC by settingsViewModel.useNewACInterface.collectAsState()
-    val useNewInit by settingsViewModel.useNewInitInterface.collectAsState()
-    val useNewCond by settingsViewModel.useNewCondInterface.collectAsState()
-    val useNewSpeed by settingsViewModel.useNewSpeedInterface.collectAsState()
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Новый интерфейс заголовков",
-            style = MaterialTheme.typography.titleMedium,
-            color = colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-
-        InterfaceSwitchRow("Класс Доспеха (КД)", useNewAC) { settingsViewModel.updateUseNewACInterface(it) }
-        InterfaceSwitchRow("Инициатива", useNewInit) { settingsViewModel.updateUseNewInitInterface(it) }
-        InterfaceSwitchRow("Состояния", useNewCond) { settingsViewModel.updateUseNewCondInterface(it) }
-        InterfaceSwitchRow("Скорость", useNewSpeed) { settingsViewModel.updateUseNewSpeedInterface(it) }
-    }
-}
-
-@Composable
-fun InterfaceSwitchRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = 16.sp,
-            color = colorScheme.onSurface
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-    }
-}
-
-@Composable
-fun SlotAlignmentSettingsSection(
-    settingsViewModel: SettingsViewModel
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    var isExpanded by remember { mutableStateOf(false) }
-
-    val longRestAlignment by settingsViewModel.longRestAlignment.collectAsState()
-    val longRestFillDirection by settingsViewModel.longRestFillDirection.collectAsState()
-    val shortRestAlignment by settingsViewModel.shortRestAlignment.collectAsState()
-    val shortRestFillDirection by settingsViewModel.shortRestFillDirection.collectAsState()
-    val dawnRestAlignment by settingsViewModel.dawnRestAlignment.collectAsState()
-    val dawnRestFillDirection by settingsViewModel.dawnRestFillDirection.collectAsState()
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded }
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Настройки выравнивания ячеек",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.primary
-            )
-            Icon(
-                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                tint = colorScheme.primary
-            )
-        }
-
-        AnimatedVisibility(visible = isExpanded) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Long Rest Section
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ячейки продолжительного отдыха", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    
-                    Text("Выравнивание", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = longRestAlignment == SlotAlignment.LEFT,
-                            onClick = { settingsViewModel.updateLongRestAlignment(SlotAlignment.LEFT) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                        ) { Text("Слева") }
-                        SegmentedButton(
-                            selected = longRestAlignment == SlotAlignment.CENTER,
-                            onClick = { settingsViewModel.updateLongRestAlignment(SlotAlignment.CENTER) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                        ) { Text("Центр") }
-                        SegmentedButton(
-                            selected = longRestAlignment == SlotAlignment.RIGHT,
-                            onClick = { settingsViewModel.updateLongRestAlignment(SlotAlignment.RIGHT) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                        ) { Text("Справа") }
-                    }
-
-                    Text("Заполнение", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = longRestFillDirection == SlotFillDirection.LTR,
-                            onClick = { settingsViewModel.updateLongRestFillDirection(SlotFillDirection.LTR) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                        ) { Text("Слева") }
-                        SegmentedButton(
-                            selected = longRestFillDirection == SlotFillDirection.CENTER,
-                            onClick = { settingsViewModel.updateLongRestFillDirection(SlotFillDirection.CENTER) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                        ) { Text("Центр") }
-                        SegmentedButton(
-                            selected = longRestFillDirection == SlotFillDirection.RTL,
-                            onClick = { settingsViewModel.updateLongRestFillDirection(SlotFillDirection.RTL) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                        ) { Text("Справа") }
-                    }
-                }
-
-                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                // Short Rest Section
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ячейки короткого отдыха / Договора", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    
-                    Text("Выравнивание", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = shortRestAlignment == SlotAlignment.LEFT,
-                            onClick = { settingsViewModel.updateShortRestAlignment(SlotAlignment.LEFT) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                        ) { Text("Слева") }
-                        SegmentedButton(
-                            selected = shortRestAlignment == SlotAlignment.CENTER,
-                            onClick = { settingsViewModel.updateShortRestAlignment(SlotAlignment.CENTER) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                        ) { Text("Центр") }
-                        SegmentedButton(
-                            selected = shortRestAlignment == SlotAlignment.RIGHT,
-                            onClick = { settingsViewModel.updateShortRestAlignment(SlotAlignment.RIGHT) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                        ) { Text("Справа") }
-                    }
-
-                    Text("Заполнение", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = shortRestFillDirection == SlotFillDirection.LTR,
-                            onClick = { settingsViewModel.updateShortRestFillDirection(SlotFillDirection.LTR) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                        ) { Text("Слева") }
-                        SegmentedButton(
-                            selected = shortRestFillDirection == SlotFillDirection.CENTER,
-                            onClick = { settingsViewModel.updateShortRestFillDirection(SlotFillDirection.CENTER) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                        ) { Text("Центр") }
-                        SegmentedButton(
-                            selected = shortRestFillDirection == SlotFillDirection.RTL,
-                            onClick = { settingsViewModel.updateShortRestFillDirection(SlotFillDirection.RTL) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                        ) { Text("Справа") }
-                    }
-                }
-
-                HorizontalDivider(color = colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                // Dawn Rest Section
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ячейки Рассвета", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    
-                    Text("Выравнивание", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = dawnRestAlignment == SlotAlignment.LEFT,
-                            onClick = { settingsViewModel.updateDawnRestAlignment(SlotAlignment.LEFT) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                        ) { Text("Слева") }
-                        SegmentedButton(
-                            selected = dawnRestAlignment == SlotAlignment.CENTER,
-                            onClick = { settingsViewModel.updateDawnRestAlignment(SlotAlignment.CENTER) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                        ) { Text("Центр") }
-                        SegmentedButton(
-                            selected = dawnRestAlignment == SlotAlignment.RIGHT,
-                            onClick = { settingsViewModel.updateDawnRestAlignment(SlotAlignment.RIGHT) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                        ) { Text("Справа") }
-                    }
-
-                    Text("Заполнение", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        SegmentedButton(
-                            selected = dawnRestFillDirection == SlotFillDirection.LTR,
-                            onClick = { settingsViewModel.updateDawnRestFillDirection(SlotFillDirection.LTR) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                        ) { Text("Слева") }
-                        SegmentedButton(
-                            selected = dawnRestFillDirection == SlotFillDirection.CENTER,
-                            onClick = { settingsViewModel.updateDawnRestFillDirection(SlotFillDirection.CENTER) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                        ) { Text("Центр") }
-                        SegmentedButton(
-                            selected = dawnRestFillDirection == SlotFillDirection.RTL,
-                            onClick = { settingsViewModel.updateDawnRestFillDirection(SlotFillDirection.RTL) },
-                            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                        ) { Text("Справа") }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun BlurRadiusSection(settingsViewModel: SettingsViewModel) {
-    val colorScheme = MaterialTheme.colorScheme
-    val blurRadius by settingsViewModel.blurRadius.collectAsState()
-    val customBlurRadius by settingsViewModel.customBlurRadius.collectAsState()
-    var customBlurText by remember(customBlurRadius) { mutableStateOf(customBlurRadius.toString()) }
-    val isCustomActive = blurRadius >= 48
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Сила размытия (радиус)",
-                fontSize = 16.sp,
-                color = colorScheme.onSurface
-            )
-            Text(
-                text = if (isCustomActive) "$customBlurRadius dp (Своё)" else "$blurRadius dp",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.primary
-            )
-        }
-
-        Slider(
-            value = blurRadius.coerceIn(1, 48).toFloat(),
-            onValueChange = { 
-                val newVal = it.roundToInt()
-                settingsViewModel.updateBlurRadius(newVal)
-            },
-            valueRange = 1f..48f,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-        OutlinedTextField(
-            value = customBlurText,
-            onValueChange = {
-                customBlurText = it.filter { it.isDigit() }
-            },
-            enabled = isCustomActive,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    val n = customBlurText.toIntOrNull() ?: 48
-                    settingsViewModel.updateCustomBlurRadius(maxOf(1, n))
-                    focusManager.clearFocus()
-                }
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .onFocusChanged { focusState ->
-                    if (!focusState.isFocused) {
-                        val n = customBlurText.toIntOrNull() ?: 48
-                        settingsViewModel.updateCustomBlurRadius(maxOf(1, n))
-                    }
-                },
-            label = { Text("Своё значение в dp (активно при 48+)") },
             singleLine = true
         )
     }

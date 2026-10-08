@@ -1,6 +1,7 @@
 package ru.quasaris.characternexus.tabs
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -30,6 +31,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLayoutResult
@@ -44,7 +46,10 @@ import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.model.DynamicNoteState
 import ru.quasaris.characternexus.model.NoteBlockState
+import ru.quasaris.characternexus.ui.BackHandler
+import kotlin.time.Duration.Companion.milliseconds
 import ru.quasaris.characternexus.tabs.resources.ResourceBlock
+import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockComponent
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.outerShadow
 import kotlin.time.Duration.Companion.milliseconds
@@ -65,20 +70,71 @@ fun NotionBlockEditor(
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     viewportTopY: Float = 0f,
     popupHazeState: HazeState? = null,
+    isBasicMode: Boolean = false,
+    isPlainTextMode: Boolean = false,
+    onIsPlainTextModeChange: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
-    bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit) -> Unit)? = null
+    bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit, onInsertInfoBlock: () -> Unit) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
     val uriHandler = LocalUriHandler.current
+
+    val topMarginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
+    val customTopMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
+    val topMarginDp = remember(topMarginStep, customTopMargin) {
+        when (topMarginStep) {
+            0 -> 0.dp
+            1 -> 48.dp
+            2 -> 96.dp
+            3 -> 144.dp
+            else -> customTopMargin.dp
+        }
+    }
+
+    var localIsPlainTextMode by remember(field.id) { mutableStateOf(false) }
+    val effectiveIsPlainText = if (onIsPlainTextModeChange != null) isPlainTextMode else localIsPlainTextMode
+    fun togglePlainText() {
+        if (onIsPlainTextModeChange != null) {
+            onIsPlainTextModeChange(!isPlainTextMode)
+        } else {
+            localIsPlainTextMode = !localIsPlainTextMode
+        }
+    }
+
+    var plainTextValue by remember(field.id) {
+        mutableStateOf(TextFieldValue(field.content, TextRange(field.content.length)))
+    }
+
+    LaunchedEffect(field.content) {
+        if (plainTextValue.text != field.content) {
+            plainTextValue = plainTextValue.copy(text = field.content)
+        }
+    }
 
     val blocks = remember(field.id) {
         mutableStateListOf<NoteBlockState>().apply { addAll(BlockContentParser.toNoteBlocks(field.content)) }
     }
     var lastEmittedText by remember(field.id) { mutableStateOf(field.content) }
 
+    LaunchedEffect(effectiveIsPlainText) {
+        if (!effectiveIsPlainText) {
+            val fresh = BlockContentParser.toBlocks(field.content)
+            val reconciled = BlockContentParser.reconcile(blocks, fresh)
+            blocks.clear()
+            blocks.addAll(reconciled)
+            lastEmittedText = field.content
+        } else {
+            plainTextValue = TextFieldValue(field.content, TextRange(field.content.length))
+        }
+    }
+
     var activeKey by remember { mutableStateOf<String?>(null) }
     var isAnyFocused by remember { mutableStateOf(false) }
+    val effectiveTopMargin by animateDpAsState(
+        targetValue = if (isAnyFocused) topMarginDp else 0.dp,
+        label = "effectiveTopMargin"
+    )
     var pendingFocusKey by remember { mutableStateOf<String?>(null) }
     var pendingFocusOffset by remember { mutableIntStateOf(0) }
     
@@ -91,10 +147,18 @@ fun NotionBlockEditor(
 
     LaunchedEffect(isAnyFocused, activeKey, pendingFocusKey) {
         if (!isAnyFocused && activeKey != null && pendingFocusKey == null) {
-            kotlinx.coroutines.delay(100.milliseconds)
+            kotlinx.coroutines.delay(150.milliseconds)
             if (!isAnyFocused && pendingFocusKey == null) {
                 activeKey = null
             }
+        }
+    }
+
+    if (canEdit && activeKey != null) {
+        val localFocusManager = LocalFocusManager.current
+        BackHandler(enabled = true) {
+            localFocusManager.clearFocus()
+            activeKey = null
         }
     }
 
@@ -289,20 +353,40 @@ fun NotionBlockEditor(
     }
     var showLinkDialog by remember { mutableStateOf(false) }
 
-    if (showLinkDialog && activeKey != null && activeValue != null) {
-        val selection = activeValue.selection
-        val selectedText = activeValue.text.substring(selection.min, selection.max)
-        HyperlinkDialog(
-            initialText = selectedText,
-            initialUrl = "",
-            onConfirm = { text, url ->
-                val newText = activeValue.text.substring(0, selection.min) + "[" + text + "](" + url + ")" + activeValue.text.substring(selection.max)
-                val newSelection = TextRange(selection.min + text.length + url.length + 4)
-                spliceBlockValue(activeKey!!, activeValue.copy(text = newText, selection = newSelection))
-                showLinkDialog = false
-            },
-            onDismiss = { showLinkDialog = false }
-        )
+    if (showLinkDialog) {
+        if (effectiveIsPlainText) {
+            val selection = plainTextValue.selection
+            val selectedText = plainTextValue.text.substring(selection.min.coerceIn(0, plainTextValue.text.length), selection.max.coerceIn(0, plainTextValue.text.length))
+            HyperlinkDialog(
+                initialText = selectedText,
+                initialUrl = "",
+                onConfirm = { text, url ->
+                    val min = selection.min.coerceIn(0, plainTextValue.text.length)
+                    val max = selection.max.coerceIn(0, plainTextValue.text.length)
+                    val newText = plainTextValue.text.substring(0, min) + "[" + text + "](" + url + ")" + plainTextValue.text.substring(max)
+                    val newSelection = TextRange(min + text.length + url.length + 4)
+                    plainTextValue = plainTextValue.copy(text = newText, selection = newSelection)
+                    lastEmittedText = newText
+                    onFieldChange(field.copy(content = newText))
+                    showLinkDialog = false
+                },
+                onDismiss = { showLinkDialog = false }
+            )
+        } else if (activeKey != null && activeValue != null) {
+            val selection = activeValue.selection
+            val selectedText = activeValue.text.substring(selection.min, selection.max)
+            HyperlinkDialog(
+                initialText = selectedText,
+                initialUrl = "",
+                onConfirm = { text, url ->
+                    val newText = activeValue.text.substring(0, selection.min) + "[" + text + "](" + url + ")" + activeValue.text.substring(selection.max)
+                    val newSelection = TextRange(selection.min + text.length + url.length + 4)
+                    spliceBlockValue(activeKey!!, activeValue.copy(text = newText, selection = newSelection))
+                    showLinkDialog = false
+                },
+                onDismiss = { showLinkDialog = false }
+            )
+        }
     }
 
     var editorWidthPx by remember { mutableIntStateOf(0) }
@@ -310,9 +394,43 @@ fun NotionBlockEditor(
     var editorLeftPx by remember { mutableFloatStateOf(0f) }
     var editorTopPx by remember { mutableFloatStateOf(0f) }
 
-    val topMarginStep by settingsViewModel?.topMarginStep?.collectAsState() ?: remember { mutableStateOf(2) }
-    val customTopMargin by settingsViewModel?.customTopMargin?.collectAsState() ?: remember { mutableStateOf(96) }
-    val effectiveTopMargin = if (topMarginStep < 4) topMarginStep * 48 else customTopMargin
+    val insertLinkAction = { showLinkDialog = true }
+
+    val insertResourceAction = {
+        val res = state?.resourceManager?.create("Новый ресурс")
+            ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
+        if (effectiveIsPlainText) {
+            val tag = res.toTag()
+            val cur = plainTextValue
+            val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
+            val min = cur.selection.min.coerceIn(0, cur.text.length)
+            val max = cur.selection.max.coerceIn(0, cur.text.length)
+            val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
+            plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
+            lastEmittedText = newText
+            onFieldChange(field.copy(content = newText))
+        } else {
+            insertBlockAtSelection(DynamicContentBlock.ResourceRef(res.id))
+        }
+    }
+
+    val insertInfoBlockAction = {
+        val info = state?.infoBlockManager?.create("Новый инфоблок")
+            ?: DynamicContentBlock.InfoBlock(title = "Новый инфоблок", id = ru.quasaris.characternexus.util.generateUuid())
+        if (effectiveIsPlainText) {
+            val tag = info.toTag()
+            val cur = plainTextValue
+            val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
+            val min = cur.selection.min.coerceIn(0, cur.text.length)
+            val max = cur.selection.max.coerceIn(0, cur.text.length)
+            val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
+            plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
+            lastEmittedText = newText
+            onFieldChange(field.copy(content = newText))
+        } else {
+            insertBlockAtSelection(DynamicContentBlock.InfoBlockRef(info.id))
+        }
+    }
 
     Column(
         modifier = modifier
@@ -326,26 +444,47 @@ fun NotionBlockEditor(
                 editorTopPx = pos.y
             }
     ) {
-        if (canEdit && isAnyFocused && effectiveTopMargin > 0) {
-            Spacer(modifier = Modifier.height(effectiveTopMargin.dp))
+        if (effectiveTopMargin > 0.dp) {
+            Spacer(modifier = Modifier.height(effectiveTopMargin))
         }
-        if (canEdit && activeKey != null && activeValue != null) {
+
+        val toolbarValue = if (effectiveIsPlainText) plainTextValue else activeValue
+        val showToolbar = canEdit && (if (effectiveIsPlainText) isAnyFocused else (activeKey != null && activeValue != null))
+        if (showToolbar && toolbarValue != null) {
             val isOled = colorScheme.background == Color.Black
             FormattingToolbar(
-                value = activeValue,
-                onValueChange = { spliceBlockValue(activeKey!!, it) },
-                isFocused = true,
-                isSelectionActive = activeValue.selection.length > 0,
-                onLinkRequest = { showLinkDialog = true },
-                onSave = { activeKey = null },
-                viewportTopY = viewportTopY,
-                onInsertResource = {
-                    val res = state?.resourceManager?.create("Новый ресурс")
-                        ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
-                    insertBlockAtSelection(DynamicContentBlock.ResourceRef(res.id))
+                value = toolbarValue,
+                onValueChange = { newValue ->
+                    if (effectiveIsPlainText) {
+                        plainTextValue = newValue
+                        lastEmittedText = newValue.text
+                        onFieldChange(field.copy(content = newValue.text))
+                    } else if (activeKey != null) {
+                        spliceBlockValue(activeKey!!, newValue)
+                    }
                 },
+                isFocused = true,
+                isSelectionActive = toolbarValue.selection.length > 0,
+                onLinkRequest = insertLinkAction,
+                onSave = {
+                    if (!effectiveIsPlainText) activeKey = null
+                },
+                viewportTopY = viewportTopY,
+                onInsertResource = insertResourceAction,
+                onInsertInfoBlock = insertInfoBlockAction,
                 onInsertDivider = {
-                    insertBlockAtSelection(DynamicContentBlock.Divider)
+                    if (effectiveIsPlainText) {
+                        val cur = plainTextValue
+                        val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + "---\n"
+                        val min = cur.selection.min.coerceIn(0, cur.text.length)
+                        val max = cur.selection.max.coerceIn(0, cur.text.length)
+                        val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
+                        plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
+                        lastEmittedText = newText
+                        onFieldChange(field.copy(content = newText))
+                    } else {
+                        insertBlockAtSelection(DynamicContentBlock.Divider)
+                    }
                 },
                 hazeState = popupHazeState ?: hazeState,
                 settingsViewModel = settingsViewModel,
@@ -353,7 +492,10 @@ fun NotionBlockEditor(
                 editorWidthPx = editorWidthPx,
                 editorLeftPx = editorLeftPx,
                 editorTopPx = editorTopPx,
-                editorHeightPx = editorHeightPx
+                editorHeightPx = editorHeightPx,
+                isBasicMode = isBasicMode,
+                isPlainTextMode = effectiveIsPlainText,
+                onTogglePlainText = { togglePlainText() }
             )
         }
 
@@ -367,7 +509,54 @@ fun NotionBlockEditor(
             settingsViewModel = settingsViewModel
         )
 
-        BlockDragColumn(
+        if (effectiveIsPlainText) {
+            BasicTextField(
+                value = plainTextValue,
+                onValueChange = { newValue ->
+                    plainTextValue = newValue
+                    lastEmittedText = newValue.text
+                    onFieldChange(field.copy(content = newValue.text))
+                },
+                enabled = canEdit,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 17.sp,
+                    lineHeight = 24.sp,
+                    color = colorScheme.onSurface
+                ),
+                cursorBrush = SolidColor(colorScheme.primary),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .onPreviewKeyEvent { event ->
+                        handleFormattingKeyCombination(
+                            event = event,
+                            value = plainTextValue,
+                            onValueChange = { newValue ->
+                                plainTextValue = newValue
+                                lastEmittedText = newValue.text
+                                onFieldChange(field.copy(content = newValue.text))
+                            },
+                            isBasicMode = isBasicMode,
+                            onLinkRequest = insertLinkAction,
+                            onInsertResource = insertResourceAction,
+                            onInsertInfoBlock = insertInfoBlockAction
+                        )
+                    },
+                decorationBox = { innerTextField ->
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (plainTextValue.text.isEmpty() && contentPlaceholder.isNotEmpty()) {
+                            Text(
+                                contentPlaceholder,
+                                fontSize = 17.sp,
+                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+        } else {
+            BlockDragColumn(
             blocks = blocks,
             isReorderMode = isReorderMode,
             onReordered = { emit() }
@@ -409,6 +598,7 @@ fun NotionBlockEditor(
                                 canEdit = canEdit && !isReorderMode,
                                 selection = liveSelections[item.key] ?: TextRange(block.content.length),
                                 focusRequester = focusRequesterFor(item.key),
+                                isBasicMode = isBasicMode,
                                 onActivate = { offset ->
                                     activeKey = item.key
                                     pendingFocusKey = item.key
@@ -416,7 +606,11 @@ fun NotionBlockEditor(
                                     liveSelections[item.key] = TextRange(pendingFocusOffset)
                                 },
                                 onValueChange = { spliceBlockValue(item.key, it) },
-                                onBackspaceEmpty = { mergeIntoPrevious(item.key) }
+                                onBackspaceEmpty = { mergeIntoPrevious(item.key) },
+                                onDismissActive = { activeKey = null },
+                                onLinkRequest = insertLinkAction,
+                                onInsertResource = insertResourceAction,
+                                onInsertInfoBlock = insertInfoBlockAction
                             )
 
                             is DynamicContentBlock.Spoiler -> LineTextBlockRow(
@@ -429,6 +623,7 @@ fun NotionBlockEditor(
                                 focusRequester = focusRequesterFor(item.key),
                                 prefixIcon = Icons.Default.VisibilityOff,
                                 previewWrapper = { content -> SpoilerComponent(content = content) },
+                                isBasicMode = isBasicMode,
                                 onActivate = { offset ->
                                     activeKey = item.key
                                     pendingFocusKey = item.key
@@ -436,7 +631,11 @@ fun NotionBlockEditor(
                                     liveSelections[item.key] = TextRange(pendingFocusOffset)
                                 },
                                 onValueChange = { spliceBlockValue(item.key, it) },
-                                onBackspaceEmpty = { mergeIntoPrevious(item.key) }
+                                onBackspaceEmpty = { mergeIntoPrevious(item.key) },
+                                onDismissActive = { activeKey = null },
+                                onLinkRequest = insertLinkAction,
+                                onInsertResource = insertResourceAction,
+                                onInsertInfoBlock = insertInfoBlockAction
                             )
 
                             is DynamicContentBlock.Quote -> LineTextBlockRow(
@@ -449,6 +648,7 @@ fun NotionBlockEditor(
                                 focusRequester = focusRequesterFor(item.key),
                                 prefixIcon = Icons.Default.FormatQuote,
                                 previewWrapper = { content -> QuoteComponent(content = content) },
+                                isBasicMode = isBasicMode,
                                 onActivate = { offset ->
                                     activeKey = item.key
                                     pendingFocusKey = item.key
@@ -456,7 +656,11 @@ fun NotionBlockEditor(
                                     liveSelections[item.key] = TextRange(pendingFocusOffset)
                                 },
                                 onValueChange = { spliceBlockValue(item.key, it) },
-                                onBackspaceEmpty = { mergeIntoPrevious(item.key) }
+                                onBackspaceEmpty = { mergeIntoPrevious(item.key) },
+                                onDismissActive = { activeKey = null },
+                                onLinkRequest = insertLinkAction,
+                                onInsertResource = insertResourceAction,
+                                onInsertInfoBlock = insertInfoBlockAction
                             )
 
                             is DynamicContentBlock.Divider -> {
@@ -469,6 +673,7 @@ fun NotionBlockEditor(
                                         canEdit = canEdit,
                                         selection = liveSelections[item.key] ?: TextRange(3),
                                         focusRequester = focusRequesterFor(item.key),
+                                        isBasicMode = isBasicMode,
                                         onActivate = { offset ->
                                             activeKey = item.key
                                             pendingFocusKey = item.key
@@ -476,7 +681,11 @@ fun NotionBlockEditor(
                                             liveSelections[item.key] = TextRange(pendingFocusOffset)
                                         },
                                         onValueChange = { spliceBlockValue(item.key, it) },
-                                        onBackspaceEmpty = { mergeIntoPrevious(item.key) }
+                                        onBackspaceEmpty = { mergeIntoPrevious(item.key) },
+                                        onDismissActive = { activeKey = null },
+                                        onLinkRequest = insertLinkAction,
+                                        onInsertResource = insertResourceAction,
+                                        onInsertInfoBlock = insertInfoBlockAction
                                     )
                                 } else {
                                     DividerBlockRow(
@@ -548,6 +757,77 @@ fun NotionBlockEditor(
                                     onDeleteRequest = { requestDelete(absoluteIndex) }
                                 )
                             }
+
+                            is DynamicContentBlock.InfoBlock -> InfoBlockComponent(
+                                infoBlock = block,
+                                onUpdate = { updated ->
+                                    val idx = blocks.indexOfFirst { it.key == item.key }
+                                    if (idx != -1) {
+                                        blocks[idx] = blocks[idx].copy(block = updated)
+                                        emit()
+                                        if (updated.id.isNotEmpty()) state?.infoBlockManager?.upsert(updated)
+                                    }
+                                },
+                                onConvertToResource = { infoToConvert ->
+                                    val idx = blocks.indexOfFirst { it.key == item.key }
+                                    val res = state?.infoBlockManager?.convertToResource(infoToConvert.id)
+                                    if (idx != -1 && res != null) {
+                                        blocks[idx] = blocks[idx].copy(block = DynamicContentBlock.ResourceRef(res.id))
+                                        emit()
+                                    }
+                                },
+                                onDeleteRequest = {
+                                    requestDelete(absoluteIndex)
+                                    if (block.id.isNotEmpty()) state?.infoBlockManager?.deleteCompletely(block.id)
+                                },
+                                hazeState = hazeState,
+                                forceBlurEnabled = forceBlurEnabled,
+                                blurDynamicFields = blurDynamicFields,
+                                settingsViewModel = settingsViewModel,
+                                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                onOpenConfig = state?.let { s ->
+                                    { info: DynamicContentBlock.InfoBlock ->
+                                        s.activeInfoBlockConfig = info
+                                        s.activeResourceIndex = absoluteIndex
+                                        s.activeNoteId = field.id
+                                        s.isInfoBlockConfigOpen = true
+                                    }
+                                }
+                            )
+
+                            is DynamicContentBlock.InfoBlockRef -> {
+                                val infoBlock = state?.infoBlockManager?.get(block.id)
+                                    ?: DynamicContentBlock.InfoBlock(title = "Загрузка...", id = block.id)
+                                InfoBlockComponent(
+                                    infoBlock = infoBlock,
+                                    onUpdate = { updated -> state?.infoBlockManager?.upsert(updated) },
+                                    onConvertToResource = { _ ->
+                                        val idx = blocks.indexOfFirst { it.key == item.key }
+                                        val res = state?.infoBlockManager?.convertToResource(block.id)
+                                        if (idx != -1 && res != null) {
+                                            blocks[idx] = blocks[idx].copy(block = DynamicContentBlock.ResourceRef(res.id))
+                                            emit()
+                                        }
+                                    },
+                                    onDeleteRequest = {
+                                        requestDelete(absoluteIndex)
+                                        if (block.id.isNotEmpty()) state?.infoBlockManager?.deleteCompletely(block.id)
+                                    },
+                                    hazeState = hazeState,
+                                    forceBlurEnabled = forceBlurEnabled,
+                                    blurDynamicFields = blurDynamicFields,
+                                    settingsViewModel = settingsViewModel,
+                                    onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                    onOpenConfig = state?.let { s ->
+                                        { info: DynamicContentBlock.InfoBlock ->
+                                            s.activeInfoBlockConfig = info
+                                            s.activeResourceIndex = absoluteIndex
+                                            s.activeNoteId = field.id
+                                            s.isInfoBlockConfigOpen = true
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
 
@@ -564,6 +844,7 @@ fun NotionBlockEditor(
                 }
             }
         }
+        }
 
         bottomActionRow?.invoke(
             { insertAfterActive(DynamicContentBlock.Text("")) },
@@ -572,8 +853,71 @@ fun NotionBlockEditor(
                 val res = state?.resourceManager?.create("Новый ресурс")
                     ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
                 insertAfterActive(DynamicContentBlock.ResourceRef(res.id))
+            },
+            {
+                val info = state?.infoBlockManager?.create("Новый инфоблок")
+                    ?: DynamicContentBlock.InfoBlock(title = "Новый инфоблок", id = ru.quasaris.characternexus.util.generateUuid())
+                insertAfterActive(DynamicContentBlock.InfoBlockRef(info.id))
             }
         )
+    }
+}
+
+private fun handleFormattingKeyCombination(
+    event: KeyEvent,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    isBasicMode: Boolean = false,
+    onLinkRequest: (() -> Unit)? = null,
+    onInsertResource: (() -> Unit)? = null,
+    onInsertInfoBlock: (() -> Unit)? = null
+): Boolean {
+    if (event.type != KeyEventType.KeyDown) return false
+    val isCtrlOrCmd = event.isCtrlPressed || event.isMetaPressed
+    if (!isCtrlOrCmd) return false
+
+    return when {
+        // Ctrl + B -> Bold
+        event.key == Key.B -> {
+            onValueChange(MarkdownHelper.applyMarkdown(value, "**", "**"))
+            true
+        }
+        // Ctrl + I -> Italic
+        event.key == Key.I -> {
+            onValueChange(MarkdownHelper.applyMarkdown(value, "_", "_"))
+            true
+        }
+        // Ctrl + T -> Strikethrough
+        event.key == Key.T -> {
+            onValueChange(MarkdownHelper.applyMarkdown(value, "~~", "~~"))
+            true
+        }
+        // Ctrl + H -> Spoiler (if not basic mode)
+        event.key == Key.H && !isBasicMode -> {
+            onValueChange(MarkdownHelper.applyMarkdown(value, "::", "::"))
+            true
+        }
+        // Ctrl + Q -> Quote (if not basic mode)
+        event.key == Key.Q && !isBasicMode -> {
+            onValueChange(MarkdownHelper.applyMarkdown(value, ">> ", " <<"))
+            true
+        }
+        // Ctrl + K -> Hyperlink
+        event.key == Key.K -> {
+            onLinkRequest?.invoke()
+            true
+        }
+        // Ctrl + = or Ctrl + Plus or Ctrl + NumPadEquals -> Resource (if not basic mode)
+        (event.key == Key.Equals || event.key == Key.Plus || event.key == Key.NumPadEquals) && !isBasicMode -> {
+            onInsertResource?.invoke()
+            true
+        }
+        // Ctrl + - or Ctrl + NumPadSubtract -> InfoBlock (if not basic mode)
+        (event.key == Key.Minus || event.key == Key.NumPadSubtract) && !isBasicMode -> {
+            onInsertInfoBlock?.invoke()
+            true
+        }
+        else -> false
     }
 }
 
@@ -588,12 +932,18 @@ private fun LineTextBlockRow(
     focusRequester: FocusRequester,
     prefixIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     previewWrapper: (@Composable (androidx.compose.ui.text.AnnotatedString) -> Unit)? = null,
+    isBasicMode: Boolean = false,
     onActivate: (offset: Int?) -> Unit,
     onValueChange: (TextFieldValue) -> Unit,
-    onBackspaceEmpty: () -> Unit
+    onBackspaceEmpty: () -> Unit,
+    onDismissActive: () -> Unit = {},
+    onLinkRequest: (() -> Unit)? = null,
+    onInsertResource: (() -> Unit)? = null,
+    onInsertInfoBlock: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val uriHandler = LocalUriHandler.current
+    val focusManager = LocalFocusManager.current
 
     if (isActive) {
         val initialInternalText = "\u200B" + text
@@ -622,30 +972,22 @@ private fun LineTextBlockRow(
         val imeBottomPx = WindowInsets.ime.getBottom(density)
 
         LaunchedEffect(isActive, internalValue.selection, internalValue.text, imeBottomPx, layoutResult) {
-            if (isActive) {
-                val topMarginPx = with(density) { 160.dp.toPx() }
-                val bottomMarginPx = with(density) { 64.dp.toPx() }
+            if (isActive && !isBasicMode && layoutResult != null) {
+                val topMarginPx = with(density) { 80.dp.toPx() }
+                val bottomMarginPx = with(density) { 16.dp.toPx() }
                 val cursorIndex = internalValue.selection.max.coerceIn(0, internalValue.text.length)
                 val cursorRect = layoutResult?.getCursorRect(cursorIndex)
 
-                val rectToBring = if (cursorRect != null) {
-                    Rect(
+                if (cursorRect != null) {
+                    val rectToBring = Rect(
                         left = cursorRect.left,
-                        top = cursorRect.top - topMarginPx,
+                        top = (cursorRect.top - topMarginPx).coerceAtLeast(0f),
                         right = cursorRect.right,
                         bottom = cursorRect.bottom + bottomMarginPx
                     )
-                } else {
-                    Rect(
-                        left = 0f,
-                        top = -topMarginPx,
-                        right = 0f,
-                        bottom = bottomMarginPx * 2f
-                    )
-                }
-
-                runCatching {
-                    bringIntoViewRequester.bringIntoView(rectToBring)
+                    runCatching {
+                        bringIntoViewRequester.bringIntoView(rectToBring)
+                    }
                 }
             }
         }
@@ -681,6 +1023,31 @@ private fun LineTextBlockRow(
             cursorBrush = SolidColor(colorScheme.primary),
             modifier = Modifier
                 .fillMaxWidth()
+                .onPreviewKeyEvent { event ->
+                    if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+                        focusManager.clearFocus()
+                        onDismissActive()
+                        true
+                    } else {
+                        handleFormattingKeyCombination(
+                            event = event,
+                            value = TextFieldValue(text = currentCleanText, selection = currentCleanSelection),
+                            onValueChange = { newValue ->
+                                val newInternalText = "\u200B" + newValue.text
+                                val newInternalSelection = TextRange(
+                                    (newValue.selection.start + 1).coerceIn(1, newInternalText.length),
+                                    (newValue.selection.end + 1).coerceIn(1, newInternalText.length)
+                                )
+                                internalValue = TextFieldValue(text = newInternalText, selection = newInternalSelection)
+                                onValueChange(newValue)
+                            },
+                            isBasicMode = isBasicMode,
+                            onLinkRequest = onLinkRequest,
+                            onInsertResource = onInsertResource,
+                            onInsertInfoBlock = onInsertInfoBlock
+                        )
+                    }
+                }
                 .bringIntoViewRequester(bringIntoViewRequester)
                 .focusRequester(focusRequester),
             decorationBox = { inner ->

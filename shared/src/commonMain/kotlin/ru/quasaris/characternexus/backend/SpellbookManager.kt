@@ -35,14 +35,13 @@ class SpellbookManager {
     }
 
     fun slugify(name: String): String {
-        return name.lowercase()
-            .replace(" ", "_")
-            .replace(SLUG_REGEX, "")
-            .ifBlank { "unnamed" }
+        return slugifySpellName(name).ifBlank { "unnamed" }
     }
 
     private fun getFileForSpell(spell: SpellCard): Path {
-        val identifier = if (spell.englishName.isNotBlank()) slugify(spell.englishName) else spell.id
+        val identifier = if (spell.englishName.isNotBlank()) slugify(spell.englishName)
+                         else if (spell.name.isNotBlank()) slugify(spell.name)
+                         else spell.id
         return glossaryDir.div("$identifier.json")
     }
 
@@ -88,27 +87,32 @@ class SpellbookManager {
     fun addOrUpdateSpell(spell: SpellCard): SpellCard {
         val allSpells = loadSpells()
         
-        // Match logic: 
-        // 1. ID match (always update)
-        // 2. Composite key match (Name + Version + English Name + Source Module ID)
         val existingMatch = allSpells.find { it.id == spell.id }
+            ?: allSpells.find { it.matchesId(spell.id) }
             ?: allSpells.find { 
                 it.name.equals(spell.name, ignoreCase = true) && 
                 it.version == spell.version && 
-                it.englishName.equals(spell.englishName, ignoreCase = true) &&
-                it.sourceModuleId == spell.sourceModuleId
+                (it.englishName.isBlank() || spell.englishName.isBlank() || it.englishName.equals(spell.englishName, ignoreCase = true))
             }
         
+        val generatedSlug = when {
+            spell.englishName.isNotBlank() -> slugify(spell.englishName)
+            spell.name.isNotBlank() -> slugify(spell.name)
+            else -> spell.id
+        }
+
         val spellToSave = if (existingMatch != null) {
             spell.copy(id = existingMatch.id) // Keep stable ID
         } else {
-            if (spell.englishName.isNotBlank()) spell.copy(id = slugify(spell.englishName)) else spell
+            val isUuid = spell.id.length == 36 && spell.id.count { it == '-' } == 4
+            val finalId = if (!isUuid && spell.id.isNotBlank()) spell.id else generatedSlug
+            spell.copy(id = finalId)
         }
 
         if (existingMatch != null) {
             val oldFile = getFileForSpell(existingMatch)
             val newFile = getFileForSpell(spellToSave)
-            if (oldFile != newFile) {
+            if (oldFile != newFile && platformFileSystem.exists(oldFile)) {
                 platformFileSystem.delete(oldFile)
             }
         }
