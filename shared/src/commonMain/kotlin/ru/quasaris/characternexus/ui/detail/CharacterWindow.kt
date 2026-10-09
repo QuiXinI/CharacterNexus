@@ -7,8 +7,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -188,18 +190,179 @@ fun CharacterWindow(
     val pb = getProficiencyBonus(state.level)
     val allConditions = rememberAllConditions()
 
-    val tabs = CharacterTab.entries
-    val totalPages = 10000
-    val initialPage = totalPages / 2 - (totalPages / 2 % tabs.size)
-    val pagerState = rememberPagerState(initialPage = initialPage) { totalPages }
+    val liveEffectiveTabs = remember(
+        state.customTabs,
+        state.tabOrder,
+        state.disabledTabs,
+        state.customTabTitles,
+        state.customTabIcons,
+        character.customTabs,
+        character.tabOrder,
+        character.disabledTabs,
+        character.customTabTitles,
+        character.customTabIcons
+    ) {
+        character.copy(
+            customTabs = state.customTabs,
+            tabOrder = state.tabOrder,
+            disabledTabs = state.disabledTabs,
+            customTabTitles = state.customTabTitles,
+            customTabIcons = state.customTabIcons
+        ).getEffectiveTabs(includeDisabled = true)
+    }
 
-    val desktopTabs = remember(tabs) { tabs.filter { it != CharacterTab.STATS } }
-    val desktopPagerState = rememberPagerState(
-        initialPage = 10000 / 2 - (10000 / 2 % desktopTabs.size)
-    ) { 10000 }
+    val liveEnabledMobileTabs = remember(liveEffectiveTabs) {
+        val enabled = liveEffectiveTabs.filter { !it.isDisabled }
+        enabled.ifEmpty { liveEffectiveTabs }
+    }
+
+    val liveDesktopTabs = remember(liveEffectiveTabs) {
+        liveEffectiveTabs.filter { tab ->
+            when (tab) {
+                is DisplayTab.BuiltIn -> tab.tab != CharacterTab.STATS
+                is DisplayTab.Custom -> true
+            }
+        }
+    }
+
+    val liveEnabledDesktopTabs = remember(liveDesktopTabs) {
+        val enabled = liveDesktopTabs.filter { !it.isDisabled }
+        enabled.ifEmpty { liveDesktopTabs }
+    }
+
+    val totalPages = 10000
 
     val sheetState = rememberModalBottomSheetState()
     var showTabSheet by remember { mutableStateOf(false) }
+
+    val isMobileTabEditing = showTabSheet || state.isTabEditMode
+    val isDesktopTabEditing = state.isTabEditMode
+
+    var committedMobileTabs by remember { mutableStateOf(liveEnabledMobileTabs) }
+    var committedDesktopTabs by remember { mutableStateOf(liveEnabledDesktopTabs) }
+
+    var isMobilePagerFading by remember { mutableStateOf(false) }
+    val mobilePagerAlpha by animateFloatAsState(
+        targetValue = if (isMobilePagerFading) 0f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        finishedListener = { alpha ->
+            if (alpha == 0f) {
+                committedMobileTabs = liveEnabledMobileTabs
+                isMobilePagerFading = false
+            }
+        }
+    )
+
+    LaunchedEffect(isMobileTabEditing, liveEnabledMobileTabs) {
+        if (!isMobileTabEditing) {
+            if (committedMobileTabs != liveEnabledMobileTabs) {
+                isMobilePagerFading = true
+            } else {
+                committedMobileTabs = liveEnabledMobileTabs
+            }
+        }
+    }
+
+    var isDesktopPagerFading by remember { mutableStateOf(false) }
+    val desktopPagerAlpha by animateFloatAsState(
+        targetValue = if (isDesktopPagerFading) 0f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        finishedListener = { alpha ->
+            if (alpha == 0f) {
+                committedDesktopTabs = liveEnabledDesktopTabs
+                isDesktopPagerFading = false
+            }
+        }
+    )
+
+    LaunchedEffect(isDesktopTabEditing, liveEnabledDesktopTabs) {
+        if (!isDesktopTabEditing) {
+            if (committedDesktopTabs != liveEnabledDesktopTabs) {
+                isDesktopPagerFading = true
+            } else {
+                committedDesktopTabs = liveEnabledDesktopTabs
+            }
+        }
+    }
+
+    val initialMobilePage = totalPages / 2 - (totalPages / 2 % committedMobileTabs.size.coerceAtLeast(1))
+    val pagerState = rememberPagerState(initialPage = initialMobilePage) { totalPages }
+
+    val initialDesktopPage = totalPages / 2 - (totalPages / 2 % committedDesktopTabs.size.coerceAtLeast(1))
+    val desktopPagerState = rememberPagerState(initialPage = initialDesktopPage) { totalPages }
+
+    var selectedDesktopTabKey by remember { mutableStateOf<String?>(null) }
+    var lastDesktopTabIndex by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        if (selectedDesktopTabKey == null) {
+            selectedDesktopTabKey = committedDesktopTabs.firstOrNull()?.key
+        }
+    }
+
+    // Pager -> selection. committedDesktopTabs заморожен на время редактирования, поэтому
+    // маппинг page -> tab всегда совпадает с тем, что реально показывает pager.
+    // Раньше тут был guard !isDesktopTabEditing: свайп в режиме редактирования не обновлял
+    // выбор, и при выходе из режима pager «откатывался» на старую вкладку.
+    LaunchedEffect(desktopPagerState.currentPage) {
+        if (committedDesktopTabs.isNotEmpty()) {
+            val idx = desktopPagerState.currentPage % committedDesktopTabs.size
+            lastDesktopTabIndex = idx
+            selectedDesktopTabKey = committedDesktopTabs[idx].key
+        }
+    }
+
+    // Selection -> pager.
+    LaunchedEffect(committedDesktopTabs, selectedDesktopTabKey, isDesktopTabEditing) {
+        if (!isDesktopTabEditing && committedDesktopTabs.isNotEmpty()) {
+            var targetIndex = committedDesktopTabs.indexOfFirst { it.key == selectedDesktopTabKey }
+            if (targetIndex == -1) {
+                // Выбранная вкладка исчезла (удалена/отключена) — остаёмся на том же месте, а не прыгаем на первую.
+                targetIndex = lastDesktopTabIndex.coerceIn(0, committedDesktopTabs.lastIndex)
+                selectedDesktopTabKey = committedDesktopTabs[targetIndex].key
+            }
+            lastDesktopTabIndex = targetIndex
+            val currentP = desktopPagerState.currentPage
+            val currentIdx = currentP % committedDesktopTabs.size
+            val diff = targetIndex - currentIdx
+            if (diff != 0) {
+                desktopPagerState.scrollToPage(currentP + diff)
+            }
+        }
+    }
+
+    var selectedMobileTabKey by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        if (selectedMobileTabKey == null) {
+            selectedMobileTabKey = committedMobileTabs.firstOrNull()?.key
+        }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (!isMobileTabEditing && committedMobileTabs.isNotEmpty()) {
+            val tabAtPage = committedMobileTabs.getOrNull(pagerState.currentPage % committedMobileTabs.size)
+            if (tabAtPage != null) {
+                selectedMobileTabKey = tabAtPage.key
+            }
+        }
+    }
+
+    LaunchedEffect(committedMobileTabs, selectedMobileTabKey, isMobileTabEditing) {
+        if (!isMobileTabEditing && committedMobileTabs.isNotEmpty()) {
+            val targetKey = selectedMobileTabKey
+            var targetIndex = if (targetKey != null) committedMobileTabs.indexOfFirst { it.key == targetKey } else -1
+            if (targetIndex == -1) {
+                selectedMobileTabKey = committedMobileTabs.first().key
+                targetIndex = 0
+            }
+            val currentP = pagerState.currentPage
+            val currentIdx = currentP % committedMobileTabs.size
+            val diff = targetIndex - currentIdx
+            if (diff != 0) {
+                pagerState.scrollToPage(currentP + diff)
+            }
+        }
+    }
+
     val isOled = colorScheme.background == Color.Black
 
     val focusManager = LocalFocusManager.current
@@ -239,7 +402,8 @@ fun CharacterWindow(
         state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions,
         state.race, state.classes, state.isJackOfAllTrades,
         state.deathSaveSuccesses, state.deathSaveFailures,
-        state.proficiencies, state.resourceManager.items
+        state.proficiencies, state.resourceManager.items,
+        state.customTabs, state.tabOrder, state.customTabTitles, state.customTabIcons
     ) {
         onSaveChanges(state.toCharacter(character))
     }
@@ -418,11 +582,11 @@ fun CharacterWindow(
                                 }
                                 KeybindAction.TOGGLE_EDIT_MODE -> {
                                     val activeTab = if (isDesktop) {
-                                        if (state.activeSection == "left") CharacterTab.STATS
-                                        else desktopTabs[desktopPagerState.currentPage % desktopTabs.size]
-                                    } else tabs[pagerState.currentPage % tabs.size]
+                                        if (state.activeSection == "left") null
+                                        else committedDesktopTabs.getOrNull(desktopPagerState.currentPage % committedDesktopTabs.size.coerceAtLeast(1))
+                                    } else committedMobileTabs.getOrNull(pagerState.currentPage % committedMobileTabs.size.coerceAtLeast(1))
 
-                                    if (activeTab == CharacterTab.STATS) {
+                                    if (activeTab is DisplayTab.BuiltIn && activeTab.tab == CharacterTab.STATS) {
                                         state.isAdvancedMode = !state.isAdvancedMode
                                     } else {
                                         state.isEditMode = !state.isEditMode
@@ -431,52 +595,77 @@ fun CharacterWindow(
                                 }
                                 KeybindAction.TOGGLE_EXPANSION -> {
                                     val activeTab = if (isDesktop) {
-                                        if (state.activeSection == "left") CharacterTab.STATS
-                                        else desktopTabs[desktopPagerState.currentPage % desktopTabs.size]
-                                    } else tabs[pagerState.currentPage % tabs.size]
+                                        if (state.activeSection == "left") null
+                                        else committedDesktopTabs.getOrNull(desktopPagerState.currentPage % committedDesktopTabs.size.coerceAtLeast(1))
+                                    } else committedMobileTabs.getOrNull(pagerState.currentPage % committedMobileTabs.size.coerceAtLeast(1))
 
-                                    if (activeTab == CharacterTab.STATS) {
+                                    if (activeTab is DisplayTab.BuiltIn && activeTab.tab == CharacterTab.STATS) {
                                         state.isAdvancedMode = !state.isAdvancedMode
                                     } else {
-                                        val currentList = when (activeTab) {
-                                            CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
-                                            CharacterTab.INVENTORY -> state.inventory
-                                            CharacterTab.SPELLS -> state.spells
-                                            CharacterTab.NOTES -> state.notes
-                                            else -> emptyList()
-                                        }
-                                        if (currentList.isNotEmpty()) {
-                                            val anyCollapsed = currentList.any { !it.isExpanded }
-                                            val newState = if (anyCollapsed) {
-                                                currentList.map { it.copy(isExpanded = true) }
-                                            } else {
-                                                currentList.map { it.copy(isExpanded = false) }
+                                        when (activeTab) {
+                                            is DisplayTab.BuiltIn -> {
+                                                val currentList = when (activeTab.tab) {
+                                                    CharacterTab.SKILLS_FEATS -> state.skillsAndTraits
+                                                    CharacterTab.INVENTORY -> state.inventory
+                                                    CharacterTab.SPELLS -> state.spells
+                                                    CharacterTab.NOTES -> state.notes
+                                                    CharacterTab.BIO -> state.bioLongSections
+                                                    else -> emptyList()
+                                                }
+                                                if (currentList.isNotEmpty()) {
+                                                    val anyCollapsed = currentList.any { !it.isExpanded }
+                                                    val newState = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                                                    when (activeTab.tab) {
+                                                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
+                                                        CharacterTab.INVENTORY -> state.inventory = newState
+                                                        CharacterTab.SPELLS -> state.spells = newState
+                                                        CharacterTab.NOTES -> state.notes = newState
+                                                        CharacterTab.BIO -> state.bioLongSections = newState
+                                                        else -> {}
+                                                    }
+                                                }
                                             }
-                                            when (activeTab) {
-                                                CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = newState
-                                                CharacterTab.INVENTORY -> state.inventory = newState
-                                                CharacterTab.SPELLS -> state.spells = newState
-                                                CharacterTab.NOTES -> state.notes = newState
-                                                else -> {}
+                                            is DisplayTab.Custom -> {
+                                                val customTab = activeTab.customTab
+                                                val currentList = state.customTabs.find { it.id == customTab.id }?.content ?: customTab.content
+                                                if (currentList.isNotEmpty()) {
+                                                    val anyCollapsed = currentList.any { !it.isExpanded }
+                                                    val newState = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                                                    state.customTabs = state.customTabs.map {
+                                                        if (it.id == customTab.id) it.copy(content = newState) else it
+                                                    }
+                                                }
                                             }
+                                            null -> {}
                                         }
                                     }
                                     true
                                 }
                                 KeybindAction.ADD_ITEM -> {
                                     val activeTab = if (isDesktop) {
-                                        if (state.activeSection == "left") CharacterTab.STATS
-                                        else desktopTabs[desktopPagerState.currentPage % desktopTabs.size]
-                                    } else tabs[pagerState.currentPage % tabs.size]
+                                        if (state.activeSection == "left") null
+                                        else committedDesktopTabs.getOrNull(desktopPagerState.currentPage % committedDesktopTabs.size.coerceAtLeast(1))
+                                    } else committedMobileTabs.getOrNull(pagerState.currentPage % committedMobileTabs.size.coerceAtLeast(1))
 
                                     when (activeTab) {
-                                        CharacterTab.ATTACKS -> state.attacks = state.attacks + AttackEntry()
-                                        CharacterTab.BIO -> state.bioLongSections = state.bioLongSections + DynamicNoteState()
-                                        CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = state.skillsAndTraits + DynamicNoteState()
-                                        CharacterTab.INVENTORY -> state.inventory = state.inventory + DynamicNoteState()
-                                        CharacterTab.SPELLS -> state.spells = state.spells + DynamicNoteState()
-                                        CharacterTab.NOTES -> state.notes = state.notes + DynamicNoteState()
-                                        else -> {}
+                                        is DisplayTab.BuiltIn -> {
+                                            when (activeTab.tab) {
+                                                CharacterTab.ATTACKS -> state.attacks = state.attacks + AttackEntry()
+                                                CharacterTab.BIO -> state.bioLongSections = state.bioLongSections + DynamicNoteState()
+                                                CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = state.skillsAndTraits + DynamicNoteState()
+                                                CharacterTab.INVENTORY -> state.inventory = state.inventory + DynamicNoteState()
+                                                CharacterTab.SPELLS -> state.spells = state.spells + DynamicNoteState()
+                                                CharacterTab.NOTES -> state.notes = state.notes + DynamicNoteState()
+                                                else -> {}
+                                            }
+                                        }
+                                        is DisplayTab.Custom -> {
+                                            val customTab = activeTab.customTab
+                                            state.customTabs = state.customTabs.map {
+                                                if (it.id == customTab.id) it.copy(content = it.content + DynamicNoteState()) else it
+                                            }
+                                        }
+                                        null -> {}
                                     }
                                     true
                                 }
@@ -487,7 +676,7 @@ fun CharacterWindow(
                 },
             topBar = {
                 if (!isDesktop) {
-                    val currentTab = tabs[pagerState.currentPage % tabs.size]
+                    val currentTab = committedMobileTabs.getOrNull(pagerState.currentPage % committedMobileTabs.size.coerceAtLeast(1)) ?: DisplayTab.BuiltIn(CharacterTab.STATS)
                     CharacterDetailTopBar(
                         state = state,
                         onOpenDrawer = onOpenDrawer,
@@ -518,7 +707,12 @@ fun CharacterWindow(
                     focusRequester = detailFocusRequester,
                     rootFocusRequester = rootFocusRequester,
                     scope = scope,
-                    tabs = tabs,
+                    tabs = committedMobileTabs,
+                    liveDesktopTabs = liveDesktopTabs,
+                    committedDesktopTabs = committedDesktopTabs,
+                    onSelectDesktopTab = { selectedTab -> selectedDesktopTabKey = selectedTab.key },
+                    mobilePagerAlpha = mobilePagerAlpha,
+                    desktopPagerAlpha = desktopPagerAlpha,
                     character = character,
                     onRoll = onRoll,
                     pb = pb,
@@ -572,14 +766,27 @@ fun CharacterWindow(
         showTabSheet = showTabSheet,
         onDismissRequest = {
             showTabSheet = false
+            state.isTabEditMode = false
         },
         sheetState = sheetState,
-        currentTab = if (isDesktopForSheet) desktopTabs[desktopPagerState.currentPage % desktopTabs.size] else tabs[pagerState.currentPage % tabs.size],
-        tabs = if (isDesktopForSheet) desktopTabs else tabs,
+        currentTab = if (isDesktopForSheet) {
+            committedDesktopTabs.getOrNull(desktopPagerState.currentPage % committedDesktopTabs.size.coerceAtLeast(1)) ?: liveDesktopTabs.firstOrNull() ?: DisplayTab.BuiltIn(CharacterTab.BIO)
+        } else {
+            committedMobileTabs.getOrNull(pagerState.currentPage % committedMobileTabs.size.coerceAtLeast(1)) ?: liveEffectiveTabs.firstOrNull() ?: DisplayTab.BuiltIn(CharacterTab.STATS)
+        },
+        tabs = if (isDesktopForSheet) liveDesktopTabs else liveEffectiveTabs,
+        onSelectTab = { tab ->
+            if (isDesktopForSheet) {
+                selectedDesktopTabKey = tab.key
+            } else {
+                selectedMobileTabKey = tab.key
+            }
+        },
         pagerState = if (isDesktopForSheet) desktopPagerState else pagerState,
         scope = scope,
         hazeState = if (isDesktopForSheet) null else (popupHazeState ?: hazeState),
-        blurPopups = blurPopups
+        blurPopups = blurPopups,
+        state = state
     )
 
     if (state.imageToCrop != null && state.bytesToCrop != null) {
@@ -639,7 +846,7 @@ fun CharacterDetailTopBar(
     colorScheme: ColorScheme,
     isOled: Boolean,
     handleRestoration: (String) -> Unit,
-    currentTab: CharacterTab,
+    currentTab: DisplayTab,
     onShowTabSheet: () -> Unit,
     onImagePickerClick: () -> Unit,
     onExportSheetClick: () -> Unit,
@@ -1050,7 +1257,7 @@ fun CharacterDetailMainContent(
     focusRequester: FocusRequester,
     rootFocusRequester: FocusRequester,
     scope: CoroutineScope,
-    tabs: List<CharacterTab>,
+    tabs: List<DisplayTab>,
     character: Character,
     onRoll: (RollResult) -> Unit,
     pb: Int,
@@ -1071,13 +1278,22 @@ fun CharacterDetailMainContent(
     onOpenDrawer: () -> Unit = {},
     handleRestoration: (String) -> Unit = {},
     desktopPagerState: PagerState,
-    magicItemManager: MagicItemManager? = null
+    magicItemManager: MagicItemManager? = null,
+    liveDesktopTabs: List<DisplayTab> = emptyList(),
+    committedDesktopTabs: List<DisplayTab> = emptyList(),
+    onSelectDesktopTab: (DisplayTab) -> Unit = {},
+    mobilePagerAlpha: Float = 1f,
+    desktopPagerAlpha: Float = 1f
 ) {
     val focusManager = LocalFocusManager.current
     val keybinds by settingsViewModel?.keybinds?.collectAsState() ?: remember { mutableStateOf(emptyMap<KeybindAction, Key>()) }
     val colorScheme = MaterialTheme.colorScheme
 
-    val desktopTabs = remember(tabs) { tabs.filter { it != CharacterTab.STATS } }
+    // ВАЖНО: на десктопе pager должен работать с committedDesktopTabs (без STATS),
+    // а не с мобильным списком `tabs` — иначе индексы в pager и в логике выбора не совпадают.
+    val desktopTabs = remember(committedDesktopTabs, liveDesktopTabs) {
+        committedDesktopTabs.ifEmpty { liveDesktopTabs }
+    }
 
     val leftHaze = remember { HazeState() }
     val rightHaze = remember { HazeState() }
@@ -1386,22 +1602,11 @@ fun CharacterDetailMainContent(
                 if (isDesktop) {
                     DesktopTabNavigationBar(
                         currentTab = currentTab,
-                        tabs = desktopTabs,
+                        tabs = liveDesktopTabs,
                         onTabSelected = { selectedTab ->
-                            val targetIndex = desktopTabs.indexOf(selectedTab)
-                            if (targetIndex != -1) {
-                                val currentP = desktopPagerState.currentPage
-                                val currentIdx = currentP % desktopTabs.size
-                                val diff = targetIndex - currentIdx
-                                scope.launch {
-                                    if (kotlin.math.abs(diff) <= 1) {
-                                        desktopPagerState.animateScrollToPage(currentP + diff)
-                                    } else {
-                                        desktopPagerState.scrollToPage(currentP + diff)
-                                    }
-                                }
-                            }
+                            onSelectDesktopTab(selectedTab)
                         },
+                        state = state,
                         actions = {
                             DesktopTabActions(
                                 tab = currentTab,
@@ -1414,12 +1619,14 @@ fun CharacterDetailMainContent(
 
                 HorizontalPager(
                     state = currentPagerState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = if (isDesktop) desktopPagerAlpha else mobilePagerAlpha },
                     beyondViewportPageCount = 0
                 ) { page ->
-                    val tab = currentTabs[page % currentTabs.size]
+                    val displayTab = currentTabs[page % currentTabs.size.coerceAtLeast(1)]
                     TabContent(
-                        tab = tab,
+                        displayTab = displayTab,
                         state = state,
                         character = character,
                         onRoll = onRoll,
@@ -1482,7 +1689,7 @@ fun CharacterDetailMainContent(
 
 @Composable
 fun TabContent(
-    tab: CharacterTab,
+    displayTab: DisplayTab,
     state: CharacterDetailState,
     character: Character,
     onRoll: (RollResult) -> Unit,
@@ -1500,68 +1707,218 @@ fun TabContent(
     magicItemManager: MagicItemManager? = null,
     onExportPortraitClick: () -> Unit = {}
 ) {
-    when (tab) {
-        CharacterTab.STATS -> {
-            StatsTab(
-                character = character,
-                level = state.level,
-                statsState = state.statsState,
-                onStatsStateChange = { state.statsState = it },
-                onRoll = onRoll,
-                hazeState = hazeState,
-                popupHazeState = popupHazeState,
-                forceBlurEnabled = forceBlurEnabled,
-                blurPopups = blurPopups,
-                isAdvancedMode = state.isAdvancedMode,
-                attributeModifiers = state.attributeModifiers,
-                statsMap = state.statsMap,
-                exhaustion = state.exhaustion,
-                onBonusConfigOpenChange = { if (it) state.closeFullscreenDialogs(); state.isBonusConfigOpen = it },
-                advantageLogic = state.advantageLogic,
-                state = state,
-                isDesktop = isDesktop
-            )
+    when (displayTab) {
+        is DisplayTab.BuiltIn -> {
+            when (displayTab.tab) {
+                CharacterTab.STATS -> {
+                    StatsTab(
+                        character = character,
+                        level = state.level,
+                        statsState = state.statsState,
+                        onStatsStateChange = { state.statsState = it },
+                        onRoll = onRoll,
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        isAdvancedMode = state.isAdvancedMode,
+                        attributeModifiers = state.attributeModifiers,
+                        statsMap = state.statsMap,
+                        exhaustion = state.exhaustion,
+                        onBonusConfigOpenChange = { if (it) state.closeFullscreenDialogs(); state.isBonusConfigOpen = it },
+                        advantageLogic = state.advantageLogic,
+                        state = state,
+                        isDesktop = isDesktop
+                    )
+                }
+                CharacterTab.ATTACKS -> {
+                    AttacksTab(
+                        attacks = state.attacks,
+                        proficiencyBonus = pb,
+                        attributeModifiers = state.attributeModifiers,
+                        onUpdateAttacks = { state.attacks = it },
+                        onRoll = onRoll,
+                        stats = state.statsMap,
+                        exhaustion = state.exhaustion,
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        isEditMode = state.isEditMode,
+                        onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                        settingsViewModel = settingsViewModel,
+                        spellSettings = state.spellSettings,
+                        spellbookManager = spellbookManager,
+                        advantageLogic = state.advantageLogic,
+                        onAttackConfigOpenChange = { if (it) state.closeFullscreenDialogs(); state.isAttackConfigOpen = it },
+                        state = state,
+                        isDesktop = isDesktop
+                    )
+                }
+                CharacterTab.BIO -> {
+                    BioTab(
+                        character = character.copy(
+                            bioShortFields = state.bioShortFields,
+                            bioLongSections = state.bioLongSections,
+                            imageData = state.characterImageData
+                        ),
+                        onCharacterChange = { updated ->
+                            state.bioShortFields = updated.bioShortFields
+                            state.bioLongSections = updated.bioLongSections
+                            state.characterImageData = updated.imageData
+                        },
+                        onAvatarEditRequest = {
+                            showImagePicker()
+                        },
+                        onExportPortraitClick = onExportPortraitClick,
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        isEditMode = state.isEditMode,
+                        onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                        onToggleAllExpansion = {
+                            val currentList = state.bioLongSections
+                            val anyCollapsed = currentList.any { !it.isExpanded }
+                            state.bioLongSections = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                        },
+                        anyCollapsed = state.bioLongSections.any { !it.isExpanded },
+                        settingsViewModel = settingsViewModel,
+                        statsMap = state.statsMap,
+                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                        onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
+                        state = state,
+                        isDesktop = isDesktop
+                    )
+                }
+                CharacterTab.SKILLS_FEATS -> {
+                    SkillsFeatsTab(
+                        skillsAndTraits = state.skillsAndTraits,
+                        onSkillsAndTraitsChange = { state.skillsAndTraits = it },
+                        Cargo = state.Cargo,
+                        onCargoChange = { state.Cargo = it },
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        isEditMode = state.isEditMode,
+                        onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                        onToggleAllExpansion = {
+                            val currentList = state.skillsAndTraits
+                            val anyCollapsed = currentList.any { !it.isExpanded }
+                            state.skillsAndTraits = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                        },
+                        anyCollapsed = state.skillsAndTraits.any { !it.isExpanded },
+                        settingsViewModel = settingsViewModel,
+                        statsMap = state.statsMap,
+                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                        onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
+                        state = state,
+                        isDesktop = isDesktop
+                    )
+                }
+                CharacterTab.INVENTORY -> {
+                    InventoryTab(
+                        inventory = state.inventory,
+                        onInventoryChange = { state.inventory = it },
+                        potions = state.potions,
+                        onPotionsChange = { state.potions = it },
+                        wallet = state.wallet,
+                        onWalletChange = { state.wallet = it },
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        isEditMode = state.isEditMode,
+                        onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                        onToggleAllExpansion = {
+                            val currentList = state.inventory
+                            val anyCollapsed = currentList.any { !it.isExpanded }
+                            state.inventory = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                        },
+                        anyCollapsed = state.inventory.any { !it.isExpanded },
+                        settingsViewModel = settingsViewModel,
+                        statsMap = state.statsMap,
+                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                        onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
+                        onWalletDialogOpenChange = { if (it) state.closeFullscreenDialogs(); state.isWalletDialogOpen = it },
+                        onRoll = onRoll,
+                        state = state,
+                        magicItemManager = magicItemManager,
+                        isDesktop = isDesktop
+                    )
+                }
+                CharacterTab.SPELLS -> {
+                    SpellsTab(
+                        spells = state.spells,
+                        onSpellsChange = { state.spells = it },
+                        characterLevel = state.level.toIntOrNull() ?: 1,
+                        spellSettings = state.spellSettings,
+                        onSpellSettingsChange = { settings -> state.spellSettings = settings },
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        isEditMode = state.isEditMode,
+                        onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                        onToggleAllExpansion = {
+                            val currentList = state.spells
+                            val anyCollapsed = currentList.any { !it.isExpanded }
+                            state.spells = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                        },
+                        anyCollapsed = state.spells.any { !it.isExpanded },
+                        onShowSpellSettings = { state.closeFullscreenDialogs(); state.showSpellSettings = true },
+                        settingsViewModel = settingsViewModel,
+                        onRoll = onRoll,
+                        statsMap = state.statsMap,
+                        exhaustion = state.exhaustion,
+                        advantageLogic = state.advantageLogic,
+                        spellbookManager = spellbookManager,
+                        onSpellEditorOpenChange = { if (it) state.closeFullscreenDialogs(); state.isSpellEditorOpen = it },
+                        onMagicBonusSettingsOpenChange = { if (it) state.closeFullscreenDialogs(); state.isMagicBonusSettingsOpen = it },
+                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                        onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
+                        onSpellbookSelectionOpenChange = { if (it) state.closeFullscreenDialogs(); state.isSpellbookSelectionOpen = it },
+                        state = state,
+                        isDesktop = isDesktop
+                    )
+                }
+                CharacterTab.NOTES -> {
+                    NotesTab(
+                        notes = state.notes,
+                        onNotesChange = { state.notes = it },
+                        hazeState = hazeState,
+                        popupHazeState = popupHazeState,
+                        forceBlurEnabled = forceBlurEnabled,
+                        blurPopups = blurPopups,
+                        isEditMode = state.isEditMode,
+                        onToggleEditMode = { state.isEditMode = !state.isEditMode },
+                        onToggleAllExpansion = {
+                            val currentList = state.notes
+                            val anyCollapsed = currentList.any { !it.isExpanded }
+                            state.notes = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                        },
+                        anyCollapsed = state.notes.any { !it.isExpanded },
+                        settingsViewModel = settingsViewModel,
+                        statsMap = state.statsMap,
+                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                        onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
+                        state = state,
+                        isDesktop = isDesktop
+                    )
+                }
+            }
         }
-        CharacterTab.ATTACKS -> {
-            AttacksTab(
-                attacks = state.attacks,
-                proficiencyBonus = pb,
-                attributeModifiers = state.attributeModifiers,
-                onUpdateAttacks = { state.attacks = it },
-                onRoll = onRoll,
-                stats = state.statsMap,
-                exhaustion = state.exhaustion,
-                hazeState = hazeState,
-                popupHazeState = popupHazeState,
-                forceBlurEnabled = forceBlurEnabled,
-                blurPopups = blurPopups,
-                isEditMode = state.isEditMode,
-                onToggleEditMode = { state.isEditMode = !state.isEditMode },
-                settingsViewModel = settingsViewModel,
-                spellSettings = state.spellSettings,
-                spellbookManager = spellbookManager,
-                advantageLogic = state.advantageLogic,
-                onAttackConfigOpenChange = { if (it) state.closeFullscreenDialogs(); state.isAttackConfigOpen = it },
-                state = state,
-                isDesktop = isDesktop
-            )
-        }
-        CharacterTab.BIO -> {
-            BioTab(
-                character = character.copy(
-                    bioShortFields = state.bioShortFields,
-                    bioLongSections = state.bioLongSections,
-                    imageData = state.characterImageData
-                ),
-                onCharacterChange = { updated ->
-                    state.bioShortFields = updated.bioShortFields
-                    state.bioLongSections = updated.bioLongSections
-                    state.characterImageData = updated.imageData
+        is DisplayTab.Custom -> {
+            val customTab = displayTab.customTab
+            val currentContent = state.customTabs.find { it.id == customTab.id }?.content ?: customTab.content
+            DynamicFieldsTab(
+                fields = currentContent,
+                onFieldsChange = { updated ->
+                    state.customTabs = state.customTabs.map {
+                        if (it.id == customTab.id) it.copy(content = updated) else it
+                    }
                 },
-                onAvatarEditRequest = {
-                    showImagePicker()
-                },
-                onExportPortraitClick = onExportPortraitClick,
                 hazeState = hazeState,
                 popupHazeState = popupHazeState,
                 forceBlurEnabled = forceBlurEnabled,
@@ -1569,127 +1926,17 @@ fun TabContent(
                 isEditMode = state.isEditMode,
                 onToggleEditMode = { state.isEditMode = !state.isEditMode },
                 onToggleAllExpansion = {
-                    val currentList = state.bioLongSections
-                    val anyCollapsed = currentList.any { !it.isExpanded }
-                    state.bioLongSections = currentList.map { it.copy(isExpanded = anyCollapsed) }
+                    val anyCollapsed = currentContent.any { !it.isExpanded }
+                    val newContent = currentContent.map { it.copy(isExpanded = anyCollapsed) }
+                    state.customTabs = state.customTabs.map {
+                        if (it.id == customTab.id) it.copy(content = newContent) else it
+                    }
                 },
-                anyCollapsed = state.bioLongSections.any { !it.isExpanded },
-                settingsViewModel = settingsViewModel,
-                statsMap = state.statsMap,
-                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
-                state = state,
-                isDesktop = isDesktop
-            )
-        }
-        CharacterTab.SKILLS_FEATS -> {
-            SkillsFeatsTab(
-                skillsAndTraits = state.skillsAndTraits,
-                onSkillsAndTraitsChange = { state.skillsAndTraits = it },
-                Cargo = state.Cargo,
-                onCargoChange = { state.Cargo = it },
-                hazeState = hazeState,
-                popupHazeState = popupHazeState,
-                forceBlurEnabled = forceBlurEnabled,
-                blurPopups = blurPopups,
-                isEditMode = state.isEditMode,
-                onToggleEditMode = { state.isEditMode = !state.isEditMode },
-                onToggleAllExpansion = {
-                    val currentList = state.skillsAndTraits
-                    val anyCollapsed = currentList.any { !it.isExpanded }
-                    state.skillsAndTraits = currentList.map { it.copy(isExpanded = anyCollapsed) }
-                },
-                anyCollapsed = state.skillsAndTraits.any { !it.isExpanded },
-                settingsViewModel = settingsViewModel,
-                statsMap = state.statsMap,
-                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
-                state = state,
-                isDesktop = isDesktop
-            )
-        }
-        CharacterTab.INVENTORY -> {
-            InventoryTab(
-                inventory = state.inventory,
-                onInventoryChange = { state.inventory = it },
-                potions = state.potions,
-                onPotionsChange = { state.potions = it },
-                wallet = state.wallet,
-                onWalletChange = { state.wallet = it },
-                hazeState = hazeState,
-                popupHazeState = popupHazeState,
-                forceBlurEnabled = forceBlurEnabled,
-                blurPopups = blurPopups,
-                isEditMode = state.isEditMode,
-                onToggleEditMode = { state.isEditMode = !state.isEditMode },
-                onToggleAllExpansion = {
-                    val currentList = state.inventory
-                    val anyCollapsed = currentList.any { !it.isExpanded }
-                    state.inventory = currentList.map { it.copy(isExpanded = anyCollapsed) }
-                },
-                anyCollapsed = state.inventory.any { !it.isExpanded },
-                settingsViewModel = settingsViewModel,
-                statsMap = state.statsMap,
-                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
-                onWalletDialogOpenChange = { if (it) state.closeFullscreenDialogs(); state.isWalletDialogOpen = it },
-                onRoll = onRoll,
-                state = state,
-                magicItemManager = magicItemManager,
-                isDesktop = isDesktop
-            )
-        }
-        CharacterTab.SPELLS -> {
-            SpellsTab(
-                spells = state.spells,
-                onSpellsChange = { state.spells = it },
-                characterLevel = state.level.toIntOrNull() ?: 1,
-                spellSettings = state.spellSettings,
-                onSpellSettingsChange = { settings -> state.spellSettings = settings },
-                hazeState = hazeState,
-                popupHazeState = popupHazeState,
-                forceBlurEnabled = forceBlurEnabled,
-                blurPopups = blurPopups,
-                isEditMode = state.isEditMode,
-                onToggleEditMode = { state.isEditMode = !state.isEditMode },
-                onToggleAllExpansion = {
-                    val currentList = state.spells
-                    val anyCollapsed = currentList.any { !it.isExpanded }
-                    state.spells = currentList.map { it.copy(isExpanded = anyCollapsed) }
-                },
-                anyCollapsed = state.spells.any { !it.isExpanded },
-                onShowSpellSettings = { state.closeFullscreenDialogs(); state.showSpellSettings = true },
-                settingsViewModel = settingsViewModel,
-                onRoll = onRoll,
-                statsMap = state.statsMap,
-                exhaustion = state.exhaustion,
-                advantageLogic = state.advantageLogic,
-                spellbookManager = spellbookManager,
-                onSpellEditorOpenChange = { if (it) state.closeFullscreenDialogs(); state.isSpellEditorOpen = it },
-                onMagicBonusSettingsOpenChange = { if (it) state.closeFullscreenDialogs(); state.isMagicBonusSettingsOpen = it },
-                onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
-                onSpellbookSelectionOpenChange = { if (it) state.closeFullscreenDialogs(); state.isSpellbookSelectionOpen = it },
-                state = state,
-                isDesktop = isDesktop
-            )
-        }
-        CharacterTab.NOTES -> {
-            NotesTab(
-                notes = state.notes,
-                onNotesChange = { state.notes = it },
-                hazeState = hazeState,
-                popupHazeState = popupHazeState,
-                forceBlurEnabled = forceBlurEnabled,
-                blurPopups = blurPopups,
-                isEditMode = state.isEditMode,
-                onToggleEditMode = { state.isEditMode = !state.isEditMode },
-                onToggleAllExpansion = {
-                    val currentList = state.notes
-                    val anyCollapsed = currentList.any { !it.isExpanded }
-                    state.notes = currentList.map { it.copy(isExpanded = anyCollapsed) }
-                },
-                anyCollapsed = state.notes.any { !it.isExpanded },
+                anyCollapsed = currentContent.any { !it.isExpanded },
+                addButtonText = "ДОБАВИТЬ РАЗДЕЛ",
+                emptyListText = "Разделы отсутствуют",
+                titlePlaceholder = "Название раздела",
+                contentPlaceholder = "Текст...",
                 settingsViewModel = settingsViewModel,
                 statsMap = state.statsMap,
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,

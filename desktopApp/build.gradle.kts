@@ -113,6 +113,8 @@ tasks.register<Zip>("packagePortableZip") {
     // Отключаем выполнение для не-release сборки без создания лямбды-захвата
     enabled = isRelease
 
+    entryCompression = ZipEntryCompression.STORED
+
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     val archiveName = "portable-${platformName}-${buildProfile}-${appVersion}.zip"

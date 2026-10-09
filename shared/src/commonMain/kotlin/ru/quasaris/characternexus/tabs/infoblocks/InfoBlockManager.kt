@@ -50,24 +50,31 @@ class InfoBlockManager(
     fun createTag(title: String = "Новый инфоблок"): String =
         DynamicContentBlock.InfoBlockRef(create(title).id).toTag()
 
-    private fun sections(): List<Pair<String, List<DynamicNoteState>>> = listOf(
-        CharacterTab.NOTES.title to owner.notes,
-        CharacterTab.SKILLS_FEATS.title to owner.skillsAndTraits,
-        CharacterTab.INVENTORY.title to owner.inventory,
-        CharacterTab.SPELLS.title to owner.spells,
-        CharacterTab.BIO.title to owner.bioLongSections
-    )
+    private fun sections(): List<Pair<String, List<DynamicNoteState>>> {
+        val list = mutableListOf(
+            "Заметки" to owner.bioLongSections,
+            CharacterTab.SKILLS_FEATS.title to owner.skillsAndTraits,
+            CharacterTab.INVENTORY.title to owner.inventory,
+            CharacterTab.SPELLS.title to owner.spells
+        )
+        owner.customTabs.forEach { tab ->
+            list.add(tab.title to tab.content)
+        }
+        return list
+    }
 
     private fun mutateNotes(transform: (String) -> String) {
         fun List<DynamicNoteState>.mutated() = map { note ->
             val updated = transform(note.content)
             if (updated != note.content) note.copy(content = updated) else note
         }
-        owner.notes = owner.notes.mutated()
+        owner.bioLongSections = owner.bioLongSections.mutated()
         owner.skillsAndTraits = owner.skillsAndTraits.mutated()
         owner.inventory = owner.inventory.mutated()
         owner.spells = owner.spells.mutated()
-        owner.bioLongSections = owner.bioLongSections.mutated()
+        owner.customTabs = owner.customTabs.map { tab ->
+            tab.copy(content = tab.content.mutated())
+        }
     }
 
     fun deleteCompletely(infoBlockId: String) {

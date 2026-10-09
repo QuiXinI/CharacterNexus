@@ -52,13 +52,18 @@ class ResourceManager(
     fun createTag(name: String = "Ресурс"): String =
         DynamicContentBlock.ResourceRef(create(name).id).toTag()
 
-    private fun sections(): List<Pair<String, List<DynamicNoteState>>> = listOf(
-        CharacterTab.NOTES.title to owner.notes,
-        CharacterTab.SKILLS_FEATS.title to owner.skillsAndTraits,
-        CharacterTab.INVENTORY.title to owner.inventory,
-        CharacterTab.SPELLS.title to owner.spells,
-        CharacterTab.BIO.title to owner.bioLongSections
-    )
+    private fun sections(): List<Pair<String, List<DynamicNoteState>>> {
+        val list = mutableListOf(
+            "Заметки" to owner.bioLongSections,
+            CharacterTab.SKILLS_FEATS.title to owner.skillsAndTraits,
+            CharacterTab.INVENTORY.title to owner.inventory,
+            CharacterTab.SPELLS.title to owner.spells
+        )
+        owner.customTabs.forEach { tab ->
+            list.add(tab.title to tab.content)
+        }
+        return list
+    }
 
     fun usages(): Map<String, List<ResourceUsage>> {
         val notesUsage = ResourceMigration.collectUsages(sections()).toMutableMap()

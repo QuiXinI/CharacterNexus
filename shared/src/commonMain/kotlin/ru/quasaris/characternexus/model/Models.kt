@@ -57,9 +57,120 @@ enum class CharacterTab(val title: String) {
     ATTACKS("Атаки"),
     SKILLS_FEATS("Умения/Черты"),
     INVENTORY("Инвентарь"),
+    @Deprecated("Merged into BIO / Заметки")
     NOTES("Заметки"),
-    BIO("Био"),
+    BIO("Заметки"),
     SPELLS("Заклинания")
+}
+
+@Immutable
+@Serializable
+data class CustomTab(
+    val id: String = generateUuid(),
+    val title: String = "Новая вкладка",
+    val content: List<DynamicNoteState> = listOf(DynamicNoteState()),
+    val iconName: String = "Note",
+    val order: Int = 0
+)
+
+sealed interface DisplayTab {
+    val key: String
+    val title: String
+    val iconName: String
+    val isCustom: Boolean
+    val isDisabled: Boolean
+
+    data class BuiltIn(
+        val tab: CharacterTab,
+        val customTitle: String? = null,
+        val customIcon: String? = null,
+        override val isDisabled: Boolean = false
+    ) : DisplayTab {
+        override val key: String get() = tab.name
+        override val title: String get() = customTitle ?: when(tab) {
+            CharacterTab.BIO -> "Заметки"
+            else -> tab.title
+        }
+        override val iconName: String get() = customIcon ?: when(tab) {
+            CharacterTab.STATS -> "Person"
+            CharacterTab.ATTACKS -> "Gavel"
+            CharacterTab.SKILLS_FEATS -> "Star"
+            CharacterTab.INVENTORY -> "Inventory"
+            CharacterTab.BIO -> "Note"
+            CharacterTab.SPELLS -> "AutoFixHigh"
+            CharacterTab.NOTES -> "Note"
+        }
+        override val isCustom: Boolean get() = false
+    }
+
+    data class Custom(
+        val customTab: CustomTab,
+        override val isDisabled: Boolean = false
+    ) : DisplayTab {
+        override val key: String get() = customTab.id
+        override val title: String get() = customTab.title
+        override val iconName: String get() = customTab.iconName.ifBlank { "Note" }
+        override val isCustom: Boolean get() = true
+    }
+}
+
+fun Character.migrated(): Character {
+    val hasMeaningfulNotes = notes.any { it.content.isNotBlank() || (it.title.isNotBlank() && it.title != "Заметка") }
+    if (hasMeaningfulNotes && !bioLongSections.any { sec -> notes.any { it.id == sec.id || it.content == sec.content } }) {
+        val mergedNotes = notes.map { if (it.title.isBlank()) it.copy(title = "Заметки") else it }
+        return this.copy(
+            bioLongSections = bioLongSections + mergedNotes
+        )
+    }
+    return this
+}
+
+fun Character.getEffectiveTabs(includeDisabled: Boolean = false): List<DisplayTab> {
+    val defaultBuiltIns = listOf(
+        CharacterTab.STATS,
+        CharacterTab.ATTACKS,
+        CharacterTab.SKILLS_FEATS,
+        CharacterTab.INVENTORY,
+        CharacterTab.BIO,
+        CharacterTab.SPELLS
+    )
+
+    val migratedChar = this.migrated()
+    val builtInDisplays = defaultBuiltIns.map { tab ->
+        DisplayTab.BuiltIn(
+            tab = tab,
+            customTitle = migratedChar.customTabTitles[tab.name],
+            customIcon = migratedChar.customTabIcons[tab.name],
+            isDisabled = migratedChar.disabledTabs.contains(tab.name)
+        )
+    }
+
+    val customDisplays = migratedChar.customTabs.map {
+        DisplayTab.Custom(
+            customTab = it,
+            isDisabled = migratedChar.disabledTabs.contains(it.id)
+        )
+    }
+    val allDisplays = builtInDisplays + customDisplays
+
+    val orderedList = if (migratedChar.tabOrder.isNotEmpty()) {
+        val orderMap = migratedChar.tabOrder.withIndex().associate { it.value to it.index }
+        allDisplays.sortedBy { orderMap[it.key] ?: Int.MAX_VALUE }
+    } else {
+        allDisplays
+    }
+
+    val filteredList = if (includeDisabled) {
+        orderedList
+    } else {
+        orderedList.filter { !it.isDisabled }
+    }
+
+    return if (filteredList.isEmpty() && !includeDisabled) {
+        listOf(builtInDisplays.first { it.tab == CharacterTab.STATS }.copy(isDisabled = false))
+    } else {
+        filteredList
+    }
 }
 
 @Serializable
@@ -979,7 +1090,12 @@ data class Character(
     val deathSaveFailures: Int = 0,
     val resources: List<DynamicContentBlock.Resource> = emptyList(),
     val infoBlocks: List<DynamicContentBlock.InfoBlock> = emptyList(),
-    val folderUuid: String? = null
+    val folderUuid: String? = null,
+    val customTabs: List<CustomTab> = emptyList(),
+    val tabOrder: List<String> = emptyList(),
+    val disabledTabs: List<String> = emptyList(),
+    val customTabTitles: Map<String, String> = emptyMap(),
+    val customTabIcons: Map<String, String> = emptyMap()
 ) {
     fun toSummary(currentFolderUuid: String? = null): CharacterSummary {
         val displayClass = buildString {

@@ -36,6 +36,7 @@ class CharacterDetailState(
     val magicItemManager: MagicItemManager? = null
 ) {
     val characterUuid = initialCharacter?.uuid ?: ""
+    val migratedInitial = initialCharacter?.migrated()
     var name by mutableStateOf(initialCharacter?.name ?: "")
     var characterClass by mutableStateOf(initialCharacter?.characterClass ?: "")
     var race by mutableStateOf(initialCharacter?.race ?: "")
@@ -124,7 +125,7 @@ class CharacterDetailState(
         } else initialCharacter?.bioShortFields!!
     )
     var bioLongSections by mutableStateOf(
-        if (initialCharacter?.bioLongSections.isNullOrEmpty()) {
+        if (migratedInitial?.bioLongSections.isNullOrEmpty()) {
             listOf(
                 DynamicNoteState(title = "Предыстория персонажа"),
                 DynamicNoteState(title = "Союзники и организации"),
@@ -134,7 +135,7 @@ class CharacterDetailState(
                 DynamicNoteState(title = "Привязанности"),
                 DynamicNoteState(title = "Слабости")
             )
-        } else initialCharacter?.bioLongSections!!
+        } else migratedInitial?.bioLongSections!!
     )
     var skillsAndTraits by mutableStateOf(
         if (initialCharacter?.skillsAndTraits.isNullOrEmpty()) {
@@ -237,11 +238,18 @@ class CharacterDetailState(
                 }
             }
         }
+    var customTabs by mutableStateOf(migratedInitial?.customTabs ?: emptyList())
+    var tabOrder by mutableStateOf(migratedInitial?.tabOrder ?: emptyList())
+    var disabledTabs by mutableStateOf(migratedInitial?.disabledTabs ?: emptyList())
+    var customTabTitles by mutableStateOf(migratedInitial?.customTabTitles ?: emptyMap())
+    var customTabIcons by mutableStateOf(migratedInitial?.customTabIcons ?: emptyMap())
+    var isTabManagementOpen by mutableStateOf(false)
+
     var spellSettings by mutableStateOf(initialCharacter?.spellSettings ?: SpellSettings())
     var wallet by mutableStateOf(initialCharacter?.wallet ?: Wallet())
     var Cargo by mutableStateOf(initialCharacter?.Cargo ?: CargoState())
     var proficiencies by mutableStateOf(initialCharacter?.proficiencies ?: ProficienciesState())
-    var notes by mutableStateOf(initialCharacter?.notes ?: listOf(DynamicNoteState()))
+    var notes by mutableStateOf(migratedInitial?.notes ?: listOf(DynamicNoteState()))
 
     val resourceManager = ResourceManager(this, initialCharacter?.resources ?: emptyList())
     val infoBlockManager = InfoBlockManager(this, initialCharacter?.infoBlocks ?: emptyList())
@@ -592,6 +600,7 @@ class CharacterDetailState(
 
     // Modes
     var isEditMode by mutableStateOf(false)
+    var isTabEditMode by mutableStateOf(false)
     var isAdvancedMode by mutableStateOf(false)
 
     fun syncHPAndHitDice() {
@@ -673,7 +682,12 @@ class CharacterDetailState(
             deathSaveSuccesses = deathSaveSuccesses,
             deathSaveFailures = deathSaveFailures,
             resources = resourceManager.items,
-            infoBlocks = infoBlockManager.items
+            infoBlocks = infoBlockManager.items,
+            customTabs = customTabs,
+            tabOrder = tabOrder,
+            disabledTabs = disabledTabs,
+            customTabTitles = customTabTitles,
+            customTabIcons = customTabIcons
         )
     }
 
@@ -721,6 +735,67 @@ class CharacterDetailState(
         skillsAndTraits = skillsAndTraits.map { if (it.id == updated.id) updated else it }
         inventory = inventory.map { if (it.id == updated.id) updated else it }
         spells = spells.map { if (it.id == updated.id) updated else it }
+    }
+
+    fun updateTabTitle(tab: DisplayTab, newTitle: String) {
+        when (tab) {
+            is DisplayTab.BuiltIn -> {
+                val map = customTabTitles.toMutableMap()
+                map[tab.tab.name] = newTitle
+                customTabTitles = map
+            }
+            is DisplayTab.Custom -> {
+                customTabs = customTabs.map {
+                    if (it.id == tab.customTab.id) it.copy(title = newTitle) else it
+                }
+            }
+        }
+    }
+
+    fun updateTabIcon(tab: DisplayTab, newIcon: String) {
+        when (tab) {
+            is DisplayTab.BuiltIn -> {
+                val map = customTabIcons.toMutableMap()
+                map[tab.tab.name] = newIcon
+                customTabIcons = map
+            }
+            is DisplayTab.Custom -> {
+                customTabs = customTabs.map {
+                    if (it.id == tab.customTab.id) it.copy(iconName = newIcon) else it
+                }
+            }
+        }
+    }
+
+    fun addCustomTab(title: String): CustomTab? {
+        if (title.isNotBlank()) {
+            val newCustom = CustomTab(title = title, content = listOf(DynamicNoteState()))
+            customTabs = customTabs + newCustom
+            tabOrder = tabOrder + newCustom.id
+            return newCustom
+        }
+        return null
+    }
+
+    fun deleteCustomTab(tab: DisplayTab) {
+        if (tab is DisplayTab.Custom) {
+            customTabs = customTabs.filter { it.id != tab.customTab.id }
+            tabOrder = tabOrder.filter { it != tab.customTab.id }
+            disabledTabs = disabledTabs.filter { it != tab.customTab.id }
+        }
+    }
+
+    fun toggleTabDisabled(tab: DisplayTab) {
+        val key = tab.key
+        disabledTabs = if (disabledTabs.contains(key)) {
+            disabledTabs.filter { it != key }
+        } else {
+            disabledTabs + key
+        }
+    }
+
+    fun reorderTabs(newTabs: List<DisplayTab>) {
+        tabOrder = newTabs.map { it.key }
     }
 
     fun updatePotion(updated: PotionState) {

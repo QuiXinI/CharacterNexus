@@ -31,6 +31,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ru.quasaris.characternexus.util.PlatformUtils
 import ru.quasaris.characternexus.util.log
+import sh.calvin.reorderable.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +111,8 @@ fun BioTab(
         header = {
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val containerWidth = maxWidth
-                val isWideLayout = isDesktop || containerWidth >= 520.dp
+                val portraitWidth = maxOf(260.dp, minOf(containerWidth * 0.35f, 600.dp))
+                val isWideLayout = containerWidth >= 520.dp && (containerWidth - portraitWidth >= 240.dp)
 
                 Column(
                     modifier = Modifier
@@ -550,6 +552,7 @@ private fun BioShortFieldItem(
     onChangeRatio: () -> Unit,
     onDelete: () -> Unit,
     colorScheme: ColorScheme,
+    dragModifier: Modifier = Modifier,
     modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
@@ -557,6 +560,17 @@ private fun BioShortFieldItem(
         onValueChange = onValueChange,
         label = {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isEditMode) {
+                    Icon(
+                        imageVector = Icons.Default.DragHandle,
+                        contentDescription = "Перетащить",
+                        modifier = Modifier
+                            .size(18.dp)
+                            .then(dragModifier),
+                        tint = colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
                 Text(field.title)
                 if (isEditMode) {
                     Spacer(modifier = Modifier.width(4.dp))

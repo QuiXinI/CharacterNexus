@@ -44,6 +44,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import ru.quasaris.characternexus.ui.DiceRollAdvantagePopup
@@ -120,10 +123,31 @@ fun HealthPanel(
                 )
                 val coroutineScope = rememberCoroutineScope()
                 var totalDragOffset by remember { mutableFloatStateOf(0f) }
+                val currentActualIdx = if (hitDiceEntries.isNotEmpty()) pagerState.currentPage % hitDiceEntries.size else 0
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .pointerInput(hitDiceEntries.size) {
+                            if (hitDiceEntries.size <= 1) return@pointerInput
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    if (event.type == PointerEventType.Scroll) {
+                                        val scrollDelta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                        if (scrollDelta != 0f && !pagerState.isScrollInProgress) {
+                                            coroutineScope.launch {
+                                                if (scrollDelta > 0f) {
+                                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                                } else {
+                                                    pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         .pointerInput(hitDiceEntries.size) {
                             if (hitDiceEntries.size <= 1) return@pointerInput
 
@@ -149,6 +173,73 @@ fun HealthPanel(
                             )
                         }
                 ) {
+                    if (hitDiceEntries.size > 1) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .fillMaxHeight()
+                                .padding(start = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(2.5.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                val maxVisibleDots = 5
+                                val totalDots = hitDiceEntries.size
+
+                                val (startIndex, endIndex) = if (totalDots <= maxVisibleDots) {
+                                    0 to (totalDots - 1)
+                                } else {
+                                    val half = maxVisibleDots / 2
+                                    var start = currentActualIdx - half
+                                    var end = currentActualIdx + half
+                                    if (start < 0) {
+                                        end += -start
+                                        start = 0
+                                    }
+                                    if (end >= totalDots) {
+                                        start -= (end - totalDots + 1)
+                                        end = totalDots - 1
+                                    }
+                                    start.coerceAtLeast(0) to end.coerceAtMost(totalDots - 1)
+                                }
+
+                                for (idx in startIndex..endIndex) {
+                                    val distance = abs(idx - currentActualIdx)
+                                    val isEdge = (idx == startIndex && startIndex > 0) || (idx == endIndex && endIndex < totalDots - 1)
+
+                                    val targetSize = when {
+                                        distance == 0 -> 5.dp
+                                        distance == 1 && !isEdge -> 3.5.dp
+                                        else -> 2.dp
+                                    }
+
+                                    val targetAlpha = when {
+                                        distance == 0 -> 1f
+                                        distance == 1 -> 0.6f
+                                        distance == 2 -> 0.35f
+                                        else -> 0.2f
+                                    }
+
+                                    val dotSize by animateDpAsState(targetValue = targetSize, label = "dotSize")
+                                    val dotAlpha by animateFloatAsState(targetValue = targetAlpha, label = "dotAlpha")
+                                    val dotColor by animateColorAsState(
+                                        targetValue = if (distance == 0) colorScheme.primary else colorScheme.primary.copy(alpha = dotAlpha),
+                                        label = "dotColor"
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(dotSize)
+                                            .clip(CircleShape)
+                                            .background(dotColor)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     VerticalPager(
                         state = pagerState,
                         modifier = Modifier.fillMaxSize(),
