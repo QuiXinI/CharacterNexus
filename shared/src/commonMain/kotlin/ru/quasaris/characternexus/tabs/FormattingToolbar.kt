@@ -21,9 +21,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
@@ -165,6 +167,14 @@ fun FormattingToolbar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Spacer(modifier = Modifier.width(8.dp))
+                    HeaderDropdownMenu(
+                        value = value,
+                        onValueChange = onValueChange
+                    )
+                    VerticalDivider(
+                        modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                    )
                     FormattingButton(
                         icon = Icons.Default.FormatBold,
                         isActive = MarkdownHelper.isFormatActive(value, "**", "**"),
@@ -355,5 +365,132 @@ private fun FormattingButton(
             contentDescription = null,
             modifier = Modifier.size(24.dp)
         )
+    }
+}
+
+@Composable
+private fun HeaderDropdownMenu(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentLevel = remember(value.text, value.selection) {
+        MarkdownHelper.getHeaderLevel(value)
+    }
+
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = if (currentLevel > 0) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                contentColor = if (currentLevel > 0) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
+            ),
+            modifier = Modifier
+                .height(36.dp)
+                .focusProperties { canFocus = false }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(horizontal = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Title,
+                    contentDescription = "Заголовки",
+                    modifier = Modifier.size(20.dp)
+                )
+                if (currentLevel > 0) {
+                    Text(
+                        text = "$currentLevel",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        fontSize = 12.sp
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            properties = PopupProperties(focusable = false)
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Обычный текст",
+                        fontWeight = if (currentLevel == 0) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 15.sp
+                    )
+                },
+                onClick = {
+                    onValueChange(MarkdownHelper.applyHeader(value, 0))
+                    expanded = false
+                },
+                leadingIcon = {
+                    if (currentLevel == 0) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Заголовок 1 (#)",
+                        fontWeight = if (currentLevel == 1) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 20.sp
+                    )
+                },
+                onClick = {
+                    onValueChange(MarkdownHelper.applyHeader(value, 1))
+                    expanded = false
+                },
+                leadingIcon = {
+                    if (currentLevel == 1) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Заголовок 2 (##)",
+                        fontWeight = if (currentLevel == 2) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 18.sp
+                    )
+                },
+                onClick = {
+                    onValueChange(MarkdownHelper.applyHeader(value, 2))
+                    expanded = false
+                },
+                leadingIcon = {
+                    if (currentLevel == 2) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Заголовок 3 (###)",
+                        fontWeight = if (currentLevel == 3) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 16.sp
+                    )
+                },
+                onClick = {
+                    onValueChange(MarkdownHelper.applyHeader(value, 3))
+                    expanded = false
+                },
+                leadingIcon = {
+                    if (currentLevel == 3) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            )
+        }
     }
 }

@@ -907,6 +907,26 @@ private fun handleFormattingKeyCombination(
             onLinkRequest?.invoke()
             true
         }
+        // Ctrl + 1 -> Header 1
+        event.key == Key.One || event.key == Key.NumPad1 -> {
+            onValueChange(MarkdownHelper.applyHeader(value, 1))
+            true
+        }
+        // Ctrl + 2 -> Header 2
+        event.key == Key.Two || event.key == Key.NumPad2 -> {
+            onValueChange(MarkdownHelper.applyHeader(value, 2))
+            true
+        }
+        // Ctrl + 3 -> Header 3
+        event.key == Key.Three || event.key == Key.NumPad3 -> {
+            onValueChange(MarkdownHelper.applyHeader(value, 3))
+            true
+        }
+        // Ctrl + 0 -> Normal Text
+        event.key == Key.Zero || event.key == Key.NumPad0 -> {
+            onValueChange(MarkdownHelper.applyHeader(value, 0))
+            true
+        }
         // Ctrl + = or Ctrl + Plus or Ctrl + NumPadEquals -> Resource (if not basic mode)
         (event.key == Key.Equals || event.key == Key.Plus || event.key == Key.NumPadEquals) && !isBasicMode -> {
             onInsertResource?.invoke()
@@ -992,6 +1012,16 @@ private fun LineTextBlockRow(
             }
         }
 
+        val headerLevelActive = remember(currentCleanText) { MarkdownHelper.getHeaderLevelOfLine(currentCleanText) }
+        val (activeFontSize, activeLineHeight, activeFontWeight) = remember(headerLevelActive) {
+            when (headerLevelActive) {
+                3 -> Triple(19.sp, 25.sp, FontWeight.Bold)
+                2 -> Triple(21.sp, 27.sp, FontWeight.Bold)
+                1 -> Triple(24.sp, 30.sp, FontWeight.Bold)
+                else -> Triple(17.sp, 24.sp, FontWeight.Normal)
+            }
+        }
+
         BasicTextField(
             value = internalValue,
             onValueChange = { newValue ->
@@ -1019,7 +1049,12 @@ private fun LineTextBlockRow(
             },
             onTextLayout = { layoutResult = it },
             enabled = canEdit,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp, color = colorScheme.onSurface),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                fontSize = activeFontSize,
+                lineHeight = activeLineHeight,
+                fontWeight = activeFontWeight,
+                color = colorScheme.onSurface
+            ),
             cursorBrush = SolidColor(colorScheme.primary),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1070,6 +1105,16 @@ private fun LineTextBlockRow(
         val annotated = remember(text, onSurface) { MarkdownHelper.parseMarkdown(text, onSurface, isEditing = false) }
         var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
 
+        val headerLevelView = remember(text) { MarkdownHelper.getHeaderLevelOfLine(text) }
+        val (viewFontSize, viewLineHeight) = remember(headerLevelView) {
+            when (headerLevelView) {
+                3 -> Pair(19.sp, 25.sp)
+                2 -> Pair(21.sp, 27.sp)
+                1 -> Pair(24.sp, 30.sp)
+                else -> Pair(17.sp, 24.sp)
+            }
+        }
+
         val rowModifier = Modifier
             .fillMaxWidth()
             .pointerInput(annotated, canEdit) {
@@ -1094,8 +1139,8 @@ private fun LineTextBlockRow(
         } else {
             Text(
                 text = annotated,
-                fontSize = 17.sp,
-                lineHeight = 24.sp,
+                fontSize = viewFontSize,
+                lineHeight = viewLineHeight,
                 color = onSurface,
                 modifier = rowModifier,
                 onTextLayout = { layoutResult = it }

@@ -16,12 +16,114 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import ru.quasaris.characternexus.model.DynamicContentBlock
 
 object MarkdownHelper {
     private val AUTO_URL_REGEX = Regex("(?:https?://|www\\.)[\\w:#@%/;$()~_?+\\-=\\.&]+[\\w#@%/;$()~_?+\\-=]")
+
+    fun getHeaderLevelOfLine(line: String): Int {
+        val clean = line.trimStart()
+        return when {
+            clean.startsWith("### ") || clean.startsWith("###\n") ||
+            clean.startsWith("**### ") || clean.startsWith("_### ") || clean.startsWith("~~### ") -> 3
+
+            clean.startsWith("## ") || clean.startsWith("##\n") ||
+            clean.startsWith("**## ") || clean.startsWith("_## ") || clean.startsWith("~~## ") -> 2
+
+            clean.startsWith("# ") || clean.startsWith("#\n") ||
+            clean.startsWith("**# ") || clean.startsWith("_# ") || clean.startsWith("~~# ") -> 1
+
+            else -> 0
+        }
+    }
+
+    fun getHeaderLevel(value: TextFieldValue): Int {
+        val text = value.text
+        if (text.isEmpty()) return 0
+        val selection = value.selection
+        val pos = selection.min.coerceIn(0, text.length)
+        val lineStart = text.lastIndexOf('\n', (pos - 1).coerceAtLeast(0)).let { if (it == -1) 0 else it + 1 }
+        var lineEnd = text.indexOf('\n', pos)
+        if (lineEnd == -1) lineEnd = text.length
+        val line = text.substring(lineStart, lineEnd)
+        return getHeaderLevelOfLine(line)
+    }
+
+    fun applyHeader(value: TextFieldValue, level: Int): TextFieldValue {
+        val text = value.text
+        val selection = value.selection
+
+        val startPos = selection.min.coerceIn(0, text.length)
+        val endPos = selection.max.coerceIn(0, text.length)
+
+        val lineStart = text.lastIndexOf('\n', (startPos - 1).coerceAtLeast(0)).let { if (it == -1) 0 else it + 1 }
+        var lineEnd = text.indexOf('\n', endPos)
+        if (lineEnd == -1) lineEnd = text.length
+
+        val linesSegment = text.substring(lineStart, lineEnd)
+        val lines = linesSegment.split('\n')
+
+        val targetPrefix = when (level) {
+            1 -> "# "
+            2 -> "## "
+            3 -> "### "
+            else -> ""
+        }
+
+        val allHaveTarget = level > 0 && lines.all { line ->
+            getHeaderLevelOfLine(line) == level
+        }
+
+        val finalPrefix = if (allHaveTarget) "" else targetPrefix
+
+        var deltaStart = 0
+        var totalDelta = 0
+
+        fun stripHeaderPrefix(line: String): String {
+            return when {
+                line.startsWith("### ") -> line.substring(4)
+                line.startsWith("## ") -> line.substring(3)
+                line.startsWith("# ") -> line.substring(2)
+                line.startsWith("**### ") -> "**" + line.substring(6)
+                line.startsWith("**## ") -> "**" + line.substring(5)
+                line.startsWith("**# ") -> "**" + line.substring(4)
+                line.startsWith("_### ") -> "_" + line.substring(5)
+                line.startsWith("_## ") -> "_" + line.substring(4)
+                line.startsWith("_# ") -> "_" + line.substring(3)
+                line.startsWith("~~### ") -> "~~" + line.substring(6)
+                line.startsWith("~~## ") -> "~~" + line.substring(5)
+                line.startsWith("~~# ") -> "~~" + line.substring(4)
+                else -> line
+            }
+        }
+
+        val newLines = lines.mapIndexed { idx, line ->
+            val cleanedLine = stripHeaderPrefix(line)
+            val updatedLine = if (finalPrefix.isNotEmpty()) "$finalPrefix$cleanedLine" else cleanedLine
+            val lineDelta = updatedLine.length - line.length
+
+            if (idx == 0) {
+                deltaStart = lineDelta
+            }
+            totalDelta += lineDelta
+
+            updatedLine
+        }
+
+        val newSegment = newLines.joinToString("\n")
+        val newText = text.substring(0, lineStart) + newSegment + text.substring(lineEnd)
+
+        val newSelStart = (startPos + deltaStart).coerceIn(lineStart, newText.length)
+        val newSelEnd = (endPos + totalDelta).coerceIn(newSelStart, newText.length)
+
+        return value.copy(
+            text = newText,
+            selection = TextRange(newSelStart, newSelEnd)
+        )
+    }
 
     fun applyMarkdown(value: TextFieldValue, prefix: String, suffix: String): TextFieldValue {
         val selection = value.selection
@@ -108,8 +210,6 @@ object MarkdownHelper {
         if (selection.collapsed) {
             // Special case for links [text](url)
             if (prefix == "[" && suffix == "](") {
-                // Check if cursor is inside [text](url) or surrounding it
-                // This is a bit complex, but let's do a simple check
                 val before = text.substring(0, selStart)
                 val after = text.substring(selEnd)
                 return before.contains("[") && after.contains(")")
@@ -118,7 +218,19 @@ object MarkdownHelper {
             if (selStart >= prefix.length && selEnd <= text.length - suffix.length) {
                 val before = text.substring(selStart - prefix.length, selStart)
                 val after = text.substring(selEnd, selEnd + suffix.length)
-                return before == prefix && (suffix.isEmpty() || after.startsWith(suffix))
+                if (before == prefix && (suffix.isEmpty() || after.startsWith(suffix))) return true
+            }
+
+            // Check if cursor is anywhere inside prefix...suffix
+            val before = text.substring(0, selStart)
+            val after = text.substring(selEnd)
+            val lastPrefix = before.lastIndexOf(prefix)
+            if (lastPrefix != -1) {
+                val lastSuffix = before.lastIndexOf(suffix)
+                if (suffix.isNotEmpty() && lastSuffix < lastPrefix) {
+                    val nextSuffix = after.indexOf(suffix)
+                    if (nextSuffix != -1) return true
+                }
             }
             return false
         }
@@ -156,6 +268,69 @@ object MarkdownHelper {
                (selectedText.contains(prefix) && (suffix.isEmpty() || selectedText.contains(suffix)))
     }
 
+    private data class HeaderLineInfo(val range: IntRange, val level: Int)
+
+    private fun parseInlineText(
+        inlineText: String,
+        result: StringBuilder,
+        boldStarts: MutableList<Int>,
+        boldRanges: MutableList<IntRange>,
+        italicStarts: MutableList<Int>,
+        italicRanges: MutableList<IntRange>,
+        strikeStarts: MutableList<Int>,
+        strikeRanges: MutableList<IntRange>,
+        markerRanges: MutableList<IntRange>,
+        isEditing: Boolean
+    ) {
+        var j = 0
+        while (j < inlineText.length) {
+            when {
+                inlineText.startsWith("**", j) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 2)
+                    val markerVisible = isEditing
+                    if (boldStarts.isNotEmpty()) {
+                        boldRanges.add(boldStarts.removeAt(boldStarts.size - 1) until result.length)
+                    } else {
+                        boldStarts.add(result.length + if (markerVisible) 2 else 0)
+                    }
+                    if (markerVisible) result.append("**")
+                    j += 2
+                }
+                inlineText.startsWith("_", j) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 1)
+                    val markerVisible = isEditing
+                    if (italicStarts.isNotEmpty()) {
+                        italicRanges.add(italicStarts.removeAt(italicStarts.size - 1) until result.length)
+                    } else {
+                        italicStarts.add(result.length + if (markerVisible) 1 else 0)
+                    }
+                    if (markerVisible) result.append("_")
+                    j += 1
+                }
+                inlineText.startsWith("~~", j) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 2)
+                    val markerVisible = isEditing
+                    if (strikeStarts.isNotEmpty()) {
+                        strikeRanges.add(strikeStarts.removeAt(strikeStarts.size - 1) until result.length)
+                    } else {
+                        strikeStarts.add(result.length + if (markerVisible) 2 else 0)
+                    }
+                    if (markerVisible) result.append("~~")
+                    j += 2
+                }
+                inlineText.startsWith("::", j) -> {
+                    if (isEditing) markerRanges.add(result.length until result.length + 2)
+                    if (isEditing) result.append("::")
+                    j += 2
+                }
+                else -> {
+                    result.append(inlineText[j])
+                    j++
+                }
+            }
+        }
+    }
+
     fun parseMarkdown(text: String, onSurface: Color = Color.Unspecified, isEditing: Boolean = false): AnnotatedString {
         val result = StringBuilder()
         val boldStarts = mutableListOf<Int>()
@@ -167,9 +342,86 @@ object MarkdownHelper {
         val strikeRanges = mutableListOf<IntRange>()
         val linkRanges = mutableListOf<Triple<IntRange, String, String>>() // Range, Text, URL
         val markerRanges = mutableListOf<IntRange>()
+        val headerRanges = mutableListOf<HeaderLineInfo>()
 
         var i = 0
+        var currentHeaderLevel: Int? = null
+        var currentHeaderStart: Int? = null
+
         while (i < text.length) {
+            val isAtLineStart = i == 0 || text[i - 1] == '\n'
+            
+            if (isAtLineStart) {
+                val headerMatch = when {
+                    text.startsWith("### ", i) -> Pair(3, "### ")
+                    text.startsWith("## ", i) -> Pair(2, "## ")
+                    text.startsWith("# ", i) -> Pair(1, "# ")
+                    text.startsWith("**### ", i) -> Pair(3, "**### ")
+                    text.startsWith("**## ", i) -> Pair(2, "**## ")
+                    text.startsWith("**# ", i) -> Pair(1, "**# ")
+                    text.startsWith("_### ", i) -> Pair(3, "_### ")
+                    text.startsWith("_## ", i) -> Pair(2, "_## ")
+                    text.startsWith("_# ", i) -> Pair(1, "_# ")
+                    text.startsWith("~~### ", i) -> Pair(3, "~~### ")
+                    text.startsWith("~~## ", i) -> Pair(2, "~~## ")
+                    text.startsWith("~~# ", i) -> Pair(1, "~~# ")
+                    else -> null
+                }
+
+                if (headerMatch != null) {
+                    val (level, matchedPrefix) = headerMatch
+                    currentHeaderLevel = level
+                    currentHeaderStart = result.length
+
+                    if (matchedPrefix.startsWith("**")) {
+                        if (isEditing) markerRanges.add(result.length until result.length + 2)
+                        boldStarts.add(result.length + if (isEditing) 2 else 0)
+                        if (isEditing) {
+                            result.append("**")
+                            val hashPart = matchedPrefix.substring(2)
+                            markerRanges.add(result.length until result.length + hashPart.length)
+                            result.append(hashPart)
+                        }
+                    } else if (matchedPrefix.startsWith("_")) {
+                        if (isEditing) markerRanges.add(result.length until result.length + 1)
+                        italicStarts.add(result.length + if (isEditing) 1 else 0)
+                        if (isEditing) {
+                            result.append("_")
+                            val hashPart = matchedPrefix.substring(1)
+                            markerRanges.add(result.length until result.length + hashPart.length)
+                            result.append(hashPart)
+                        }
+                    } else if (matchedPrefix.startsWith("~~")) {
+                        if (isEditing) markerRanges.add(result.length until result.length + 2)
+                        strikeStarts.add(result.length + if (isEditing) 2 else 0)
+                        if (isEditing) {
+                            result.append("~~")
+                            val hashPart = matchedPrefix.substring(2)
+                            markerRanges.add(result.length until result.length + hashPart.length)
+                            result.append(hashPart)
+                        }
+                    } else {
+                        if (isEditing) {
+                            markerRanges.add(result.length until result.length + matchedPrefix.length)
+                            result.append(matchedPrefix)
+                        }
+                    }
+                    i += matchedPrefix.length
+                    continue
+                }
+            }
+
+            if (i < text.length && text[i] == '\n') {
+                if (currentHeaderLevel != null && currentHeaderStart != null) {
+                    headerRanges.add(HeaderLineInfo(currentHeaderStart until result.length, currentHeaderLevel))
+                    currentHeaderLevel = null
+                    currentHeaderStart = null
+                }
+                result.append(text[i])
+                i++
+                continue
+            }
+
             when {
                 text.startsWith("**", i) -> {
                     if (isEditing) markerRanges.add(result.length until result.length + 2)
@@ -216,25 +468,54 @@ object MarkdownHelper {
                     if (endBracket != -1 && endBracket + 1 < text.length && text[endBracket + 1] == '(') {
                         val endParen = text.indexOf(")", endBracket + 2)
                         if (endParen != -1) {
-                            if (isEditing) markerRanges.add(result.length until result.length + 1) // [
-                            if (isEditing) result.append("[")
-                            
                             val linkText = text.substring(i + 1, endBracket)
                             val url = text.substring(endBracket + 2, endParen)
-                            val start = result.length
-                            result.append(linkText)
-                            val linkEnd = result.length
                             
                             if (isEditing) {
-                                markerRanges.add(linkEnd until linkEnd + 2) // ](
+                                markerRanges.add(result.length until result.length + 1) // [
+                                result.append("[")
+                                
+                                val linkContentStart = result.length
+                                parseInlineText(
+                                    inlineText = linkText,
+                                    result = result,
+                                    boldStarts = boldStarts,
+                                    boldRanges = boldRanges,
+                                    italicStarts = italicStarts,
+                                    italicRanges = italicRanges,
+                                    strikeStarts = strikeStarts,
+                                    strikeRanges = strikeRanges,
+                                    markerRanges = markerRanges,
+                                    isEditing = true
+                                )
+                                val linkContentEnd = result.length
+                                
+                                markerRanges.add(result.length until result.length + 2) // ](
                                 result.append("](")
                                 markerRanges.add(result.length until result.length + url.length) // url
                                 result.append(url)
                                 markerRanges.add(result.length until result.length + 1) // )
                                 result.append(")")
+                                
+                                linkRanges.add(Triple(linkContentStart until linkContentEnd, linkText, url))
+                            } else {
+                                val linkContentStart = result.length
+                                parseInlineText(
+                                    inlineText = linkText,
+                                    result = result,
+                                    boldStarts = boldStarts,
+                                    boldRanges = boldRanges,
+                                    italicStarts = italicStarts,
+                                    italicRanges = italicRanges,
+                                    strikeStarts = strikeStarts,
+                                    strikeRanges = strikeRanges,
+                                    markerRanges = markerRanges,
+                                    isEditing = false
+                                )
+                                val linkContentEnd = result.length
+                                linkRanges.add(Triple(linkContentStart until linkContentEnd, linkText, url))
                             }
                             
-                            linkRanges.add(Triple(start until linkEnd, linkText, url))
                             i = endParen + 1
                         } else {
                             result.append(text[i])
@@ -250,6 +531,10 @@ object MarkdownHelper {
                     i++
                 }
             }
+        }
+
+        if (currentHeaderLevel != null && currentHeaderStart != null) {
+            headerRanges.add(HeaderLineInfo(currentHeaderStart until result.length, currentHeaderLevel))
         }
         
         // Handle unclosed tags
@@ -270,8 +555,28 @@ object MarkdownHelper {
                 addStyle(markerStyle, range.first, range.last + 1)
             }
 
-            boldRanges.filter { it.first < it.last + 1 }.forEach { 
-                addStyle(SpanStyle(fontWeight = FontWeight.Bold), it.first, it.last + 1) 
+            // Apply Header styles first
+            headerRanges.forEach { header ->
+                val fontSize = when (header.level) {
+                    1 -> 24.sp
+                    2 -> 21.sp
+                    3 -> 19.sp
+                    else -> 17.sp
+                }
+                if (header.range.first <= header.range.last && header.range.first in 0..result.length) {
+                    val end = (header.range.last + 1).coerceAtMost(result.length)
+                    addStyle(
+                        SpanStyle(fontSize = fontSize, fontWeight = FontWeight.Bold),
+                        header.range.first,
+                        end
+                    )
+                }
+            }
+
+            boldRanges.filter { it.first < it.last + 1 }.forEach { range ->
+                val isInsideHeader = headerRanges.any { h -> range.first >= h.range.first && range.last <= h.range.last }
+                val weight = if (isInsideHeader) FontWeight.Black else FontWeight.Bold
+                addStyle(SpanStyle(fontWeight = weight), range.first, range.last + 1) 
             }
             italicRanges.filter { it.first < it.last + 1 }.forEach { 
                 addStyle(SpanStyle(fontStyle = FontStyle.Italic), it.first, it.last + 1) 
