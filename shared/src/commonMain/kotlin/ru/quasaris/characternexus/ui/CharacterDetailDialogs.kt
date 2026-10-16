@@ -72,9 +72,20 @@ fun CharacterDetailDialogs(
                         state.attacks + updated
                     }
                     state.attacks = newAttacks
+                    val currentTabIds = state.attacksTabIds ?: state.attacks.map { it.id }
+                    if (!currentTabIds.contains(updated.id)) {
+                        state.attacksTabIds = currentTabIds + updated.id
+                    }
                 },
                 onDelete = { deleted: AttackEntry ->
-                    state.attacks = state.attacks.filter { it.id != deleted.id }
+                    state.deleteAttackCompletely(deleted.id)
+                    state.isAttackConfigOpen = false
+                    state.activeAttackConfigId = null
+                    state.editingAttack = null
+                },
+                onRemoveFromTab = { deleted: AttackEntry ->
+                    val currentTabIds = state.attacksTabIds ?: state.attacks.map { it.id }
+                    state.attacksTabIds = currentTabIds.filter { it != deleted.id }
                     state.isAttackConfigOpen = false
                     state.activeAttackConfigId = null
                     state.editingAttack = null
@@ -86,6 +97,37 @@ fun CharacterDetailDialogs(
                 spellSettings = state.spellSettings,
                 spellbookManager = spellbookManager,
                 existingAttacks = state.attacks,
+                attacksTabIds = state.attacksTabIds ?: state.attacks.map { it.id },
+                onLink = { targetId ->
+                    val currentAtkId = state.editingAttack?.id
+                    val tabIds = (state.attacksTabIds ?: state.attacks.map { it.id }).toMutableList()
+                    val idx = tabIds.indexOf(currentAtkId)
+                    if (idx != -1 && currentAtkId != null) {
+                        tabIds[idx] = targetId
+                        state.attacksTabIds = tabIds
+                        if (!tabIds.contains(currentAtkId)) {
+                            state.attacks = state.attacks.filter { it.id != currentAtkId }
+                        }
+                        val targetAtk = state.attacks.find { it.id == targetId }
+                        if (targetAtk != null) {
+                            state.editingAttack = targetAtk
+                        }
+                    }
+                },
+                onUnlink = {
+                    val currentAtk = state.editingAttack
+                    if (currentAtk != null) {
+                        val copy = currentAtk.copy(id = ru.quasaris.characternexus.util.generateUuid())
+                        val tabIds = (state.attacksTabIds ?: state.attacks.map { it.id }).toMutableList()
+                        val idx = tabIds.indexOf(currentAtk.id)
+                        if (idx != -1) {
+                            tabIds[idx] = copy.id
+                            state.attacks = state.attacks + copy
+                            state.attacksTabIds = tabIds
+                            state.editingAttack = copy
+                        }
+                    }
+                },
                 isDesktop = isDesktop,
                 hazeState = popupHazeState ?: hazeState
             )

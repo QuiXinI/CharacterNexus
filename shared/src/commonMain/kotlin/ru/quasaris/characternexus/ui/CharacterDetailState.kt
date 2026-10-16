@@ -52,6 +52,10 @@ class CharacterDetailState(
     var hasInspiration by mutableStateOf(initialCharacter?.hasInspiration ?: false)
 
     var attacks by mutableStateOf(initialCharacter?.attacks ?: emptyList())
+    var attacksTabIds by mutableStateOf<List<String>?>(initialCharacter?.attacksTabIds)
+
+    val displayedTabAttacks: List<AttackEntry>
+        get() = (attacksTabIds ?: attacks.map { it.id }).mapNotNull { id -> attacks.find { it.id == id } }
 
     var statsState by mutableStateOf(
         StatsState(
@@ -658,6 +662,7 @@ class CharacterDetailState(
             wisdomProficient = statsState.wisProf, charismaProficient = statsState.chaProf,
             maxHp = maxHp, currentHp = currentHp, tempHp = tempHp, proficiencyBonus = proficiencyBonus,
             selectedConditions = selectedConditions, exhaustion = exhaustion, attacks = attacks,
+            attacksTabIds = attacksTabIds,
             armorClassEntries = armorClassEntries, activeArmorClassId = activeArmorClassId,
             initiativeEntries = initiativeEntries, activeInitiativeId = activeInitiativeId,
             speedEntries = speedEntries, activeSpeedId = activeSpeedId, isShieldActive = isShieldActive,
@@ -838,6 +843,25 @@ class CharacterDetailState(
         skillsAndTraits = skillsAndTraits.filter { it.id != field.id }
         inventory = inventory.filter { it.id != field.id }
         spells = spells.filter { it.id != field.id }
+    }
+
+    fun deleteAttackCompletely(attackId: String) {
+        if (attackId.isEmpty()) return
+        attacks = attacks.filter { it.id != attackId }
+        attacksTabIds = (attacksTabIds ?: attacks.map { it.id }).filter { it != attackId }
+
+        fun List<DynamicNoteState>.cleaned() = map { note ->
+            if (note.content.contains(attackId)) {
+                note.copy(content = DynamicContentParser.removeAttackById(note.content, attackId))
+            } else note
+        }
+
+        notes = notes.cleaned()
+        skillsAndTraits = skillsAndTraits.cleaned()
+        inventory = inventory.cleaned()
+        spells = spells.cleaned()
+        bioLongSections = bioLongSections.cleaned()
+        customTabs = customTabs.map { tab -> tab.copy(content = tab.content.cleaned()) }
     }
 
     fun updateResource(updated: DynamicContentBlock.Resource) {

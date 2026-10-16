@@ -42,6 +42,7 @@ import ru.quasaris.characternexus.backend.parseFormulaParts
 import ru.quasaris.characternexus.backend.evaluateFormula
 import ru.quasaris.characternexus.backend.preprocessFormula
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
+import ru.quasaris.characternexus.ui.AttackDeleteDialog
 import ru.quasaris.characternexus.tabs.attacks.AttackBonusIndicator
 import ru.quasaris.characternexus.tabs.attacks.DiceIcon
 import ru.quasaris.characternexus.tabs.attacks.SectionHeader
@@ -65,6 +66,7 @@ fun AttackConfigDialog(
     onDismiss: () -> Unit,
     onSave: (AttackEntry) -> Unit,
     onDelete: (AttackEntry) -> Unit,
+    onRemoveFromTab: ((AttackEntry) -> Unit)? = null,
     forceBlurEnabled: Boolean = false,
     exhaustion: Int = 0,
     settingsViewModel: SettingsViewModel? = null,
@@ -72,6 +74,10 @@ fun AttackConfigDialog(
     spellSettings: SpellSettings = SpellSettings(),
     spellbookManager: SpellbookManager? = null,
     existingAttacks: List<AttackEntry> = emptyList(),
+    attacksTabIds: List<String>? = null,
+    editingIndex: Int = -1,
+    onLink: ((targetId: String) -> Unit)? = null,
+    onUnlink: (() -> Unit)? = null,
     isDesktop: Boolean = false,
     hazeState: HazeState? = null
 ) {
@@ -105,6 +111,10 @@ fun AttackConfigDialog(
             spellSettings = spellSettings,
             spellbookManager = spellbookManager,
             existingAttacks = existingAttacks,
+            attacksTabIds = attacksTabIds,
+            editingIndex = editingIndex,
+            onLink = onLink,
+            onUnlink = onUnlink,
             settingsViewModel = settingsViewModel,
             hazeState = hazeState
         )
@@ -127,20 +137,31 @@ fun AttackConfigDialog(
                 spellSettings = spellSettings,
                 spellbookManager = spellbookManager,
                 existingAttacks = existingAttacks,
+                attacksTabIds = attacksTabIds,
+                editingIndex = editingIndex,
+                onLink = onLink,
+                onUnlink = onUnlink,
                 settingsViewModel = settingsViewModel,
                 hazeState = hazeState
             )
         }
     }
 
-    DeleteConfirmationDialog(
+    AttackDeleteDialog(
         showDialog = showDeleteConfirm,
         onDismiss = { showDeleteConfirm = false },
-        onConfirm = {
+        onRemoveFromTab = {
+            if (onRemoveFromTab != null) {
+                onRemoveFromTab(state)
+            } else {
+                onDelete(state)
+            }
+            showDeleteConfirm = false
+        },
+        onDeleteCompletely = {
             onDelete(state)
             showDeleteConfirm = false
         },
-        title = "Удалить атаку?",
         settingsViewModel = settingsViewModel
     )
 }
@@ -160,6 +181,10 @@ fun AttackConfigDialogContent(
     spellSettings: SpellSettings,
     spellbookManager: SpellbookManager? = null,
     existingAttacks: List<AttackEntry> = emptyList(),
+    attacksTabIds: List<String>? = null,
+    editingIndex: Int = -1,
+    onLink: ((targetId: String) -> Unit)? = null,
+    onUnlink: (() -> Unit)? = null,
     settingsViewModel: SettingsViewModel? = null,
     hazeState: HazeState? = null
 ) {
@@ -271,22 +296,33 @@ fun AttackConfigDialogContent(
                         containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
                     )
                 )
-                if (attack.isMagic) {
-                    SecondaryTabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface,
-                        contentColor = colorScheme.primary,
-                        divider = {}
-                    ) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = { Text("Настройки", fontWeight = FontWeight.Bold) }
-                        )
+                SecondaryTabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface,
+                    contentColor = colorScheme.primary,
+                    divider = {}
+                ) {
+                    Tab(
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 },
+                        text = { Text("Настройки", fontWeight = FontWeight.Bold) }
+                    )
+                    if (attack.isMagic) {
                         Tab(
                             selected = selectedTab == 1,
                             onClick = { selectedTab = 1 },
                             text = { Text("Заклинания", fontWeight = FontWeight.Bold) }
+                        )
+                        Tab(
+                            selected = selectedTab == 2,
+                            onClick = { selectedTab = 2 },
+                            text = { Text("Связывание", fontWeight = FontWeight.Bold) }
+                        )
+                    } else {
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("Связывание", fontWeight = FontWeight.Bold) }
                         )
                     }
                 }
@@ -299,7 +335,45 @@ fun AttackConfigDialogContent(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (!attack.isMagic || selectedTab == 0) {
+            val isLinkTab = if (attack.isMagic) selectedTab == 2 else selectedTab == 1
+            val isSpellsTab = attack.isMagic && selectedTab == 1
+
+            if (isLinkTab) {
+                val linkConfig = remember(attack.id, existingAttacks, attacksTabIds, editingIndex) {
+                    buildAttackLinkConfig(
+                        currentAttack = attack,
+                        existingAttacks = existingAttacks,
+                        attacksTabIds = attacksTabIds,
+                        editingIndex = editingIndex,
+                        onLink = { targetId ->
+                            if (onLink != null) {
+                                onLink(targetId)
+                            } else {
+                                val targetAtk = existingAttacks.find { it.id == targetId }
+                                if (targetAtk != null) onAttackChange(targetAtk)
+                            }
+                            onDismiss()
+                        },
+                        onUnlink = {
+                            if (onUnlink != null) {
+                                onUnlink()
+                            } else {
+                                onAttackChange(attack.copy(id = ru.quasaris.characternexus.util.generateUuid()))
+                            }
+                            onDismiss()
+                        }
+                    )
+                }
+                AttackLinkTab(
+                    config = linkConfig,
+                    onLink = { targetId ->
+                        linkConfig.onLink(targetId)
+                    },
+                    onUnlink = {
+                        linkConfig.onUnlink()
+                    }
+                )
+            } else if (!isSpellsTab) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

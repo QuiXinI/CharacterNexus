@@ -53,6 +53,7 @@ object CharacterDataHandler {
         hpBonusesAtLevel: List<AttackBonus> = emptyList(),
         hpBonusesTotal: List<AttackBonus> = emptyList(),
         attacks: List<AttackEntry> = emptyList(),
+        attacksTabIds: List<String>? = null,
         notes: List<DynamicNoteState> = listOf(DynamicNoteState()),
         skillsAndTraits: List<DynamicNoteState>? = null,
         inventory: List<DynamicNoteState>? = null,
@@ -100,6 +101,7 @@ object CharacterDataHandler {
             skilledExpertise = skilledExpertise,
             themeSeedColorArgb = themeSeedColorArgb,
             attacks = attacks,
+            attacksTabIds = attacksTabIds,
             notes = notes,
             wallet = wallet,
             bioShortFields = bioShortFields ?: listOf(

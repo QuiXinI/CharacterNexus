@@ -62,9 +62,12 @@ val AttackInfoHazeStyle = HazeStyle(
 @Composable
 fun AttacksTab(
     attacks: List<AttackEntry>,
+    tabAttacks: List<AttackEntry>,
+    attacksTabIds: List<String>,
+    onUpdateAttacks: (List<AttackEntry>) -> Unit,
+    onUpdateAttacksTabIds: (List<String>) -> Unit,
     proficiencyBonus: Int,
     attributeModifiers: Map<Attribute, Int>,
-    onUpdateAttacks: (List<AttackEntry>) -> Unit,
     onRoll: (RollResult) -> Unit = {},
     stats: Map<String, String> = emptyMap(),
     exhaustion: Int = 0,
@@ -87,6 +90,7 @@ fun AttacksTab(
     val currentHazeState = hazeState ?: remember { HazeState() }
 
     var editingAttack by remember { mutableStateOf<AttackEntry?>(null) }
+    var editingAttackIndex by remember { mutableStateOf(-1) }
     
     LaunchedEffect(editingAttack) {
         onAttackConfigOpenChange(editingAttack != null)
@@ -98,6 +102,7 @@ fun AttacksTab(
     LaunchedEffect(state?.isAttackConfigOpen) {
         if (state?.isAttackConfigOpen == false) {
             editingAttack = null
+            editingAttackIndex = -1
         } else if (state?.editingAttack != null && editingAttack != state.editingAttack) {
             editingAttack = state.editingAttack
         }
@@ -106,7 +111,14 @@ fun AttacksTab(
     var attackToDeleteIndex by remember { mutableStateOf<Int?>(null) }
 
     val gridState = rememberLazyStaggeredGridState()
-    val items = remember(attacks) { mutableStateListOf<AttackEntry>().apply { addAll(attacks) } }
+    val items = remember(tabAttacks) { mutableStateListOf<AttackEntry>().apply { addAll(tabAttacks) } }
+
+    LaunchedEffect(tabAttacks) {
+        if (items != tabAttacks) {
+            items.clear()
+            items.addAll(tabAttacks)
+        }
+    }
 
     val collapseActionsOnEdit by settingsViewModel?.collapseActionsOnEdit?.collectAsState() ?: remember { mutableStateOf(true) }
 
@@ -120,7 +132,7 @@ fun AttacksTab(
 
     LaunchedEffect(reorderableState.isAnyItemDragging) {
         if (!reorderableState.isAnyItemDragging) {
-            onUpdateAttacks(items.toList())
+            onUpdateAttacksTabIds(items.map { it.id })
         }
     }
 
@@ -153,7 +165,7 @@ fun AttacksTab(
                     }
                 }
 
-                if (attacks.isEmpty()) {
+                if (tabAttacks.isEmpty()) {
                     item(span = StaggeredGridItemSpan.FullLine) {
                         Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                             Text(
@@ -164,8 +176,8 @@ fun AttacksTab(
                         }
                     }
                 } else {
-                    itemsIndexed(items, key = { _, attack -> attack.id }) { index, attack ->
-                        ReorderableItem(reorderableState, key = attack.id) { isDragging ->
+                    itemsIndexed(items, key = { index, attack -> "${attack.id}_$index" }) { index, attack ->
+                        ReorderableItem(reorderableState, key = "${attack.id}_$index") { isDragging ->
                             val dragModifier = if (isEditMode) Modifier.draggableHandle() else Modifier
 
                             AttackCardItem(
@@ -175,7 +187,10 @@ fun AttacksTab(
                                 isAnyItemDragging = reorderableState.isAnyItemDragging,
                                 proficiencyBonus = proficiencyBonus,
                                 attributeModifiers = attributeModifiers,
-                                onEdit = { editingAttack = attack },
+                                onEdit = {
+                                    editingAttack = attack
+                                    editingAttackIndex = index
+                                },
                                 onDelete = { attackToDeleteIndex = index },
                                 onRoll = onRoll,
                                 stats = stats,
@@ -199,7 +214,13 @@ fun AttacksTab(
         }
 
         FloatingActionButton(
-            onClick = { editingAttack = AttackEntry() },
+            onClick = { 
+                val newAttack = AttackEntry()
+                onUpdateAttacks(attacks + newAttack)
+                onUpdateAttacksTabIds(attacksTabIds + newAttack.id)
+                editingAttack = newAttack 
+                editingAttackIndex = attacksTabIds.size
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
@@ -210,14 +231,31 @@ fun AttacksTab(
         }
     }
 
-    DeleteConfirmationDialog(
+    ru.quasaris.characternexus.ui.AttackDeleteDialog(
         showDialog = attackToDeleteIndex != null,
         onDismiss = { attackToDeleteIndex = null },
-        onConfirm = {
+        onRemoveFromTab = {
             attackToDeleteIndex?.let { index ->
                 if (index in items.indices) {
-                    items.removeAt(index)
-                    onUpdateAttacks(items.toList())
+                    val attackToRemove = items[index]
+                    onUpdateAttacksTabIds(attacksTabIds.filterIndexed { idx, _ -> idx != index })
+                }
+            }
+            attackToDeleteIndex = null
+        },
+        onDeleteCompletely = {
+            attackToDeleteIndex?.let { index ->
+                if (index in items.indices) {
+                    val attackToDelete = items[index]
+                    if (state != null) {
+                        state.deleteAttackCompletely(attackToDelete.id)
+                    } else {
+                        val newTabIds = attacksTabIds.filterIndexed { idx, _ -> idx != index }
+                        onUpdateAttacksTabIds(newTabIds)
+                        if (!newTabIds.contains(attackToDelete.id)) {
+                            onUpdateAttacks(attacks.filter { it.id != attackToDelete.id })
+                        }
+                    }
                 }
             }
             attackToDeleteIndex = null
@@ -230,7 +268,10 @@ fun AttacksTab(
             attack = editingAttack!!,
             proficiencyBonus = proficiencyBonus,
             attributeModifiers = attributeModifiers,
-            onDismiss = { editingAttack = null },
+            onDismiss = {
+                editingAttack = null
+                editingAttackIndex = -1
+            },
             onSave = { updatedAttack ->
                 val newAttacks = if (attacks.any { it.id == updatedAttack.id }) {
                     attacks.map { if (it.id == updatedAttack.id) updatedAttack else it }
@@ -238,18 +279,58 @@ fun AttacksTab(
                     attacks + updatedAttack
                 }
                 onUpdateAttacks(newAttacks)
+                if (!attacksTabIds.contains(updatedAttack.id)) {
+                    onUpdateAttacksTabIds(attacksTabIds + updatedAttack.id)
+                }
             },
             onDelete = { attackToDelete ->
+                val newTabIds = attacksTabIds.filter { it != attackToDelete.id }
+                onUpdateAttacksTabIds(newTabIds)
                 onUpdateAttacks(attacks.filter { it.id != attackToDelete.id })
                 editingAttack = null
+                editingAttackIndex = -1
+            },
+            existingAttacks = attacks,
+            attacksTabIds = attacksTabIds,
+            editingIndex = editingAttackIndex,
+            onLink = { targetId ->
+                val targetAtk = attacks.find { it.id == targetId }
+                val tabIds = (attacksTabIds.ifEmpty { attacks.map { it.id } }).toMutableList()
+                val currentAtkId = editingAttack?.id
+                val idx = if (editingAttackIndex in tabIds.indices) editingAttackIndex else tabIds.indexOf(currentAtkId)
+                if (idx != -1 && currentAtkId != null) {
+                    tabIds[idx] = targetId
+                    onUpdateAttacksTabIds(tabIds)
+
+                    if (!tabIds.contains(currentAtkId)) {
+                        onUpdateAttacks(attacks.filter { it.id != currentAtkId })
+                    }
+
+                    if (targetAtk != null) {
+                        editingAttack = targetAtk
+                    }
+                }
+            },
+            onUnlink = {
+                val currentAtk = editingAttack
+                if (currentAtk != null) {
+                    val copy = currentAtk.copy(id = ru.quasaris.characternexus.util.generateUuid())
+                    val tabIds = (attacksTabIds.ifEmpty { attacks.map { it.id } }).toMutableList()
+                    val idx = if (editingAttackIndex in tabIds.indices) editingAttackIndex else tabIds.indexOf(currentAtk.id)
+                    if (idx != -1) {
+                        tabIds[idx] = copy.id
+                        onUpdateAttacks(attacks + copy)
+                        onUpdateAttacksTabIds(tabIds)
+                        editingAttack = copy
+                    }
+                }
             },
             forceBlurEnabled = forceBlurEnabled,
             exhaustion = exhaustion,
             settingsViewModel = settingsViewModel,
             stats = stats,
             spellSettings = spellSettings,
-            spellbookManager = spellbookManager,
-            existingAttacks = attacks
+            spellbookManager = spellbookManager
         )
     }
 }

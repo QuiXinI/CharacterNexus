@@ -83,6 +83,7 @@ fun FormattingToolbar(
     viewportTopY: Float = 0f,
     onInsertResource: (() -> Unit)? = null,
     onInsertInfoBlock: (() -> Unit)? = null,
+    onInsertAttack: (() -> Unit)? = null,
     onInsertDivider: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     settingsViewModel: SettingsViewModel? = null,
@@ -236,37 +237,12 @@ fun FormattingToolbar(
                         }
                     )
                     if (!isBasicMode) {
-                        FormattingButton(
-                            icon = Icons.Default.AddBox,
-                            isActive = false,
-                            enabled = true,
-                            onClick = {
-                                if (onInsertResource != null) {
-                                    onInsertResource()
-                                } else {
-                                    val id = ru.quasaris.characternexus.util.generateUuid()
-                                    val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
-                                    val insert = prefix + "{Ресурс: id=$id}\n"
-                                    val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                                    onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
-                                }
-                            }
-                        )
-                        FormattingButton(
-                            icon = InfoBoxIcon,
-                            isActive = false,
-                            enabled = true,
-                            onClick = {
-                                if (onInsertInfoBlock != null) {
-                                    onInsertInfoBlock()
-                                } else {
-                                    val id = ru.quasaris.characternexus.util.generateUuid()
-                                    val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
-                                    val insert = prefix + "{Инфоблок: id=$id}\n"
-                                    val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                                    onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
-                                }
-                            }
+                        InsertDropdownMenu(
+                            value = value,
+                            onValueChange = onValueChange,
+                            onInsertResource = onInsertResource,
+                            onInsertInfoBlock = onInsertInfoBlock,
+                            onInsertAttack = onInsertAttack
                         )
 
                         VerticalDivider(
@@ -489,6 +465,108 @@ private fun HeaderDropdownMenu(
                     if (currentLevel == 3) {
                         Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun InsertDropdownMenu(
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    onInsertResource: (() -> Unit)?,
+    onInsertInfoBlock: (() -> Unit)?,
+    onInsertAttack: (() -> Unit)?
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.primary
+            ),
+            modifier = Modifier
+                .height(36.dp)
+                .focusProperties { canFocus = false }
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(1.dp),
+                modifier = Modifier.padding(horizontal = 2.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Добавить объект",
+                    modifier = Modifier.size(20.dp)
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            properties = PopupProperties(focusable = false)
+        ) {
+            DropdownMenuItem(
+                text = { Text("Ресурс") },
+                onClick = {
+                    expanded = false
+                    if (onInsertResource != null) {
+                        onInsertResource()
+                    } else {
+                        val id = ru.quasaris.characternexus.util.generateUuid()
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val insert = prefix + "{Ресурс: id=$id}\n"
+                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                    }
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Инфоблок") },
+                onClick = {
+                    expanded = false
+                    if (onInsertInfoBlock != null) {
+                        onInsertInfoBlock()
+                    } else {
+                        val id = ru.quasaris.characternexus.util.generateUuid()
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val insert = prefix + "{Инфоблок: id=$id}\n"
+                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                    }
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Атака") },
+                onClick = {
+                    expanded = false
+                    if (onInsertAttack != null) {
+                        onInsertAttack()
+                    } else {
+                        val id = ru.quasaris.characternexus.util.generateUuid()
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val insert = prefix + "{Атака: id=$id}\n"
+                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                    }
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Gavel, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
             )
         }

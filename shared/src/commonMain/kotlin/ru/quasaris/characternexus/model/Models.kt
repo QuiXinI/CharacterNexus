@@ -1031,6 +1031,7 @@ data class Character(
     val proficiencies: ProficienciesState = ProficienciesState(),
     val themeSeedColorArgb: Int? = null,
     val attacks: List<AttackEntry> = emptyList(),
+    val attacksTabIds: List<String>? = null,
     val notes: List<DynamicNoteState> = listOf(DynamicNoteState()),
     val skillsAndTraits: List<DynamicNoteState> = listOf(
         DynamicNoteState(title = "Умения"),

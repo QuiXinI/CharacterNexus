@@ -650,7 +650,12 @@ fun CharacterWindow(
                                     when (activeTab) {
                                         is DisplayTab.BuiltIn -> {
                                             when (activeTab.tab) {
-                                                CharacterTab.ATTACKS -> state.attacks = state.attacks + AttackEntry()
+                                                CharacterTab.ATTACKS -> {
+                                                    val newAttack = AttackEntry()
+                                                    state.attacks = state.attacks + newAttack
+                                                    val currentTabIds = state.attacksTabIds ?: state.attacks.dropLast(1).map { it.id }
+                                                    state.attacksTabIds = currentTabIds + newAttack.id
+                                                }
                                                 CharacterTab.BIO -> state.bioLongSections = state.bioLongSections + DynamicNoteState()
                                                 CharacterTab.SKILLS_FEATS -> state.skillsAndTraits = state.skillsAndTraits + DynamicNoteState()
                                                 CharacterTab.INVENTORY -> state.inventory = state.inventory + DynamicNoteState()
@@ -1734,9 +1739,12 @@ fun TabContent(
                 CharacterTab.ATTACKS -> {
                     AttacksTab(
                         attacks = state.attacks,
+                        tabAttacks = state.displayedTabAttacks,
+                        attacksTabIds = state.attacksTabIds ?: state.attacks.map { it.id },
+                        onUpdateAttacks = { state.attacks = it },
+                        onUpdateAttacksTabIds = { state.attacksTabIds = it },
                         proficiencyBonus = pb,
                         attributeModifiers = state.attributeModifiers,
-                        onUpdateAttacks = { state.attacks = it },
                         onRoll = onRoll,
                         stats = state.statsMap,
                         exhaustion = state.exhaustion,

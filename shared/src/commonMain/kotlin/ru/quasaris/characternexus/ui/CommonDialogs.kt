@@ -46,3 +46,49 @@ fun DeleteConfirmationDialog(
         )
     }
 }
+
+@Composable
+fun AttackDeleteDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    onRemoveFromTab: () -> Unit,
+    onDeleteCompletely: () -> Unit,
+    settingsViewModel: SettingsViewModel? = null
+) {
+    val deletionWarningEnabled by settingsViewModel?.deletionWarningEnabled?.collectAsState() ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+
+    if (!deletionWarningEnabled && showDialog) {
+        onDeleteCompletely()
+        onDismiss()
+        return
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Удалить атаку?") },
+            text = { Text("Вы хотите убрать атаку только с этой вкладки или удалить её полностью из базы данных персонажа?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteCompletely()
+                    onDismiss()
+                }) {
+                    Text("УДАЛИТЬ ПОЛНОСТЬЮ", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                androidx.compose.foundation.layout.Row {
+                    TextButton(onClick = {
+                        onRemoveFromTab()
+                        onDismiss()
+                    }) {
+                        Text("УБРАТЬ С ВКЛАДКИ")
+                    }
+                    TextButton(onClick = onDismiss) {
+                        Text("ОТМЕНА")
+                    }
+                }
+            }
+        )
+    }
+}

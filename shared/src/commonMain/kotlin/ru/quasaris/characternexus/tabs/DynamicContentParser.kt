@@ -8,6 +8,7 @@ object DynamicContentParser {
     private val quoteRegex = Regex("(?s)>> (.*?)(?: <<|$)")
     private val resourceRegex = Regex("(?s)\\{(?:Ресурс|Resource)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
     private val infoBlockRegex = Regex("(?s)\\{(?:Инфоблок|InfoBlock)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
+    private val attackRegex = Regex("(?s)\\{(?:Атака|Attack)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
 
     fun parse(text: String, resources: Map<String, DynamicContentBlock.Resource> = emptyMap()): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
@@ -104,6 +105,37 @@ object DynamicContentParser {
             }
         }
 
+        // Find attacks using flexible parser
+        attackRegex.findAll(text).forEach { match ->
+            val content = match.groupValues[1]
+            val parts = content.split("|").map { it.trim() }
+            val params = mutableMapOf<String, String>()
+            var namePart = ""
+
+            parts.forEachIndexed { index, part ->
+                val kv = part.split("=", limit = 2)
+                if (kv.size == 2) {
+                    params[kv[0].trim().lowercase()] = kv[1].trim()
+                } else if (index == 0) {
+                    namePart = part
+                }
+            }
+
+            val id = params["id"] ?: ""
+            val isRef = id.isNotEmpty() && params.size == 1 && namePart.isEmpty()
+
+            if (isRef) {
+                allMatches.add(match.range to DynamicContentBlock.AttackRef(id))
+            } else {
+                val block = DynamicContentBlock.Attack(
+                    name = if (namePart.isNotEmpty()) namePart else params["name"] ?: "Атака",
+                    id = id,
+                    notes = params["notes"] ?: ""
+                )
+                allMatches.add(match.range to block)
+            }
+        }
+
         // Sort matches by start position
         allMatches.sortBy { it.first.first }
 
@@ -173,6 +205,8 @@ object DynamicContentParser {
                 is DynamicContentBlock.ResourceRef -> block.toTag()
                 is DynamicContentBlock.InfoBlock -> block.toTag()
                 is DynamicContentBlock.InfoBlockRef -> block.toTag()
+                is DynamicContentBlock.Attack -> block.toTag()
+                is DynamicContentBlock.AttackRef -> block.toTag()
             }
         }
     }
@@ -188,6 +222,15 @@ object DynamicContentParser {
 
     fun infoBlockIds(text: String): Set<String> {
         return infoBlockRegex.findAll(text).mapNotNull { match ->
+            val content = match.groupValues[1]
+            content.split("|").map { it.trim() }
+                .firstOrNull { it.startsWith("id=") }
+                ?.substringAfter("=")
+        }.toSet()
+    }
+
+    fun attackIds(text: String): Set<String> {
+        return attackRegex.findAll(text).mapNotNull { match ->
             val content = match.groupValues[1]
             content.split("|").map { it.trim() }
                 .firstOrNull { it.startsWith("id=") }
@@ -247,6 +290,18 @@ object DynamicContentParser {
         return BlockContentParser.toText(blocks)
     }
 
+    fun removeAttack(text: String, index: Int, targetAttackId: String? = null): String {
+        val blocks = BlockContentParser.toBlocks(text).toMutableList()
+        var targetIndex = if (index in blocks.indices && isAttackOrRef(blocks[index], targetAttackId)) index else -1
+        if (targetIndex == -1 && !targetAttackId.isNullOrEmpty()) {
+            targetIndex = blocks.indexOfFirst { isAttackOrRef(it, targetAttackId) }
+        }
+        if (targetIndex in blocks.indices) {
+            blocks.removeAt(targetIndex)
+        }
+        return BlockContentParser.toText(blocks)
+    }
+
     private fun isResourceOrRef(block: DynamicContentBlock, targetResourceId: String? = null): Boolean = when (block) {
         is DynamicContentBlock.Resource -> targetResourceId.isNullOrEmpty() || block.id == targetResourceId
         is DynamicContentBlock.ResourceRef -> targetResourceId.isNullOrEmpty() || block.id == targetResourceId
@@ -256,6 +311,12 @@ object DynamicContentParser {
     private fun isInfoBlockOrRef(block: DynamicContentBlock, targetInfoBlockId: String? = null): Boolean = when (block) {
         is DynamicContentBlock.InfoBlock -> targetInfoBlockId.isNullOrEmpty() || block.id == targetInfoBlockId
         is DynamicContentBlock.InfoBlockRef -> targetInfoBlockId.isNullOrEmpty() || block.id == targetInfoBlockId
+        else -> false
+    }
+
+    private fun isAttackOrRef(block: DynamicContentBlock, targetAttackId: String? = null): Boolean = when (block) {
+        is DynamicContentBlock.Attack -> targetAttackId.isNullOrEmpty() || block.id == targetAttackId
+        is DynamicContentBlock.AttackRef -> targetAttackId.isNullOrEmpty() || block.id == targetAttackId
         else -> false
     }
 
@@ -271,6 +332,14 @@ object DynamicContentParser {
         val blocks = BlockContentParser.toBlocks(text).filterNot {
             (it is DynamicContentBlock.InfoBlock && it.id == id) ||
             (it is DynamicContentBlock.InfoBlockRef && it.id == id)
+        }
+        return BlockContentParser.toText(blocks)
+    }
+
+    fun removeAttackById(text: String, id: String): String {
+        val blocks = BlockContentParser.toBlocks(text).filterNot {
+            (it is DynamicContentBlock.Attack && it.id == id) ||
+            (it is DynamicContentBlock.AttackRef && it.id == id)
         }
         return BlockContentParser.toText(blocks)
     }

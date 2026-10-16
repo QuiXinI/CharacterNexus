@@ -91,4 +91,27 @@ sealed class DynamicContentBlock {
             return "{Инфоблок: ${parts.joinToString(" | ")}}"
         }
     }
+
+    @Immutable
+    @Serializable
+    data class AttackRef(val id: String) : DynamicContentBlock() {
+        fun toTag(): String = "{Атака: id=$id}"
+    }
+
+    @Immutable
+    @Serializable
+    data class Attack(
+        val name: String,
+        val id: String = "",
+        val notes: String = ""
+    ) : DynamicContentBlock() {
+        fun toTag(): String {
+            val parts = mutableListOf<String>()
+            parts.add(name)
+            if (notes.isNotEmpty()) parts.add("notes=$notes")
+            val actualId = id.ifEmpty { generateUuid() }
+            parts.add("id=$actualId")
+            return "{Атака: ${parts.joinToString(" | ")}}"
+        }
+    }
 }

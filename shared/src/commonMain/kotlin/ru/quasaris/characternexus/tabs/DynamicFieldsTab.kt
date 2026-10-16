@@ -929,7 +929,7 @@ fun DynamicFieldFullscreenContent(
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    val isSubDialogOpen = showDeleteConfirm || state?.isResourceConfigOpen == true || state?.isInfoBlockConfigOpen == true
+    val isSubDialogOpen = showDeleteConfirm || state?.isResourceConfigOpen == true || state?.isInfoBlockConfigOpen == true || state?.isAttackConfigOpen == true
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 

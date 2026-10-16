@@ -549,6 +549,7 @@ object LongStoryShortImporter {
                 hasInspiration = inspirationVal,
                 proficiencyBonus = proficiencyBonusVal,
                 attacks = mpAttacks,
+                attacksTabIds = mpAttacks.map { it.id },
                 skillsAndTraits = skillsAndTraitsList,
                 inventory = inventoryList,
                 spells = mpSpells,

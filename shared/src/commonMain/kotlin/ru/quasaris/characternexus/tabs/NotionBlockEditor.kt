@@ -50,6 +50,13 @@ import ru.quasaris.characternexus.ui.BackHandler
 import kotlin.time.Duration.Companion.milliseconds
 import ru.quasaris.characternexus.tabs.resources.ResourceBlock
 import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockComponent
+import ru.quasaris.characternexus.tabs.attacks.AttackCardItem
+import ru.quasaris.characternexus.backend.getProficiencyBonus
+import ru.quasaris.characternexus.backend.calculateModifier
+import ru.quasaris.characternexus.model.Attribute
+import ru.quasaris.characternexus.model.AdvantageLogic
+import ru.quasaris.characternexus.model.SpellSettings
+import ru.quasaris.characternexus.model.AttackEntry
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.outerShadow
 import kotlin.time.Duration.Companion.milliseconds
@@ -74,7 +81,7 @@ fun NotionBlockEditor(
     isPlainTextMode: Boolean = false,
     onIsPlainTextModeChange: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
-    bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit, onInsertInfoBlock: () -> Unit) -> Unit)? = null
+    bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit, onInsertInfoBlock: () -> Unit, onInsertAttack: () -> Unit) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -432,6 +439,30 @@ fun NotionBlockEditor(
         }
     }
 
+    val insertAttackAction = {
+        val atk = AttackEntry(name = "Новая атака")
+        state?.let { s ->
+            s.attacks = s.attacks + atk
+            val currentTabIds = s.attacksTabIds ?: s.attacks.map { it.id }
+            if (!currentTabIds.contains(atk.id)) {
+                s.attacksTabIds = currentTabIds + atk.id
+            }
+        }
+        if (effectiveIsPlainText) {
+            val tag = "{Атака: id=${atk.id}}"
+            val cur = plainTextValue
+            val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
+            val min = cur.selection.min.coerceIn(0, cur.text.length)
+            val max = cur.selection.max.coerceIn(0, cur.text.length)
+            val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
+            plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
+            lastEmittedText = newText
+            onFieldChange(field.copy(content = newText))
+        } else {
+            insertBlockAtSelection(DynamicContentBlock.AttackRef(atk.id))
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -472,6 +503,7 @@ fun NotionBlockEditor(
                 viewportTopY = viewportTopY,
                 onInsertResource = insertResourceAction,
                 onInsertInfoBlock = insertInfoBlockAction,
+                onInsertAttack = insertAttackAction,
                 onInsertDivider = {
                     if (effectiveIsPlainText) {
                         val cur = plainTextValue
@@ -610,7 +642,8 @@ fun NotionBlockEditor(
                                 onDismissActive = { activeKey = null },
                                 onLinkRequest = insertLinkAction,
                                 onInsertResource = insertResourceAction,
-                                onInsertInfoBlock = insertInfoBlockAction
+                                onInsertInfoBlock = insertInfoBlockAction,
+                                onInsertAttack = insertAttackAction
                             )
 
                             is DynamicContentBlock.Spoiler -> LineTextBlockRow(
@@ -635,7 +668,8 @@ fun NotionBlockEditor(
                                 onDismissActive = { activeKey = null },
                                 onLinkRequest = insertLinkAction,
                                 onInsertResource = insertResourceAction,
-                                onInsertInfoBlock = insertInfoBlockAction
+                                onInsertInfoBlock = insertInfoBlockAction,
+                                onInsertAttack = insertAttackAction
                             )
 
                             is DynamicContentBlock.Quote -> LineTextBlockRow(
@@ -660,7 +694,8 @@ fun NotionBlockEditor(
                                 onDismissActive = { activeKey = null },
                                 onLinkRequest = insertLinkAction,
                                 onInsertResource = insertResourceAction,
-                                onInsertInfoBlock = insertInfoBlockAction
+                                onInsertInfoBlock = insertInfoBlockAction,
+                                onInsertAttack = insertAttackAction
                             )
 
                             is DynamicContentBlock.Divider -> {
@@ -685,7 +720,8 @@ fun NotionBlockEditor(
                                         onDismissActive = { activeKey = null },
                                         onLinkRequest = insertLinkAction,
                                         onInsertResource = insertResourceAction,
-                                        onInsertInfoBlock = insertInfoBlockAction
+                                        onInsertInfoBlock = insertInfoBlockAction,
+                                        onInsertAttack = insertAttackAction
                                     )
                                 } else {
                                     DividerBlockRow(
@@ -828,6 +864,60 @@ fun NotionBlockEditor(
                                     }
                                 )
                             }
+
+                            is DynamicContentBlock.Attack -> {
+                                val attack = state?.attacks?.find { it.id == block.id }
+                                    ?: AttackEntry(id = block.id, name = block.name, notes = block.notes)
+                                val profBonus = getProficiencyBonus(statsMap["level"] ?: "1")
+                                val attrMods = state?.attributeModifiers ?: Attribute.validAttributes.associateWith { calculateModifier(statsMap[it.name.lowercase()] ?: "10") }
+                                AttackCardItem(
+                                    attack = attack,
+                                    proficiencyBonus = profBonus,
+                                    attributeModifiers = attrMods,
+                                    onEdit = {
+                                        state?.activeAttackConfigId = attack.id
+                                        state?.editingAttack = attack
+                                        state?.isAttackConfigOpen = true
+                                    },
+                                    onDelete = { requestDelete(absoluteIndex) },
+                                    stats = statsMap,
+                                    exhaustion = state?.exhaustion ?: (statsMap["exhaustion"]?.toIntOrNull() ?: 0),
+                                    hazeState = hazeState,
+                                    popupHazeState = popupHazeState,
+                                    forceBlurEnabled = forceBlurEnabled,
+                                    settingsViewModel = settingsViewModel,
+                                    spellSettings = state?.spellSettings ?: SpellSettings(),
+                                    spellbookManager = null,
+                                    advantageLogic = state?.advantageLogic ?: AdvantageLogic.TOTAL
+                                )
+                            }
+
+                            is DynamicContentBlock.AttackRef -> {
+                                val attack = state?.attacks?.find { it.id == block.id }
+                                    ?: AttackEntry(id = block.id, name = "Атака")
+                                val profBonus = getProficiencyBonus(statsMap["level"] ?: "1")
+                                val attrMods = state?.attributeModifiers ?: Attribute.validAttributes.associateWith { calculateModifier(statsMap[it.name.lowercase()] ?: "10") }
+                                AttackCardItem(
+                                    attack = attack,
+                                    proficiencyBonus = profBonus,
+                                    attributeModifiers = attrMods,
+                                    onEdit = {
+                                        state?.activeAttackConfigId = attack.id
+                                        state?.editingAttack = attack
+                                        state?.isAttackConfigOpen = true
+                                    },
+                                    onDelete = { requestDelete(absoluteIndex) },
+                                    stats = statsMap,
+                                    exhaustion = state?.exhaustion ?: (statsMap["exhaustion"]?.toIntOrNull() ?: 0),
+                                    hazeState = hazeState,
+                                    popupHazeState = popupHazeState,
+                                    forceBlurEnabled = forceBlurEnabled,
+                                    settingsViewModel = settingsViewModel,
+                                    spellSettings = state?.spellSettings ?: SpellSettings(),
+                                    spellbookManager = null,
+                                    advantageLogic = state?.advantageLogic ?: AdvantageLogic.TOTAL
+                                )
+                            }
                         }
                     }
 
@@ -858,6 +948,17 @@ fun NotionBlockEditor(
                 val info = state?.infoBlockManager?.create("Новый инфоблок")
                     ?: DynamicContentBlock.InfoBlock(title = "Новый инфоблок", id = ru.quasaris.characternexus.util.generateUuid())
                 insertAfterActive(DynamicContentBlock.InfoBlockRef(info.id))
+            },
+            {
+                val atk = AttackEntry(name = "Новая атака")
+                state?.let { s ->
+                    s.attacks = s.attacks + atk
+                    val currentTabIds = s.attacksTabIds ?: s.attacks.map { it.id }
+                    if (!currentTabIds.contains(atk.id)) {
+                        s.attacksTabIds = currentTabIds + atk.id
+                    }
+                }
+                insertAfterActive(DynamicContentBlock.AttackRef(atk.id))
             }
         )
     }
@@ -870,7 +971,8 @@ private fun handleFormattingKeyCombination(
     isBasicMode: Boolean = false,
     onLinkRequest: (() -> Unit)? = null,
     onInsertResource: (() -> Unit)? = null,
-    onInsertInfoBlock: (() -> Unit)? = null
+    onInsertInfoBlock: (() -> Unit)? = null,
+    onInsertAttack: (() -> Unit)? = null
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val isCtrlOrCmd = event.isCtrlPressed || event.isMetaPressed
@@ -937,6 +1039,11 @@ private fun handleFormattingKeyCombination(
             onInsertInfoBlock?.invoke()
             true
         }
+        // Ctrl + G or Ctrl + Slash -> Attack (if not basic mode)
+        (event.key == Key.G || event.key == Key.Slash) && !isBasicMode -> {
+            onInsertAttack?.invoke()
+            true
+        }
         else -> false
     }
 }
@@ -959,7 +1066,8 @@ private fun LineTextBlockRow(
     onDismissActive: () -> Unit = {},
     onLinkRequest: (() -> Unit)? = null,
     onInsertResource: (() -> Unit)? = null,
-    onInsertInfoBlock: (() -> Unit)? = null
+    onInsertInfoBlock: (() -> Unit)? = null,
+    onInsertAttack: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val uriHandler = LocalUriHandler.current
@@ -1079,7 +1187,8 @@ private fun LineTextBlockRow(
                             isBasicMode = isBasicMode,
                             onLinkRequest = onLinkRequest,
                             onInsertResource = onInsertResource,
-                            onInsertInfoBlock = onInsertInfoBlock
+                            onInsertInfoBlock = onInsertInfoBlock,
+                            onInsertAttack = onInsertAttack
                         )
                     }
                 }
