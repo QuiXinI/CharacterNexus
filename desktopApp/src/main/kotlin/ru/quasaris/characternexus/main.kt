@@ -24,6 +24,7 @@ import ru.quasaris.characternexus.backend.SpellbookManager
 import ru.quasaris.characternexus.backend.MagicItemManager
 import ru.quasaris.characternexus.backend.GlossaryImporter
 import ru.quasaris.characternexus.model.DiceRollPosition
+import ru.quasaris.characternexus.util.DesktopCrashHandler
 
 import java.io.File
 import java.io.PrintWriter
@@ -32,6 +33,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 fun main() {
+    val settingsManager = SettingsManager()
+    DesktopCrashHandler.initialize(settingsManager)
+
     try {
         val workingDir = System.getProperty("user.dir")
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
@@ -39,7 +43,7 @@ fun main() {
         // Basic startup log
         File("startup-log.txt").appendText("[$timestamp] App starting. Working dir: $workingDir\n")
         
-        runApp()
+        runApp(settingsManager)
     } catch (e: Throwable) {
         val sw = StringWriter()
         val pw = PrintWriter(sw)
@@ -48,21 +52,17 @@ fun main() {
         
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
         val logFile = File("crash-log.txt")
-        logFile.writeText("CRASH AT $timestamp\n\n$stackTrace")
+        logFile.appendText("CRASH AT $timestamp\n\n$stackTrace\n\n")
         
-        // Also print to console
         e.printStackTrace()
-        
-        // Exit with error code to let launcher know something went wrong
         System.exit(1)
     }
 }
 
-fun runApp() = application {
+fun runApp(settingsManager: SettingsManager) = application {
     // Step 1: Initialize Platform Context
     platformContext = PlatformContext()
 
-    val settingsManager = remember { SettingsManager() }
     val settingsViewModel = remember { SettingsViewModel(settingsManager) }
     
     val moduleManager = remember { ModuleManager() }
@@ -75,11 +75,6 @@ fun runApp() = application {
             storage = FileSystemCharacterStorage(),
             appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         )
-    }
-
-    val isDebug = System.getProperty("debug") == "true" || System.getenv("DEBUG") == "true"
-    if (isDebug) {
-        DebugLogWindow()
     }
 
     Window(

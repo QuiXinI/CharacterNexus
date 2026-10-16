@@ -51,26 +51,16 @@ fun AdvancedSettingsWindow(
         onFullscreenDialogOpenChange(showDebugLogs)
     }
 
-    BackHandler(onBack = onDismiss)
-
-    AnimatedVisibility(
-        visible = showDebugLogs,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-    ) {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            DebugLogScreen(
-                onDismiss = { showDebugLogs = false },
-                settingsViewModel = settingsViewModel
-            )
-        }
-    }
+    BackHandler(onBack = {
+        if (showDebugLogs) showDebugLogs = false else onDismiss()
+    })
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Scaffold(
+        Box(modifier = Modifier.fillMaxSize()) {
+            Scaffold(
             topBar = {
                 TopAppBar(
                     title = { Text("Продвинутые настройки", fontWeight = FontWeight.Bold) },
@@ -159,8 +149,6 @@ fun AdvancedSettingsWindow(
                             Text("Посмотреть логи приложения", fontWeight = FontWeight.Bold)
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
                         Button(
                             onClick = {
                                 onCleanupDuplicateFolders()
@@ -174,9 +162,23 @@ fun AdvancedSettingsWindow(
                         ) {
                             Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Очистить дубликаты папок", fontWeight = FontWeight.Bold)
+                            Text("Очистить дубликаты папок (на случай появления при переносе старых сохранений)", fontWeight = FontWeight.Bold)
                         }
                     }
+                }
+            }
+            }
+
+            AnimatedVisibility(
+                visible = showDebugLogs,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    DebugLogScreen(
+                        onDismiss = { showDebugLogs = false },
+                        settingsViewModel = settingsViewModel
+                    )
                 }
             }
         }

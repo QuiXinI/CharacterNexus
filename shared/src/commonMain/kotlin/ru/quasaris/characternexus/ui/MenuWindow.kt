@@ -3,6 +3,8 @@ package ru.quasaris.characternexus.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
@@ -98,6 +100,8 @@ fun MenuWindow(
     val autoDownload by settingsViewModel?.autoDownloadLssAvatar?.collectAsState() ?: remember { mutableStateOf(false) }
     val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
     val isPremium by settingsViewModel?.isPremium?.collectAsState() ?: remember { mutableStateOf(false) }
+    val debugInfoEnabled by settingsViewModel?.debugInfoEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
+    var showDebugLogs by remember { mutableStateOf(false) }
 
     fun performClickHaptic() {
         if (veryResponsive) {
@@ -117,7 +121,7 @@ fun MenuWindow(
 
     var showCreateFolderDialog by remember { mutableStateOf(false) }
 
-    val isAnyFullscreenDialogOpen = imageToCrop != null || lssAvatarToDownload != null || importErrorMessage != null || pendingImportResults.isNotEmpty() || showCreateFolderDialog
+    val isAnyFullscreenDialogOpen = imageToCrop != null || lssAvatarToDownload != null || importErrorMessage != null || pendingImportResults.isNotEmpty() || showCreateFolderDialog || showDebugLogs
     // Пока тащим карточку/папку, боковое меню (свайп) должно быть заблокировано
     var isItemDragging by remember { mutableStateOf(false) }
     LaunchedEffect(isAnyFullscreenDialogOpen, isItemDragging) {
@@ -535,6 +539,19 @@ fun MenuWindow(
                             textAlign = TextAlign.Center,
                             color = colorScheme.onSurface
                         )
+                        if (debugInfoEnabled) {
+                            IconButton(onClick = {
+                                performClickHaptic()
+                                showDebugLogs = true
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.BugReport,
+                                    contentDescription = "Отладка",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = colorScheme.error.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
                         IconButton(onClick = {
                             performClickHaptic()
                             isEditMode = !isEditMode
@@ -1177,6 +1194,19 @@ fun MenuWindow(
                 },
                 shape = RoundedCornerShape(28.dp)
             )
+        }
+
+        AnimatedVisibility(
+            visible = showDebugLogs,
+            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                DebugLogScreen(
+                    onDismiss = { showDebugLogs = false },
+                    settingsViewModel = settingsViewModel
+                )
+            }
         }
     }
 }

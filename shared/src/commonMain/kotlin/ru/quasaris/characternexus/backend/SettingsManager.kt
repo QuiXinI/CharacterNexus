@@ -9,6 +9,16 @@ import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.util.log
 
 @Serializable
+data class CrashLogEntry(
+    val id: String = "",
+    val timestamp: Long = 0L,
+    val formattedDate: String = "",
+    val shortReason: String = "",
+    val fullStackTrace: String = "",
+    val threadName: String = "main"
+)
+
+@Serializable
 data class AppSettings(
     var themeMode: AppThemeMode = AppThemeMode.M3,
     var themeBehavior: AppThemeBehavior = AppThemeBehavior.SYSTEM,
@@ -88,7 +98,8 @@ data class AppSettings(
     var veryResponsiveHaptics: Boolean = true,
     var isPremium: Boolean = false,
     var desktopLeftColumnWidth: Float = 450f,
-    var lastCrashLog: String? = null
+    var lastCrashLog: String? = null,
+    var crashLogs: List<CrashLogEntry> = emptyList()
 )
 
 class SettingsManager {
@@ -105,9 +116,20 @@ class SettingsManager {
     private fun loadSettings(): AppSettings {
         return try {
             if (platformFileSystem.exists(settingsFile)) {
-                platformFileSystem.read(settingsFile) {
+                val loaded = platformFileSystem.read(settingsFile) {
                     json.decodeFromString<AppSettings>(readUtf8())
                 }
+                if (loaded.crashLogs.isEmpty() && !loaded.lastCrashLog.isNullOrBlank()) {
+                    val entry = CrashLogEntry(
+                        id = "legacy_crash",
+                        timestamp = 0L,
+                        formattedDate = "",
+                        shortReason = loaded.lastCrashLog?.lines()?.firstOrNull { it.isNotBlank() } ?: "Legacy Crash Log",
+                        fullStackTrace = loaded.lastCrashLog ?: ""
+                    )
+                    loaded.crashLogs = listOf(entry)
+                }
+                loaded
             } else {
                 AppSettings()
             }
@@ -185,6 +207,7 @@ class SettingsManager {
     var veryResponsiveHaptics: Boolean get() = settings.veryResponsiveHaptics; set(value) { settings.veryResponsiveHaptics = value; save() }
     var isPremium: Boolean get() = settings.isPremium; set(value) { settings.isPremium = value; save() }
     var lastCrashLog: String? get() = settings.lastCrashLog; set(value) { settings.lastCrashLog = value; save() }
+    var crashLogs: List<CrashLogEntry> get() = settings.crashLogs; set(value) { settings.crashLogs = value; save() }
 
     fun resetToDefaults() {
         settings = AppSettings()

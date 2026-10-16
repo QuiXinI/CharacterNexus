@@ -734,6 +734,7 @@ fun CharacterWindow(
                     onShowTabSheet = { showTabSheet = true },
                     onExportSheetClick = { showExportSheetSaver = true },
                     onExportPortraitClick = { showExportPortraitSaver = true },
+                    onDebugClick = { showDebugLogs = true },
                     isDesktop = isDesktop,
                     onOpenDrawer = onOpenDrawer,
                     handleRestoration = handleRestoration,
@@ -1279,6 +1280,7 @@ fun CharacterDetailMainContent(
     onShowTabSheet: () -> Unit = {},
     onExportSheetClick: () -> Unit = {},
     onExportPortraitClick: () -> Unit = {},
+    onDebugClick: () -> Unit = {},
     isDesktop: Boolean = false,
     onOpenDrawer: () -> Unit = {},
     handleRestoration: (String) -> Unit = {},
@@ -1507,6 +1509,7 @@ fun CharacterDetailMainContent(
                         onShowRestPopupChange = {
                             state.showRestPopup = it
                         },
+                        onDebugClick = onDebugClick,
                         hazeState = leftHaze,
                         blurPopups = blurPopups,
                         settingsViewModel = settingsViewModel,

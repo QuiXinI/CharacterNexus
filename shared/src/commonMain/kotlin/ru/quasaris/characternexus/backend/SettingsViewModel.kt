@@ -246,6 +246,9 @@ class SettingsViewModel(
     private val _lastCrashLog = MutableStateFlow(settingsManager.settings.lastCrashLog)
     val lastCrashLog = _lastCrashLog.asStateFlow()
 
+    private val _crashLogs = MutableStateFlow(settingsManager.settings.crashLogs)
+    val crashLogs = _crashLogs.asStateFlow()
+
     private val keybindManager = KeybindManager()
     private val _keybinds = MutableStateFlow(keybindManager.mappings)
     val keybinds = _keybinds.asStateFlow()
@@ -627,6 +630,27 @@ class SettingsViewModel(
     fun updateLastCrashLog(log: String?) {
         _lastCrashLog.value = log
         settingsManager.lastCrashLog = log
+    }
+
+    fun addCrashLog(entry: CrashLogEntry) {
+        val updated = (listOf(entry) + _crashLogs.value).take(50)
+        _crashLogs.value = updated
+        settingsManager.crashLogs = updated
+        _lastCrashLog.value = entry.fullStackTrace
+        settingsManager.lastCrashLog = entry.fullStackTrace
+    }
+
+    fun deleteCrashLog(id: String) {
+        val updated = _crashLogs.value.filterNot { it.id == id }
+        _crashLogs.value = updated
+        settingsManager.crashLogs = updated
+    }
+
+    fun clearAllCrashLogs() {
+        _crashLogs.value = emptyList()
+        _lastCrashLog.value = null
+        settingsManager.crashLogs = emptyList<CrashLogEntry>()
+        settingsManager.lastCrashLog = null
     }
 
     fun updateVeryResponsiveHaptics(enabled: Boolean) {

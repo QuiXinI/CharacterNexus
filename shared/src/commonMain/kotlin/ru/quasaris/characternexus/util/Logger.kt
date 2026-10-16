@@ -27,3 +27,18 @@ fun logToFlow(level: String, tag: String, message: String, throwable: Throwable?
 fun Throwable.log(tag: String = "Error", message: String = "An error occurred") {
     Logger.e(tag, message, this)
 }
+
+fun Throwable.toShortReason(): String {
+    val className = this::class.simpleName ?: this::class.qualifiedName ?: "Throwable"
+    val msg = message
+    val primary = if (msg.isNullOrBlank()) className else "$className: $msg"
+    val c = cause
+    return if (c != null && c != this) {
+        val causeName = c::class.simpleName ?: "Throwable"
+        val causeMsg = c.message
+        val causePrimary = if (causeMsg.isNullOrBlank()) causeName else "$causeName: $causeMsg"
+        "$primary\nCaused by: $causePrimary"
+    } else {
+        primary
+    }
+}
