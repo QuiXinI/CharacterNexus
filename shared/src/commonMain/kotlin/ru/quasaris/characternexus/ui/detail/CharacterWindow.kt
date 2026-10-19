@@ -390,6 +390,23 @@ fun CharacterWindow(
         focusManager.clearFocus()
     }
 
+    LaunchedEffect(desktopPagerState.currentPage) {
+        state.isEditMode = false
+        focusManager.clearFocus()
+    }
+
+    LaunchedEffect(desktopPagerState.isScrollInProgress) {
+        if (desktopPagerState.isScrollInProgress) {
+            focusManager.clearFocus()
+        }
+    }
+
+    LaunchedEffect(pagerState.isScrollInProgress) {
+        if (pagerState.isScrollInProgress) {
+            focusManager.clearFocus()
+        }
+    }
+
     LaunchedEffect(
         state.name, state.characterClass, state.order, state.level, state.experience, state.characterImageData,
         state.statsState, state.maxHp, state.currentHp, state.tempHp, state.proficiencyBonus, state.selectedConditions, state.exhaustion,

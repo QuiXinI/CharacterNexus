@@ -192,11 +192,18 @@ fun DynamicFieldsTab(
         }
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            state?.activeDynamicField = null
+            state?.isFullscreenDynamicFieldOpen = false
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .onGloballyPositioned { mainViewportTopY = it.positionInWindow().y }
+            .onGloballyPositioned { if (it.isAttached) mainViewportTopY = it.positionInWindow().y }
     ) {
         if (items.isEmpty() && isScrollEnabled) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1030,7 +1037,7 @@ fun DynamicFieldFullscreenContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues)
-                        .onGloballyPositioned { localViewportTopY = it.positionInWindow().y }
+                        .onGloballyPositioned { if (it.isAttached) localViewportTopY = it.positionInWindow().y }
                 ) {
                     Column(
                         modifier = Modifier

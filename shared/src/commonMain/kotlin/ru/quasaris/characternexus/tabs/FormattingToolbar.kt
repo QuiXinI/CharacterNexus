@@ -77,6 +77,7 @@ fun FormattingToolbar(
     value: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     isFocused: Boolean,
+    isAttached: Boolean = true,
     isSelectionActive: Boolean,
     onLinkRequest: () -> Unit,
     onSave: () -> Unit = {},
@@ -97,7 +98,7 @@ fun FormattingToolbar(
     onTogglePlainText: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    if (!isFocused) return
+    if (!isFocused || !isAttached) return
 
     val density = LocalDensity.current
     val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }

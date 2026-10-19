@@ -400,6 +400,15 @@ fun NotionBlockEditor(
     var editorHeightPx by remember { mutableIntStateOf(0) }
     var editorLeftPx by remember { mutableFloatStateOf(0f) }
     var editorTopPx by remember { mutableFloatStateOf(0f) }
+    var isEditorAttached by remember { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            activeKey = null
+            isAnyFocused = false
+            isEditorAttached = false
+        }
+    }
 
     val insertLinkAction = { showLinkDialog = true }
 
@@ -468,11 +477,14 @@ fun NotionBlockEditor(
             .fillMaxWidth()
             .onFocusChanged { isAnyFocused = it.hasFocus }
             .onGloballyPositioned { coords ->
-                editorWidthPx = coords.size.width
-                editorHeightPx = coords.size.height
-                val pos = coords.positionInWindow()
-                editorLeftPx = pos.x
-                editorTopPx = pos.y
+                isEditorAttached = coords.isAttached
+                if (coords.isAttached) {
+                    editorWidthPx = coords.size.width
+                    editorHeightPx = coords.size.height
+                    val pos = coords.positionInWindow()
+                    editorLeftPx = pos.x
+                    editorTopPx = pos.y
+                }
             }
     ) {
         if (effectiveTopMargin > 0.dp) {
@@ -480,7 +492,7 @@ fun NotionBlockEditor(
         }
 
         val toolbarValue = if (effectiveIsPlainText) plainTextValue else activeValue
-        val showToolbar = canEdit && (if (effectiveIsPlainText) isAnyFocused else (activeKey != null && activeValue != null))
+        val showToolbar = canEdit && isEditorAttached && (if (effectiveIsPlainText) isAnyFocused else (activeKey != null && activeValue != null))
         if (showToolbar && toolbarValue != null) {
             val isOled = colorScheme.background == Color.Black
             FormattingToolbar(
@@ -495,6 +507,7 @@ fun NotionBlockEditor(
                     }
                 },
                 isFocused = true,
+                isAttached = isEditorAttached,
                 isSelectionActive = toolbarValue.selection.length > 0,
                 onLinkRequest = insertLinkAction,
                 onSave = {
