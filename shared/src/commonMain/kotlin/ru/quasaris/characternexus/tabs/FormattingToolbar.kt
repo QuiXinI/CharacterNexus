@@ -2,6 +2,7 @@ package ru.quasaris.characternexus.tabs
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
@@ -164,6 +167,30 @@ fun FormattingToolbar(
                 Row(
                     modifier = Modifier
                         .horizontalScroll(scrollState)
+                        .pointerInput(scrollState) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    if (event.type == PointerEventType.Scroll) {
+                                        val change = event.changes.firstOrNull()
+                                        if (change != null) {
+                                            val scrollDelta = change.scrollDelta
+                                            val delta = if (scrollDelta.x != 0f) scrollDelta.x else scrollDelta.y
+                                            if (delta != 0f) {
+                                                scrollState.dispatchRawDelta(delta * 40f)
+                                                change.consume()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .pointerInput(scrollState) {
+                            detectHorizontalDragGestures { change, dragAmount ->
+                                change.consume()
+                                scrollState.dispatchRawDelta(-dragAmount)
+                            }
+                        }
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
