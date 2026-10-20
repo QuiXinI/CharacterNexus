@@ -507,8 +507,20 @@ data class AttackEntry(
     val reach: String = "",
     val rangeNormal: String = "",
     val rangeMax: String = "",
-    val weaponMasteries: List<WeaponMastery> = emptyList()
+    val weaponMasteries: List<WeaponMastery> = emptyList(),
+    val linkedTo: String? = null,
+    val linkedIds: List<String> = emptyList()
 )
+
+fun AttackEntry.resolve(allAttacks: List<AttackEntry>): AttackEntry {
+    if (linkedTo == null) return this
+    val primary = allAttacks.find { it.id == linkedTo } ?: return this
+    return primary.copy(
+        id = this.id,
+        linkedTo = this.linkedTo,
+        linkedIds = this.linkedIds
+    )
+}
 
 @Serializable
 enum class MaterialComponentType(val displayName: String) {

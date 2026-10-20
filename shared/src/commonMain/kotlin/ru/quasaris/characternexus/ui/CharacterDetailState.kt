@@ -55,7 +55,7 @@ class CharacterDetailState(
     var attacksTabIds by mutableStateOf<List<String>?>(initialCharacter?.attacksTabIds)
 
     val displayedTabAttacks: List<AttackEntry>
-        get() = (attacksTabIds ?: attacks.map { it.id }).mapNotNull { id -> attacks.find { it.id == id } }
+        get() = (attacksTabIds ?: attacks.map { it.id }).mapNotNull { id -> attacks.find { it.id == id }?.resolve(attacks) }
 
     var statsState by mutableStateOf(
         StatsState(
@@ -845,9 +845,57 @@ class CharacterDetailState(
         spells = spells.filter { it.id != field.id }
     }
 
+    fun linkAttacks(secondaryId: String, primaryId: String) {
+        attacks = attacks.linkAttacks(secondaryId, primaryId)
+    }
+
+    fun unlinkAttack(targetId: String) {
+        attacks = attacks.unlinkAttack(targetId)
+    }
+
     fun deleteAttackCompletely(attackId: String) {
         if (attackId.isEmpty()) return
-        attacks = attacks.filter { it.id != attackId }
+        val target = attacks.find { it.id == attackId } ?: run {
+            attacksTabIds = (attacksTabIds ?: attacks.map { it.id }).filter { it != attackId }
+            return
+        }
+
+        val newAttacks = attacks.toMutableList()
+
+        if (target.linkedTo != null) {
+            val primaryId = target.linkedTo
+            val primaryIdx = newAttacks.indexOfFirst { it.id == primaryId }
+            if (primaryIdx != -1) {
+                val primary = newAttacks[primaryIdx]
+                newAttacks[primaryIdx] = primary.copy(linkedIds = primary.linkedIds.filter { it != attackId })
+            }
+            newAttacks.removeAll { it.id == attackId }
+        } else if (target.linkedIds.isNotEmpty()) {
+            val newPrimaryId = target.linkedIds.first()
+            val remainingLinkedIds = target.linkedIds.drop(1)
+
+            val newPrimaryIdx = newAttacks.indexOfFirst { it.id == newPrimaryId }
+            if (newPrimaryIdx != -1) {
+                val updatedNewPrimary = target.copy(
+                    id = newPrimaryId,
+                    linkedTo = null,
+                    linkedIds = remainingLinkedIds
+                )
+                newAttacks[newPrimaryIdx] = updatedNewPrimary
+
+                remainingLinkedIds.forEach { secId ->
+                    val secIdx = newAttacks.indexOfFirst { it.id == secId }
+                    if (secIdx != -1) {
+                        newAttacks[secIdx] = newAttacks[secIdx].copy(linkedTo = newPrimaryId)
+                    }
+                }
+            }
+            newAttacks.removeAll { it.id == attackId }
+        } else {
+            newAttacks.removeAll { it.id == attackId }
+        }
+
+        attacks = newAttacks
         attacksTabIds = (attacksTabIds ?: attacks.map { it.id }).filter { it != attackId }
 
         fun List<DynamicNoteState>.cleaned() = map { note ->

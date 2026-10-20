@@ -57,6 +57,8 @@ import ru.quasaris.characternexus.model.Attribute
 import ru.quasaris.characternexus.model.AdvantageLogic
 import ru.quasaris.characternexus.model.SpellSettings
 import ru.quasaris.characternexus.model.AttackEntry
+import ru.quasaris.characternexus.model.resolve
+import ru.quasaris.characternexus.model.RollResult
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.outerShadow
 import kotlin.time.Duration.Companion.milliseconds
@@ -81,6 +83,7 @@ fun NotionBlockEditor(
     isPlainTextMode: Boolean = false,
     onIsPlainTextModeChange: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onRoll: (RollResult) -> Unit = {},
     bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit, onInsertInfoBlock: () -> Unit, onInsertAttack: () -> Unit) -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -452,10 +455,6 @@ fun NotionBlockEditor(
         val atk = AttackEntry(name = "Новая атака")
         state?.let { s ->
             s.attacks = s.attacks + atk
-            val currentTabIds = s.attacksTabIds ?: s.attacks.map { it.id }
-            if (!currentTabIds.contains(atk.id)) {
-                s.attacksTabIds = currentTabIds + atk.id
-            }
         }
         if (effectiveIsPlainText) {
             val tag = "{Атака: id=${atk.id}}"
@@ -879,8 +878,9 @@ fun NotionBlockEditor(
                             }
 
                             is DynamicContentBlock.Attack -> {
-                                val attack = state?.attacks?.find { it.id == block.id }
+                                val rawAttack = state?.attacks?.find { it.id == block.id }
                                     ?: AttackEntry(id = block.id, name = block.name, notes = block.notes)
+                                val attack = rawAttack.resolve(state?.attacks ?: emptyList())
                                 val profBonus = getProficiencyBonus(statsMap["level"] ?: "1")
                                 val attrMods = state?.attributeModifiers ?: Attribute.validAttributes.associateWith { calculateModifier(statsMap[it.name.lowercase()] ?: "10") }
                                 AttackCardItem(
@@ -888,11 +888,15 @@ fun NotionBlockEditor(
                                     proficiencyBonus = profBonus,
                                     attributeModifiers = attrMods,
                                     onEdit = {
-                                        state?.activeAttackConfigId = attack.id
-                                        state?.editingAttack = attack
+                                        state?.activeNoteId = field.id
+                                        state?.activeResourceIndex = absoluteIndex
+                                        val resolvedAttack = rawAttack.resolve(state?.attacks ?: emptyList())
+                                        state?.activeAttackConfigId = resolvedAttack.id
+                                        state?.editingAttack = resolvedAttack
                                         state?.isAttackConfigOpen = true
                                     },
                                     onDelete = { requestDelete(absoluteIndex) },
+                                    onRoll = onRoll,
                                     stats = statsMap,
                                     exhaustion = state?.exhaustion ?: (statsMap["exhaustion"]?.toIntOrNull() ?: 0),
                                     hazeState = hazeState,
@@ -906,8 +910,9 @@ fun NotionBlockEditor(
                             }
 
                             is DynamicContentBlock.AttackRef -> {
-                                val attack = state?.attacks?.find { it.id == block.id }
+                                val rawAttack = state?.attacks?.find { it.id == block.id }
                                     ?: AttackEntry(id = block.id, name = "Атака")
+                                val attack = rawAttack.resolve(state?.attacks ?: emptyList())
                                 val profBonus = getProficiencyBonus(statsMap["level"] ?: "1")
                                 val attrMods = state?.attributeModifiers ?: Attribute.validAttributes.associateWith { calculateModifier(statsMap[it.name.lowercase()] ?: "10") }
                                 AttackCardItem(
@@ -915,11 +920,15 @@ fun NotionBlockEditor(
                                     proficiencyBonus = profBonus,
                                     attributeModifiers = attrMods,
                                     onEdit = {
-                                        state?.activeAttackConfigId = attack.id
-                                        state?.editingAttack = attack
+                                        state?.activeNoteId = field.id
+                                        state?.activeResourceIndex = absoluteIndex
+                                        val resolvedAttack = rawAttack.resolve(state?.attacks ?: emptyList())
+                                        state?.activeAttackConfigId = resolvedAttack.id
+                                        state?.editingAttack = resolvedAttack
                                         state?.isAttackConfigOpen = true
                                     },
                                     onDelete = { requestDelete(absoluteIndex) },
+                                    onRoll = onRoll,
                                     stats = statsMap,
                                     exhaustion = state?.exhaustion ?: (statsMap["exhaustion"]?.toIntOrNull() ?: 0),
                                     hazeState = hazeState,
@@ -966,10 +975,6 @@ fun NotionBlockEditor(
                 val atk = AttackEntry(name = "Новая атака")
                 state?.let { s ->
                     s.attacks = s.attacks + atk
-                    val currentTabIds = s.attacksTabIds ?: s.attacks.map { it.id }
-                    if (!currentTabIds.contains(atk.id)) {
-                        s.attacksTabIds = currentTabIds + atk.id
-                    }
                 }
                 insertAfterActive(DynamicContentBlock.AttackRef(atk.id))
             }

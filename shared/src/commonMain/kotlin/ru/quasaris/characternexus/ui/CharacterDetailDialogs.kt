@@ -66,16 +66,27 @@ fun CharacterDetailDialogs(
                     state.editingAttack = null
                 },
                 onSave = { updated: AttackEntry ->
-                    val newAttacks = if (state.attacks.any { it.id == updated.id }) {
+                    val newAttacks = if (updated.linkedTo != null) {
+                        val primaryId = updated.linkedTo
+                        state.attacks.map { existing ->
+                            if (existing.id == primaryId) {
+                                updated.copy(
+                                    id = existing.id,
+                                    linkedTo = existing.linkedTo,
+                                    linkedIds = existing.linkedIds
+                                )
+                            } else if (existing.id == updated.id) {
+                                updated
+                            } else {
+                                existing
+                            }
+                        }
+                    } else if (state.attacks.any { it.id == updated.id }) {
                         state.attacks.map { if (it.id == updated.id) updated else it }
                     } else {
                         state.attacks + updated
                     }
                     state.attacks = newAttacks
-                    val currentTabIds = state.attacksTabIds ?: state.attacks.map { it.id }
-                    if (!currentTabIds.contains(updated.id)) {
-                        state.attacksTabIds = currentTabIds + updated.id
-                    }
                 },
                 onDelete = { deleted: AttackEntry ->
                     state.deleteAttackCompletely(deleted.id)
@@ -100,31 +111,22 @@ fun CharacterDetailDialogs(
                 attacksTabIds = state.attacksTabIds ?: state.attacks.map { it.id },
                 onLink = { targetId ->
                     val currentAtkId = state.editingAttack?.id
-                    val tabIds = (state.attacksTabIds ?: state.attacks.map { it.id }).toMutableList()
-                    val idx = tabIds.indexOf(currentAtkId)
-                    if (idx != -1 && currentAtkId != null) {
-                        tabIds[idx] = targetId
-                        state.attacksTabIds = tabIds
-                        if (!tabIds.contains(currentAtkId)) {
-                            state.attacks = state.attacks.filter { it.id != currentAtkId }
-                        }
-                        val targetAtk = state.attacks.find { it.id == targetId }
-                        if (targetAtk != null) {
-                            state.editingAttack = targetAtk
+                    if (currentAtkId != null && currentAtkId != targetId) {
+                        state.linkAttacks(secondaryId = currentAtkId, primaryId = targetId)
+                        val updatedAtk = state.attacks.find { it.id == currentAtkId }?.resolve(state.attacks)
+                        if (updatedAtk != null) {
+                            state.editingAttack = updatedAtk
                         }
                     }
                 },
                 onUnlink = {
                     val currentAtk = state.editingAttack
                     if (currentAtk != null) {
-                        val copy = currentAtk.copy(id = ru.quasaris.characternexus.util.generateUuid())
-                        val tabIds = (state.attacksTabIds ?: state.attacks.map { it.id }).toMutableList()
-                        val idx = tabIds.indexOf(currentAtk.id)
-                        if (idx != -1) {
-                            tabIds[idx] = copy.id
-                            state.attacks = state.attacks + copy
-                            state.attacksTabIds = tabIds
-                            state.editingAttack = copy
+                        val targetId = currentAtk.id
+                        state.unlinkAttack(targetId)
+                        val unlinkedAtk = state.attacks.find { it.id == targetId }
+                        if (unlinkedAtk != null) {
+                            state.editingAttack = unlinkedAtk
                         }
                     }
                 },

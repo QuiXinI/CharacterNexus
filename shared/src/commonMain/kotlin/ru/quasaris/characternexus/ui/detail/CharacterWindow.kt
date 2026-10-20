@@ -1816,6 +1816,7 @@ fun TabContent(
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                         onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
                         state = state,
+                        onRoll = onRoll,
                         isDesktop = isDesktop
                     )
                 }
@@ -1842,6 +1843,7 @@ fun TabContent(
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                         onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
                         state = state,
+                        onRoll = onRoll,
                         isDesktop = isDesktop
                     )
                 }
@@ -1932,6 +1934,7 @@ fun TabContent(
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                         onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
                         state = state,
+                        onRoll = onRoll,
                         isDesktop = isDesktop
                     )
                 }
@@ -1970,6 +1973,7 @@ fun TabContent(
                 onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                 onFullscreenVisibilityChanged = { if (it) state.closeFullscreenDialogs(); state.isFullscreenDynamicFieldOpen = it },
                 state = state,
+                onRoll = onRoll,
                 isDesktop = isDesktop
             )
         }

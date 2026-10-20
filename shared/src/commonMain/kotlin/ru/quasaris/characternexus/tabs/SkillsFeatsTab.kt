@@ -38,6 +38,7 @@ fun SkillsFeatsTab(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    onRoll: (RollResult) -> Unit = {},
     isDesktop: Boolean = false,
     header: @Composable () -> Unit = {}
 ) {
@@ -62,6 +63,7 @@ fun SkillsFeatsTab(
         onFullscreenVisibilityChanged = onFullscreenVisibilityChanged,
         isDesktop = isDesktop,
         state = state,
+        onRoll = onRoll,
         isContentVisible = { it.tag != "Cargo" },
         isAddButtonVisible = false,
         header = header,

@@ -53,6 +53,7 @@ fun BioTab(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    onRoll: (RollResult) -> Unit = {},
     isDesktop: Boolean = false,
     header: @Composable () -> Unit = {}
 ) {
@@ -108,6 +109,7 @@ fun BioTab(
         statsMap = statsMap,
         isDesktop = isDesktop,
         state = state,
+        onRoll = onRoll,
         header = {
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val containerWidth = maxWidth

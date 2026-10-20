@@ -45,11 +45,24 @@ fun buildAttackLinkConfig(
     val activeIndex = if (editingIndex in currentOccurrences) editingIndex
     else currentOccurrences.firstOrNull() ?: -1
 
-    val sharedWith = currentOccurrences
+    val sharedWith = mutableListOf<AttackUsage>()
+    currentOccurrences
         .filter { it != activeIndex }
-        .map { index ->
-            AttackUsage(label = "Вкладка атак (позиция ${index + 1})")
+        .forEach { index ->
+            sharedWith.add(AttackUsage(label = "Вкладка атак (позиция ${index + 1})"))
         }
+
+    if (currentAttack.linkedTo != null) {
+        val primaryAtk = existingAttacks.find { it.id == currentAttack.linkedTo }
+        sharedWith.add(AttackUsage(label = "Связана с атакой «${primaryAtk?.name ?: "Главная атака"}»"))
+    }
+
+    if (currentAttack.linkedIds.isNotEmpty()) {
+        currentAttack.linkedIds.forEach { secId ->
+            val secAtk = existingAttacks.find { it.id == secId }
+            sharedWith.add(AttackUsage(label = "Связана с ведомой атакой «${secAtk?.name ?: "Атака"}»"))
+        }
+    }
 
     val candidates = existingAttacks
         .filter { it.id != currentAttack.id }

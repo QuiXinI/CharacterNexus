@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalDensity
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import androidx.compose.ui.text.font.FontWeight
+import ru.quasaris.characternexus.model.RollResult
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -105,6 +106,7 @@ fun DynamicFieldsTab(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onFullscreenVisibilityChanged: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    onRoll: (RollResult) -> Unit = {},
     header: @Composable () -> Unit = {},
     footer: @Composable () -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
@@ -273,6 +275,7 @@ fun DynamicFieldsTab(
                         statsMap = statsMap,
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                         state = state,
+                        onRoll = onRoll,
                         viewportTopY = mainViewportTopY
                     )
                 }
@@ -358,7 +361,8 @@ fun DynamicFieldsTab(
                 popupHazeState = popupHazeState,
                 extraContent = extraContent,
                 isContentVisible = isContentVisible(field),
-                state = state
+                state = state,
+                onRoll = onRoll
             )
         }
     }
@@ -391,6 +395,7 @@ fun DynamicFieldItem(
     statsMap: Map<String, String> = emptyMap(),
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    onRoll: (RollResult) -> Unit = {},
     viewportTopY: Float = 0f,
     extraContent: @Composable (DynamicNoteState) -> Unit = {}
 ) {
@@ -637,7 +642,8 @@ fun DynamicFieldItem(
                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                         state = state,
                                         viewportTopY = viewportTopY,
-                                        popupHazeState = popupHazeState
+                                        popupHazeState = popupHazeState,
+                                        onRoll = onRoll
                                     )
                                 }
                             }
@@ -818,6 +824,7 @@ fun DynamicFieldFullscreenDialog(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     isDesktop: Boolean = false,
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    onRoll: (RollResult) -> Unit = {},
     popupHazeState: HazeState? = null,
     extraContent: @Composable (DynamicNoteState) -> Unit = {},
     isContentVisible: Boolean = true
@@ -851,6 +858,7 @@ fun DynamicFieldFullscreenDialog(
             onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
             isDesktop = isDesktop,
             state = state,
+            onRoll = onRoll,
             extraContent = extraContent,
             isContentVisible = isContentVisible
         )
@@ -892,6 +900,7 @@ fun DynamicFieldFullscreenContent(
     onFullscreenDialogOpenChange: (Boolean) -> Unit,
     isDesktop: Boolean = false,
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
+    onRoll: (RollResult) -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {},
     isContentVisible: Boolean = true
 ) {
@@ -1073,7 +1082,8 @@ fun DynamicFieldFullscreenContent(
                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                         state = state,
                                         viewportTopY = localViewportTopY,
-                                        popupHazeState = localHazeState
+                                        popupHazeState = localHazeState,
+                                        onRoll = onRoll
                                     )
                                 }
                             }

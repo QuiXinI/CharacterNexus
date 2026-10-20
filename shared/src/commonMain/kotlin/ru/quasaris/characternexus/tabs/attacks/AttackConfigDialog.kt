@@ -82,6 +82,12 @@ fun AttackConfigDialog(
     hazeState: HazeState? = null
 ) {
     var state by remember { mutableStateOf(attack) }
+
+    LaunchedEffect(attack) {
+        if (state != attack) {
+            state = attack
+        }
+    }
     
     LaunchedEffect(state) {
         if (state != attack) {
@@ -339,7 +345,7 @@ fun AttackConfigDialogContent(
             val isSpellsTab = attack.isMagic && selectedTab == 1
 
             if (isLinkTab) {
-                val linkConfig = remember(attack.id, existingAttacks, attacksTabIds, editingIndex) {
+                val linkConfig = remember(attack.id, attack.linkedTo, attack.linkedIds, existingAttacks, attacksTabIds, editingIndex) {
                     buildAttackLinkConfig(
                         currentAttack = attack,
                         existingAttacks = existingAttacks,
@@ -352,15 +358,13 @@ fun AttackConfigDialogContent(
                                 val targetAtk = existingAttacks.find { it.id == targetId }
                                 if (targetAtk != null) onAttackChange(targetAtk)
                             }
-                            onDismiss()
                         },
                         onUnlink = {
                             if (onUnlink != null) {
                                 onUnlink()
                             } else {
-                                onAttackChange(attack.copy(id = ru.quasaris.characternexus.util.generateUuid()))
+                                onAttackChange(attack.copy(linkedTo = null, linkedIds = emptyList()))
                             }
-                            onDismiss()
                         }
                     )
                 }

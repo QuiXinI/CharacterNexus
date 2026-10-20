@@ -188,3 +188,114 @@ fun formatRangeText(rangeNormal: String, rangeMax: String): String {
     }
 }
 
+fun List<AttackEntry>.linkAttacks(secondaryId: String, primaryId: String): List<AttackEntry> {
+    if (secondaryId == primaryId || secondaryId.isEmpty() || primaryId.isEmpty()) return this
+    val currentSecondary = find { it.id == secondaryId } ?: return this
+    val currentPrimary = find { it.id == primaryId } ?: return this
+
+    val newAttacks = toMutableList()
+
+    val formerSecondaries = currentSecondary.linkedIds
+    if (formerSecondaries.isNotEmpty()) {
+        formerSecondaries.forEach { secId ->
+            val idx = newAttacks.indexOfFirst { it.id == secId }
+            if (idx != -1) {
+                newAttacks[idx] = newAttacks[idx].copy(linkedTo = primaryId)
+            }
+        }
+    }
+
+    val secIdx = newAttacks.indexOfFirst { it.id == secondaryId }
+    if (secIdx != -1) {
+        newAttacks[secIdx] = currentSecondary.copy(
+            linkedTo = primaryId,
+            linkedIds = emptyList()
+        )
+    }
+
+    val primIdx = newAttacks.indexOfFirst { it.id == primaryId }
+    if (primIdx != -1) {
+        val updatedLinkedIds = (currentPrimary.linkedIds + secondaryId + formerSecondaries).distinct()
+        newAttacks[primIdx] = currentPrimary.copy(linkedIds = updatedLinkedIds)
+    }
+
+    return newAttacks
+}
+
+fun List<AttackEntry>.unlinkAttack(targetId: String): List<AttackEntry> {
+    if (targetId.isEmpty()) return this
+    val target = find { it.id == targetId } ?: return this
+
+    val newAttacks = toMutableList()
+
+    if (target.linkedTo != null) {
+        // Unlinking a secondary attack
+        val primaryId = target.linkedTo
+        val primaryIdx = newAttacks.indexOfFirst { it.id == primaryId }
+        val primary = if (primaryIdx != -1) newAttacks[primaryIdx] else null
+
+        if (primary != null) {
+            newAttacks[primaryIdx] = primary.copy(
+                linkedIds = primary.linkedIds.filter { it != targetId }
+            )
+            val secIdx = newAttacks.indexOfFirst { it.id == targetId }
+            if (secIdx != -1) {
+                newAttacks[secIdx] = primary.copy(
+                    id = targetId,
+                    linkedTo = null,
+                    linkedIds = emptyList()
+                )
+            }
+        } else {
+            val secIdx = newAttacks.indexOfFirst { it.id == targetId }
+            if (secIdx != -1) {
+                newAttacks[secIdx] = target.copy(
+                    linkedTo = null,
+                    linkedIds = emptyList()
+                )
+            }
+        }
+    } else if (target.linkedIds.isNotEmpty()) {
+        // Unlinking a primary attack
+        val newPrimaryId = target.linkedIds.first()
+        val remainingLinkedIds = target.linkedIds.drop(1)
+
+        val newPrimaryIdx = newAttacks.indexOfFirst { it.id == newPrimaryId }
+        if (newPrimaryIdx != -1) {
+            // First secondary becomes new primary with copy of target's data
+            newAttacks[newPrimaryIdx] = target.copy(
+                id = newPrimaryId,
+                linkedTo = null,
+                linkedIds = remainingLinkedIds
+            )
+            // Relink remaining secondaries to new primary
+            remainingLinkedIds.forEach { secId ->
+                val secIdx = newAttacks.indexOfFirst { it.id == secId }
+                if (secIdx != -1) {
+                    newAttacks[secIdx] = newAttacks[secIdx].copy(
+                        linkedTo = newPrimaryId,
+                        linkedIds = emptyList()
+                    )
+                }
+            }
+        }
+        // Old primary becomes independent with copy of its data
+        val oldPrimaryIdx = newAttacks.indexOfFirst { it.id == targetId }
+        if (oldPrimaryIdx != -1) {
+            newAttacks[oldPrimaryIdx] = target.copy(
+                id = targetId,
+                linkedTo = null,
+                linkedIds = emptyList()
+            )
+        }
+    } else {
+        val idx = newAttacks.indexOfFirst { it.id == targetId }
+        if (idx != -1) {
+            newAttacks[idx] = target.copy(linkedTo = null, linkedIds = emptyList())
+        }
+    }
+
+    return newAttacks
+}
+
+

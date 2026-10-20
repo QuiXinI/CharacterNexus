@@ -82,89 +82,109 @@ fun ProficienciesSection(
             }
         }
 
-        DragAndDropContainer(
-            state = dndState,
-            modifier = Modifier.fillMaxWidth()
+        @Composable
+        fun ProficienciesContent(
+            dndState: DragAndDropState<ProficiencyDragItem>?,
+            lookaheadScope: LookaheadScope,
+            isEditMode: Boolean
         ) {
-            // Общий LookaheadScope на все секции — именно он определяет
-            // "систему координат", в которой animateBounds отслеживает сдвиги
-            // чипов и плавно их анимирует вместо мгновенного прыжка.
-            LookaheadScope {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    state.proficiencies.sections.forEachIndexed { sectionIndex, section ->
-                        ProficiencySectionRow(
-                            section = section,
-                            sectionIndex = sectionIndex,
-                            dndState = dndState,
-                            lookaheadScope = this@LookaheadScope,
-                            isEditMode = isProficienciesEditMode,
-                            onSectionChange = { updated ->
-                                val newSections = state.proficiencies.sections.toMutableList()
-                                newSections[sectionIndex] = updated
-                                state.proficiencies = state.proficiencies.copy(sections = newSections)
-                            },
-                            onDeleteSection = {
-                                val newSections = state.proficiencies.sections.toMutableList()
-                                newSections.removeAt(sectionIndex)
-                                state.proficiencies = state.proficiencies.copy(sections = newSections)
-                            },
-                            onMoveItem = { draggedData, targetSecIdx, targetItemIdx ->
-                                val itemToMove = draggedData.item
-                                val currentSections = state.proficiencies.sections
-
-                                var sourceSecIdx = -1
-                                var sourceItemIdx = -1
-                                for (i in currentSections.indices) {
-                                    val idx = currentSections[i].items.indexOfFirst { it.id == itemToMove.id }
-                                    if (idx != -1) {
-                                        sourceSecIdx = i
-                                        sourceItemIdx = idx
-                                        break
-                                    }
-                                }
-
-                                if (sourceSecIdx != -1) {
-                                    if (!(sourceSecIdx == targetSecIdx && sourceItemIdx == targetItemIdx)) {
-                                        val newSections = currentSections.map { s ->
-                                            s.copy(items = s.items.toMutableList())
-                                        }.toMutableList()
-
-                                        (newSections[sourceSecIdx].items as MutableList<ProficiencyItem>).removeAt(sourceItemIdx)
-
-                                        val targetList = newSections[targetSecIdx].items as MutableList<ProficiencyItem>
-                                        val finalIndex = if (targetItemIdx == -1) {
-                                            targetList.size
-                                        } else {
-                                            targetItemIdx.coerceAtMost(targetList.size)
-                                        }
-                                        targetList.add(finalIndex, itemToMove)
-
-                                        state.proficiencies = state.proficiencies.copy(sections = newSections)
-                                    }
-                                }
-                            }
-                        )
-                    }
-
-                    // Add Section - Always visible
-                    KeepStyleInput(
-                        placeholder = "Добавить свой раздел",
-                        onSave = { title ->
-                            if (title.isNotBlank()) {
-                                state.proficiencies = state.proficiencies.copy(
-                                    sections = state.proficiencies.sections + ProficiencySection(title = title)
-                                )
-                            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                state.proficiencies.sections.forEachIndexed { sectionIndex, section ->
+                    ProficiencySectionRow(
+                        section = section,
+                        sectionIndex = sectionIndex,
+                        dndState = dndState,
+                        lookaheadScope = lookaheadScope,
+                        isEditMode = isEditMode,
+                        onSectionChange = { updated ->
+                            val newSections = state.proficiencies.sections.toMutableList()
+                            newSections[sectionIndex] = updated
+                            state.proficiencies = state.proficiencies.copy(sections = newSections)
                         },
-                        textStyle = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
+                        onDeleteSection = {
+                            val newSections = state.proficiencies.sections.toMutableList()
+                            newSections.removeAt(sectionIndex)
+                            state.proficiencies = state.proficiencies.copy(sections = newSections)
+                        },
+                        onMoveItem = { draggedData, targetSecIdx, targetItemIdx ->
+                            val itemToMove = draggedData.item
+                            val currentSections = state.proficiencies.sections
+
+                            var sourceSecIdx = -1
+                            var sourceItemIdx = -1
+                            for (i in currentSections.indices) {
+                                val idx = currentSections[i].items.indexOfFirst { it.id == itemToMove.id }
+                                if (idx != -1) {
+                                    sourceSecIdx = i
+                                    sourceItemIdx = idx
+                                    break
+                                }
+                            }
+
+                            if (sourceSecIdx != -1) {
+                                if (!(sourceSecIdx == targetSecIdx && sourceItemIdx == targetItemIdx)) {
+                                    val newSections = currentSections.map { s ->
+                                        s.copy(items = s.items.toMutableList())
+                                    }.toMutableList()
+
+                                    (newSections[sourceSecIdx].items as MutableList<ProficiencyItem>).removeAt(sourceItemIdx)
+
+                                    val targetList = newSections[targetSecIdx].items as MutableList<ProficiencyItem>
+                                    val finalIndex = if (targetItemIdx == -1) {
+                                        targetList.size
+                                    } else {
+                                        targetItemIdx.coerceAtMost(targetList.size)
+                                    }
+                                    targetList.add(finalIndex, itemToMove)
+
+                                    state.proficiencies = state.proficiencies.copy(sections = newSections)
+                                }
+                            }
+                        }
                     )
                 }
+
+                // Add Section - Always visible
+                KeepStyleInput(
+                    placeholder = "Добавить свой раздел",
+                    onSave = { title ->
+                        if (title.isNotBlank()) {
+                            state.proficiencies = state.proficiencies.copy(
+                                sections = state.proficiencies.sections + ProficiencySection(title = title)
+                            )
+                        }
+                    },
+                    textStyle = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                )
+            }
+        }
+
+        if (isProficienciesEditMode) {
+            DragAndDropContainer(
+                state = dndState,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                LookaheadScope {
+                    ProficienciesContent(
+                        dndState = dndState,
+                        lookaheadScope = this@LookaheadScope,
+                        isEditMode = isProficienciesEditMode
+                    )
+                }
+            }
+        } else {
+            LookaheadScope {
+                ProficienciesContent(
+                    dndState = null,
+                    lookaheadScope = this@LookaheadScope,
+                    isEditMode = isProficienciesEditMode
+                )
             }
         }
     }
@@ -175,7 +195,7 @@ fun ProficienciesSection(
 fun ProficiencySectionRow(
     section: ProficiencySection,
     sectionIndex: Int,
-    dndState: DragAndDropState<ProficiencyDragItem>,
+    dndState: DragAndDropState<ProficiencyDragItem>?,
     lookaheadScope: LookaheadScope,
     isEditMode: Boolean,
     onSectionChange: (ProficiencySection) -> Unit,
@@ -185,13 +205,17 @@ fun ProficiencySectionRow(
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
-            .dropTarget(
-                key = section.id,
-                state = dndState,
-                canDrop = section.items.isEmpty(),
-                onDragEnter = { draggedItem ->
-                    onMoveItem(draggedItem.data, sectionIndex, -1)
-                }
+            .then(
+                if (dndState != null) {
+                    Modifier.dropTarget(
+                        key = section.id,
+                        state = dndState,
+                        canDrop = section.items.isEmpty(),
+                        onDragEnter = { draggedItem ->
+                            onMoveItem(draggedItem.data, sectionIndex, -1)
+                        }
+                    )
+                } else Modifier
             ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)
@@ -231,7 +255,7 @@ fun ProficiencySectionRow(
 
         // Chips
         section.items.forEachIndexed { itemIndex, item ->
-            val isActualDragging = dndState.draggedItem?.key == item.id
+            val isActualDragging = dndState?.draggedItem?.key == item.id
 
             // key(item.id) — стабильная идентичность чипа в composition.
             // Без него Compose сопоставляет чипы по позиции в forEachIndexed,

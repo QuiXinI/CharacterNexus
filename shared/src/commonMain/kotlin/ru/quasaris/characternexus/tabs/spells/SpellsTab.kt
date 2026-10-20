@@ -461,6 +461,7 @@ fun SpellsTab(
                 isDesktop = isDesktop,
                 isSingleColumn = true,
                 state = state,
+                onRoll = onRoll,
                 header = header,
                 footer = {
                     if (spellSettings.isMagicEnabled) {

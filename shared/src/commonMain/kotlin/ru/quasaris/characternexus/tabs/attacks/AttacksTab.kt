@@ -188,7 +188,7 @@ fun AttacksTab(
                                 proficiencyBonus = proficiencyBonus,
                                 attributeModifiers = attributeModifiers,
                                 onEdit = {
-                                    editingAttack = attack
+                                    editingAttack = attack.resolve(attacks)
                                     editingAttackIndex = index
                                 },
                                 onDelete = { attackToDeleteIndex = index },
@@ -273,7 +273,22 @@ fun AttacksTab(
                 editingAttackIndex = -1
             },
             onSave = { updatedAttack ->
-                val newAttacks = if (attacks.any { it.id == updatedAttack.id }) {
+                val newAttacks = if (updatedAttack.linkedTo != null) {
+                    val primaryId = updatedAttack.linkedTo
+                    attacks.map { existing ->
+                        if (existing.id == primaryId) {
+                            updatedAttack.copy(
+                                id = existing.id,
+                                linkedTo = existing.linkedTo,
+                                linkedIds = existing.linkedIds
+                            )
+                        } else if (existing.id == updatedAttack.id) {
+                            updatedAttack
+                        } else {
+                            existing
+                        }
+                    }
+                } else if (attacks.any { it.id == updatedAttack.id }) {
                     attacks.map { if (it.id == updatedAttack.id) updatedAttack else it }
                 } else {
                     attacks + updatedAttack
@@ -294,34 +309,25 @@ fun AttacksTab(
             attacksTabIds = attacksTabIds,
             editingIndex = editingAttackIndex,
             onLink = { targetId ->
-                val targetAtk = attacks.find { it.id == targetId }
-                val tabIds = (attacksTabIds.ifEmpty { attacks.map { it.id } }).toMutableList()
                 val currentAtkId = editingAttack?.id
-                val idx = if (editingAttackIndex in tabIds.indices) editingAttackIndex else tabIds.indexOf(currentAtkId)
-                if (idx != -1 && currentAtkId != null) {
-                    tabIds[idx] = targetId
-                    onUpdateAttacksTabIds(tabIds)
-
-                    if (!tabIds.contains(currentAtkId)) {
-                        onUpdateAttacks(attacks.filter { it.id != currentAtkId })
-                    }
-
-                    if (targetAtk != null) {
-                        editingAttack = targetAtk
+                if (currentAtkId != null && currentAtkId != targetId) {
+                    val newAttacks = attacks.linkAttacks(secondaryId = currentAtkId, primaryId = targetId)
+                    onUpdateAttacks(newAttacks)
+                    val updatedAtk = newAttacks.find { it.id == currentAtkId }?.resolve(newAttacks)
+                    if (updatedAtk != null) {
+                        editingAttack = updatedAtk
                     }
                 }
             },
             onUnlink = {
                 val currentAtk = editingAttack
                 if (currentAtk != null) {
-                    val copy = currentAtk.copy(id = ru.quasaris.characternexus.util.generateUuid())
-                    val tabIds = (attacksTabIds.ifEmpty { attacks.map { it.id } }).toMutableList()
-                    val idx = if (editingAttackIndex in tabIds.indices) editingAttackIndex else tabIds.indexOf(currentAtk.id)
-                    if (idx != -1) {
-                        tabIds[idx] = copy.id
-                        onUpdateAttacks(attacks + copy)
-                        onUpdateAttacksTabIds(tabIds)
-                        editingAttack = copy
+                    val targetId = currentAtk.id
+                    val newAttacks = attacks.unlinkAttack(targetId)
+                    onUpdateAttacks(newAttacks)
+                    val unlinkedAtk = newAttacks.find { it.id == targetId }
+                    if (unlinkedAtk != null) {
+                        editingAttack = unlinkedAtk
                     }
                 }
             },
