@@ -1,7 +1,6 @@
 package ru.quasaris.characternexus.tabs.spells
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -13,7 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +32,6 @@ fun DynamicSpellFieldCard(
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
-    blurPopups: Boolean = false,
     settingsViewModel: SettingsViewModel? = null,
     statsMap: Map<String, String> = emptyMap(),
     characterLevel: Int = 1,
@@ -132,28 +131,45 @@ fun DynamicSpellFieldCard(
         Column(
             modifier = Modifier
                 .clipToBounds()
-                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
+                BasicTextField(
                     value = title,
                     onValueChange = { newTitle ->
                         title = newTitle
                         spellFieldManager?.upsert(spellField.copy(title = newTitle))
                     },
-                    placeholder = { Text("Подпись для всего поля") },
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent
-                    )
+                    textStyle = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = colorScheme.onSurface
+                    ),
+                    cursorBrush = SolidColor(colorScheme.primary),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp, end = 8.dp),
+                    decorationBox = { innerTextField ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (title.isEmpty()) {
+                                Text(
+                                    "Подпись для всего поля",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontSize = 18.sp,
+                                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
                 )
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -171,7 +187,7 @@ fun DynamicSpellFieldCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             ReorderableColumn(
                 list = spellField.items,
