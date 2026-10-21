@@ -419,8 +419,8 @@ fun CharacterWindow(
         state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions,
         state.race, state.classes, state.isJackOfAllTrades,
         state.deathSaveSuccesses, state.deathSaveFailures,
-        state.proficiencies, state.resourceManager.items,
-        state.customTabs, state.tabOrder, state.customTabTitles, state.customTabIcons
+        state.proficiencies, state.resourceManager.items, state.infoBlockManager.items, state.spellFieldManager.items,
+        state.customTabs, state.tabOrder, state.disabledTabs, state.customTabTitles, state.customTabIcons
     ) {
         onSaveChanges(state.toCharacter(character))
     }

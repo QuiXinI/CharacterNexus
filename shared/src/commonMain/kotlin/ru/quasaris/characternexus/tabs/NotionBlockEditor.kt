@@ -677,7 +677,8 @@ fun NotionBlockEditor(
                                 onLinkRequest = insertLinkAction,
                                 onInsertResource = insertResourceAction,
                                 onInsertInfoBlock = insertInfoBlockAction,
-                                onInsertAttack = insertAttackAction
+                                onInsertAttack = insertAttackAction,
+                                onInsertSpell = insertSpellAction
                             )
 
                             is DynamicContentBlock.Spoiler -> LineTextBlockRow(
@@ -703,7 +704,8 @@ fun NotionBlockEditor(
                                 onLinkRequest = insertLinkAction,
                                 onInsertResource = insertResourceAction,
                                 onInsertInfoBlock = insertInfoBlockAction,
-                                onInsertAttack = insertAttackAction
+                                onInsertAttack = insertAttackAction,
+                                onInsertSpell = insertSpellAction
                             )
 
                             is DynamicContentBlock.Quote -> LineTextBlockRow(
@@ -729,7 +731,8 @@ fun NotionBlockEditor(
                                 onLinkRequest = insertLinkAction,
                                 onInsertResource = insertResourceAction,
                                 onInsertInfoBlock = insertInfoBlockAction,
-                                onInsertAttack = insertAttackAction
+                                onInsertAttack = insertAttackAction,
+                                onInsertSpell = insertSpellAction
                             )
 
                             is DynamicContentBlock.Divider -> {
@@ -755,7 +758,8 @@ fun NotionBlockEditor(
                                         onLinkRequest = insertLinkAction,
                                         onInsertResource = insertResourceAction,
                                         onInsertInfoBlock = insertInfoBlockAction,
-                                        onInsertAttack = insertAttackAction
+                                        onInsertAttack = insertAttackAction,
+                                        onInsertSpell = insertSpellAction
                                     )
                                 } else {
                                     DividerBlockRow(
@@ -1033,7 +1037,8 @@ private fun handleFormattingKeyCombination(
     onLinkRequest: (() -> Unit)? = null,
     onInsertResource: (() -> Unit)? = null,
     onInsertInfoBlock: (() -> Unit)? = null,
-    onInsertAttack: (() -> Unit)? = null
+    onInsertAttack: (() -> Unit)? = null,
+    onInsertSpell: (() -> Unit)? = null
 ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val isCtrlOrCmd = event.isCtrlPressed || event.isMetaPressed
@@ -1105,6 +1110,11 @@ private fun handleFormattingKeyCombination(
             onInsertAttack?.invoke()
             true
         }
+        // Ctrl + J -> Spell (if not basic mode)
+        (event.key == Key.J) && !isBasicMode -> {
+            onInsertSpell?.invoke()
+            true
+        }
         else -> false
     }
 }
@@ -1128,7 +1138,8 @@ private fun LineTextBlockRow(
     onLinkRequest: (() -> Unit)? = null,
     onInsertResource: (() -> Unit)? = null,
     onInsertInfoBlock: (() -> Unit)? = null,
-    onInsertAttack: (() -> Unit)? = null
+    onInsertAttack: (() -> Unit)? = null,
+    onInsertSpell: (() -> Unit)? = null
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val uriHandler = LocalUriHandler.current
@@ -1249,7 +1260,8 @@ private fun LineTextBlockRow(
                             onLinkRequest = onLinkRequest,
                             onInsertResource = onInsertResource,
                             onInsertInfoBlock = onInsertInfoBlock,
-                            onInsertAttack = onInsertAttack
+                            onInsertAttack = onInsertAttack,
+                            onInsertSpell = onInsertSpell
                         )
                     }
                 }

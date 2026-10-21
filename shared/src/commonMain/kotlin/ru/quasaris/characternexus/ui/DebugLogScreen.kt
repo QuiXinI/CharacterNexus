@@ -448,7 +448,7 @@ fun DebugLogScreen(
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
                                         Text(
-                                            text = "Причина вылета (Short Reason)",
+                                            text = "Причина вылета",
                                             style = MaterialTheme.typography.titleSmall,
                                             color = colorScheme.onErrorContainer,
                                             fontWeight = FontWeight.Bold

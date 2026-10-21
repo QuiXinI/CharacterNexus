@@ -385,7 +385,7 @@ fun AttackCardItem(
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
-                                        text = (if (isHealing) "Лечение: " else "") + "$fullDamageText ${attack.damageType}".trim(),
+                                        text = "$fullDamageText ${attack.damageType}".trim(),
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                                         fontSize = 14.5.sp,
                                         fontWeight = FontWeight.Medium,
