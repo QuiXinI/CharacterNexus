@@ -276,7 +276,8 @@ fun DynamicFieldsTab(
                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                         state = state,
                         onRoll = onRoll,
-                        viewportTopY = mainViewportTopY
+                        viewportTopY = mainViewportTopY,
+                        isDesktop = isDesktop
                     )
                 }
             }
@@ -397,7 +398,8 @@ fun DynamicFieldItem(
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     onRoll: (RollResult) -> Unit = {},
     viewportTopY: Float = 0f,
-    extraContent: @Composable (DynamicNoteState) -> Unit = {}
+    extraContent: @Composable (DynamicNoteState) -> Unit = {},
+    isDesktop: Boolean = false
 ) {
     val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
     val isExpanded = if (isCollapsible) field.isExpanded else true
@@ -643,7 +645,8 @@ fun DynamicFieldItem(
                                         state = state,
                                         viewportTopY = viewportTopY,
                                         popupHazeState = popupHazeState,
-                                        onRoll = onRoll
+                                        onRoll = onRoll,
+                                        isDesktop = isDesktop
                                     )
                                 }
                             }
@@ -1083,7 +1086,8 @@ fun DynamicFieldFullscreenContent(
                                         state = state,
                                         viewportTopY = localViewportTopY,
                                         popupHazeState = localHazeState,
-                                        onRoll = onRoll
+                                        onRoll = onRoll,
+                                        isDesktop = isDesktop
                                     )
                                 }
                             }

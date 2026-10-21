@@ -237,7 +237,7 @@ fun AttackConfigDialogContent(
 
     val preparedSpells = remember(spellSettings, spellbookManager) {
         val baseSpells = spellbookManager?.loadSpells() ?: emptyList()
-        val filtered = spellSettings.getCharacterSpells(baseSpells)
+        val filtered = spellSettings.getSpellbookSpells(baseSpells)
 
         filtered.sortedWith(
             compareBy<SpellCard> { it.level.toIntOrNull() ?: 99 }
@@ -731,7 +731,7 @@ fun AttackConfigDialogContent(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                "Нет подготовленных заклинаний",
+                                if (spellSettings.isSpellbookEnabled) "Нет заклинаний в книге заклинаний" else "Нет подготовленных заклинаний",
                                 color = colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodyLarge
                             )

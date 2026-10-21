@@ -22,6 +22,8 @@ import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.backend.SpellbookManager
 import ru.quasaris.characternexus.backend.DicePart
+import ru.quasaris.characternexus.backend.AppScaleProvider
+import ru.quasaris.characternexus.backend.LocalAppScale
 import ru.quasaris.characternexus.tabs.spells.SpellFiltersArea
 import ru.quasaris.characternexus.ui.DialogDimStyle
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
@@ -83,46 +85,7 @@ fun SpellbookSelectionDialog(
     }
 
     if (isDesktop) {
-        SpellbookSelectionContent(
-            spellbookManager = spellbookManager,
-            searchQuery = searchQuery,
-            onSearchQueryChange = { searchQuery = it },
-            currentSelected = currentSelected,
-            onCurrentSelectedChange = { currentSelected = it },
-            currentPrepared = currentPrepared,
-            onCurrentPreparedChange = { currentPrepared = it },
-            isBookMode = isBookMode,
-            onIsBookModeChange = { isBookMode = it },
-            expandedIds = expandedIds,
-            onExpandedIdsChange = { expandedIds = it },
-            showFilters = showFilters,
-            onShowFiltersChange = { showFilters = it },
-            filterState = filterState,
-            onFilterStateChange = { filterState = it },
-            isSpellbookEnabled = isSpellbookEnabled,
-            onDismiss = handleDismiss,
-            onSave = handleSave,
-            hazeState = hazeState,
-            forceBlurEnabled = forceBlurEnabled,
-            blurCards = blurCards,
-            statsMap = statsMap,
-            characterLevel = characterLevel,
-            spellAttackBonus = spellAttackBonus,
-            spellAttackDice = spellAttackDice,
-            spellSaveDc = spellSaveDc,
-            spellSaveDice = spellSaveDice,
-            onRollDamage = onRollDamage,
-            onRollAttack = onRollAttack,
-            spellOverrides = spellOverrides,
-            settingsViewModel = settingsViewModel,
-            blurRadius = blurRadius
-        )
-    } else {
-        Dialog(
-            onDismissRequest = handleDismiss,
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            DialogDimStyle(0f)
+        AppScaleProvider(LocalAppScale.current) {
             SpellbookSelectionContent(
                 spellbookManager = spellbookManager,
                 searchQuery = searchQuery,
@@ -157,6 +120,49 @@ fun SpellbookSelectionDialog(
                 settingsViewModel = settingsViewModel,
                 blurRadius = blurRadius
             )
+        }
+    } else {
+        Dialog(
+            onDismissRequest = handleDismiss,
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            AppScaleProvider(LocalAppScale.current) {
+                DialogDimStyle(0f)
+                SpellbookSelectionContent(
+                    spellbookManager = spellbookManager,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    currentSelected = currentSelected,
+                    onCurrentSelectedChange = { currentSelected = it },
+                    currentPrepared = currentPrepared,
+                    onCurrentPreparedChange = { currentPrepared = it },
+                    isBookMode = isBookMode,
+                    onIsBookModeChange = { isBookMode = it },
+                    expandedIds = expandedIds,
+                    onExpandedIdsChange = { expandedIds = it },
+                    showFilters = showFilters,
+                    onShowFiltersChange = { showFilters = it },
+                    filterState = filterState,
+                    onFilterStateChange = { filterState = it },
+                    isSpellbookEnabled = isSpellbookEnabled,
+                    onDismiss = handleDismiss,
+                    onSave = handleSave,
+                    hazeState = hazeState,
+                    forceBlurEnabled = forceBlurEnabled,
+                    blurCards = blurCards,
+                    statsMap = statsMap,
+                    characterLevel = characterLevel,
+                    spellAttackBonus = spellAttackBonus,
+                    spellAttackDice = spellAttackDice,
+                    spellSaveDc = spellSaveDc,
+                    spellSaveDice = spellSaveDice,
+                    onRollDamage = onRollDamage,
+                    onRollAttack = onRollAttack,
+                    spellOverrides = spellOverrides,
+                    settingsViewModel = settingsViewModel,
+                    blurRadius = blurRadius
+                )
+            }
         }
     }
 }

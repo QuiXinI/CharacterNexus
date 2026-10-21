@@ -88,6 +88,7 @@ fun FormattingToolbar(
     onInsertResource: (() -> Unit)? = null,
     onInsertInfoBlock: (() -> Unit)? = null,
     onInsertAttack: (() -> Unit)? = null,
+    onInsertSpell: (() -> Unit)? = null,
     onInsertDivider: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     settingsViewModel: SettingsViewModel? = null,
@@ -270,7 +271,8 @@ fun FormattingToolbar(
                             onValueChange = onValueChange,
                             onInsertResource = onInsertResource,
                             onInsertInfoBlock = onInsertInfoBlock,
-                            onInsertAttack = onInsertAttack
+                            onInsertAttack = onInsertAttack,
+                            onInsertSpell = onInsertSpell
                         )
 
                         VerticalDivider(
@@ -505,7 +507,8 @@ private fun InsertDropdownMenu(
     onValueChange: (TextFieldValue) -> Unit,
     onInsertResource: (() -> Unit)?,
     onInsertInfoBlock: (() -> Unit)?,
-    onInsertAttack: (() -> Unit)?
+    onInsertAttack: (() -> Unit)?,
+    onInsertSpell: (() -> Unit)?
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -595,6 +598,24 @@ private fun InsertDropdownMenu(
                 },
                 leadingIcon = {
                     Icon(Icons.Default.Gavel, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Заклинания") },
+                onClick = {
+                    expanded = false
+                    if (onInsertSpell != null) {
+                        onInsertSpell()
+                    } else {
+                        val id = ru.quasaris.characternexus.util.generateUuid()
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val insert = prefix + "{Заклинания: id=$id}\n"
+                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                    }
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
             )
         }

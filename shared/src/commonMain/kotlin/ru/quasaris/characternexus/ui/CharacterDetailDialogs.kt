@@ -259,17 +259,47 @@ fun CharacterDetailDialogs(
                 )
             }
 
+            val targetSpellFieldId = state.activeSpellFieldIdForSelection
+            val targetField = if (targetSpellFieldId != null) {
+                state.spellFieldManager[targetSpellFieldId] ?: DynamicSpellField(id = targetSpellFieldId)
+            } else null
+
+            val selectedIds = targetField?.items?.mapNotNull { it.spellId } ?: spellSettings.selectedSpellIds
+            val isSpellbookEnabled = if (targetField != null) false else spellSettings.isSpellbookEnabled
+
             SpellbookSelectionDialog(
                 spellbookManager = spellbookManager,
-                selectedIds = spellSettings.selectedSpellIds,
+                selectedIds = selectedIds,
                 preparedIds = spellSettings.preparedSpellIds,
-                isSpellbookEnabled = spellSettings.isSpellbookEnabled,
-                onDismiss = { state.isSpellbookSelectionOpen = false },
+                isSpellbookEnabled = isSpellbookEnabled,
+                onDismiss = {
+                    state.isSpellbookSelectionOpen = false
+                    state.activeSpellFieldIdForSelection = null
+                },
                 onSave = { newIds, newPrepared ->
-                    onSpellSettingsChange(spellSettings.copy(
-                        selectedSpellIds = newIds,
-                        preparedSpellIds = newPrepared
-                    ))
+                    if (targetField != null) {
+                        val newItems = mutableListOf<SpellLevelItem>()
+                        val existingDividers = targetField.items.filter { it.divider != null }
+                        newItems.addAll(existingDividers)
+                        newIds.forEach { id ->
+                            if (newItems.none { it.spellId == id }) {
+                                newItems.add(SpellLevelItem(spellId = id))
+                            }
+                        }
+                        state.spellFieldManager.upsert(targetField.copy(items = newItems))
+                        if (state.spellSettings.isSpellbookEnabled) {
+                            val curSelected = state.spellSettings.selectedSpellIds
+                            val updatedSelected = (curSelected + newIds).distinct()
+                            onSpellSettingsChange(state.spellSettings.copy(
+                                selectedSpellIds = updatedSelected
+                            ))
+                        }
+                    } else {
+                        onSpellSettingsChange(spellSettings.copy(
+                            selectedSpellIds = newIds,
+                            preparedSpellIds = newPrepared
+                        ))
+                    }
                 },
                 hazeState = popupHazeState ?: hazeState,
                 forceBlurEnabled = forceBlurEnabled,

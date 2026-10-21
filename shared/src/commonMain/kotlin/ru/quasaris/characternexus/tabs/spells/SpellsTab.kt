@@ -138,9 +138,10 @@ fun SpellsTab(
         spellSettings.selectedSpellIds,
         spellSettings.preparedSpellIds,
         spellSettings.isSpellbookEnabled,
-        spellSettings.spellOverrides
+        spellSettings.spellOverrides,
+        state?.spellFieldManager?.items
     ) {
-        spellSettings.getCharacterSpells(baseSpells, spells)
+        spellSettings.getCharacterSpells(baseSpells, spells, state?.spellFieldManager?.items ?: emptyList())
     }
 
     LaunchedEffect(characterSpells) {

@@ -23,17 +23,19 @@ import characternexus.shared.generated.resources.*
 fun rememberCharacterDetailState(
     character: Character?,
     settingsViewModel: SettingsViewModel?,
-    magicItemManager: MagicItemManager? = null
+    magicItemManager: MagicItemManager? = null,
+    spellbookManager: SpellbookManager? = null
 ): CharacterDetailState {
     return remember(character?.uuid) {
-        CharacterDetailState(character, settingsViewModel, magicItemManager)
+        CharacterDetailState(character, settingsViewModel, magicItemManager, spellbookManager)
     }
 }
 
 class CharacterDetailState(
     val initialCharacter: Character?,
     val settingsViewModel: SettingsViewModel?,
-    val magicItemManager: MagicItemManager? = null
+    val magicItemManager: MagicItemManager? = null,
+    val spellbookManager: SpellbookManager? = null
 ) {
     val characterUuid = initialCharacter?.uuid ?: ""
     val migratedInitial = initialCharacter?.migrated()
@@ -257,11 +259,13 @@ class CharacterDetailState(
 
     val resourceManager = ResourceManager(this, initialCharacter?.resources ?: emptyList())
     val infoBlockManager = InfoBlockManager(this, initialCharacter?.infoBlocks ?: emptyList())
+    val spellFieldManager = ru.quasaris.characternexus.tabs.spells.SpellFieldManager(this, initialCharacter?.spellFields ?: emptyList())
 
     init {
         // Migration and Sync
         resourceManager.normalize()
         infoBlockManager.normalize()
+        spellFieldManager.normalize()
 
         // Ensure default proficiencies for existing characters with empty sections
         val currentSections = proficiencies.sections.toMutableList()
@@ -329,6 +333,7 @@ class CharacterDetailState(
     var isFullscreenDynamicFieldOpen by mutableStateOf(false)
     var isWalletDialogOpen by mutableStateOf(false)
     var isSpellbookSelectionOpen by mutableStateOf(false)
+    var activeSpellFieldIdForSelection by mutableStateOf<String?>(null)
 
     var activeAttackConfigId by mutableStateOf<String?>(null)
     var editingAttack by mutableStateOf<AttackEntry?>(null)
@@ -688,6 +693,7 @@ class CharacterDetailState(
             deathSaveFailures = deathSaveFailures,
             resources = resourceManager.items,
             infoBlocks = infoBlockManager.items,
+            spellFields = spellFieldManager.items,
             customTabs = customTabs,
             tabOrder = tabOrder,
             disabledTabs = disabledTabs,
@@ -982,6 +988,7 @@ class CharacterDetailState(
         isFullscreenDynamicFieldOpen = false
         isWalletDialogOpen = false
         isSpellbookSelectionOpen = false
+        activeSpellFieldIdForSelection = null
         isResourceConfigOpen = false
         isPotionConfigOpen = false
         isPotionSelectionOpen = false

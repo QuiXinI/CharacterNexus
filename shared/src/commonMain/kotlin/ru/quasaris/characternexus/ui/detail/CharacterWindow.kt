@@ -117,7 +117,7 @@ fun CharacterWindow(
         return
     }
 
-    val state = rememberCharacterDetailState(character, settingsViewModel, magicItemManager)
+    val state = rememberCharacterDetailState(character, settingsViewModel, magicItemManager, spellbookManager)
     state.CollectSettings()
 
     val scope = rememberCoroutineScope()

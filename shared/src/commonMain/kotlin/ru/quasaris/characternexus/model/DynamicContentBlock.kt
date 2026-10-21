@@ -114,4 +114,10 @@ sealed class DynamicContentBlock {
             return "{Атака: ${parts.joinToString(" | ")}}"
         }
     }
+
+    @Immutable
+    @Serializable
+    data class SpellFieldRef(val id: String) : DynamicContentBlock() {
+        fun toTag(): String = "{Заклинания: id=$id}"
+    }
 }

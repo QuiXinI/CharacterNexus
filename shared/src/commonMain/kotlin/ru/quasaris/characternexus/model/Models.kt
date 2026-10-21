@@ -758,6 +758,14 @@ data class SpellLevelDivider(
 
 @Immutable
 @Serializable
+data class DynamicSpellField(
+    val id: String = generateUuid(),
+    val title: String = "",
+    val items: List<SpellLevelItem> = emptyList()
+)
+
+@Immutable
+@Serializable
 data class SpellLevelItem(
     val spellId: String? = null,
     val divider: SpellLevelDivider? = null
@@ -869,13 +877,14 @@ fun extractSpellNamesFromNotes(spellsNotes: List<DynamicNoteState>): Set<String>
     return result
 }
 
-fun SpellSettings.getCharacterSpells(
+fun SpellSettings.getSpellbookSpells(
     baseSpells: List<SpellCard>,
-    spellsNotes: List<DynamicNoteState> = emptyList()
+    spellsNotes: List<DynamicNoteState> = emptyList(),
+    spellFields: List<DynamicSpellField> = emptyList()
 ): List<SpellCard> {
     val allAvailable = getAvailableSpells(baseSpells)
     val selectedSet = selectedSpellIds.toSet()
-    val preparedSet = preparedSpellIds.toSet()
+    val fieldSpellIds = spellFields.flatMap { field -> field.items.mapNotNull { it.spellId } }.toSet()
 
     fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
         return idSet.any { spell.matchesId(it) }
@@ -884,12 +893,29 @@ fun SpellSettings.getCharacterSpells(
     val extractedNames = if (spellsNotes.isNotEmpty()) extractSpellNamesFromNotes(spellsNotes) else emptySet()
 
     fun isSelected(spell: SpellCard): Boolean {
-        if (matchesAny(spell, selectedSet)) return true
+        if (matchesAny(spell, selectedSet) || matchesAny(spell, fieldSpellIds)) return true
         if (extractedNames.isNotEmpty()) {
             return extractedNames.any { spell.matchesId(it) || spell.name.equals(it, ignoreCase = true) || (spell.englishName.isNotBlank() && spell.englishName.equals(it, ignoreCase = true)) }
         }
         return false
     }
+
+    return allAvailable.filter { isSelected(it) }
+}
+
+fun SpellSettings.getCharacterSpells(
+    baseSpells: List<SpellCard>,
+    spellsNotes: List<DynamicNoteState> = emptyList(),
+    spellFields: List<DynamicSpellField> = emptyList()
+): List<SpellCard> {
+    val spellbookSpells = getSpellbookSpells(baseSpells, spellsNotes, spellFields)
+    val preparedSet = preparedSpellIds.toSet()
+
+    fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
+        return idSet.any { spell.matchesId(it) }
+    }
+
+    val extractedNames = if (spellsNotes.isNotEmpty()) extractSpellNamesFromNotes(spellsNotes) else emptySet()
 
     fun isPrepared(spell: SpellCard): Boolean {
         if (matchesAny(spell, preparedSet)) return true
@@ -900,11 +926,11 @@ fun SpellSettings.getCharacterSpells(
     }
 
     return if (isSpellbookEnabled) {
-        allAvailable.filter {
-            isPrepared(it) || (isSelected(it) && it.isRitual)
+        spellbookSpells.filter {
+            isPrepared(it) || it.isRitual
         }
     } else {
-        allAvailable.filter { isSelected(it) }
+        spellbookSpells
     }
 }
 
@@ -1103,6 +1129,7 @@ data class Character(
     val deathSaveFailures: Int = 0,
     val resources: List<DynamicContentBlock.Resource> = emptyList(),
     val infoBlocks: List<DynamicContentBlock.InfoBlock> = emptyList(),
+    val spellFields: List<DynamicSpellField> = emptyList(),
     val folderUuid: String? = null,
     val customTabs: List<CustomTab> = emptyList(),
     val tabOrder: List<String> = emptyList(),

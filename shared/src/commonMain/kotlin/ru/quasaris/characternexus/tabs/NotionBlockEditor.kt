@@ -45,12 +45,14 @@ import dev.chrisbanes.haze.HazeState
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.model.DynamicNoteState
+import ru.quasaris.characternexus.model.DynamicSpellField
 import ru.quasaris.characternexus.model.NoteBlockState
 import ru.quasaris.characternexus.ui.BackHandler
 import kotlin.time.Duration.Companion.milliseconds
 import ru.quasaris.characternexus.tabs.resources.ResourceBlock
 import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockComponent
 import ru.quasaris.characternexus.tabs.attacks.AttackCardItem
+import ru.quasaris.characternexus.tabs.spells.DynamicSpellFieldCard
 import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.model.Attribute
@@ -84,7 +86,8 @@ fun NotionBlockEditor(
     onIsPlainTextModeChange: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier,
     onRoll: (RollResult) -> Unit = {},
-    bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit, onInsertInfoBlock: () -> Unit, onInsertAttack: () -> Unit) -> Unit)? = null
+    bottomActionRow: (@Composable (onInsertTextLine: () -> Unit, onInsertDivider: () -> Unit, onInsertResource: () -> Unit, onInsertInfoBlock: () -> Unit, onInsertAttack: () -> Unit, onInsertSpell: () -> Unit) -> Unit)? = null,
+    isDesktop: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -471,6 +474,24 @@ fun NotionBlockEditor(
         }
     }
 
+    val insertSpellAction = {
+        val spellField = state?.spellFieldManager?.create("Заклинания")
+            ?: DynamicSpellField(title = "Заклинания", id = ru.quasaris.characternexus.util.generateUuid())
+        if (effectiveIsPlainText) {
+            val tag = "{Заклинания: id=${spellField.id}}"
+            val cur = plainTextValue
+            val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
+            val min = cur.selection.min.coerceIn(0, cur.text.length)
+            val max = cur.selection.max.coerceIn(0, cur.text.length)
+            val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
+            plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
+            lastEmittedText = newText
+            onFieldChange(field.copy(content = newText))
+        } else {
+            insertBlockAtSelection(DynamicContentBlock.SpellFieldRef(spellField.id))
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -516,6 +537,7 @@ fun NotionBlockEditor(
                 onInsertResource = insertResourceAction,
                 onInsertInfoBlock = insertInfoBlockAction,
                 onInsertAttack = insertAttackAction,
+                onInsertSpell = insertSpellAction,
                 onInsertDivider = {
                     if (effectiveIsPlainText) {
                         val cur = plainTextValue
@@ -940,6 +962,22 @@ fun NotionBlockEditor(
                                     advantageLogic = state?.advantageLogic ?: AdvantageLogic.TOTAL
                                 )
                             }
+
+                            is DynamicContentBlock.SpellFieldRef -> {
+                                DynamicSpellFieldCard(
+                                    spellFieldId = block.id,
+                                    state = state,
+                                    spellbookManager = state?.spellbookManager,
+                                    hazeState = hazeState,
+                                    popupHazeState = popupHazeState,
+                                    forceBlurEnabled = forceBlurEnabled,
+                                    settingsViewModel = settingsViewModel,
+                                    statsMap = statsMap,
+                                    characterLevel = state?.level?.toIntOrNull() ?: 1,
+                                    onRoll = onRoll,
+                                    isDesktop = isDesktop
+                                )
+                            }
                         }
                     }
 
@@ -977,6 +1015,11 @@ fun NotionBlockEditor(
                     s.attacks = s.attacks + atk
                 }
                 insertAfterActive(DynamicContentBlock.AttackRef(atk.id))
+            },
+            {
+                val spellField = state?.spellFieldManager?.create("Заклинания")
+                    ?: DynamicSpellField(title = "Заклинания", id = ru.quasaris.characternexus.util.generateUuid())
+                insertAfterActive(DynamicContentBlock.SpellFieldRef(spellField.id))
             }
         )
     }

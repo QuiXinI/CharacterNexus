@@ -62,6 +62,7 @@ object BlockContentParser {
         is DynamicContentBlock.InfoBlockRef -> block.toTag()
         is DynamicContentBlock.Attack -> block.toTag()
         is DynamicContentBlock.AttackRef -> block.toTag()
+        is DynamicContentBlock.SpellFieldRef -> block.toTag()
     }
 
     fun reconcile(previous: List<NoteBlockState>, freshBlocks: List<DynamicContentBlock>): List<NoteBlockState> {
@@ -84,5 +85,6 @@ object BlockContentParser {
         is DynamicContentBlock.InfoBlockRef -> "IBR:${block.id}"
         is DynamicContentBlock.Attack -> "A:${block.id}:${block.name}:${block.notes}"
         is DynamicContentBlock.AttackRef -> "AR:${block.id}"
+        is DynamicContentBlock.SpellFieldRef -> "SFR:${block.id}"
     }
 }
