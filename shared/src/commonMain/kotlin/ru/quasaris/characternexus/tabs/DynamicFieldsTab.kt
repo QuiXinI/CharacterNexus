@@ -97,6 +97,7 @@ fun DynamicFieldsTab(
     isTitleReadOnly: Boolean = false,
     isAddButtonVisible: Boolean = true,
     isReorderButtonVisible: Boolean = true,
+    isReorderRowsButtonVisible: (DynamicNoteState) -> Boolean = { true },
     isScrollEnabled: Boolean = true,
     isContentVisible: (DynamicNoteState) -> Boolean = { true },
     collapseOnEdit: Boolean? = null,
@@ -109,7 +110,8 @@ fun DynamicFieldsTab(
     onRoll: (RollResult) -> Unit = {},
     header: @Composable () -> Unit = {},
     footer: @Composable () -> Unit = {},
-    extraContent: @Composable (DynamicNoteState) -> Unit = {}
+    extraContent: @Composable (DynamicNoteState) -> Unit = {},
+    extraHeaderActions: @Composable (DynamicNoteState) -> Unit = {}
 ) {
     val gridState = rememberLazyStaggeredGridState()
 
@@ -144,10 +146,11 @@ fun DynamicFieldsTab(
 
     var fullscreenFieldIndex by remember { mutableStateOf<Int?>(null) }
     
-    LaunchedEffect(fullscreenFieldIndex, extraContent, isContentVisible) {
+    LaunchedEffect(fullscreenFieldIndex, extraContent, extraHeaderActions, isContentVisible) {
         onFullscreenVisibilityChanged(fullscreenFieldIndex != null)
         state?.activeDynamicField = fullscreenFieldIndex?.let { items.getOrNull(it) }
         state?.activeDynamicFieldExtraContent = if (fullscreenFieldIndex != null) extraContent else null
+        state?.activeDynamicFieldExtraHeaderActions = if (fullscreenFieldIndex != null) extraHeaderActions else null
         state?.activeDynamicFieldContentVisible = if (fullscreenFieldIndex != null) isContentVisible(items[fullscreenFieldIndex!!]) else true
         state?.isFullscreenDynamicFieldOpen = fullscreenFieldIndex != null
     }
@@ -261,9 +264,11 @@ fun DynamicFieldsTab(
                         dragModifier = dragModifier,
                         modifier = Modifier.animateItem(),
                         extraContent = extraContent,
+                        extraHeaderActions = extraHeaderActions,
                         isCollapsible = isCollapsible,
                         isTitleReadOnly = isTitleReadOnly,
                         isReorderButtonVisible = isReorderButtonVisible,
+                        isReorderRowsButtonVisible = isReorderRowsButtonVisible(field),
                         isContentVisible = isContentVisible(field),
                         isLockedGlobal = fullscreenEditingOnly,
                         collapseOnEdit = collapseOnEditActual,
@@ -361,7 +366,9 @@ fun DynamicFieldsTab(
                 isDesktop = isDesktop,
                 popupHazeState = popupHazeState,
                 extraContent = extraContent,
+                extraHeaderActions = extraHeaderActions,
                 isContentVisible = isContentVisible(field),
+                isReorderRowsButtonVisible = isReorderRowsButtonVisible(field),
                 state = state,
                 onRoll = onRoll
             )
@@ -385,6 +392,7 @@ fun DynamicFieldItem(
     isCollapsible: Boolean = true,
     isTitleReadOnly: Boolean = false,
     isReorderButtonVisible: Boolean = true,
+    isReorderRowsButtonVisible: Boolean = true,
     isContentVisible: Boolean = true,
     isLockedGlobal: Boolean = false,
     collapseOnEdit: Boolean = true,
@@ -399,6 +407,7 @@ fun DynamicFieldItem(
     onRoll: (RollResult) -> Unit = {},
     viewportTopY: Float = 0f,
     extraContent: @Composable (DynamicNoteState) -> Unit = {},
+    extraHeaderActions: @Composable (DynamicNoteState) -> Unit = {},
     isDesktop: Boolean = false
 ) {
     val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
@@ -423,6 +432,7 @@ fun DynamicFieldItem(
 
     var isReorderMode by remember(field.id) { mutableStateOf(false) }
     LaunchedEffect(isExpanded, isEditMode) { if (!isExpanded || isEditMode) isReorderMode = false }
+    LaunchedEffect(isReorderMode) { state?.activeDynamicFieldReorderMode = isReorderMode }
 
     val imeBottomPx = WindowInsets.ime.getBottom(density)
 
@@ -553,7 +563,9 @@ fun DynamicFieldItem(
                             }
                         }
 
-                        if (canEdit && isExpanded) {
+                        extraHeaderActions(field)
+
+                        if (canEdit && isExpanded && isReorderRowsButtonVisible) {
                             IconToggleButton(
                                 checked = isReorderMode,
                                 onCheckedChange = { isReorderMode = it },
@@ -741,7 +753,7 @@ fun DynamicFieldItem(
                                             }
                                         }
 
-                                        if (canEdit) {
+                                        if (canEdit && isReorderRowsButtonVisible) {
                                             IconToggleButton(
                                                 checked = isReorderMode,
                                                 onCheckedChange = { isReorderMode = it },
@@ -830,7 +842,9 @@ fun DynamicFieldFullscreenDialog(
     onRoll: (RollResult) -> Unit = {},
     popupHazeState: HazeState? = null,
     extraContent: @Composable (DynamicNoteState) -> Unit = {},
-    isContentVisible: Boolean = true
+    extraHeaderActions: @Composable (DynamicNoteState) -> Unit = {},
+    isContentVisible: Boolean = true,
+    isReorderRowsButtonVisible: Boolean = true
 ) {
     var title by remember(field.id) { mutableStateOf(field.title) }
     var isLocked by remember(field.id) { mutableStateOf(field.isLocked) }
@@ -863,7 +877,9 @@ fun DynamicFieldFullscreenDialog(
             state = state,
             onRoll = onRoll,
             extraContent = extraContent,
-            isContentVisible = isContentVisible
+            extraHeaderActions = extraHeaderActions,
+            isContentVisible = isContentVisible,
+            isReorderRowsButtonVisible = isReorderRowsButtonVisible
         )
     }
 
@@ -905,7 +921,9 @@ fun DynamicFieldFullscreenContent(
     state: ru.quasaris.characternexus.ui.CharacterDetailState? = null,
     onRoll: (RollResult) -> Unit = {},
     extraContent: @Composable (DynamicNoteState) -> Unit = {},
-    isContentVisible: Boolean = true
+    extraHeaderActions: @Composable (DynamicNoteState) -> Unit = {},
+    isContentVisible: Boolean = true,
+    isReorderRowsButtonVisible: Boolean = true
 ) {
     val isOled = MaterialTheme.colorScheme.background == Color.Black
     val effectiveBlur = forceBlurEnabled && !isOled
@@ -996,6 +1014,7 @@ fun DynamicFieldFullscreenContent(
                             }
                         },
                         actions = {
+                            extraHeaderActions(field)
                             if (!isLocked && isContentVisible) {
                                 IconToggleButton(checked = isPlainTextMode, onCheckedChange = { isPlainTextMode = it }) {
                                     Icon(
@@ -1004,12 +1023,14 @@ fun DynamicFieldFullscreenContent(
                                         tint = if (isPlainTextMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                                     )
                                 }
-                                IconToggleButton(checked = isReorderMode, onCheckedChange = { isReorderMode = it }) {
-                                    Icon(
-                                        imageVector = Icons.Default.SwapVert,
-                                        contentDescription = "Режим сортировки",
-                                        tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
+                                if (isReorderRowsButtonVisible) {
+                                    IconToggleButton(checked = isReorderMode, onCheckedChange = { isReorderMode = it }) {
+                                        Icon(
+                                            imageVector = Icons.Default.SwapVert,
+                                            contentDescription = "Режим сортировки",
+                                            tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
                                 }
                             }
                         },
@@ -1173,7 +1194,7 @@ fun DynamicFieldFullscreenContent(
                                     Spacer(Modifier.width(1.dp))
                                 }
 
-                                if (!isLocked) {
+                                if (!isLocked && isReorderRowsButtonVisible) {
                                     IconToggleButton(
                                         checked = isReorderMode,
                                         onCheckedChange = { isReorderMode = it },

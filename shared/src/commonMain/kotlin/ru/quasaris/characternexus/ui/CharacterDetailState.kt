@@ -340,6 +340,8 @@ class CharacterDetailState(
     var editingSpell by mutableStateOf<SpellCard?>(null)
     var activeDynamicField by mutableStateOf<DynamicNoteState?>(null)
     var activeDynamicFieldExtraContent by mutableStateOf<(@Composable (DynamicNoteState) -> Unit)?>(null)
+    var activeDynamicFieldExtraHeaderActions by mutableStateOf<(@Composable (DynamicNoteState) -> Unit)?>(null)
+    var activeDynamicFieldReorderMode by mutableStateOf(false)
     var activeDynamicFieldContentVisible by mutableStateOf(true)
     var selectedCurrency by mutableStateOf<Currency?>(null)
     var isResourceConfigOpen by mutableStateOf(false)

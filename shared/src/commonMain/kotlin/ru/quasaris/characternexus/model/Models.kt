@@ -761,7 +761,8 @@ data class SpellLevelDivider(
 data class DynamicSpellField(
     val id: String = generateUuid(),
     val title: String = "",
-    val items: List<SpellLevelItem> = emptyList()
+    val items: List<SpellLevelItem> = emptyList(),
+    val isExpanded: Boolean = false
 )
 
 @Immutable

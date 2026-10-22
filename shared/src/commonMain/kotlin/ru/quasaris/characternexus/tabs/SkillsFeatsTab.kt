@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +44,8 @@ fun SkillsFeatsTab(
     isDesktop: Boolean = false,
     header: @Composable () -> Unit = {}
 ) {
+    var isProficienciesEditMode by remember { mutableStateOf(false) }
+
     DynamicFieldsTab(
         fields = skillsAndTraits,
         onFieldsChange = onSkillsAndTraitsChange,
@@ -64,8 +68,9 @@ fun SkillsFeatsTab(
         isDesktop = isDesktop,
         state = state,
         onRoll = onRoll,
-        isContentVisible = { it.tag != "Cargo" },
+        isContentVisible = { it.tag != "Cargo" && it.tag != "Proficiencies" },
         isAddButtonVisible = false,
+        isReorderRowsButtonVisible = { it.tag != "Proficiencies" && it.tag != "Cargo" },
         header = header,
         footer = {
             val hasCargoSection = skillsAndTraits.any { it.tag == "Cargo" }
@@ -151,6 +156,21 @@ fun SkillsFeatsTab(
                 }
             }
         },
+        extraHeaderActions = { field ->
+            if (field.tag == "Proficiencies") {
+                IconButton(
+                    onClick = { isProficienciesEditMode = !isProficienciesEditMode },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isProficienciesEditMode) Icons.Default.Check else Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (isProficienciesEditMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        },
         extraContent = { field ->
             when (field.tag) {
                 "Cargo" -> {
@@ -169,7 +189,9 @@ fun SkillsFeatsTab(
                     if (state != null) {
                         ProficienciesSection(
                             state = state,
-                            isExpanded = field.isExpanded
+                            isExpanded = field.isExpanded,
+                            isEditMode = isProficienciesEditMode,
+                            isReorderMode = isProficienciesEditMode
                         )
                     }
                 }

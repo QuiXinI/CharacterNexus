@@ -227,6 +227,7 @@ fun CharacterDetailDialogs(
                 isDesktop = isDesktop,
                 state = state,
                 extraContent = state.activeDynamicFieldExtraContent ?: {},
+                extraHeaderActions = state.activeDynamicFieldExtraHeaderActions ?: {},
                 isContentVisible = state.activeDynamicFieldContentVisible
             )
         }
