@@ -3,6 +3,19 @@ package ru.quasaris.characternexus.tabs
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -75,6 +88,51 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import sh.calvin.reorderable.*
 import kotlinx.coroutines.launch
 
+private const val EditModeScale = 0.95f
+private val EditModePadding = 8.dp
+
+private const val LiftedScale = 1.03f
+
+private const val DropSettleMillis = 700L
+
+private val ReorderPlacementSpec = spring<IntOffset>(
+    dampingRatio = 0.9f,
+    stiffness = Spring.StiffnessMediumLow
+)
+
+private fun Modifier.dropGhost(color: Color, radius: Dp): Modifier = drawBehind {
+    val r = CornerRadius(radius.toPx())
+    drawRoundRect(color.copy(alpha = 0.10f), cornerRadius = r)
+    drawRoundRect(
+        color = color.copy(alpha = 0.55f),
+        cornerRadius = r,
+        style = Stroke(
+            width = 2.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))
+        )
+    )
+}
+
+@Composable
+private fun DropGhost(slot: Int, active: Boolean, modifier: Modifier = Modifier) {
+    val fade = remember { Animatable(0f) }
+    LaunchedEffect(slot, active) {
+        if (active) {
+            fade.snapTo(0f)
+            fade.animateTo(1f, tween(durationMillis = 180))
+        } else {
+            fade.animateTo(0f, tween(durationMillis = 220))
+        }
+    }
+    Box(
+        modifier = modifier
+            .scale(EditModeScale)
+            .padding(EditModePadding)
+            .graphicsLayer { alpha = fade.value }
+            .dropGhost(MaterialTheme.colorScheme.primary, 16.dp)
+    )
+}
+
 @Composable
 fun DynamicFieldsTab(
     fields: List<DynamicNoteState>,
@@ -130,22 +188,31 @@ fun DynamicFieldsTab(
         }
     }
 
+    val haptic = LocalHapticFeedback.current
+
+    var liftedKey by remember { mutableStateOf<Any?>(null) }
+
     val reorderableState = rememberReorderableLazyStaggeredGridState(gridState) { from, to ->
-        val fromIdx = from.index - 1
-        val toIdx = to.index - 1
-        if (fromIdx in items.indices && toIdx in items.indices) {
+        val fromIdx = items.indexOfFirst { it.id == from.key }
+        val toIdx = items.indexOfFirst { it.id == to.key }
+        if (fromIdx != -1 && toIdx != -1 && fromIdx != toIdx) {
             items.add(toIdx, items.removeAt(fromIdx))
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         }
     }
 
     LaunchedEffect(reorderableState.isAnyItemDragging) {
         if (!reorderableState.isAnyItemDragging) {
-            onFieldsChange(items.toList())
+            if (items.map { it.id } != fields.map { it.id }) {
+                onFieldsChange(items.toList())
+            }
+            delay(DropSettleMillis)
+            liftedKey = null
         }
     }
 
     var fullscreenFieldIndex by remember { mutableStateOf<Int?>(null) }
-    
+
     LaunchedEffect(fullscreenFieldIndex, extraContent, extraHeaderActions, isContentVisible) {
         onFullscreenVisibilityChanged(fullscreenFieldIndex != null)
         state?.activeDynamicField = fullscreenFieldIndex?.let { items.getOrNull(it) }
@@ -162,7 +229,7 @@ fun DynamicFieldsTab(
     }
 
     var fieldToDeleteIndex by remember { mutableStateOf<Int?>(null) }
-    
+
     var mainViewportTopY by remember { mutableFloatStateOf(0f) }
 
     val fullscreenEditingOnly by settingsViewModel?.fullscreenEditingOnly?.collectAsState() ?: remember { mutableStateOf(false) }
@@ -239,51 +306,76 @@ fun DynamicFieldsTab(
             }
 
             itemsIndexed(items, key = { _, field -> field.id }) { index, field ->
-                ReorderableItem(reorderableState, key = field.id) { isDragging ->
-                    val dragModifier = if (isEditMode && isReorderButtonVisible) {
-                        Modifier.draggableHandle()
-                    } else Modifier
+                val isLifted = liftedKey == field.id
 
-                    DynamicFieldItem(
-                        field = field,
-                        isEditMode = isEditMode,
-                        isDragging = isDragging,
-                        isAnyItemDragging = reorderableState.isAnyItemDragging,
-                        titlePlaceholder = titlePlaceholder,
-                        contentPlaceholder = contentPlaceholder,
-                        onFieldChange = { updatedField ->
-                            val currentList = items.toList()
-                            val idx = currentList.indexOfFirst { it.id == updatedField.id }
-                            if (idx != -1) {
-                                items[idx] = updatedField
-                                onFieldsChange(items.toList())
-                            }
-                        },
-                        onDelete = { fieldToDeleteIndex = index },
-                        onFullscreenRequest = { fullscreenFieldIndex = index },
-                        dragModifier = dragModifier,
-                        modifier = Modifier.animateItem(),
-                        extraContent = extraContent,
-                        extraHeaderActions = extraHeaderActions,
-                        isCollapsible = isCollapsible,
-                        isTitleReadOnly = isTitleReadOnly,
-                        isReorderButtonVisible = isReorderButtonVisible,
-                        isReorderRowsButtonVisible = isReorderRowsButtonVisible(field),
-                        isContentVisible = isContentVisible(field),
-                        isLockedGlobal = fullscreenEditingOnly,
-                        collapseOnEdit = collapseOnEditActual,
-                        hazeState = hazeState,
-                        popupHazeState = popupHazeState,
-                        forceBlurEnabled = forceBlurEnabled,
-                        blurPopups = blurPopups,
-                        settingsViewModel = settingsViewModel,
-                        statsMap = statsMap,
-                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                        state = state,
-                        onRoll = onRoll,
-                        viewportTopY = mainViewportTopY,
-                        isDesktop = isDesktop
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .zIndex(if (isLifted) 1f else 0f)
+                        .then(
+                            if (isLifted) Modifier
+                            else Modifier.animateItem(placementSpec = ReorderPlacementSpec)
+                        )
+                ) {
+                    if (isLifted) {
+                        DropGhost(
+                            slot = index,
+                            active = reorderableState.isAnyItemDragging,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
+
+                    ReorderableItem(reorderableState, key = field.id) { isDragging ->
+                        LaunchedEffect(isDragging) { if (isDragging) liftedKey = field.id }
+
+                        val dragModifier = if (isEditMode && isReorderButtonVisible) {
+                            Modifier.draggableHandle(
+                                onDragStarted = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }
+                            )
+                        } else Modifier
+
+                        DynamicFieldItem(
+                            field = field,
+                            isEditMode = isEditMode,
+                            isDragging = isDragging,
+                            isAnyItemDragging = reorderableState.isAnyItemDragging,
+                            titlePlaceholder = titlePlaceholder,
+                            contentPlaceholder = contentPlaceholder,
+                            onFieldChange = { updatedField ->
+                                val currentList = items.toList()
+                                val idx = currentList.indexOfFirst { it.id == updatedField.id }
+                                if (idx != -1) {
+                                    items[idx] = updatedField
+                                    onFieldsChange(items.toList())
+                                }
+                            },
+                            onDelete = { fieldToDeleteIndex = index },
+                            onFullscreenRequest = { fullscreenFieldIndex = index },
+                            dragModifier = dragModifier,
+                            extraContent = extraContent,
+                            extraHeaderActions = extraHeaderActions,
+                            isCollapsible = isCollapsible,
+                            isTitleReadOnly = isTitleReadOnly,
+                            isReorderButtonVisible = isReorderButtonVisible,
+                            isReorderRowsButtonVisible = isReorderRowsButtonVisible(field),
+                            isContentVisible = isContentVisible(field),
+                            isLockedGlobal = fullscreenEditingOnly,
+                            collapseOnEdit = collapseOnEditActual,
+                            hazeState = hazeState,
+                            popupHazeState = popupHazeState,
+                            forceBlurEnabled = forceBlurEnabled,
+                            blurPopups = blurPopups,
+                            settingsViewModel = settingsViewModel,
+                            statsMap = statsMap,
+                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                            state = state,
+                            onRoll = onRoll,
+                            viewportTopY = mainViewportTopY,
+                            isDesktop = isDesktop
+                        )
+                    }
                 }
             }
 
@@ -354,7 +446,7 @@ fun DynamicFieldsTab(
                     }
                     fullscreenFieldIndex = null
                 },
-                onDismiss = { 
+                onDismiss = {
                     fullscreenFieldIndex = null
                 },
                 hazeState = hazeState,
@@ -413,16 +505,29 @@ fun DynamicFieldItem(
     val blurDynamicFields by settingsViewModel?.blurDynamicFields?.collectAsState() ?: remember { mutableStateOf(true) }
     val isExpanded = if (isCollapsible) field.isExpanded else true
     val rotation by animateFloatAsState(targetValue = if (isExpanded) 0f else 180f)
-    val scale by animateFloatAsState(targetValue = when {
-        isDragging -> 1.02f
-        isEditMode -> 0.95f
-        else -> 1f
-    })
-    val backgroundBlur by animateDpAsState(
-        targetValue = if (isAnyItemDragging && !isDragging) 6.dp else 0.dp,
-        label = "backgroundBlur"
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isDragging -> LiftedScale
+            isEditMode -> EditModeScale
+            else -> 1f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "fieldScale"
     )
-    val padding by animateDpAsState(targetValue = if (isEditMode) 8.dp else 0.dp)
+    val shadowBlur by animateDpAsState(
+        targetValue = if (isDragging) 18.dp else 4.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "fieldShadowBlur"
+    )
+    val shadowOffsetY by animateDpAsState(
+        targetValue = if (isDragging) 8.dp else 2.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "fieldShadowOffset"
+    )
+    val padding by animateDpAsState(targetValue = if (isEditMode) EditModePadding else 0.dp)
 
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -451,24 +556,26 @@ fun DynamicFieldItem(
     val isTallField = isExpanded && contentHeightDp >= 120.dp
 
     val useHaze = hazeState != null && (blurDynamicFields ?: true)
+    val useHazeNow = useHaze && !isDragging
+    val cardColor by animateColorAsState(
+        targetValue = if (useHazeNow) colorScheme.surfaceContainer.copy(alpha = 0.6f)
+        else colorScheme.surfaceContainer,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "fieldContainer"
+    )
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
-            .then(
-                if (backgroundBlur > 0.dp) 
-                    Modifier.blur(backgroundBlur) 
-                else Modifier
-            )
             .padding(padding)
             .outerShadow(
                 shape = RoundedCornerShape(16.dp),
-                blur = 4.dp,
-                offsetY = 2.dp
+                blur = shadowBlur,
+                offsetY = shadowOffsetY
             )
             .run {
-                if (useHaze) {
+                if (useHazeNow) {
                     this.clip(RoundedCornerShape(16.dp))
                         .hazeEffect(
                             state = hazeState!!,
@@ -480,8 +587,7 @@ fun DynamicFieldItem(
                 } else this
             },
         shape = RoundedCornerShape(16.dp),
-        color = if (useHaze) colorScheme.surfaceContainer.copy(alpha = 0.6f)
-            else colorScheme.surfaceContainer,
+        color = cardColor,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp
     ) {
@@ -490,15 +596,26 @@ fun DynamicFieldItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isEditMode && isReorderButtonVisible) {
-                Icon(
-                    imageVector = Icons.Default.UnfoldMore,
-                    contentDescription = "Drag",
-                    modifier = Modifier
-                        .padding(start = 12.dp, end = 4.dp)
-                        .size(32.dp)
-                        .then(dragModifier),
-                    tint = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                val handleTint by animateColorAsState(
+                    targetValue = if (isDragging) colorScheme.primary
+                    else colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    animationSpec = spring(stiffness = Spring.StiffnessLow),
+                    label = "dragHandleTint"
                 )
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(40.dp)
+                        .then(dragModifier),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DragHandle,
+                        contentDescription = "Перетащить",
+                        modifier = Modifier.size(22.dp),
+                        tint = handleTint
+                    )
+                }
             }
 
             Column(
@@ -936,7 +1053,7 @@ fun DynamicFieldFullscreenContent(
     val titleBringIntoViewRequester = remember { BringIntoViewRequester() }
     val localHazeState = remember { HazeState() }
     var isTitleFocused by remember { mutableStateOf(false) }
-    
+
     var localViewportTopY by remember { mutableFloatStateOf(0f) }
 
     var isReorderMode by remember { mutableStateOf(false) }
@@ -958,405 +1075,405 @@ fun DynamicFieldFullscreenContent(
         modifier = Modifier.fillMaxSize()
     ) { _ ->
         DisposableEffect(Unit) {
-        currentOnFullscreenDialogOpenChange(true)
-        onDispose {
-            currentOnFullscreenDialogOpenChange(false)
+            currentOnFullscreenDialogOpenChange(true)
+            onDispose {
+                currentOnFullscreenDialogOpenChange(false)
+            }
         }
-    }
 
-    var showDeleteConfirm by remember { mutableStateOf(false) }
+        var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    val isSubDialogOpen = showDeleteConfirm || state?.isResourceConfigOpen == true || state?.isInfoBlockConfigOpen == true || state?.isAttackConfigOpen == true
-    val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
-    val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
+        val isSubDialogOpen = showDeleteConfirm || state?.isResourceConfigOpen == true || state?.isInfoBlockConfigOpen == true || state?.isAttackConfigOpen == true
+        val masterBlurEnabled by settingsViewModel?.masterBlurEnabled?.collectAsState() ?: remember { mutableStateOf(true) }
+        val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .run {
-                    if (isSubDialogOpen && masterBlurEnabled) {
-                        this.blur(blurRadius)
-                    } else this
-                }
-        ) {
-            Scaffold(
-                topBar = {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            BasicTextField(
-                                value = title,
-                                onValueChange = onTitleChange,
-                                textStyle = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorScheme.onSurface
-                                ),
-                                cursorBrush = SolidColor(colorScheme.primary),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp)
-                                    .bringIntoViewRequester(titleBringIntoViewRequester)
-                                    .onFocusChanged { isTitleFocused = it.isFocused },
-                                decorationBox = { innerTextField ->
-                                    if (title.isEmpty()) {
-                                        Text(titlePlaceholder, color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
-                                    }
-                                    innerTextField()
-                                }
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = {
-                                focusManager.clearFocus()
-                                onDismiss()
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = "Закрыть")
-                            }
-                        },
-                        actions = {
-                            extraHeaderActions(field)
-                            if (!isLocked && isContentVisible) {
-                                IconToggleButton(checked = isPlainTextMode, onCheckedChange = { isPlainTextMode = it }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Code,
-                                        contentDescription = "Простой текст",
-                                        tint = if (isPlainTextMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                    )
-                                }
-                                if (isReorderRowsButtonVisible) {
-                                    IconToggleButton(checked = isReorderMode, onCheckedChange = { isReorderMode = it }) {
-                                        Icon(
-                                            imageVector = Icons.Default.SwapVert,
-                                            contentDescription = "Режим сортировки",
-                                            tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                            containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
-                        )
-                    )
-                },
-                containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        val keyboardOffset = imeBottomPx
-                        alpha = if (keyboardOffset >= 0) 1f else 1f
-                    }
                     .run {
-                        if (effectiveBlur && hazeState != null && !isSubDialogOpen) {
-                            val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
-                            this.hazeEffect(state = hazeState, style = hazeStyle)
+                        if (isSubDialogOpen && masterBlurEnabled) {
+                            this.blur(blurRadius)
                         } else this
                     }
-                    .hazeSource(state = localHazeState)
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDrag = { change, _ ->
-                                change.consume()
-                                focusManager.clearFocus()
-                            }
-                        )
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { focusManager.clearFocus() }
-            ) { paddingValues ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .onGloballyPositioned { if (it.isAttached) localViewportTopY = it.positionInWindow().y }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .imePadding()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp)
-                    ) {
-                        extraContent(field)
-
-                        if (isContentVisible) {
-                            Surface(
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                color = if (effectiveBlur) colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else colorScheme.surfaceContainerHighest,
-                                shadowElevation = 0.dp,
-                                tonalElevation = 0.dp
-                            ) {
-                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                    NotionBlockEditor(
-                                        field = field.copy(title = title, isLocked = isLocked),
-                                        onFieldChange = onFieldChange,
-                                        canEdit = !isLocked,
-                                        isReorderMode = isReorderMode,
-                                        isPlainTextMode = isPlainTextMode,
-                                        onIsPlainTextModeChange = { isPlainTextMode = it },
-                                        contentPlaceholder = contentPlaceholder,
-                                        statsMap = statsMap,
-                                        hazeState = hazeState,
-                                        forceBlurEnabled = effectiveBlur,
-                                        blurDynamicFields = blurDynamicFields,
-                                        settingsViewModel = settingsViewModel,
-                                        onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
-                                        state = state,
-                                        viewportTopY = localViewportTopY,
-                                        popupHazeState = localHazeState,
-                                        onRoll = onRoll,
-                                        isDesktop = isDesktop
-                                    )
+            ) {
+                Scaffold(
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = {
+                                BasicTextField(
+                                    value = title,
+                                    onValueChange = onTitleChange,
+                                    textStyle = MaterialTheme.typography.titleLarge.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorScheme.onSurface
+                                    ),
+                                    cursorBrush = SolidColor(colorScheme.primary),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .bringIntoViewRequester(titleBringIntoViewRequester)
+                                        .onFocusChanged { isTitleFocused = it.isFocused },
+                                    decorationBox = { innerTextField ->
+                                        if (title.isEmpty()) {
+                                            Text(titlePlaceholder, color = colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
+                                        }
+                                        innerTextField()
+                                    }
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    focusManager.clearFocus()
+                                    onDismiss()
+                                }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Закрыть")
                                 }
-                            }
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (!isLocked) {
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            IconButton(
-                                                onClick = {
-                                                    val b = BlockContentParser.toBlocks(field.content).toMutableList()
-                                                    b.add(DynamicContentBlock.Text(""))
-                                                    onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
-                                                },
-                                                modifier = Modifier.size(32.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.PostAdd,
-                                                    contentDescription = "Добавить строку",
-                                                    modifier = Modifier.size(18.dp),
-                                                    tint = colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            IconButton(
-                                                onClick = {
-                                                    val b = BlockContentParser.toBlocks(field.content).toMutableList()
-                                                    b.add(DynamicContentBlock.Divider)
-                                                    onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
-                                                },
-                                                modifier = Modifier.size(32.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.HorizontalRule,
-                                                    contentDescription = "Добавить разделитель",
-                                                    modifier = Modifier.size(18.dp),
-                                                    tint = colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            IconButton(
-                                                onClick = {
-                                                    val b = BlockContentParser.toBlocks(field.content).toMutableList()
-                                                    val res = state?.resourceManager?.create("Новый ресурс")
-                                                        ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
-                                                    b.add(DynamicContentBlock.ResourceRef(res.id))
-                                                    onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
-                                                },
-                                                modifier = Modifier.size(32.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.AddBox,
-                                                    contentDescription = "Добавить ресурс",
-                                                    modifier = Modifier.size(18.dp),
-                                                    tint = colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            IconButton(
-                                                onClick = { isPlainTextMode = !isPlainTextMode },
-                                                modifier = Modifier.size(32.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Code,
-                                                    contentDescription = "Простой текст",
-                                                    modifier = Modifier.size(18.dp),
-                                                    tint = if (isPlainTextMode) colorScheme.primary else colorScheme.onSurfaceVariant
-                                                )
-                                            }
+                            },
+                            actions = {
+                                extraHeaderActions(field)
+                                if (!isLocked && isContentVisible) {
+                                    IconToggleButton(checked = isPlainTextMode, onCheckedChange = { isPlainTextMode = it }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Code,
+                                            contentDescription = "Простой текст",
+                                            tint = if (isPlainTextMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    if (isReorderRowsButtonVisible) {
+                                        IconToggleButton(checked = isReorderMode, onCheckedChange = { isReorderMode = it }) {
+                                            Icon(
+                                                imageVector = Icons.Default.SwapVert,
+                                                contentDescription = "Режим сортировки",
+                                                tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
                                         }
                                     }
-                                } else {
-                                    Spacer(Modifier.width(1.dp))
                                 }
+                            },
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
+                            )
+                        )
+                    },
+                    containerColor = if (effectiveBlur && hazeState != null && !isSubDialogOpen) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val keyboardOffset = imeBottomPx
+                            alpha = if (keyboardOffset >= 0) 1f else 1f
+                        }
+                        .run {
+                            if (effectiveBlur && hazeState != null && !isSubDialogOpen) {
+                                val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
+                                this.hazeEffect(state = hazeState, style = hazeStyle)
+                            } else this
+                        }
+                        .hazeSource(state = localHazeState)
+                        .pointerInput(Unit) {
+                            detectDragGestures(
+                                onDrag = { change, _ ->
+                                    change.consume()
+                                    focusManager.clearFocus()
+                                }
+                            )
+                        }
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { focusManager.clearFocus() }
+                ) { paddingValues ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .onGloballyPositioned { if (it.isAttached) localViewportTopY = it.positionInWindow().y }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .imePadding()
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp)
+                        ) {
+                            extraContent(field)
 
-                                if (!isLocked && isReorderRowsButtonVisible) {
-                                    IconToggleButton(
-                                        checked = isReorderMode,
-                                        onCheckedChange = { isReorderMode = it },
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.SwapVert,
-                                            contentDescription = "Режим сортировки",
-                                            modifier = Modifier.size(20.dp),
-                                            tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            if (isContentVisible) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = if (effectiveBlur) colorScheme.surfaceContainerHighest.copy(alpha = 0.6f) else colorScheme.surfaceContainerHighest,
+                                    shadowElevation = 0.dp,
+                                    tonalElevation = 0.dp
+                                ) {
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                        NotionBlockEditor(
+                                            field = field.copy(title = title, isLocked = isLocked),
+                                            onFieldChange = onFieldChange,
+                                            canEdit = !isLocked,
+                                            isReorderMode = isReorderMode,
+                                            isPlainTextMode = isPlainTextMode,
+                                            onIsPlainTextModeChange = { isPlainTextMode = it },
+                                            contentPlaceholder = contentPlaceholder,
+                                            statsMap = statsMap,
+                                            hazeState = hazeState,
+                                            forceBlurEnabled = effectiveBlur,
+                                            blurDynamicFields = blurDynamicFields,
+                                            settingsViewModel = settingsViewModel,
+                                            onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
+                                            state = state,
+                                            viewportTopY = localViewportTopY,
+                                            popupHazeState = localHazeState,
+                                            onRoll = onRoll,
+                                            isDesktop = isDesktop
                                         )
                                     }
                                 }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (!isLocked) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                IconButton(
+                                                    onClick = {
+                                                        val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                        b.add(DynamicContentBlock.Text(""))
+                                                        onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.PostAdd,
+                                                        contentDescription = "Добавить строку",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                        b.add(DynamicContentBlock.Divider)
+                                                        onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.HorizontalRule,
+                                                        contentDescription = "Добавить разделитель",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        val b = BlockContentParser.toBlocks(field.content).toMutableList()
+                                                        val res = state?.resourceManager?.create("Новый ресурс")
+                                                            ?: DynamicContentBlock.Resource(name = "Новый ресурс", current = "0", max = "0", id = ru.quasaris.characternexus.util.generateUuid())
+                                                        b.add(DynamicContentBlock.ResourceRef(res.id))
+                                                        onFieldChange(field.copy(title = title, isLocked = isLocked, content = BlockContentParser.toText(b)))
+                                                    },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.AddBox,
+                                                        contentDescription = "Добавить ресурс",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = { isPlainTextMode = !isPlainTextMode },
+                                                    modifier = Modifier.size(32.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Code,
+                                                        contentDescription = "Простой текст",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = if (isPlainTextMode) colorScheme.primary else colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Spacer(Modifier.width(1.dp))
+                                    }
+
+                                    if (!isLocked && isReorderRowsButtonVisible) {
+                                        IconToggleButton(
+                                            checked = isReorderMode,
+                                            onCheckedChange = { isReorderMode = it },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.SwapVert,
+                                                contentDescription = "Режим сортировки",
+                                                modifier = Modifier.size(20.dp),
+                                                tint = if (isReorderMode) colorScheme.primary else colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                    }
+                                }
                             }
+
+                            Spacer(modifier = Modifier.height(32.dp))
+
+                            OutlinedButton(
+                                onClick = { onIsLockedChange(!isLocked) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = if (isLocked) colorScheme.primary else colorScheme.onSurfaceVariant
+                                ),
+                                border = BorderStroke(1.dp, if (isLocked) colorScheme.primary else colorScheme.outline),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isLocked) "Заблокировано" else "Разблокировано",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            OutlinedButton(
+                                onClick = { showDeleteConfirm = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = colorScheme.error
+                                ),
+                                border = BorderStroke(1.dp, colorScheme.error),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Удалить", fontWeight = FontWeight.Bold)
+                            }
+
+                            Spacer(modifier = Modifier.height(80.dp))
                         }
 
-                        Spacer(modifier = Modifier.height(32.dp))
-
-                        OutlinedButton(
-                            onClick = { onIsLockedChange(!isLocked) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = if (isLocked) colorScheme.primary else colorScheme.onSurfaceVariant
+                        Button(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
+                                contentColor = colorScheme.onSurfaceVariant
                             ),
-                            border = BorderStroke(1.dp, if (isLocked) colorScheme.primary else colorScheme.outline),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                            elevation = ButtonDefaults.buttonElevation(
+                                defaultElevation = 0.dp,
+                                pressedElevation = 0.dp,
+                                focusedElevation = 0.dp,
+                                hoveredElevation = 0.dp
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isLocked) "Заблокировано" else "Разблокировано",
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        OutlinedButton(
-                            onClick = { showDeleteConfirm = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = colorScheme.error
-                            ),
-                            border = BorderStroke(1.dp, colorScheme.error),
-                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Удалить", fontWeight = FontWeight.Bold)
+                            Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         }
-
-                        Spacer(modifier = Modifier.height(80.dp))
                     }
+                }
 
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorScheme.surfaceVariant.compositeOver(colorScheme.background),
-                            contentColor = colorScheme.onSurfaceVariant
-                        ),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = 0.dp,
-                            pressedElevation = 0.dp,
-                            focusedElevation = 0.dp,
-                            hoveredElevation = 0.dp
-                        )
-                    ) {
-                        Text("Закрыть", fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                    }
+                if (state?.isResourceConfigOpen == true && state.activeResourceConfig != null) {
+                    ResourceConfigDialog(
+                        resource = state.activeResourceConfig!!,
+                        onDismiss = {
+                            state.isResourceConfigOpen = false
+                            state.activeResourceConfig = null
+                            state.activeNoteId = ""
+                        },
+                        onSave = { updated: DynamicContentBlock.Resource ->
+                            state.updateResource(updated)
+                            state.resourceManager.normalize()
+                        },
+                        onDelete = { res: DynamicContentBlock.Resource ->
+                            if (state.activeNoteId.isNotEmpty() && state.activeResourceIndex != -1) {
+                                state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex, res.id)
+                            } else {
+                                state.resourceManager.deleteResourceCompletely(res.id)
+                            }
+                            state.isResourceConfigOpen = false
+                            state.activeResourceConfig = null
+                            state.activeResourceIndex = -1
+                            state.activeNoteId = ""
+                        },
+                        forceBlurEnabled = effectiveBlur,
+                        settingsViewModel = settingsViewModel,
+                        hazeState = localHazeState,
+                        isNested = true,
+                        asOverlay = true,
+                        isDesktop = isDesktop,
+                        owner = state,
+                        noteId = state.activeNoteId,
+                        blockIndex = state.activeResourceIndex
+                    )
+                }
+
+                if (state?.isInfoBlockConfigOpen == true && state.activeInfoBlockConfig != null) {
+                    InfoBlockConfigDialog(
+                        infoBlock = state.activeInfoBlockConfig!!,
+                        onDismiss = {
+                            state.isInfoBlockConfigOpen = false
+                            state.activeInfoBlockConfig = null
+                            state.activeNoteId = ""
+                        },
+                        onSave = { updated: DynamicContentBlock.InfoBlock ->
+                            state.infoBlockManager.upsert(updated)
+                            state.infoBlockManager.normalize()
+                        },
+                        onConvertToResource = { info: DynamicContentBlock.InfoBlock ->
+                            state.infoBlockManager.convertToResource(info.id)
+                            state.isInfoBlockConfigOpen = false
+                            state.activeInfoBlockConfig = null
+                            state.activeResourceIndex = -1
+                            state.activeNoteId = ""
+                        },
+                        onDelete = { info: DynamicContentBlock.InfoBlock ->
+                            state.infoBlockManager.deleteCompletely(info.id)
+                            state.isInfoBlockConfigOpen = false
+                            state.activeInfoBlockConfig = null
+                            state.activeResourceIndex = -1
+                            state.activeNoteId = ""
+                        },
+                        forceBlurEnabled = effectiveBlur,
+                        settingsViewModel = settingsViewModel,
+                        hazeState = localHazeState,
+                        isNested = true,
+                        asOverlay = true,
+                        isDesktop = isDesktop
+                    )
                 }
             }
 
-            if (state?.isResourceConfigOpen == true && state.activeResourceConfig != null) {
-                ResourceConfigDialog(
-                    resource = state.activeResourceConfig!!,
-                    onDismiss = {
-                        state.isResourceConfigOpen = false
-                        state.activeResourceConfig = null
-                        state.activeNoteId = ""
-                    },
-                    onSave = { updated: DynamicContentBlock.Resource ->
-                        state.updateResource(updated)
-                        state.resourceManager.normalize()
-                    },
-                    onDelete = { res: DynamicContentBlock.Resource ->
-                        if (state.activeNoteId.isNotEmpty() && state.activeResourceIndex != -1) {
-                            state.resourceManager.removePlacement(state.activeNoteId, state.activeResourceIndex, res.id)
-                        } else {
-                            state.resourceManager.deleteResourceCompletely(res.id)
-                        }
-                        state.isResourceConfigOpen = false
-                        state.activeResourceConfig = null
-                        state.activeResourceIndex = -1
-                        state.activeNoteId = ""
-                    },
-                    forceBlurEnabled = effectiveBlur,
-                    settingsViewModel = settingsViewModel,
-                    hazeState = localHazeState,
-                    isNested = true,
-                    asOverlay = true,
-                    isDesktop = isDesktop,
-                    owner = state,
-                    noteId = state.activeNoteId,
-                    blockIndex = state.activeResourceIndex
-                )
-            }
-
-            if (state?.isInfoBlockConfigOpen == true && state.activeInfoBlockConfig != null) {
-                InfoBlockConfigDialog(
-                    infoBlock = state.activeInfoBlockConfig!!,
-                    onDismiss = {
-                        state.isInfoBlockConfigOpen = false
-                        state.activeInfoBlockConfig = null
-                        state.activeNoteId = ""
-                    },
-                    onSave = { updated: DynamicContentBlock.InfoBlock ->
-                        state.infoBlockManager.upsert(updated)
-                        state.infoBlockManager.normalize()
-                    },
-                    onConvertToResource = { info: DynamicContentBlock.InfoBlock ->
-                        state.infoBlockManager.convertToResource(info.id)
-                        state.isInfoBlockConfigOpen = false
-                        state.activeInfoBlockConfig = null
-                        state.activeResourceIndex = -1
-                        state.activeNoteId = ""
-                    },
-                    onDelete = { info: DynamicContentBlock.InfoBlock ->
-                        state.infoBlockManager.deleteCompletely(info.id)
-                        state.isInfoBlockConfigOpen = false
-                        state.activeInfoBlockConfig = null
-                        state.activeResourceIndex = -1
-                        state.activeNoteId = ""
-                    },
-                    forceBlurEnabled = effectiveBlur,
-                    settingsViewModel = settingsViewModel,
-                    hazeState = localHazeState,
-                    isNested = true,
-                    asOverlay = true,
-                    isDesktop = isDesktop
-                )
-            }
+            DeleteConfirmationDialog(
+                showDialog = showDeleteConfirm,
+                onDismiss = { showDeleteConfirm = false },
+                onConfirm = {
+                    onDelete()
+                    showDeleteConfirm = false
+                },
+                settingsViewModel = settingsViewModel
+            )
         }
-
-        DeleteConfirmationDialog(
-            showDialog = showDeleteConfirm,
-            onDismiss = { showDeleteConfirm = false },
-            onConfirm = {
-                onDelete()
-                showDeleteConfirm = false
-            },
-            settingsViewModel = settingsViewModel
-        )
     }
-}
 }
