@@ -774,6 +774,44 @@ data class SpellLevelItem(
 
 @Immutable
 @Serializable
+data class TrackedSpellDuration(
+    val id: String = generateUuid(),
+    val spellId: String = "",
+    val spellName: String = "",
+    val isConcentration: Boolean = false,
+    val initialDurationRounds: Int = 10,
+    val remainingRounds: Int = 10
+)
+
+fun parseSpellDurationToRounds(spell: SpellCard): Int {
+    val valueInt = spell.durationValue.toIntOrNull() ?: run {
+        val match = Regex("(\\d+)").find(spell.durationValue.ifBlank { spell.duration })
+        match?.groupValues?.get(1)?.toIntOrNull() ?: 1
+    }
+    return when (spell.durationUnit) {
+        DurationUnit.SECONDS -> (valueInt / 6).coerceAtLeast(1)
+        DurationUnit.MINUTES -> (valueInt * 10).coerceAtLeast(1)
+        DurationUnit.HOURS -> (valueInt * 600).coerceAtLeast(1)
+        DurationUnit.DAYS -> (valueInt * 14400).coerceAtLeast(1)
+        DurationUnit.PERMANENT, DurationUnit.INSTANT -> 100
+    }
+}
+
+fun formatRemainingDuration(rounds: Int): String {
+    val r = rounds.coerceAtLeast(0)
+    return if (r < 20) {
+        "$r ходов"
+    } else if (r < 600) {
+        val minutes = r / 10
+        "$minutes мин."
+    } else {
+        val hours = r / 600
+        "$hours ч."
+    }
+}
+
+@Immutable
+@Serializable
 data class SpellSettings(
     val isMagicEnabled: Boolean = true,
     val spellAttackBonus: String = "",
@@ -801,7 +839,8 @@ data class SpellSettings(
     val levelContent: Map<String, List<SpellLevelItem>> = emptyMap(),
     val spellAbilityOverrides: Map<String, Attribute> = emptyMap(),
     val allowCantripUpcast: Boolean = false,
-    val spellOverrides: Map<String, SpellCard> = emptyMap()
+    val spellOverrides: Map<String, SpellCard> = emptyMap(),
+    val trackedDurations: List<TrackedSpellDuration> = emptyList()
 )
 
 fun transliterateCyrillic(text: String): String {

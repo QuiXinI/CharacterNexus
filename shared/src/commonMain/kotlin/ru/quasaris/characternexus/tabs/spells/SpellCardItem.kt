@@ -86,7 +86,9 @@ fun SpellCardItem(
     isCompact: Boolean = false,
     isOverridden: Boolean = false,
     isGrayedOut: Boolean = false,
-    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    onTrackDuration: (SpellCard) -> Unit = {},
+    isTracked: Boolean = false
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val blurRadius = rememberEffectiveBlurRadius(settingsViewModel)
@@ -241,10 +243,13 @@ fun SpellCardItem(
 
                     if (isCompact) {
                         if (spell.hasConcentration) {
-                            Icon(Icons.Default.SelfImprovement, contentDescription = "Концентрация", modifier = Modifier.size(20.dp), tint = colorScheme.error)
-                        }
-                        if (spell.duration.isNotBlank() && spell.durationUnit != DurationUnit.INSTANT) {
-                            Icon(Icons.Default.AccessTime, contentDescription = "Длительность", modifier = Modifier.size(20.dp), tint = colorScheme.primary)
+                            IconButton(onClick = { onTrackDuration(spell) }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.SelfImprovement, contentDescription = "Концентрация", modifier = Modifier.size(20.dp), tint = if (isTracked) colorScheme.primary else colorScheme.error)
+                            }
+                        } else if (spell.duration.isNotBlank() && spell.durationUnit != DurationUnit.INSTANT) {
+                            IconButton(onClick = { onTrackDuration(spell) }, modifier = Modifier.size(24.dp)) {
+                                Icon(Icons.Default.AccessTime, contentDescription = "Длительность", modifier = Modifier.size(20.dp), tint = if (isTracked) colorScheme.primary else colorScheme.primary)
+                            }
                         }
                     }
                     
@@ -287,26 +292,39 @@ fun SpellCardItem(
                     }
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (spell.duration.isNotBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
-                            Text(
-                                text = "Длительность: ${spell.duration}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    
-                    if (spell.hasConcentration) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(Icons.Default.SelfImprovement, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.error)
-                            Text("Конц.", style = MaterialTheme.typography.bodySmall, color = colorScheme.error)
+                val hasDurationOrConc = (spell.duration.isNotBlank() && spell.durationUnit != DurationUnit.INSTANT) || spell.hasConcentration
+                if (hasDurationOrConc) {
+                    Surface(
+                        onClick = { onTrackDuration(spell) },
+                        color = if (isTracked) colorScheme.primaryContainer.copy(alpha = 0.6f) else colorScheme.surfaceContainerHighest.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp).fillMaxWidth()
+                        ) {
+                            if (spell.duration.isNotBlank()) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.primary)
+                                    Text(
+                                        text = "Длительность: ${spell.duration}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            
+                            if (spell.hasConcentration) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(Icons.Default.SelfImprovement, contentDescription = null, modifier = Modifier.size(16.dp), tint = colorScheme.error)
+                                    Text("Конц.", style = MaterialTheme.typography.bodySmall, color = colorScheme.error)
+                                }
+                            }
+                            if (isTracked) {
+                                Spacer(Modifier.weight(1f))
+                                Text("В трекере", style = MaterialTheme.typography.labelSmall, color = colorScheme.primary)
+                            }
                         }
                     }
                 }

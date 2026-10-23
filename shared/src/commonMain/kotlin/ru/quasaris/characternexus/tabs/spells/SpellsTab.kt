@@ -115,6 +115,39 @@ fun SpellsTab(
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val effectiveRefreshTrigger = (state?.refreshTrigger ?: 0) + refreshTrigger
 
+    var pendingConcentrationSpell by remember { mutableStateOf<SpellCard?>(null) }
+    var existingConcentrationTracked by remember { mutableStateOf<TrackedSpellDuration?>(null) }
+
+    fun handleTrackSpell(spell: SpellCard) {
+        val isConc = spell.hasConcentration
+        val activeConc = spellSettings.trackedDurations.find { it.isConcentration }
+
+        if (isConc && activeConc != null && activeConc.spellId != spell.id) {
+            existingConcentrationTracked = activeConc
+            pendingConcentrationSpell = spell
+        } else {
+            val alreadyTracked = spellSettings.trackedDurations.find { it.spellId == spell.id }
+            val newTrackedList = if (alreadyTracked != null) {
+                spellSettings.trackedDurations.filter { it.id != alreadyTracked.id }
+            } else {
+                val initialRounds = parseSpellDurationToRounds(spell)
+                val newEntry = TrackedSpellDuration(
+                    spellId = spell.id,
+                    spellName = spell.name,
+                    isConcentration = isConc,
+                    initialDurationRounds = initialRounds,
+                    remainingRounds = initialRounds
+                )
+                if (isConc) {
+                    spellSettings.trackedDurations.filter { !it.isConcentration } + newEntry
+                } else {
+                    spellSettings.trackedDurations + newEntry
+                }
+            }
+            onSpellSettingsChange(spellSettings.copy(trackedDurations = newTrackedList))
+        }
+    }
+
     LaunchedEffect(showSelectionDialog) {
         onSpellbookSelectionOpenChange(showSelectionDialog)
     }
@@ -301,9 +334,9 @@ fun SpellsTab(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(IntrinsicSize.Max)
+                    .height(80.dp)
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
@@ -347,6 +380,14 @@ fun SpellsTab(
                         }
                     }
                 }
+
+                SpellDurationTracker(
+                    trackedDurations = spellSettings.trackedDurations,
+                    onUpdateTrackedDurations = { newTracked ->
+                        onSpellSettingsChange(spellSettings.copy(trackedDurations = newTracked))
+                    },
+                    modifier = Modifier.weight(1f).fillMaxHeight()
+                )
 
                 Surface(
                     modifier = Modifier
@@ -882,7 +923,9 @@ fun SpellsTab(
                                                             isDragging = isDragging,
                                                             isAnyItemDragging = draggingItemKey != null,
                                                             isOverridden = card.id in spellSettings.spellOverrides,
-                                                            settingsViewModel = settingsViewModel
+                                                            settingsViewModel = settingsViewModel,
+                                                            onTrackDuration = { s -> handleTrackSpell(s) },
+                                                            isTracked = spellSettings.trackedDurations.any { it.spellId == card.id }
                                                         )
                                                     }
                                                 }
@@ -1108,6 +1151,47 @@ fun SpellsTab(
             forceBlurEnabled = forceBlurEnabled,
             settingsViewModel = settingsViewModel,
             isDesktop = isDesktop
+        )
+    }
+
+    if (pendingConcentrationSpell != null && existingConcentrationTracked != null) {
+        val spellToAdd = pendingConcentrationSpell!!
+        val activeConc = existingConcentrationTracked!!
+        AlertDialog(
+            onDismissRequest = {
+                pendingConcentrationSpell = null
+                existingConcentrationTracked = null
+            },
+            title = { Text("Сбросить концентрацию?") },
+            text = {
+                Text("Это действие сбросит концентрацию с заклинания \"${activeConc.spellName}\", сбросить?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val initialRounds = parseSpellDurationToRounds(spellToAdd)
+                    val newEntry = TrackedSpellDuration(
+                        spellId = spellToAdd.id,
+                        spellName = spellToAdd.name,
+                        isConcentration = true,
+                        initialDurationRounds = initialRounds,
+                        remainingRounds = initialRounds
+                    )
+                    val updated = spellSettings.trackedDurations.filter { !it.isConcentration } + newEntry
+                    onSpellSettingsChange(spellSettings.copy(trackedDurations = updated))
+                    pendingConcentrationSpell = null
+                    existingConcentrationTracked = null
+                }) {
+                    Text("Да, сбросить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingConcentrationSpell = null
+                    existingConcentrationTracked = null
+                }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 }
