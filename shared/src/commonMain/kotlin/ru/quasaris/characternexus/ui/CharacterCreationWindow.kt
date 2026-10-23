@@ -60,7 +60,7 @@ fun CharacterCreationWindow(
     var name by remember { mutableStateOf("") }
     var charClass by remember { mutableStateOf("") }
     var level by remember { mutableStateOf("1") }
-    var order by remember { mutableStateOf("")}
+    var race by remember { mutableStateOf("") }
     var imageData by remember { mutableStateOf<String?>(null) }
     var bytesToCrop by remember { mutableStateOf<ByteArray?>(null) }
     var imageToCrop by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -104,9 +104,9 @@ fun CharacterCreationWindow(
         }
     }
 
-    val portraitBytes = remember(imageData) {
+    val portraitBytes = remember(imageData, characterUuid) {
         if (imageData != null) {
-            val path = ImageManager.getPortraitFile(imageData!!)
+            val path = ImageManager.getPortraitFile(imageData!!, characterUuid)
             if (platformFileSystem.exists(path)) {
                 platformFileSystem.read(path) { readByteArray() }
             } else null
@@ -170,8 +170,9 @@ fun CharacterCreationWindow(
                                 uuid = characterUuid,
                                 id = (0..Int.MAX_VALUE).random(),
                                 name = name,
+                                race = race,
                                 characterClass = charClass,
-                                order = order,
+                                classes = listOf(ClassEntry(className = charClass, level = levelInt)),
                                 imageData = imageData,
                                 level = level,
                                 experience = getXpForLevel(levelInt),
@@ -212,8 +213,9 @@ fun CharacterCreationWindow(
                     name = name, onNameChange = { name = it },
                     charClass = charClass, onClassChange = { charClass = it },
                     level = level, onLevelChange = { level = it },
-                    order = order, onOrderChange = { order = it },
+                    race = race, onRaceChange = { race = it },
                     imageData = imageData,
+                    characterUuid = characterUuid,
                     onAvatarClick = { showFilePicker = true }
                 )
 
@@ -285,15 +287,16 @@ fun CharacterInfoSection(
     name: String, onNameChange: (String) -> Unit,
     charClass: String, onClassChange: (String) -> Unit,
     level: String, onLevelChange: (String) -> Unit,
-    order: String, onOrderChange: (String) -> Unit,
+    race: String, onRaceChange: (String) -> Unit,
     imageData: String?,
+    characterUuid: String,
     onAvatarClick: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
 
-    val portraitBytes = remember(imageData) {
+    val portraitBytes = remember(imageData, characterUuid) {
         if (imageData != null) {
-            val path = ImageManager.getPortraitFile(imageData)
+            val path = ImageManager.getPortraitFile(imageData, characterUuid)
             if (platformFileSystem.exists(path)) {
                 platformFileSystem.read(path) { readByteArray() }
             } else null
@@ -357,8 +360,8 @@ fun CharacterInfoSection(
         Spacer(Modifier.height(12.dp))
         Row {
             OutlinedTextField(
-                value = order,
-                onValueChange = onOrderChange,
+                value = race,
+                onValueChange = onRaceChange,
                 label = { Text("Вид") },
                 modifier = Modifier.weight(1.5f),
                 singleLine = true
