@@ -1,7 +1,5 @@
 package ru.quasaris.characternexus.ui
 
-import ru.quasaris.characternexus.ui.PredictiveBackBox
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,422 +14,323 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import ru.quasaris.characternexus.backend.*
-import ru.quasaris.characternexus.model.*
-import ru.quasaris.characternexus.getAppDataDir
-import ru.quasaris.characternexus.platformFileSystem
-import ru.quasaris.characternexus.backend.JsonConfig
-import ru.quasaris.characternexus.ui.editors.*
-import okio.Path
-import kotlinx.serialization.json.*
+import ru.quasaris.characternexus.backend.ModuleManager
+import ru.quasaris.characternexus.backend.SpellbookManager
+import ru.quasaris.characternexus.backend.SettingsViewModel
+import ru.quasaris.characternexus.backend.glossary.*
+import ru.quasaris.characternexus.model.InstalledModule
+import ru.quasaris.characternexus.model.ModuleContent
+import ru.quasaris.characternexus.model.SpellCard
+import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
+import ru.quasaris.characternexus.ui.glossary.*
+import ru.quasaris.characternexus.util.generateUuid
+
+/** Что сейчас редактируется. null внутри означает создание новой сущности. */
+private sealed interface EditorTarget {
+    data class SpellTarget(val spell: SpellCard) : EditorTarget
+    data class ClassTarget(val value: ClassDefinition?) : EditorTarget
+    data class SubclassTarget(val value: SubclassDefinition?) : EditorTarget
+    data class SpeciesTarget(val value: SpeciesDefinition?) : EditorTarget
+    data class FeatTarget(val value: FeatDefinition?) : EditorTarget
+    data class ItemTarget(val value: MagicItem?) : EditorTarget
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModuleEditorWindow(
     moduleManager: ModuleManager,
     spellbookManager: SpellbookManager,
+    repository: GlossaryRepository,
     initialModule: InstalledModule,
     onBack: () -> Unit,
     forceBlurEnabled: Boolean = false,
     settingsViewModel: SettingsViewModel? = null
 ) {
     var manifest by remember { mutableStateOf(initialModule.manifest) }
-    var isSaving by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    var editingSpell by remember { mutableStateOf<SpellCard?>(null) }
-    var editingMagicItem by remember { mutableStateOf<GameMagicItem?>(null) }
-    var editingClass by remember { mutableStateOf<GameClass?>(null) }
-    var editingSubclass by remember { mutableStateOf<GameSubclass?>(null) }
-    var editingSpecies by remember { mutableStateOf<GameSpecies?>(null) }
-    var editingFeat by remember { mutableStateOf<GameFeat?>(null) }
-    
+    var editor by remember { mutableStateOf<EditorTarget?>(null) }
     var showAddMenu by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<ModuleContent?>(null) }
 
     val colorScheme = MaterialTheme.colorScheme
     val isOled = colorScheme.background == Color.Black
 
-    LaunchedEffect(manifest) {
-        scope.launch {
-            moduleManager.updateModule(initialModule.manifest.id, manifest)
+    val allSpells = remember(editor) { if (editor != null) repository.allSpells() else emptyList() }
+    val classes = remember(editor) { if (editor != null) repository.classes() else emptyList() }
+
+    LaunchedEffect(manifest) { moduleManager.updateModule(initialModule.manifest.id, manifest) }
+
+    fun upsertContent(type: GlossaryType, id: String) {
+        if (manifest.contents.none { it.type == type.wireName && it.id == id }) {
+            manifest = manifest.copy(
+                contents = manifest.contents + ModuleContent(type.wireName, id, "${GlossaryStore.safeFileName(id)}.json")
+            )
         }
     }
 
-    BackHandler(onBack = onBack)
-    
-    LaunchedEffect(manifest.name) {
-        val path = mutableListOf<NavNode>()
-        path.add(NavNode("modules", "Модули", 0) { onBack() })
-        path.add(NavNode("editor", manifest.name.ifBlank { "Новый" }, 1))
-        // We could also report components here if we wanted to mirror them in the sidebar
-        NavigationPathManager.updatePath("modules", path)
+    fun removeContent(type: GlossaryType, id: String) {
+        manifest = manifest.copy(contents = manifest.contents.filterNot { it.type == type.wireName && it.id == id })
     }
 
-    if (editingSpell != null) {
-        SpellEditorWindow(
-            spell = editingSpell!!,
-            onDismiss = { editingSpell = null },
-            onSave = { updated ->
-                val saved = spellbookManager.addOrUpdateSpell(updated)
-                
-                val existingIdx = manifest.contents.indexOfFirst { it.id == updated.id && it.type == "spell" }
-                if (existingIdx == -1) {
-                    manifest = manifest.copy(contents = manifest.contents + ModuleContent("spell", saved.id, "${saved.id}.json"))
-                } else {
-                    val newContents = manifest.contents.toMutableList()
-                    newContents[existingIdx] = newContents[existingIdx].copy(id = saved.id, file = "${saved.id}.json")
-                    manifest = manifest.copy(contents = newContents)
-                }
-                editingSpell = null
-            },
-            onDelete = { spellToDelete ->
-                spellbookManager.deleteSpell(spellToDelete.id)
-                manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == spellToDelete.id && it.type == "spell" })
-                editingSpell = null
-            },
-            forceBlurEnabled = forceBlurEnabled,
-            settingsViewModel = settingsViewModel
-        )
-        return
-    }
-
-    if (editingMagicItem != null) {
-        MagicItemEditorWindow(
-            item = editingMagicItem!!,
-            onDismiss = { editingMagicItem = null },
-            onSave = { updated ->
-                val manager = MagicItemManager(moduleManager)
-                val saved = manager.addOrUpdateItem(updated)
-                
-                val existingIdx = manifest.contents.indexOfFirst { it.id == updated.id && it.type == "magic_item" }
-                if (existingIdx == -1) {
-                    manifest = manifest.copy(contents = manifest.contents + ModuleContent("magic_item", saved.id ?: "", "${saved.id}.json"))
-                } else {
-                    val newContents = manifest.contents.toMutableList()
-                    newContents[existingIdx] = newContents[existingIdx].copy(id = saved.id ?: "", file = "${saved.id}.json")
-                    manifest = manifest.copy(contents = newContents)
-                }
-                editingMagicItem = null
-            },
-            onDelete = { itemToDelete ->
-                val manager = MagicItemManager(moduleManager)
-                manager.deleteItem(itemToDelete.id ?: "")
-                manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == itemToDelete.id && it.type == "magic_item" })
-                editingMagicItem = null
-            },
-            forceBlurEnabled = forceBlurEnabled,
-            settingsViewModel = settingsViewModel
-        )
-        return
-    }
-
-    if (editingClass != null || editingSubclass != null) {
-        ClassEditorWindow(
-            initialClass = editingClass,
-            initialSubclass = editingSubclass,
-            onDismiss = { editingClass = null; editingSubclass = null },
-            onSave = { json ->
-                val type = if (editingSubclass != null) "subclass" else "class"
-                val obj = json.jsonObject
-                val id = obj["id"]?.jsonPrimitive?.content ?: ""
-                saveItem(if (type == "class") "classes" else "subclasses", id, json.toString())
-                
-                val existing = manifest.contents.find { it.id == id && it.type == type }
-                if (existing == null) {
-                    manifest = manifest.copy(contents = manifest.contents + ModuleContent(type, id, "$id.json"))
-                }
-                editingClass = null
-                editingSubclass = null
-            },
-            forceBlurEnabled = forceBlurEnabled,
-            settingsViewModel = settingsViewModel
-        )
-        return
-    }
-
-    if (editingSpecies != null) {
-        SpeciesEditorWindow(
-            initialSpecies = editingSpecies,
-            onDismiss = { editingSpecies = null },
-            onSave = { json ->
-                val id = json.jsonObject["id"]?.jsonPrimitive?.content ?: ""
-                saveItem("species", id, json.toString())
-                val existing = manifest.contents.find { it.id == id && it.type == "species" }
-                if (existing == null) {
-                    manifest = manifest.copy(contents = manifest.contents + ModuleContent("species", id, "$id.json"))
-                }
-                editingSpecies = null
-            },
-            forceBlurEnabled = forceBlurEnabled,
-            settingsViewModel = settingsViewModel
-        )
-        return
-    }
-
-    if (editingFeat != null) {
-        FeatEditorWindow(
-            initialFeat = editingFeat,
-            onDismiss = { editingFeat = null },
-            onSave = { json ->
-                val id = json.jsonObject["id"]?.jsonPrimitive?.content ?: ""
-                saveItem("feats", id, json.toString())
-                val existing = manifest.contents.find { it.id == id && it.type == "feat" }
-                if (existing == null) {
-                    manifest = manifest.copy(contents = manifest.contents + ModuleContent("feat", id, "$id.json"))
-                }
-                editingFeat = null
-            },
-            forceBlurEnabled = forceBlurEnabled,
-            settingsViewModel = settingsViewModel
-        )
-        return
-    }
-
-    PredictiveBackBox(
-        onBack = onBack,
-        modifier = Modifier.fillMaxSize()
-    ) { _ ->
-        Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Редактор модуля", fontWeight = FontWeight.Black, color = colorScheme.onSurface) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = colorScheme.onSurface)
-                    }
+    // Открытый редактор занимает весь экран, как и раньше.
+    when (val target = editor) {
+        is EditorTarget.SpellTarget -> {
+            SpellEditorWindow(
+                spell = target.spell,
+                onDismiss = { editor = null },
+                onSave = { updated ->
+                    val saved = spellbookManager.addOrUpdateSpell(updated)
+                    upsertContent(GlossaryType.SPELL, saved.id)
+                    editor = null
                 },
-                actions = {},
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
-                )
+                onDelete = { spell ->
+                    spellbookManager.deleteSpell(spell.id)
+                    removeContent(GlossaryType.SPELL, spell.id)
+                    editor = null
+                },
+                forceBlurEnabled = forceBlurEnabled,
+                settingsViewModel = settingsViewModel
             )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            return
+        }
+        is EditorTarget.ClassTarget -> {
+            ClassEditorWindow(
+                initial = target.value,
+                allSpells = allSpells,
+                onDismiss = { editor = null },
+                onSave = { updated ->
+                    repository.save(updated.copy(source = manifest.name, sourceModuleId = manifest.id))
+                    upsertContent(GlossaryType.CLASS, updated.id)
+                    editor = null
+                },
+                onDelete = { cls ->
+                    repository.subclassesOf(cls.id).forEach { removeContent(GlossaryType.SUBCLASS, it.id) }
+                    repository.delete(GlossaryType.CLASS, cls.id)
+                    removeContent(GlossaryType.CLASS, cls.id)
+                    editor = null
+                },
+                forceBlurEnabled = forceBlurEnabled
+            )
+            return
+        }
+        is EditorTarget.SubclassTarget -> {
+            SubclassEditorWindow(
+                initial = target.value,
+                classes = classes,
+                allSpells = allSpells,
+                onDismiss = { editor = null },
+                onSave = { updated ->
+                    repository.save(updated.copy(source = manifest.name, sourceModuleId = manifest.id))
+                    upsertContent(GlossaryType.SUBCLASS, updated.id)
+                    editor = null
+                },
+                onDelete = { sub ->
+                    repository.delete(GlossaryType.SUBCLASS, sub.id)
+                    removeContent(GlossaryType.SUBCLASS, sub.id)
+                    editor = null
+                },
+                forceBlurEnabled = forceBlurEnabled
+            )
+            return
+        }
+        is EditorTarget.SpeciesTarget -> {
+            SpeciesEditorWindow(
+                initial = target.value,
+                onDismiss = { editor = null },
+                onSave = { updated ->
+                    repository.save(updated.copy(source = manifest.name, sourceModuleId = manifest.id))
+                    upsertContent(GlossaryType.SPECIES, updated.id)
+                    editor = null
+                },
+                onDelete = { species ->
+                    repository.delete(GlossaryType.SPECIES, species.id)
+                    removeContent(GlossaryType.SPECIES, species.id)
+                    editor = null
+                },
+                forceBlurEnabled = forceBlurEnabled
+            )
+            return
+        }
+        is EditorTarget.FeatTarget -> {
+            FeatEditorWindow(
+                initial = target.value,
+                onDismiss = { editor = null },
+                onSave = { updated ->
+                    repository.save(updated.copy(source = manifest.name, sourceModuleId = manifest.id))
+                    upsertContent(GlossaryType.FEAT, updated.id)
+                    editor = null
+                },
+                onDelete = { feat ->
+                    repository.delete(GlossaryType.FEAT, feat.id)
+                    removeContent(GlossaryType.FEAT, feat.id)
+                    editor = null
+                },
+                forceBlurEnabled = forceBlurEnabled
+            )
+            return
+        }
+        is EditorTarget.ItemTarget -> {
+            MagicItemEditorWindow(
+                initial = target.value,
+                classes = classes,
+                onDismiss = { editor = null },
+                onSave = { updated ->
+                    repository.save(updated.copy(source = manifest.name, sourceModuleId = manifest.id))
+                    upsertContent(GlossaryType.MAGIC_ITEM, updated.id)
+                    editor = null
+                },
+                onDelete = { item ->
+                    repository.delete(GlossaryType.MAGIC_ITEM, item.id)
+                    removeContent(GlossaryType.MAGIC_ITEM, item.id)
+                    editor = null
+                },
+                forceBlurEnabled = forceBlurEnabled
+            )
+            return
+        }
+        null -> {}
+    }
+
+    BackHandler(onBack = onBack)
+
+    LaunchedEffect(manifest.name) {
+        NavigationPathManager.updatePath(
+            "modules",
+            listOf(
+                NavNode("modules", "Модули", 0) { onBack() },
+                NavNode("editor", manifest.name.ifBlank { "Новый" }, 1)
+            )
+        )
+    }
+
+    // Названия компонентов; пересчитываются после закрытия редактора.
+    val names = remember(manifest.contents, editor) {
+        buildMap<String, String> {
+            GlossaryType.entries.forEach { type ->
+                repository.entries(type).forEach { put("${type.wireName}:${it.id}", it.name) }
+            }
+        }
+    }
+
+    PredictiveBackBox(onBack = onBack, modifier = Modifier.fillMaxSize()) { _ ->
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Редактор модуля", fontWeight = FontWeight.Black) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад") }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                    )
+                )
+            },
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+        ) { paddingValues ->
             Column(
                 modifier = Modifier
+                    .padding(paddingValues)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("Основная информация", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
-
-                OutlinedTextField(
-                    value = manifest.name,
-                    onValueChange = { manifest = manifest.copy(name = it) },
-                    label = { Text("Название") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-                )
-
-                OutlinedTextField(
-                    value = manifest.id,
-                    onValueChange = { manifest = manifest.copy(id = it) },
-                    label = { Text("ID модуля") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(disabledTextColor = colorScheme.onSurface.copy(alpha = 0.6f))
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedTextField(
-                        value = manifest.version,
-                        onValueChange = { manifest = manifest.copy(version = it) },
-                        label = { Text("Версия") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-                    )
-                    OutlinedTextField(
-                        value = manifest.system,
-                        onValueChange = { manifest = manifest.copy(system = it) },
-                        label = { Text("Система") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-                    )
+                EditorSection("Основная информация") {
+                    GlossaryTextField("Название", manifest.name, { manifest = manifest.copy(name = it) })
+                    GlossaryTextField("ID модуля", manifest.id, {}, enabled = false)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        GlossaryTextField("Версия", manifest.version, { manifest = manifest.copy(version = it) }, Modifier.weight(1f))
+                        GlossaryTextField("Система", manifest.system, { manifest = manifest.copy(system = it) }, Modifier.weight(1f))
+                    }
+                    GlossaryTextField("Описание", manifest.description, { manifest = manifest.copy(description = it) }, singleLine = false, minLines = 3)
                 }
 
-                OutlinedTextField(
-                    value = manifest.description,
-                    onValueChange = { manifest = manifest.copy(description = it) },
-                    label = { Text("Описание") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = colorScheme.onSurface, unfocusedTextColor = colorScheme.onSurface)
-                )
-
-                Spacer(Modifier.height(16.dp))
-                
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Компоненты", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = colorScheme.onSurface)
+                EditorSection("Компоненты") {
                     Box {
-                        IconButton(onClick = { showAddMenu = true }) {
-                            Icon(Icons.Default.Add, null, tint = colorScheme.primary)
+                        FilledTonalButton(onClick = { showAddMenu = true }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Добавить компонент")
                         }
                         DropdownMenu(expanded = showAddMenu, onDismissRequest = { showAddMenu = false }) {
-                            DropdownMenuItem(
-                                text = { Text("Заклинание") },
-                                onClick = {
-                                    showAddMenu = false
-                                    editingSpell = SpellCard(
-                                        id = ru.quasaris.characternexus.util.generateUuid(),
-                                        source = manifest.name,
-                                        sourceModuleId = manifest.id
-                                    )
-                                }
+                            @Composable
+                            fun item(label: String, create: () -> EditorTarget) = DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = { showAddMenu = false; editor = create() }
                             )
-                            DropdownMenuItem(
-                                text = { Text("Магический предмет") },
-                                onClick = {
-                                    showAddMenu = false
-                                    editingMagicItem = GameMagicItem(
-                                        id = ru.quasaris.characternexus.util.generateUuid(),
-                                        sourceModuleId = manifest.id
-                                    )
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Класс") },
-                                onClick = {
-                                    showAddMenu = false
-                                    editingClass = GameClass(id = "class_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Подкласс") },
-                                onClick = {
-                                    showAddMenu = false
-                                    editingSubclass = GameSubclass(id = "subclass_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Вид") },
-                                onClick = {
-                                    showAddMenu = false
-                                    editingSpecies = GameSpecies(id = "species_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Черта") },
-                                onClick = {
-                                    showAddMenu = false
-                                    editingFeat = GameFeat(id = "feat_${ru.quasaris.characternexus.util.generateUuid().take(8)}")
-                                }
+                            item("Заклинание") {
+                                EditorTarget.SpellTarget(SpellCard(id = generateUuid(), source = manifest.name, sourceModuleId = manifest.id))
+                            }
+                            item("Магический предмет") { EditorTarget.ItemTarget(null) }
+                            item("Класс") { EditorTarget.ClassTarget(null) }
+                            item("Подкласс") { EditorTarget.SubclassTarget(null) }
+                            item("Вид") { EditorTarget.SpeciesTarget(null) }
+                            item("Черта") { EditorTarget.FeatTarget(null) }
+                        }
+                    }
+
+                    if (manifest.contents.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxWidth().height(80.dp), contentAlignment = Alignment.Center) {
+                            Text("Нет компонентов", color = colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        manifest.contents.forEach { content ->
+                            ComponentItem(
+                                content = content,
+                                displayName = names["${content.type}:${content.id}"] ?: content.id,
+                                onEdit = {
+                                    when (GlossaryType.fromWireName(content.type)) {
+                                        GlossaryType.SPELL -> repository.allSpells().find { it.id == content.id }?.let { editor = EditorTarget.SpellTarget(it) }
+                                        GlossaryType.CLASS -> repository.classById(content.id)?.let { editor = EditorTarget.ClassTarget(it) }
+                                        GlossaryType.SUBCLASS -> repository.subclasses().find { it.id == content.id }?.let { editor = EditorTarget.SubclassTarget(it) }
+                                        GlossaryType.SPECIES -> repository.species().find { it.id == content.id }?.let { editor = EditorTarget.SpeciesTarget(it) }
+                                        GlossaryType.FEAT -> repository.feats().find { it.id == content.id }?.let { editor = EditorTarget.FeatTarget(it) }
+                                        GlossaryType.MAGIC_ITEM -> repository.magicItems().find { it.id == content.id }?.let { editor = EditorTarget.ItemTarget(it) }
+                                        null -> {}
+                                    }
+                                },
+                                onDelete = { deleteTarget = content }
                             )
                         }
                     }
                 }
-
-                if (manifest.contents.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                        Text("Нет компонентов", color = colorScheme.onSurfaceVariant)
-                    }
-                } else {
-                    manifest.contents.forEach { content ->
-                        ComponentItem(
-                            content = content,
-                            onEdit = {
-                                when (content.type) {
-                                    "spell" -> {
-                                        editingSpell = spellbookManager.loadSpells().find { it.id == content.id }
-                                    }
-                                    "magic_item" -> {
-                                        editingMagicItem = MagicItemManager(moduleManager).loadItems().find { it.id == content.id }
-                                    }
-                                    "class" -> {
-                                        editingClass = loadItem<GameClass>("classes", content.file)
-                                    }
-                                    "subclass" -> {
-                                        editingSubclass = loadItem<GameSubclass>("subclasses", content.file)
-                                    }
-                                    "species" -> {
-                                        editingSpecies = loadItem<GameSpecies>("species", content.file)
-                                    }
-                                    "feat" -> {
-                                        editingFeat = loadItem<GameFeat>("feats", content.file)
-                                    }
-                                }
-                            },
-                            onDelete = {
-                                val manager = MagicItemManager(moduleManager)
-                                when (content.type) {
-                                    "spell" -> spellbookManager.deleteSpell(content.id)
-                                    "magic_item" -> manager.deleteItem(content.id)
-                                }
-                                manifest = manifest.copy(contents = manifest.contents.filterNot { it.id == content.id && it.type == content.type })
-                            }
-                        )
-                    }
-                }
-                
                 Spacer(Modifier.height(80.dp))
             }
-
-            Button(
-                onClick = onBack,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp)
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorScheme.surfaceVariant,
-                    contentColor = colorScheme.onSurfaceVariant
-                )
-            ) {
-                Text("Закрыть", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
         }
     }
-}
-}
 
-private fun saveItem(dir: String, id: String, jsonContent: String) {
-    val path = getAppDataDir().resolve("glossary/$dir/$id.json")
-    val parent = path.parent
-    if (parent != null && !platformFileSystem.exists(parent)) {
-        platformFileSystem.createDirectories(parent)
+    deleteTarget?.let { content ->
+        ConfirmDialog(
+            title = "Удалить компонент?",
+            text = "«${names["${content.type}:${content.id}"] ?: content.id}» будет удалён из модуля и глоссария.",
+            confirmLabel = "Удалить",
+            onConfirm = {
+                GlossaryType.fromWireName(content.type)?.let { type ->
+                    repository.delete(type, content.id)
+                    removeContent(type, content.id)
+                }
+                deleteTarget = null
+            },
+            onDismiss = { deleteTarget = null }
+        )
     }
-    platformFileSystem.write(path) {
-        writeUtf8(jsonContent)
-    }
-}
-
-private inline fun <reified T> loadItem(dir: String, fileName: String): T? {
-    val path = getAppDataDir().resolve("glossary/$dir/$fileName")
-    return if (platformFileSystem.exists(path)) {
-        try {
-            val json = platformFileSystem.read(path) { readUtf8() }
-            JsonConfig.json.decodeFromString<T>(json)
-        } catch (e: Exception) {
-            ru.quasaris.characternexus.util.Logger.e("ModuleEditor", "Error loading item", e)
-            null
-        }
-    } else null
 }
 
 @Composable
-fun ComponentItem(
-    content: ModuleContent,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
+fun ComponentItem(content: ModuleContent, displayName: String, onEdit: () -> Unit, onDelete: () -> Unit) {
     val colorScheme = MaterialTheme.colorScheme
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    val typeLabel = when (content.type) {
+        "spell" -> "Заклинание"
+        "magic_item" -> "Магический предмет"
+        "class" -> "Класс"
+        "subclass" -> "Подкласс"
+        "species" -> "Вид"
+        "feat" -> "Черта"
+        else -> content.type
+    }
+    Surface(onClick = onEdit, shape = RoundedCornerShape(20.dp), color = colorScheme.surfaceContainerHigh, modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                imageVector = when(content.type) {
+                imageVector = when (content.type) {
                     "spell" -> Icons.Default.AutoFixHigh
                     "magic_item" -> Icons.Default.Science
                     "class" -> Icons.Default.Shield
@@ -446,15 +345,10 @@ fun ComponentItem(
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(content.id, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
-                Text(content.type.uppercase(), style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
+                Text(displayName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text(typeLabel, style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, null, modifier = Modifier.size(20.dp), tint = colorScheme.onSurface)
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, null, modifier = Modifier.size(20.dp), tint = colorScheme.error)
-            }
+            IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "Удалить", Modifier.size(20.dp), tint = colorScheme.error) }
         }
     }
 }

@@ -16,7 +16,7 @@ import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
 import ru.quasaris.characternexus.backend.ModuleManager
 import ru.quasaris.characternexus.backend.SpellbookManager
 import ru.quasaris.characternexus.backend.MagicItemManager
-import ru.quasaris.characternexus.backend.GlossaryImporter
+import ru.quasaris.characternexus.backend.glossary.GlossaryImporter
 import ru.quasaris.characternexus.util.PlatformUtils
 import ru.quasaris.characternexus.util.AndroidCrashHandler
 

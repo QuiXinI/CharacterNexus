@@ -51,6 +51,7 @@ import ru.quasaris.characternexus.ui.util.LocalDisplayFold
 import ru.quasaris.characternexus.ui.util.rememberDisplayFold
 import ru.quasaris.characternexus.util.*
 import ru.quasaris.characternexus.backend.*
+import ru.quasaris.characternexus.backend.glossary.GlossaryImporter
 import ru.quasaris.characternexus.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -578,11 +579,11 @@ fun App(
                                             }
 
                                             composable("glossary") {
-                                                if (spellbookManager != null && moduleManager != null) {
+                                                if (spellbookManager != null) {
+                                                    val glossaryRepository = remember(spellbookManager) { ru.quasaris.characternexus.backend.glossary.GlossaryRepository(spellbookManager) }
                                                     GlossaryWindow(
                                                         spellbookManager = spellbookManager,
-                                                        moduleManager = moduleManager,
-                                                        magicItemManager = safeMagicItemManager,
+                                                        repository = glossaryRepository,
                                                         onOpenDrawer = { scope.launch { drawerState.open() } },
                                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                         forceBlurEnabled = effectiveBlurFullscreen,
@@ -593,10 +594,12 @@ fun App(
 
                                             composable("modules") {
                                                 if (moduleManager != null && glossaryImporter != null && spellbookManager != null) {
+                                                    val glossaryRepository = remember(spellbookManager) { ru.quasaris.characternexus.backend.glossary.GlossaryRepository(spellbookManager) }
                                                     ModulesWindow(
                                                         moduleManager = moduleManager,
                                                         spellbookManager = spellbookManager,
                                                         glossaryImporter = glossaryImporter,
+                                                        repository = glossaryRepository,
                                                         onOpenDrawer = { scope.launch { drawerState.open() } },
                                                         onFullscreenDialogOpenChange = onFullscreenDialogOpenChange,
                                                         forceBlurEnabled = effectiveBlurFullscreen,

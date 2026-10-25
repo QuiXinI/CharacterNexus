@@ -14,6 +14,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.launch
 import ru.quasaris.characternexus.backend.*
+import ru.quasaris.characternexus.backend.glossary.GlossaryImportResult
+import ru.quasaris.characternexus.backend.glossary.GlossaryImporter
+import ru.quasaris.characternexus.backend.glossary.GlossaryRepository
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.CommonFilePicker
 
@@ -23,6 +26,7 @@ fun ModulesWindow(
     moduleManager: ModuleManager,
     spellbookManager: SpellbookManager,
     glossaryImporter: GlossaryImporter,
+    repository: GlossaryRepository,
     onOpenDrawer: () -> Unit,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     forceBlurEnabled: Boolean = false,
@@ -45,7 +49,7 @@ fun ModulesWindow(
     var downgradeData by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var downgradeResult = remember { mutableStateOf<Boolean?>(null) }
     var showImportPicker by remember { mutableStateOf(false) }
-    var showNotAModuleError by remember { mutableStateOf(false) }
+    var importError by remember { mutableStateOf<String?>(null) }
 
     CommonFilePicker(
         show = showImportPicker,
@@ -54,12 +58,12 @@ fun ModulesWindow(
         showImportPicker = false
         file?.let {
             scope.launch {
-                val success = glossaryImporter.importModule(
+                val result = glossaryImporter.importModule(
                     bytes = it.readBytes(),
                     onProgress = { cur, total -> importProgress = cur to total },
                     onDowngradeConfirm = { name, oldV, newV ->
                         downgradeData = Triple(name, oldV, newV)
-                        // Wait for user input
+                        // Ждём ответа пользователя
                         while (downgradeResult.value == null) {
                             kotlinx.coroutines.delay(100)
                         }
@@ -67,14 +71,13 @@ fun ModulesWindow(
                         downgradeResult.value = null
                         downgradeData = null
                         res
-                    },
-                    onError = { _, _ -> /* Log error */ }
+                    }
                 )
                 importProgress = null
-                if (success) {
-                    refreshTrigger++
-                } else {
-                    showNotAModuleError = true
+                when (result) {
+                    is GlossaryImportResult.Success -> refreshTrigger++
+                    is GlossaryImportResult.Cancelled -> {}
+                    is GlossaryImportResult.Failed -> importError = result.reason
                 }
             }
         }
@@ -86,6 +89,7 @@ fun ModulesWindow(
         ModuleEditorWindow(
             moduleManager = moduleManager,
             spellbookManager = spellbookManager,
+            repository = repository,
             initialModule = editingModule!!,
             onBack = { 
                 editingModule = null
@@ -212,13 +216,13 @@ fun ModulesWindow(
         )
     }
 
-    if (showNotAModuleError) {
+    importError?.let { reason ->
         AlertDialog(
-            onDismissRequest = { showNotAModuleError = false },
-            title = { Text("Ошибка") },
-            text = { Text("Этот файл не является модулем") },
+            onDismissRequest = { importError = null },
+            title = { Text("Ошибка импорта") },
+            text = { Text(reason) },
             confirmButton = {
-                Button(onClick = { showNotAModuleError = false }) { Text("ОК") }
+                Button(onClick = { importError = null }) { Text("ОК") }
             }
         )
     }

@@ -593,6 +593,7 @@ data class SpellCard(
     @SerialName("version") val version: SpellVersion = SpellVersion.HB,
     @SerialName("school") val school: SpellSchool = SpellSchool.NONE,
     @SerialName("classes") val classes: List<CharacterClass> = emptyList(),
+    @SerialName("glossaryClassIds") val glossaryClassIds: List<String> = emptyList(),
     @SerialName("castingTimeType") val castingTimeType: CastingTimeType = CastingTimeType.ACTION,
     @SerialName("castingTime") val castingTime: String = "",
     @SerialName("hasVerbalComponent") val hasVerbalComponent: Boolean = false,
@@ -1239,6 +1240,7 @@ data class ModuleContent(
 @Serializable
 data class ModuleManifest(
     @SerialName("manifest_version") val manifestVersion: String = "1.0",
+    @SerialName("schema_version") val schemaVersion: Int = 1,
     @SerialName("id") val id: String,
     @SerialName("name") val name: String,
     @SerialName("version") val version: String,
@@ -1259,9 +1261,9 @@ data class InstalledModule(
 data class ModuleBundle(
     val manifest: ModuleManifest,
     val spells: List<SpellCard> = emptyList(),
-    val species: List<ru.quasaris.characternexus.backend.GameSpecies> = emptyList(),
-    val feats: List<ru.quasaris.characternexus.backend.GameFeat> = emptyList(),
-    val classes: List<ru.quasaris.characternexus.backend.GameClass> = emptyList(),
-    val subclasses: List<ru.quasaris.characternexus.backend.GameSubclass> = emptyList(),
-    val magicItems: List<ru.quasaris.characternexus.backend.GameMagicItem> = emptyList()
+    val species: List<ru.quasaris.characternexus.backend.glossary.SpeciesDefinition> = emptyList(),
+    val feats: List<ru.quasaris.characternexus.backend.glossary.FeatDefinition> = emptyList(),
+    val classes: List<ru.quasaris.characternexus.backend.glossary.ClassDefinition> = emptyList(),
+    val subclasses: List<ru.quasaris.characternexus.backend.glossary.SubclassDefinition> = emptyList(),
+    val magicItems: List<ru.quasaris.characternexus.backend.glossary.MagicItem> = emptyList()
 )

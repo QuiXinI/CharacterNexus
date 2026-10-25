@@ -2,12 +2,17 @@ package ru.quasaris.characternexus.backend
 
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import ru.quasaris.characternexus.backend.glossary.GlossaryStore
+import ru.quasaris.characternexus.backend.glossary.GlossaryType
 import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.model.*
-import ru.quasaris.characternexus.*
 import ru.quasaris.characternexus.util.log
 
+/**
+ * Учёт установленных модулей. Данные глоссария (классы, подклассы, виды, черты, предметы)
+ * хранит GlossaryStore; этот менеджер отвечает только за список модулей и их удаление.
+ */
 class ModuleManager {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -98,86 +103,31 @@ class ModuleManager {
         }
     }
 
+    /** Удаляет модуль вместе со всеми сущностями глоссария, которые он добавил. */
     fun deleteModule(moduleId: String, spellbookManager: SpellbookManager? = null) {
         val modules = getInstalledModules().toMutableList()
         val module = modules.find { it.manifest.id == moduleId }
-        
-        module?.let { inst ->
-            inst.manifest.contents.forEach { content ->
-                val dir = when (content.type) {
-                    "spell" -> "spells"
-                    "class" -> "classes"
-                    "subclass" -> "subclasses"
-                    "species" -> "species"
-                    "feat" -> "feats"
-                    "magic_item" -> "magic_items"
-                    else -> null
-                }
-                
-                if (dir != null) {
-                    val file = getAppDataDir().resolve("glossary/$dir/${content.file}")
-                    if (platformFileSystem.exists(file)) {
-                        platformFileSystem.delete(file)
-                    }
-                }
-            }
+
+        val store = GlossaryStore()
+        module?.manifest?.contents?.forEach { content ->
+            val type = GlossaryType.fromWireName(content.type)
+            if (type != null && type != GlossaryType.SPELL) store.delete(type, content.id)
         }
 
-        // Deleting spells by sourceModuleId as requested
+        // Заклинания удаляются по sourceModuleId.
         spellbookManager?.let { sm ->
-            val spellsToDelete = sm.loadSpells().filter { it.sourceModuleId == moduleId }
-            spellsToDelete.forEach { sm.deleteSpell(it.id) }
+            sm.loadSpells().filter { it.sourceModuleId == moduleId }.forEach { sm.deleteSpell(it.id) }
         }
-        
+
         modules.removeAll { it.manifest.id == moduleId }
         saveModules(modules)
     }
 
-    fun getSubclassesForClass(classId: String): List<GameSubclass> {
-        val subclasses = mutableListOf<GameSubclass>()
-        val baseDir = getAppDataDir().resolve("glossary/subclasses")
-        if (!platformFileSystem.exists(baseDir)) return emptyList()
-        
-        platformFileSystem.list(baseDir).filter { it.name.endsWith(".json") }.forEach { file ->
-            try {
-                val jsonContent = platformFileSystem.read(file) { readUtf8() }
-                val subclass = JsonConfig.json.decodeFromString<GameSubclass>(jsonContent)
-                // Filter out linked subclasses from the main list if needed? 
-                // Or just show everything that belongs to the class.
-                // Maneuvers have class_id: Fighter, so they will show up in the subclasses list.
-                // The user wants them to be "part of" the Battle Master.
-                if (subclass.classId == classId) {
-                    subclasses.add(subclass.copy(id = subclass.id ?: file.name.removeSuffix(".json")))
-                }
-            } catch (e: Exception) {
-                ru.quasaris.characternexus.util.Logger.e("ModuleManager", "Error loading subclass from $file", e)
-            }
-        }
-        return subclasses.sortedBy { it.name }
-    }
-
-    fun getSubclassById(id: String): GameSubclass? {
-        val baseDir = getAppDataDir().resolve("glossary/subclasses")
-        val file = baseDir.resolve("$id.json")
-        if (!platformFileSystem.exists(file)) return null
-        
-        return try {
-            val jsonContent = platformFileSystem.read(file) { readUtf8() }
-            JsonConfig.json.decodeFromString<GameSubclass>(jsonContent).let { 
-                it.copy(id = it.id ?: id)
-            }
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    /**
-     * Returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal.
-     */
+    /** Возвращает 1 если v1 > v2, -1 если v1 < v2, 0 если равны. */
     fun compareVersions(v1: String, v2: String): Int {
         val parts1 = v1.split(".").map { it.filter { c -> c.isDigit() }.toIntOrNull() ?: 0 }
         val parts2 = v2.split(".").map { it.filter { c -> c.isDigit() }.toIntOrNull() ?: 0 }
-        
+
         val maxLen = maxOf(parts1.size, parts2.size)
         for (i in 0 until maxLen) {
             val p1 = parts1.getOrElse(i) { 0 }

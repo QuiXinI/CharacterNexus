@@ -29,7 +29,7 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import org.jetbrains.compose.resources.painterResource
 import ru.quasaris.characternexus.backend.MagicItemManager
-import ru.quasaris.characternexus.backend.GameMagicItem
+import ru.quasaris.characternexus.backend.glossary.MagicItem
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.ui.DialogDimStyle
@@ -45,7 +45,7 @@ fun PotionSelectionDialog(
     manager: MagicItemManager,
     initialSelectedIds: Set<String>,
     onDismiss: () -> Unit,
-    onSelectBatch: (List<GameMagicItem>) -> Unit,
+    onSelectBatch: (List<MagicItem>) -> Unit,
     settingsViewModel: SettingsViewModel? = null,
     hazeState: HazeState? = null,
     popupHazeState: HazeState? = null,
@@ -58,9 +58,9 @@ fun PotionSelectionDialog(
     val allItems = remember { manager.loadItems() }
     val filteredItems = remember(searchQuery, allItems) {
         allItems.filter { 
-            it.name?.contains(searchQuery, ignoreCase = true) == true ||
-            it.description?.contains(searchQuery, ignoreCase = true) == true ||
-            it.englishName?.contains(searchQuery, ignoreCase = true) == true
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.description.contains(searchQuery, ignoreCase = true) ||
+            it.englishName.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -130,12 +130,12 @@ fun PotionSelectionDialog(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(filteredItems, key = { "${it.sourceModuleId}_${it.id}_${it.name}" }) { item ->
-                                val isSelected = selectedIds.contains(item.id ?: "")
+                                val isSelected = selectedIds.contains(item.id)
                                 PotionSelectionItem(
                                     item = item,
                                     isSelected = isSelected,
                                     onSelect = { 
-                                        val id = item.id ?: return@PotionSelectionItem
+                                        val id = item.id
                                         selectedIds = if (selectedIds.contains(id)) selectedIds - id else selectedIds + id
                                     }
                                 )
@@ -146,7 +146,7 @@ fun PotionSelectionDialog(
 
                 Button(
                     onClick = {
-                        val result = allItems.filter { selectedIds.contains(it.id ?: "") }
+                        val result = allItems.filter { selectedIds.contains(it.id) }
                         onSelectBatch(result)
                         onDismiss()
                     },
@@ -186,7 +186,7 @@ fun PotionSelectionDialog(
 
 @Composable
 fun PotionSelectionItem(
-    item: GameMagicItem,
+    item: MagicItem,
     isSelected: Boolean,
     onSelect: () -> Unit
 ) {
@@ -251,13 +251,13 @@ fun PotionSelectionItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.name ?: "Без названия",
+                    text = item.name.ifBlank { "Без названия" },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface
                 )
                 Text(
-                    text = "${item.rarity.displayName} • ${item.formula?.ifBlank { "Нет формулы" } ?: "Нет формулы"}",
+                    text = "${item.rarity.displayName} • ${item.formula.ifBlank { "Нет формулы" }}",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (isSelected) colorScheme.primary else colorScheme.onSurfaceVariant
                 )

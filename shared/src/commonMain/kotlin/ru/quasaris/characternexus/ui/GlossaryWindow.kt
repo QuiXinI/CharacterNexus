@@ -1,28 +1,24 @@
 package ru.quasaris.characternexus.ui
 
-import ru.quasaris.characternexus.ui.BackHandler
-import ru.quasaris.characternexus.ui.PredictiveBackBox
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.AutoFixNormal
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ViewHeadline
-import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ViewHeadline
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,28 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import okio.Path
-import okio.use
-import okio.buffer
 import ru.quasaris.characternexus.backend.*
-import ru.quasaris.characternexus.tabs.glossary.*
-import ru.quasaris.characternexus.tabs.spells.*
-import kotlinx.serialization.json.*
+import ru.quasaris.characternexus.backend.glossary.GlossaryRepository
+import ru.quasaris.characternexus.backend.glossary.GlossaryType
 import ru.quasaris.characternexus.model.*
-import ru.quasaris.characternexus.getAppDataDir
-import ru.quasaris.characternexus.platformFileSystem
-import ru.quasaris.characternexus.backend.JsonConfig
-import ru.quasaris.characternexus.ui.GlossaryCategory
+import ru.quasaris.characternexus.tabs.spells.*
 import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
-
-sealed class GlossaryView {
-    data object Hub : GlossaryView()
-    data class Category(val category: GlossaryCategory) : GlossaryView()
-    data class Detail(val category: GlossaryCategory, val file: Path) : GlossaryView()
-}
+import ru.quasaris.characternexus.ui.glossary.GlossaryDetailWindow
 
 enum class GlossaryCategory(val title: String, val dirName: String, val icon: ImageVector) {
     SPECIES("Виды", "species", Icons.Default.Groups),
@@ -61,12 +43,26 @@ enum class GlossaryCategory(val title: String, val dirName: String, val icon: Im
     MAGIC_ITEMS("Магические предметы", "magic_items", Icons.Default.AutoFixNormal)
 }
 
+/** Тип сущности глоссария для категории. Для заклинаний null: они живут в книге заклинаний. */
+fun GlossaryCategory.glossaryType(): GlossaryType? = when (this) {
+    GlossaryCategory.SPECIES -> GlossaryType.SPECIES
+    GlossaryCategory.CLASSES -> GlossaryType.CLASS
+    GlossaryCategory.FEATS -> GlossaryType.FEAT
+    GlossaryCategory.MAGIC_ITEMS -> GlossaryType.MAGIC_ITEM
+    GlossaryCategory.SPELLS -> null
+}
+
+sealed class GlossaryView {
+    data object Hub : GlossaryView()
+    data class Category(val category: GlossaryCategory) : GlossaryView()
+    data class Detail(val category: GlossaryCategory, val id: String) : GlossaryView()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GlossaryWindow(
-    spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
-    moduleManager: ru.quasaris.characternexus.backend.ModuleManager,
-    magicItemManager: ru.quasaris.characternexus.backend.MagicItemManager? = null,
+    spellbookManager: SpellbookManager,
+    repository: GlossaryRepository,
     onOpenDrawer: () -> Unit,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     forceBlurEnabled: Boolean = false,
@@ -74,10 +70,9 @@ fun GlossaryWindow(
 ) {
     var currentView by remember { mutableStateOf<GlossaryView>(GlossaryView.Hub) }
     var detailTitle by remember { mutableStateOf("") }
-    
+
     LaunchedEffect(currentView) {
         val path = mutableListOf<NavNode>()
-        
         when (val view = currentView) {
             is GlossaryView.Hub -> {
                 detailTitle = ""
@@ -90,7 +85,7 @@ fun GlossaryWindow(
                 NavigationPathManager.updatePath("glossary", path)
             }
             is GlossaryView.Detail -> {
-                // Path with detail item title is set by ClassDetailWindow/GlossaryDetailWindow
+                // Путь с названием элемента выставляет окно просмотра.
             }
         }
     }
@@ -110,229 +105,54 @@ fun GlossaryWindow(
         modifier = Modifier.fillMaxSize()
     ) { _ ->
         Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { 
-                    Text(
-                        text = when (val view = currentView) {
-                            is GlossaryView.Hub -> "Глоссарий"
-                            is GlossaryView.Category -> view.category.title
-                            is GlossaryView.Detail -> detailTitle
-                        }, 
-                        fontWeight = FontWeight.Black 
-                    ) 
-                },
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Меню")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.surface
-                )
-            )
-        },
-        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent.copy(alpha = 0.0f) else colorScheme.background
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            Crossfade(
-                targetState = currentView,
-                animationSpec = tween(250),
-                label = "GlossaryTransitions"
-            ) { view ->
-                when (view) {
-                    is GlossaryView.Hub -> {
-                        GlossaryHub(
-                            onCategoryClick = { cat ->
-                                currentView = GlossaryView.Category(cat)
-                            }
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = when (val view = currentView) {
+                                is GlossaryView.Hub -> "Глоссарий"
+                                is GlossaryView.Category -> view.category.title
+                                is GlossaryView.Detail -> detailTitle
+                            },
+                            fontWeight = FontWeight.Black
                         )
-                    }
-                    is GlossaryView.Category -> {
-                        GlossaryCategoryList(
-                            category = view.category,
-                            moduleManager = moduleManager,
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onOpenDrawer) { Icon(Icons.Default.Menu, contentDescription = "Меню") }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.surface
+                    )
+                )
+            },
+            containerColor = if (forceBlurEnabled && !isOled) Color.Transparent else colorScheme.background
+        ) { paddingValues ->
+            Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+                Crossfade(targetState = currentView, animationSpec = tween(250), label = "GlossaryTransitions") { view ->
+                    when (view) {
+                        is GlossaryView.Hub -> GlossaryHub(
                             spellbookManager = spellbookManager,
-                            onItemClick = { file -> currentView = GlossaryView.Detail(view.category, file) },
+                            repository = repository,
+                            onCategoryClick = { currentView = GlossaryView.Category(it) }
+                        )
+                        is GlossaryView.Category -> GlossaryCategoryList(
+                            category = view.category,
+                            repository = repository,
+                            spellbookManager = spellbookManager,
+                            onItemClick = { id -> currentView = GlossaryView.Detail(view.category, id) },
                             onBack = { currentView = GlossaryView.Hub },
-                            hazeState = if (forceBlurEnabled) null else null, // Placeholder if needed
                             settingsViewModel = settingsViewModel
                         )
-                    }
-                    is GlossaryView.Detail -> {
-                        if (view.category == GlossaryCategory.CLASSES) {
-                            ClassDetailWindow(
-                                classFile = view.file,
-                                moduleManager = moduleManager,
-                                spellbookManager = spellbookManager,
-                                onTitleChange = { detailTitle = it },
-                                onBack = { currentView = GlossaryView.Category(GlossaryCategory.CLASSES) }
-                            )
-                        } else {
-                            GlossaryDetailWindow(
-                                file = view.file,
-                                category = view.category,
-                                onTitleChange = { detailTitle = it },
-                                onBack = { currentView = GlossaryView.Category(view.category) }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-}
-
-@Composable
-fun GlossaryHub(onCategoryClick: (GlossaryCategory) -> Unit) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(GlossaryCategory.entries) { category ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .outerShadow(RoundedCornerShape(16.dp), blur = 2.dp)
-                    .clickable { onCategoryClick(category) },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        modifier = Modifier.size(60.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = category.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(32.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                    Spacer(Modifier.width(20.dp))
-                    Text(
-                        text = category.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun GlossaryCategoryList(
-    category: GlossaryCategory,
-    moduleManager: ru.quasaris.characternexus.backend.ModuleManager,
-    spellbookManager: ru.quasaris.characternexus.backend.SpellbookManager,
-    onItemClick: (Path) -> Unit,
-    onBack: () -> Unit,
-    hazeState: dev.chrisbanes.haze.HazeState? = null,
-    settingsViewModel: SettingsViewModel? = null
-) {
-    if (category == GlossaryCategory.SPELLS) {
-        SpellGlossaryList(spellbookManager, onBack, hazeState)
-        return
-    }
-
-    var searchQuery by remember { mutableStateOf("") }
-    var refreshTrigger by remember { mutableIntStateOf(0) }
-    LaunchedEffect(Unit) { refreshTrigger++ }
-    val colorScheme = MaterialTheme.colorScheme
-    
-    val items = remember(category, searchQuery, refreshTrigger) {
-        val baseDir = getAppDataDir().resolve("glossary/${category.dirName}")
-        if (!platformFileSystem.exists(baseDir)) return@remember emptyList<GlossaryListItem>()
-        
-        platformFileSystem.list(baseDir).filter { it.name.endsWith(".json") }.mapNotNull { file ->
-            try {
-                val json = platformFileSystem.read(file) { readUtf8() }
-                val obj = JsonConfig.json.parseToJsonElement(json).jsonObject
-                val name = obj["name"]?.jsonPrimitive?.content ?: file.name.removeSuffix(".json")
-                val id = obj["id"]?.jsonPrimitive?.content ?: file.name.removeSuffix(".json")
-                
-                val subclasses = if (category == GlossaryCategory.CLASSES) {
-                    moduleManager.getSubclassesForClass(id).map { it.name ?: "Без названия" }
-                } else emptyList()
-                
-                GlossaryListItem(id, name, file, subclasses)
-            } catch (e: Exception) {
-                ru.quasaris.characternexus.util.Logger.e("Glossary", "Error loading glossary item from $file", e)
-                null
-            }
-        }.filter { 
-            it.name.contains(searchQuery, ignoreCase = true)
-        }.sortedBy { it.name }
-    }
-    
-
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            placeholder = { Text("Поиск...") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true
-        )
-
-        if (items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Ничего не найдено", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(items, key = { it.file.toString() }) { item ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .outerShadow(RoundedCornerShape(16.dp), blur = 1.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = colorScheme.surfaceVariant
-                        ),
-                        onClick = { onItemClick(item.file) }
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                item.name, 
-                                style = MaterialTheme.typography.titleMedium, 
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.onSurfaceVariant
-                            )
-                            if (item.subclasses.isNotEmpty()) {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text = "Подклассы: ${item.subclasses.joinToString()}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = colorScheme.primary,
-                                    fontWeight = FontWeight.Medium
+                        is GlossaryView.Detail -> {
+                            val type = view.category.glossaryType()
+                            if (type != null) {
+                                GlossaryDetailWindow(
+                                    type = type,
+                                    id = view.id,
+                                    categoryTitle = view.category.title,
+                                    repository = repository,
+                                    onTitleChange = { detailTitle = it },
+                                    onBack = { currentView = GlossaryView.Category(view.category) }
                                 )
                             }
                         }
@@ -343,7 +163,115 @@ fun GlossaryCategoryList(
     }
 }
 
-data class GlossaryListItem(val id: String, val name: String, val file: okio.Path, val subclasses: List<String> = emptyList())
+@Composable
+fun GlossaryHub(
+    spellbookManager: SpellbookManager,
+    repository: GlossaryRepository,
+    onCategoryClick: (GlossaryCategory) -> Unit
+) {
+    val counts = remember {
+        GlossaryCategory.entries.associateWith { category ->
+            val type = category.glossaryType()
+            if (type == null) spellbookManager.loadSpells().size else repository.entries(type).size
+        }
+    }
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(GlossaryCategory.entries) { category ->
+            Surface(
+                onClick = { onCategoryClick(category) },
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier.fillMaxWidth().height(104.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxSize().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        modifier = Modifier.size(64.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(category.icon, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                        }
+                    }
+                    Spacer(Modifier.width(20.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(category.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                        Text("Записей: ${counts[category] ?: 0}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GlossaryCategoryList(
+    category: GlossaryCategory,
+    repository: GlossaryRepository,
+    spellbookManager: SpellbookManager,
+    onItemClick: (String) -> Unit,
+    onBack: () -> Unit,
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
+    settingsViewModel: SettingsViewModel? = null
+) {
+    val type = category.glossaryType()
+    if (type == null) {
+        SpellGlossaryList(spellbookManager, onBack, hazeState, settingsViewModel)
+        return
+    }
+
+    var searchQuery by remember { mutableStateOf("") }
+    val entries = remember(category, searchQuery) {
+        repository.entries(type).filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            placeholder = { Text("Поиск...") },
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            shape = RoundedCornerShape(20.dp),
+            singleLine = true
+        )
+        if (entries.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Ничего не найдено", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(entries, key = { "${it.type.wireName}:${it.id}" }) { entry ->
+                    Surface(
+                        onClick = { onItemClick(entry.id) },
+                        shape = RoundedCornerShape(24.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                            Text(entry.name.ifBlank { entry.id }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            if (entry.subtitle.isNotBlank()) {
+                                Text(entry.subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                            if (entry.source.isNotBlank()) {
+                                Text(entry.source, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun SpellGlossaryList(

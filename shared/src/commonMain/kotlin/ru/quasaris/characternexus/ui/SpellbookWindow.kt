@@ -31,7 +31,7 @@ import ru.quasaris.characternexus.ui.CommonFilePicker
 @Composable
 fun SpellbookWindow(
     spellbookManager: SpellbookManager,
-    glossaryImporter: ru.quasaris.characternexus.backend.GlossaryImporter,
+    glossaryImporter: ru.quasaris.characternexus.backend.glossary.GlossaryImporter,
     onOpenDrawer: () -> Unit,
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     hazeState: HazeState? = null,
@@ -84,7 +84,7 @@ fun SpellbookWindow(
         file?.let { platformFile ->
             scope.launch {
                 val bytes = platformFile.readBytes()
-                val success = glossaryImporter.importModule(
+                val result = glossaryImporter.importModule(
                     bytes = bytes,
                     onProgress = { cur, total -> importProgress = cur to total },
                     onDowngradeConfirm = { name, oldV, newV ->
@@ -96,22 +96,23 @@ fun SpellbookWindow(
                         downgradeResult.value = null
                         downgradeData = null
                         res
-                    },
-                    onError = { name, reason ->
-                        // Fallback to legacy import or show error
-                        scope.launch {
-                             spellbookManager.importSpells(
-                                bytes = bytes,
-                                onProgress = { cur, total -> importProgress = cur to total },
-                                onError = { n, r, callback -> errorDialogData = Triple(n, r, callback) }
-                            )
-                            importProgress = null
-                            refreshTrigger++
-                        }
                     }
                 )
                 importProgress = null
-                if (success) refreshTrigger++
+                when (result) {
+                    is ru.quasaris.characternexus.backend.glossary.GlossaryImportResult.Success -> refreshTrigger++
+                    is ru.quasaris.characternexus.backend.glossary.GlossaryImportResult.Cancelled -> {}
+                    is ru.quasaris.characternexus.backend.glossary.GlossaryImportResult.Failed -> {
+                        // Fallback to legacy import or show error
+                        spellbookManager.importSpells(
+                            bytes = bytes,
+                            onProgress = { cur, total -> importProgress = cur to total },
+                            onError = { n, r, callback -> errorDialogData = Triple(n, r, callback) }
+                        )
+                        importProgress = null
+                        refreshTrigger++
+                    }
+                }
             }
         }
     }

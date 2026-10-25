@@ -5,6 +5,9 @@ import kotlinx.serialization.json.Json
 import okio.Path
 import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.platformFileSystem
+import ru.quasaris.characternexus.backend.glossary.MagicItem
+import ru.quasaris.characternexus.backend.glossary.MagicItemKind
+import ru.quasaris.characternexus.backend.glossary.ItemRarity
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.util.*
 
@@ -16,7 +19,7 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
     }
 
     private val glossaryDir = getAppDataDir().div("glossary").div("magic_items")
-    private var cachedItems: MutableList<GameMagicItem>? = null
+    private var cachedItems: MutableList<MagicItem>? = null
 
     init {
         if (!platformFileSystem.exists(glossaryDir)) {
@@ -36,40 +39,44 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
 
         val description = "Вы восстанавливаете себе Хиты, когда выпиваете это зелье. Количетсво хитов указано в формуле."
         val defaultItems = listOf(
-            GameMagicItem(
+            MagicItem(
                 id = "potion_of_healing_common",
                 name = "Зелье лечения",
-                rarity = PotionRarity.COMMON,
+                kind = MagicItemKind.POTION,
+                rarity = ItemRarity.COMMON,
                 description = description,
                 formula = "2d4+2",
                 damageTypes = listOf(DamageType.HEALING),
                 iconIndex = 1,
                 sourceModuleId = srdModuleId
             ),
-            GameMagicItem(
+            MagicItem(
                 id = "potion_of_healing_greater",
                 name = "Большое зелье лечения",
-                rarity = PotionRarity.UNCOMMON,
+                kind = MagicItemKind.POTION,
+                rarity = ItemRarity.UNCOMMON,
                 description = description,
                 formula = "4d4+4",
                 damageTypes = listOf(DamageType.HEALING),
                 iconIndex = 2,
                 sourceModuleId = srdModuleId
             ),
-            GameMagicItem(
+            MagicItem(
                 id = "potion_of_healing_superior",
                 name = "Отличное зелье лечения",
-                rarity = PotionRarity.RARE,
+                kind = MagicItemKind.POTION,
+                rarity = ItemRarity.RARE,
                 description = description,
                 formula = "8d4+8",
                 damageTypes = listOf(DamageType.HEALING),
                 iconIndex = 3,
                 sourceModuleId = srdModuleId
             ),
-            GameMagicItem(
+            MagicItem(
                 id = "potion_of_healing_supreme",
                 name = "Превосходное зелье лечения",
-                rarity = PotionRarity.VERY_RARE,
+                kind = MagicItemKind.POTION,
+                rarity = ItemRarity.VERY_RARE,
                 description = description,
                 formula = "10d4+20",
                 damageTypes = listOf(DamageType.HEALING),
@@ -100,7 +107,7 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
         if (currentSrdItems.isNotEmpty()) {
             // Rebuild manifest contents to be sure
             val contents = currentSrdItems.map { 
-                ModuleContent("magic_item", it.id ?: "", slugify(it.name ?: "") + ".json")
+                ModuleContent("magic_item", it.id, slugify(it.name) + ".json")
             }
             
             val finalManifest = manifest.copy(contents = contents)
@@ -119,23 +126,23 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             .ifBlank { "unnamed" }
     }
 
-    private fun getFileForItem(item: GameMagicItem): Path {
-        val identifier = if (!item.englishName.isNullOrBlank()) slugify(item.englishName) else item.id ?: "unnamed"
+    private fun getFileForItem(item: MagicItem): Path {
+        val identifier = if (item.englishName.isNotBlank()) slugify(item.englishName) else item.id.ifBlank { "unnamed" }
         return glossaryDir.div("$identifier.json")
     }
 
-    fun loadItems(): List<GameMagicItem> {
+    fun loadItems(): List<MagicItem> {
         val currentCached = cachedItems
         if (currentCached != null) return currentCached
         
-        val items = mutableListOf<GameMagicItem>()
+        val items = mutableListOf<MagicItem>()
         try {
             if (platformFileSystem.exists(glossaryDir)) {
                 platformFileSystem.list(glossaryDir).forEach { file ->
                     if (file.name.endsWith(".json")) {
                         try {
                             val content = platformFileSystem.read(file) { readUtf8() }
-                            val item = json.decodeFromString<GameMagicItem>(content)
+                            val item = json.decodeFromString<MagicItem>(content)
                             items.add(item)
                         } catch (e: Exception) {
                             e.log()
@@ -147,11 +154,11 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             e.log()
         }
         
-        cachedItems = items.distinctBy { it.id ?: it.name }.sortedBy { it.name }.toMutableList()
+        cachedItems = items.distinctBy { it.id.ifBlank { it.name } }.sortedBy { it.name }.toMutableList()
         return cachedItems!!
     }
 
-    fun addOrUpdateItem(item: GameMagicItem): GameMagicItem {
+    fun addOrUpdateItem(item: MagicItem): MagicItem {
         val allItems = loadItems()
         
         val existingMatch = allItems.find { it.id == item.id }
@@ -161,15 +168,15 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             }
         
         val itemToSave = if (existingMatch != null) {
-            item.copy(id = if (!item.englishName.isNullOrBlank()) slugify(item.englishName) else (existingMatch.id ?: item.id))
+            item.copy(id = if (item.englishName.isNotBlank()) slugify(item.englishName) else existingMatch.id.ifBlank { item.id })
         } else {
-            if (!item.englishName.isNullOrBlank()) item.copy(id = slugify(item.englishName)) else item
+            if (item.englishName.isNotBlank()) item.copy(id = slugify(item.englishName)) else item
         }
 
         if (existingMatch != null) {
             val oldFile = getFileForItem(existingMatch)
             val newFile = getFileForItem(itemToSave)
-            if (oldFile != newFile) {
+            if (oldFile != newFile && platformFileSystem.exists(oldFile)) {
                 platformFileSystem.delete(oldFile)
             }
         }
@@ -213,6 +220,15 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
         rebuildCustomManifest()
     }
 
+    private fun PotionRarity.toItemRarity(): ItemRarity = when (this) {
+        PotionRarity.COMMON -> ItemRarity.COMMON
+        PotionRarity.UNCOMMON -> ItemRarity.UNCOMMON
+        PotionRarity.RARE -> ItemRarity.RARE
+        PotionRarity.VERY_RARE -> ItemRarity.VERY_RARE
+        PotionRarity.LEGENDARY -> ItemRarity.LEGENDARY
+        PotionRarity.ARTIFACT -> ItemRarity.ARTIFACT
+    }
+
     fun syncCustomItems(potions: List<PotionState>) {
         val customModuleId = "custom_potions"
         val customItems = potions.filter { it.sourceModuleId == customModuleId }
@@ -233,11 +249,11 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
             val match = existingItems.find { it.id == potion.id }
                 ?: existingItems.find { it.name.equals(potion.name, ignoreCase = true) && it.sourceModuleId == customModuleId }
             
-            val newItem = GameMagicItem(
+            val newItem = MagicItem(
                 id = potion.id,
                 name = potion.name,
-                type = MagicItemType.POTION,
-                rarity = potion.rarity,
+                kind = MagicItemKind.POTION,
+                rarity = potion.rarity.toItemRarity(),
                 description = potion.description,
                 formula = potion.formula,
                 damageTypes = potion.damageTypes,
@@ -246,8 +262,7 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
                 sourceModuleId = customModuleId,
                 source = potion.source,
                 englishName = potion.englishName,
-                showEnglishName = potion.showEnglishName,
-                version = potion.version
+                showEnglishName = potion.showEnglishName
             )
 
             if (match == null) {
@@ -257,12 +272,11 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
                         match.description == potion.description &&
                         match.iconIndex == potion.iconIndex &&
                         match.colorHex == potion.colorHex &&
-                        match.rarity == potion.rarity &&
+                        match.rarity == potion.rarity.toItemRarity() &&
                         match.name == potion.name &&
                         match.source == potion.source &&
                         match.englishName == potion.englishName &&
-                        match.showEnglishName == potion.showEnglishName &&
-                        match.version == potion.version
+                        match.showEnglishName == potion.showEnglishName
                 
                 if (!dataMatches) {
                     addOrUpdateItem(newItem)
@@ -290,8 +304,8 @@ class MagicItemManager(private val moduleManager: ModuleManager? = null) {
         if (allItems.isEmpty()) return
         
         val contents = allItems.map { item ->
-            val identifier = if (!item.englishName.isNullOrBlank()) slugify(item.englishName) else item.id ?: ""
-            ModuleContent("magic_item", item.id ?: "", "$identifier.json")
+            val identifier = if (item.englishName.isNotBlank()) slugify(item.englishName) else item.id
+            ModuleContent("magic_item", item.id, "$identifier.json")
         }
         
         val manifest = ModuleManifest(

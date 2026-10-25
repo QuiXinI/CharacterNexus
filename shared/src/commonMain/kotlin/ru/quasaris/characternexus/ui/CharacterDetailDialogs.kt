@@ -573,10 +573,10 @@ fun CharacterDetailDialogs(
         if (state.isPotionSelectionOpen && state.magicItemManager != null) {
             PotionSelectionDialog(
                 manager = state.magicItemManager,
-                initialSelectedIds = state.potions.mapNotNull { it.id }.toSet(),
+                initialSelectedIds = state.potions.map { it.id }.toSet(),
                 onDismiss = { state.isPotionSelectionOpen = false },
                 onSelectBatch = { selectedItems ->
-                    val selectedIds = selectedItems.mapNotNull { it.id }.toSet()
+                    val selectedIds = selectedItems.map { it.id }.toSet()
                     
                     // 1. Determine which current potions should be REMOVED.
                     // We only remove items that are "Selectable" from the glossary.
@@ -585,23 +585,31 @@ fun CharacterDetailDialogs(
                     val glossaryPotions = currentPotions.filter { it.sourceModuleId != null }
                     val localPotions = currentPotions.filter { it.sourceModuleId == null }
                     
-                    val toRemoveIds = glossaryPotions.mapNotNull { it.id }.filter { it !in selectedIds }.toSet()
+                    val toRemoveIds = glossaryPotions.map { it.id }.filter { it !in selectedIds }.toSet()
                     
                     var newPotions = currentPotions.filterNot { it.id in toRemoveIds }
                     
                     // 2. Add new items that are selected but not in the character list
-                    val currentIds = newPotions.mapNotNull { it.id }.toSet()
+                    val currentIds = newPotions.map { it.id }.toSet()
                     selectedItems.forEach { item ->
                         if (item.id !in currentIds) {
-                            val potionName = item.name ?: "Без названия"
+                            val potionName = item.name.ifBlank { "Без названия" }
+                            val potionRarity = when (item.rarity) {
+                                ru.quasaris.characternexus.backend.glossary.ItemRarity.COMMON -> PotionRarity.COMMON
+                                ru.quasaris.characternexus.backend.glossary.ItemRarity.UNCOMMON -> PotionRarity.UNCOMMON
+                                ru.quasaris.characternexus.backend.glossary.ItemRarity.RARE -> PotionRarity.RARE
+                                ru.quasaris.characternexus.backend.glossary.ItemRarity.VERY_RARE -> PotionRarity.VERY_RARE
+                                ru.quasaris.characternexus.backend.glossary.ItemRarity.LEGENDARY -> PotionRarity.LEGENDARY
+                                ru.quasaris.characternexus.backend.glossary.ItemRarity.ARTIFACT -> PotionRarity.ARTIFACT
+                            }
                             newPotions = newPotions + PotionState(
-                                id = item.id ?: ru.quasaris.characternexus.util.generateUuid(),
+                                id = item.id.ifBlank { ru.quasaris.characternexus.util.generateUuid() },
                                 name = potionName,
-                                formula = item.formula ?: "",
-                                description = item.description ?: "",
-                                type = if (item.damageTypes?.contains(DamageType.HEALING) == true) PotionType.HEALING else PotionType.OTHER,
-                                rarity = item.rarity,
-                                damageTypes = item.damageTypes ?: emptyList(),
+                                formula = item.formula,
+                                description = item.description,
+                                type = if (item.damageTypes.contains(DamageType.HEALING)) PotionType.HEALING else PotionType.OTHER,
+                                rarity = potionRarity,
+                                damageTypes = item.damageTypes,
                                 quantity = DynamicContentBlock.Resource(
                                     name = potionName,
                                     current = "0",
@@ -612,9 +620,9 @@ fun CharacterDetailDialogs(
                                 colorHex = item.colorHex,
                                 sourceModuleId = item.sourceModuleId,
                                 source = item.source,
-                                englishName = item.englishName ?: "",
-                                showEnglishName = item.showEnglishName ?: false,
-                                version = item.version ?: SpellVersion.HB
+                                englishName = item.englishName,
+                                showEnglishName = item.showEnglishName,
+                                version = SpellVersion.HB
                             )
                         }
                     }
