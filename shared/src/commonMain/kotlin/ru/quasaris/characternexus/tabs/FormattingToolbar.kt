@@ -260,8 +260,10 @@ fun FormattingToolbar(
                                 val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
                                 val suffix = "\n"
                                 val insert = prefix + "---" + suffix
-                                val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                                onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                                val min = value.selection.min.coerceIn(0, value.text.length)
+                                val max = value.selection.max.coerceIn(0, value.text.length)
+                                val newText = value.text.substring(0, min) + insert + value.text.substring(max)
+                                onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(min + insert.length)))
                             }
                         }
                     )
@@ -556,8 +558,10 @@ private fun InsertDropdownMenu(
                         val id = ru.quasaris.characternexus.util.generateUuid()
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
                         val insert = prefix + "{Ресурс: id=$id}\n"
-                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                        val min = value.selection.min.coerceIn(0, value.text.length)
+                        val max = value.selection.max.coerceIn(0, value.text.length)
+                        val newText = value.text.substring(0, min) + insert + value.text.substring(max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(min + insert.length)))
                     }
                 },
                 leadingIcon = {
@@ -574,8 +578,10 @@ private fun InsertDropdownMenu(
                         val id = ru.quasaris.characternexus.util.generateUuid()
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
                         val insert = prefix + "{Инфоблок: id=$id}\n"
-                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                        val min = value.selection.min.coerceIn(0, value.text.length)
+                        val max = value.selection.max.coerceIn(0, value.text.length)
+                        val newText = value.text.substring(0, min) + insert + value.text.substring(max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(min + insert.length)))
                     }
                 },
                 leadingIcon = {
@@ -592,8 +598,10 @@ private fun InsertDropdownMenu(
                         val id = ru.quasaris.characternexus.util.generateUuid()
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
                         val insert = prefix + "{Атака: id=$id}\n"
-                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                        val min = value.selection.min.coerceIn(0, value.text.length)
+                        val max = value.selection.max.coerceIn(0, value.text.length)
+                        val newText = value.text.substring(0, min) + insert + value.text.substring(max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(min + insert.length)))
                     }
                 },
                 leadingIcon = {
@@ -610,8 +618,10 @@ private fun InsertDropdownMenu(
                         val id = ru.quasaris.characternexus.util.generateUuid()
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
                         val insert = prefix + "{Заклинания: id=$id}\n"
-                        val newText = value.text.substring(0, value.selection.min) + insert + value.text.substring(value.selection.max)
-                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(value.selection.min + insert.length)))
+                        val min = value.selection.min.coerceIn(0, value.text.length)
+                        val max = value.selection.max.coerceIn(0, value.text.length)
+                        val newText = value.text.substring(0, min) + insert + value.text.substring(max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(min + insert.length)))
                     }
                 },
                 leadingIcon = {

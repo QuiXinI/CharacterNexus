@@ -48,7 +48,9 @@ object MarkdownHelper {
         val lineStart = text.lastIndexOf('\n', (pos - 1).coerceAtLeast(0)).let { if (it == -1) 0 else it + 1 }
         var lineEnd = text.indexOf('\n', pos)
         if (lineEnd == -1) lineEnd = text.length
-        val line = text.substring(lineStart, lineEnd)
+        val start = minOf(lineStart, lineEnd).coerceIn(0, text.length)
+        val end = maxOf(lineStart, lineEnd).coerceIn(start, text.length)
+        val line = if (start < end) text.substring(start, end) else ""
         return getHeaderLevelOfLine(line)
     }
 
@@ -62,8 +64,10 @@ object MarkdownHelper {
         val lineStart = text.lastIndexOf('\n', (startPos - 1).coerceAtLeast(0)).let { if (it == -1) 0 else it + 1 }
         var lineEnd = text.indexOf('\n', endPos)
         if (lineEnd == -1) lineEnd = text.length
+        val start = minOf(lineStart, lineEnd).coerceIn(0, text.length)
+        val end = maxOf(lineStart, lineEnd).coerceIn(start, text.length)
 
-        val linesSegment = text.substring(lineStart, lineEnd)
+        val linesSegment = if (start < end) text.substring(start, end) else ""
         val lines = linesSegment.split('\n')
 
         val targetPrefix = when (level) {
@@ -114,9 +118,9 @@ object MarkdownHelper {
         }
 
         val newSegment = newLines.joinToString("\n")
-        val newText = text.substring(0, lineStart) + newSegment + text.substring(lineEnd)
+        val newText = text.substring(0, start) + newSegment + text.substring(end)
 
-        val newSelStart = (startPos + deltaStart).coerceIn(lineStart, newText.length)
+        val newSelStart = (startPos + deltaStart).coerceIn(start, newText.length)
         val newSelEnd = (endPos + totalDelta).coerceIn(newSelStart, newText.length)
 
         return value.copy(
@@ -543,6 +547,7 @@ object MarkdownHelper {
         strikeStarts.forEach { strikeRanges.add(it until result.length) }
 
         return buildAnnotatedString {
+            val totalLen = result.length
             append(result.toString())
             
             // Apply 50% opacity to markers
@@ -552,7 +557,11 @@ object MarkdownHelper {
                 SpanStyle()
             }
             markerRanges.forEach { range ->
-                addStyle(markerStyle, range.first, range.last + 1)
+                val start = range.first.coerceIn(0, totalLen)
+                val end = (range.last + 1).coerceIn(start, totalLen)
+                if (start < end) {
+                    addStyle(markerStyle, start, end)
+                }
             }
 
             // Apply Header styles first
@@ -563,32 +572,47 @@ object MarkdownHelper {
                     3 -> 19.sp
                     else -> 17.sp
                 }
-                if (header.range.first <= header.range.last && header.range.first in 0..result.length) {
-                    val end = (header.range.last + 1).coerceAtMost(result.length)
-                    addStyle(
-                        SpanStyle(fontSize = fontSize, fontWeight = FontWeight.Bold),
-                        header.range.first,
-                        end
-                    )
+                if (header.range.first <= header.range.last && header.range.first in 0..totalLen) {
+                    val start = header.range.first.coerceIn(0, totalLen)
+                    val end = (header.range.last + 1).coerceIn(start, totalLen)
+                    if (start < end) {
+                        addStyle(
+                            SpanStyle(fontSize = fontSize, fontWeight = FontWeight.Bold),
+                            start,
+                            end
+                        )
+                    }
                 }
             }
 
             boldRanges.filter { it.first < it.last + 1 }.forEach { range ->
                 val isInsideHeader = headerRanges.any { h -> range.first >= h.range.first && range.last <= h.range.last }
                 val weight = if (isInsideHeader) FontWeight.Black else FontWeight.Bold
-                addStyle(SpanStyle(fontWeight = weight), range.first, range.last + 1) 
+                val start = range.first.coerceIn(0, totalLen)
+                val end = (range.last + 1).coerceIn(start, totalLen)
+                if (start < end) {
+                    addStyle(SpanStyle(fontWeight = weight), start, end)
+                }
             }
-            italicRanges.filter { it.first < it.last + 1 }.forEach { 
-                addStyle(SpanStyle(fontStyle = FontStyle.Italic), it.first, it.last + 1) 
+            italicRanges.filter { it.first < it.last + 1 }.forEach { range ->
+                val start = range.first.coerceIn(0, totalLen)
+                val end = (range.last + 1).coerceIn(start, totalLen)
+                if (start < end) {
+                    addStyle(SpanStyle(fontStyle = FontStyle.Italic), start, end)
+                }
             }
-            strikeRanges.filter { it.first < it.last + 1 }.forEach { 
-                addStyle(
-                    SpanStyle(
-                        textDecoration = TextDecoration.LineThrough,
-                        color = if (onSurface != Color.Unspecified) onSurface else Color.Unspecified
-                    ), 
-                    it.first, it.last + 1
-                ) 
+            strikeRanges.filter { it.first < it.last + 1 }.forEach { range ->
+                val start = range.first.coerceIn(0, totalLen)
+                val end = (range.last + 1).coerceIn(start, totalLen)
+                if (start < end) {
+                    addStyle(
+                        SpanStyle(
+                            textDecoration = TextDecoration.LineThrough,
+                            color = if (onSurface != Color.Unspecified) onSurface else Color.Unspecified
+                        ),
+                        start, end
+                    )
+                }
             }
 
             val urlAccent = Color(0xFF2196F3)
@@ -599,27 +623,9 @@ object MarkdownHelper {
                     "https://$url"
                 } else url
 
-                addLink(
-                    LinkAnnotation.Url(
-                        url = validatedUrl,
-                        styles = TextLinkStyles(
-                            style = SpanStyle(
-                                color = finalLinkColor,
-                                textDecoration = TextDecoration.Underline
-                            )
-                        )
-                    ),
-                    range.first, range.last + 1
-                )
-            }
-            
-            // Automatic link detection (improved regex)
-            AUTO_URL_REGEX.findAll(result.toString()).forEach { match ->
-                // Check if this range is already covered by a markdown link
-                if (linkRanges.none { it.first.first <= match.range.first && it.first.last >= match.range.last }) {
-                    val url = match.value
-                    val validatedUrl = if (url.startsWith("www.")) "https://$url" else url
-                    
+                val start = range.first.coerceIn(0, totalLen)
+                val end = (range.last + 1).coerceIn(start, totalLen)
+                if (start < end) {
                     addLink(
                         LinkAnnotation.Url(
                             url = validatedUrl,
@@ -630,8 +636,34 @@ object MarkdownHelper {
                                 )
                             )
                         ),
-                        match.range.first, match.range.last + 1
+                        start, end
                     )
+                }
+            }
+            
+            // Automatic link detection (improved regex)
+            AUTO_URL_REGEX.findAll(result.toString()).forEach { match ->
+                // Check if this range is already covered by a markdown link
+                if (linkRanges.none { it.first.first <= match.range.first && it.first.last >= match.range.last }) {
+                    val url = match.value
+                    val validatedUrl = if (url.startsWith("www.")) "https://$url" else url
+                    
+                    val start = match.range.first.coerceIn(0, totalLen)
+                    val end = (match.range.last + 1).coerceIn(start, totalLen)
+                    if (start < end) {
+                        addLink(
+                            LinkAnnotation.Url(
+                                url = validatedUrl,
+                                styles = TextLinkStyles(
+                                    style = SpanStyle(
+                                        color = finalLinkColor,
+                                        textDecoration = TextDecoration.Underline
+                                    )
+                                )
+                            ),
+                            start, end
+                        )
+                    }
                 }
             }
         }

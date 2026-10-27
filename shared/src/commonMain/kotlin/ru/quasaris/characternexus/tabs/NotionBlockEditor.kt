@@ -335,8 +335,11 @@ fun NotionBlockEditor(
         val selection = liveSelections[key] ?: return
         val text = blocks[idx].textContent ?: ""
         
-        val before = text.substring(0, selection.min)
-        val after = text.substring(selection.max)
+        val min = selection.min.coerceIn(0, text.length)
+        val max = selection.max.coerceIn(0, text.length)
+
+        val before = text.substring(0, min)
+        val after = text.substring(max)
         
         val newStates = mutableListOf<NoteBlockState>()
         if (before.isNotEmpty() || idx == 0) {
@@ -361,7 +364,12 @@ fun NotionBlockEditor(
         val idx = blocks.indexOfFirst { it.key == key }
         if (idx == -1) null else {
             val text = blocks[idx].textContent ?: return@let null
-            TextFieldValue(text = text, selection = liveSelections[key] ?: TextRange(text.length))
+            val sel = liveSelections[key] ?: TextRange(text.length)
+            val coercedSel = TextRange(
+                sel.start.coerceIn(0, text.length),
+                sel.end.coerceIn(0, text.length)
+            )
+            TextFieldValue(text = text, selection = coercedSel)
         }
     }
     var showLinkDialog by remember { mutableStateOf(false) }
@@ -387,13 +395,17 @@ fun NotionBlockEditor(
             )
         } else if (activeKey != null && activeValue != null) {
             val selection = activeValue.selection
-            val selectedText = activeValue.text.substring(selection.min, selection.max)
+            val min = selection.min.coerceIn(0, activeValue.text.length)
+            val max = selection.max.coerceIn(0, activeValue.text.length)
+            val selectedText = activeValue.text.substring(min, max)
             HyperlinkDialog(
                 initialText = selectedText,
                 initialUrl = "",
                 onConfirm = { text, url ->
-                    val newText = activeValue.text.substring(0, selection.min) + "[" + text + "](" + url + ")" + activeValue.text.substring(selection.max)
-                    val newSelection = TextRange(selection.min + text.length + url.length + 4)
+                    val newMin = selection.min.coerceIn(0, activeValue.text.length)
+                    val newMax = selection.max.coerceIn(0, activeValue.text.length)
+                    val newText = activeValue.text.substring(0, newMin) + "[" + text + "](" + url + ")" + activeValue.text.substring(newMax)
+                    val newSelection = TextRange(newMin + text.length + url.length + 4)
                     spliceBlockValue(activeKey!!, activeValue.copy(text = newText, selection = newSelection))
                     showLinkDialog = false
                 },
@@ -1175,18 +1187,24 @@ private fun LineTextBlockRow(
             if (isActive && !isBasicMode && layoutResult != null) {
                 val topMarginPx = with(density) { 80.dp.toPx() }
                 val bottomMarginPx = with(density) { 16.dp.toPx() }
-                val cursorIndex = internalValue.selection.max.coerceIn(0, internalValue.text.length)
-                val cursorRect = layoutResult?.getCursorRect(cursorIndex)
+                val currentLayout = layoutResult
+                if (currentLayout != null) {
+                    val maxOffset = currentLayout.layoutInput.text.length
+                    if (maxOffset > 0) {
+                        val cursorIndex = internalValue.selection.max.coerceIn(0, maxOffset)
+                        val cursorRect = runCatching { currentLayout.getCursorRect(cursorIndex) }.getOrNull()
 
-                if (cursorRect != null) {
-                    val rectToBring = Rect(
-                        left = cursorRect.left,
-                        top = (cursorRect.top - topMarginPx).coerceAtLeast(0f),
-                        right = cursorRect.right,
-                        bottom = cursorRect.bottom + bottomMarginPx
-                    )
-                    runCatching {
-                        bringIntoViewRequester.bringIntoView(rectToBring)
+                        if (cursorRect != null) {
+                            val rectToBring = Rect(
+                                left = cursorRect.left,
+                                top = (cursorRect.top - topMarginPx).coerceAtLeast(0f),
+                                right = cursorRect.right,
+                                bottom = cursorRect.bottom + bottomMarginPx
+                            )
+                            runCatching {
+                                bringIntoViewRequester.bringIntoView(rectToBring)
+                            }
+                        }
                     }
                 }
             }
