@@ -3,6 +3,8 @@ package ru.quasaris.characternexus.util
 import okio.Path
 
 actual object PlatformUtils {
+    actual val isAndroid: Boolean = false
+
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
     }
 
@@ -10,6 +12,13 @@ actual object PlatformUtils {
     }
 
     actual fun performHapticFeedback(type: HapticType) {
+    }
+
+    actual fun showMessage(message: String) {
+    }
+
+    actual fun getClipboardContent(): ClipboardContent? {
+        return null
     }
 }
 

@@ -25,6 +25,46 @@ actual object PlatformUtils {
         Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, selection)
     }
 
+    actual fun getClipboardContent(): ClipboardContent? {
+        return try {
+            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+            val contents = clipboard.getContents(null) ?: return null
+            
+            var html: String? = null
+            var text = ""
+
+            if (contents.isDataFlavorSupported(java.awt.datatransfer.DataFlavor.stringFlavor)) {
+                text = contents.getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor) as? String ?: ""
+            }
+
+            for (flavor in contents.transferDataFlavors) {
+                if (flavor.isMimeTypeEqual("text/html") || flavor.mimeType.startsWith("text/html")) {
+                    try {
+                        val data = contents.getTransferData(flavor)
+                        html = when (data) {
+                            is String -> data
+                            is java.io.InputStream -> data.bufferedReader(Charsets.UTF_8).readText()
+                            is java.io.Reader -> data.readText()
+                            is ByteArray -> data.toString(Charsets.UTF_8)
+                            else -> data?.toString()
+                        }
+                        if (!html.isNullOrBlank()) {
+                            println("DEBUG: Successfully extracted HTML from clipboard: ${html.take(100)}...")
+                            break
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            ClipboardContent(plainText = text, htmlText = html)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     actual fun performHapticFeedback(type: HapticType) {
         // No haptic feedback on Desktop usually
     }

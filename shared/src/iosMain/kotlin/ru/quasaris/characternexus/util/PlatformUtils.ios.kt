@@ -3,13 +3,22 @@ package ru.quasaris.characternexus.util
 import okio.Path
 import platform.Foundation.NSUUID
 
-actual object   PlatformUtils {
+actual object PlatformUtils {
+    actual val isAndroid: Boolean = false
+
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
         println("[$tag] $message")
         throwable?.printStackTrace()
     }
 
     actual fun setClipboardText(label: String, text: String) {
+    }
+
+    actual fun getClipboardContent(): ClipboardContent? {
+        val pasteboard = platform.UIKit.UIPasteboard.generalPasteboard
+        val text = pasteboard.string ?: ""
+        val html = pasteboard.valueForPasteboardType("public.html") as? String
+        return ClipboardContent(plainText = text, htmlText = html)
     }
 
     actual fun performHapticFeedback(type: HapticType) {

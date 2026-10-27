@@ -40,6 +40,16 @@ actual object PlatformUtils {
         clipboard.setPrimaryClip(clip)
     }
 
+    actual fun getClipboardContent(): ClipboardContent? {
+        val clipboard = androidContext.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return null
+        val primaryClip = clipboard.primaryClip ?: return null
+        if (primaryClip.itemCount <= 0) return null
+
+        val item = primaryClip.getItemAt(0)
+        val plainText = item.coerceToText(androidContext)?.toString() ?: ""
+
+        return ClipboardContent(plainText = plainText, htmlText = null)
+    }
     @RequiresPermission(Manifest.permission.VIBRATE)
     actual fun performHapticFeedback(type: HapticType) {
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

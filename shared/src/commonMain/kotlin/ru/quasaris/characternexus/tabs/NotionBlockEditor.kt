@@ -504,24 +504,30 @@ fun NotionBlockEditor(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .onFocusChanged { isAnyFocused = it.hasFocus }
-            .onGloballyPositioned { coords ->
-                isEditorAttached = coords.isAttached
-                if (coords.isAttached) {
-                    editorWidthPx = coords.size.width
-                    editorHeightPx = coords.size.height
-                    val pos = coords.positionInWindow()
-                    editorLeftPx = pos.x
-                    editorTopPx = pos.y
-                }
-            }
+    val currentClipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    val richTextClipboardManager = remember(currentClipboardManager) { RichTextClipboardManager(currentClipboardManager) }
+
+    CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalClipboardManager provides richTextClipboardManager
     ) {
-        if (effectiveTopMargin > 0.dp) {
-            Spacer(modifier = Modifier.height(effectiveTopMargin))
-        }
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .onFocusChanged { isAnyFocused = it.hasFocus }
+                .onGloballyPositioned { coords ->
+                    isEditorAttached = coords.isAttached
+                    if (coords.isAttached) {
+                        editorWidthPx = coords.size.width
+                        editorHeightPx = coords.size.height
+                        val pos = coords.positionInWindow()
+                        editorLeftPx = pos.x
+                        editorTopPx = pos.y
+                    }
+                }
+        ) {
+            if (effectiveTopMargin > 0.dp) {
+                Spacer(modifier = Modifier.height(effectiveTopMargin))
+            }
 
         val toolbarValue = if (effectiveIsPlainText) plainTextValue else activeValue
         val showToolbar = canEdit && isEditorAttached && (if (effectiveIsPlainText) isAnyFocused else (activeKey != null && activeValue != null))
@@ -1038,6 +1044,25 @@ fun NotionBlockEditor(
                 insertAfterActive(DynamicContentBlock.SpellFieldRef(spellField.id))
             }
         )
+      }
+    }
+}
+
+private class RichTextClipboardManager(
+    private val delegate: androidx.compose.ui.platform.ClipboardManager
+) : androidx.compose.ui.platform.ClipboardManager {
+    override fun getText(): androidx.compose.ui.text.AnnotatedString? {
+        val clip = ru.quasaris.characternexus.util.PlatformUtils.getClipboardContent()
+        if (!clip?.htmlText.isNullOrBlank()) {
+            val md = HtmlToMarkdownParser.toMarkdown(clip!!.htmlText!!)
+            return MarkdownHelper.parseMarkdown(md)
+        }
+        return delegate.getText()
+    }
+
+    override fun setText(annotatedString: androidx.compose.ui.text.AnnotatedString) {
+        delegate.setText(annotatedString)
+        ru.quasaris.characternexus.util.PlatformUtils.setClipboardText("Character Nexus", annotatedString.text)
     }
 }
 
@@ -1057,6 +1082,23 @@ private fun handleFormattingKeyCombination(
     if (!isCtrlOrCmd) return false
 
     return when {
+        // Ctrl + V -> Paste rich text with HTML formatting if available
+        event.key == Key.V -> {
+            val clip = ru.quasaris.characternexus.util.PlatformUtils.getClipboardContent()
+            val textToInsert = if (!clip?.htmlText.isNullOrBlank()) {
+                HtmlToMarkdownParser.toMarkdown(clip!!.htmlText!!)
+            } else {
+                clip?.plainText ?: return false
+            }
+            if (textToInsert.isEmpty()) return false
+
+            val min = value.selection.min.coerceIn(0, value.text.length)
+            val max = value.selection.max.coerceIn(0, value.text.length)
+            val newText = value.text.substring(0, min) + textToInsert + value.text.substring(max)
+            val newSelection = TextRange(min + textToInsert.length)
+            onValueChange(TextFieldValue(text = newText, selection = newSelection))
+            true
+        }
         // Ctrl + B -> Bold
         event.key == Key.B -> {
             onValueChange(MarkdownHelper.applyMarkdown(value, "**", "**"))

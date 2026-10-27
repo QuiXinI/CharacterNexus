@@ -8,12 +8,18 @@ enum class HapticType {
     CLICK, LONG_PRESS, SUCCESS, ERROR
 }
 
+data class ClipboardContent(
+    val plainText: String,
+    val htmlText: String? = null
+)
+
 expect object PlatformUtils {
     val isAndroid: Boolean
     fun logError(tag: String, message: String, throwable: Throwable? = null)
     fun setClipboardText(label: String, text: String)
     fun performHapticFeedback(type: HapticType = HapticType.CLICK)
     fun showMessage(message: String)
+    fun getClipboardContent(): ClipboardContent?
 }
 
 expect object ImageProcessor {
