@@ -32,6 +32,11 @@ jobs:
 
       - name: Build WasmJS Web Distribution
         run: ./gradlew :webApp:wasmJsBrowserDistribution
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Add .nojekyll for GitHub Pages
+        run: touch webApp/build/dist/wasmJs/productionExecutable/.nojekyll
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
