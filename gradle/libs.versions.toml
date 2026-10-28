@@ -57,6 +57,7 @@ androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstall
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil3" }
 coil-network-ktor = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil3" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
 compose-material-icons = { module = "org.jetbrains.compose.material:material-icons-extended", version = "1.7.3" }

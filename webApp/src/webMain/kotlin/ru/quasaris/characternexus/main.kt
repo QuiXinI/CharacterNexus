@@ -1,11 +1,79 @@
 package ru.quasaris.characternexus
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import ru.quasaris.characternexus.backend.CharacterRepository
+import ru.quasaris.characternexus.backend.MagicItemManager
+import ru.quasaris.characternexus.backend.ModuleManager
+import ru.quasaris.characternexus.backend.SpellbookManager
+import ru.quasaris.characternexus.backend.SettingsManager
+import ru.quasaris.characternexus.backend.SettingsViewModel
+import ru.quasaris.characternexus.backend.glossary.GlossaryImporter
+import ru.quasaris.characternexus.backend.storage.FileSystemCharacterStorage
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
+    platformContext = PlatformContext()
+
+    val settingsManager = SettingsManager()
+    val settingsViewModel = SettingsViewModel(settingsManager)
+
+    val moduleManager = ModuleManager()
+    val spellbookManager = SpellbookManager()
+    val magicItemManager = MagicItemManager(moduleManager)
+    val glossaryImporter = GlossaryImporter(spellbookManager, moduleManager)
+
+    val characterRepository = CharacterRepository(
+        storage = FileSystemCharacterStorage(),
+        appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    )
+
     ComposeViewport {
-        App()
+        val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
+        val rollHistorySize by settingsViewModel.rollHistorySize.collectAsState()
+        val customRollHistorySize by settingsViewModel.customRollHistorySize.collectAsState()
+        val masterBlurEnabled by settingsViewModel.masterBlurEnabled.collectAsState()
+        val blurRolls by settingsViewModel.blurRolls.collectAsState()
+        val blurFullscreen by settingsViewModel.blurFullscreen.collectAsState()
+        val blurPopups by settingsViewModel.blurPopups.collectAsState()
+        val rollAlpha by settingsViewModel.rollInterfaceAlpha.collectAsState()
+        val rollPassThrough by settingsViewModel.rollPassThrough.collectAsState()
+        val rollPosition by settingsViewModel.rollPosition.collectAsState()
+        val rollCloseButtonPos by settingsViewModel.rollCloseButtonPosition.collectAsState()
+
+        App(
+            initialLastCharacterUuid = settingsManager.lastCharacterUuid,
+            initialLastCharacterSeedColor = settingsManager.lastCharacterSeedColor,
+            settingsViewModel = settingsViewModel,
+            characterRepository = characterRepository,
+            spellbookManager = spellbookManager,
+            moduleManager = moduleManager,
+            magicItemManager = magicItemManager,
+            glossaryImporter = glossaryImporter,
+            getScaleFactor = { scaleFactor },
+            getRollHistorySize = { rollHistorySize },
+            getCustomRollHistorySize = { customRollHistorySize },
+            getMasterBlurEnabled = { masterBlurEnabled },
+            getBlurRolls = { blurRolls },
+            getBlurFullscreen = { blurFullscreen },
+            getBlurPopups = { blurPopups },
+            getRollInterfaceAlpha = { rollAlpha },
+            getRollPassThrough = { rollPassThrough },
+            getRollPosition = { rollPosition },
+            getRollCloseButtonPosition = { rollCloseButtonPos },
+            loadCharacters = { characterRepository.loadCharacters() },
+            getFullCharacter = { uuid -> characterRepository.getFullCharacter(uuid) },
+            updateCharacter = { char -> characterRepository.updateCharacter(char) },
+            deleteCharacter = { uuid -> characterRepository.deleteCharacter(uuid) },
+            onCharacterUuidChange = { uuid -> settingsManager.lastCharacterUuid = uuid },
+            onSeedColorChange = { color -> settingsManager.lastCharacterSeedColor = color }
+        )
     }
 }

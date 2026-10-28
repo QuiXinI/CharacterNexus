@@ -101,6 +101,11 @@ kotlin {
     
     jvm()
     
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        browser()
+    }
+    
     android {
        namespace = "ru.quasaris.characternexus.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -126,11 +131,12 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
-            implementation(libs.mpfilepicker)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.palette)
             implementation(libs.androidx.window)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.datastore.preferences)
+            implementation(libs.mpfilepicker)
         }
         commonMain {
             kotlin.srcDir(generateBuildConstants)
@@ -147,24 +153,24 @@ kotlin {
                 implementation(libs.androidx.lifecycle.viewmodelCompose)
                 implementation(libs.androidx.lifecycle.runtimeCompose)
                 implementation(libs.androidx.savedstate)
-                implementation(libs.androidx.datastore.preferences)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.navigation.compose)
                 implementation(libs.haze)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.okio)
+                implementation(libs.okio.fakefilesystem)
                 implementation(libs.coil.compose)
                 implementation(libs.coil.network.ktor)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.serialization.json)
                 implementation(libs.reorderable)
-            implementation(libs.composeDnd)
+                implementation(libs.composeDnd)
             }
         }
         jvmMain.dependencies {
-            implementation(libs.mpfilepicker)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.mpfilepicker)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

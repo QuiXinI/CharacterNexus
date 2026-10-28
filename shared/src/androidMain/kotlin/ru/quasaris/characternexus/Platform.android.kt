@@ -12,9 +12,6 @@ import okio.Path.Companion.toPath
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.preferencesDataStoreFile
 
 class AndroidPlatform : Platform {
     override val name: String = "Android ${Build.VERSION.SDK_INT}"
@@ -45,11 +42,7 @@ actual val performanceClass: Int
         0
     }
 
-actual fun createDataStore(): DataStore<Preferences> {
-    return ru.quasaris.characternexus.backend.createDataStore {
-        platformContext.androidContext.preferencesDataStoreFile("settings").absolutePath
-    }
-}
+
 
 actual class PlatformContext(context: Context) {
     val androidContext: Context = context.applicationContext

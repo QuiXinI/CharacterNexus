@@ -7,8 +7,6 @@ import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -60,11 +58,7 @@ actual fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T {
 
 actual val performanceClass: Int = 99
 
-actual fun createDataStore(): DataStore<Preferences> {
-    return ru.quasaris.characternexus.backend.createDataStore {
-        getAppDataDir().div("settings.preferences_pb").toString()
-    }
-}
+
 
 actual class PlatformContext
 

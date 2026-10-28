@@ -5,8 +5,6 @@ import okio.FileSystem
 import okio.Path
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 
 interface Platform {
     val name: String
@@ -23,8 +21,6 @@ expect val ioDispatcher: CoroutineDispatcher
 expect val performanceClass: Int
 
 expect fun <T> runBlockingPlatform(block: suspend CoroutineScope.() -> T): T
-
-expect fun createDataStore(): DataStore<Preferences>
 
 /**
  * Interface to provide platform-specific context (like Android Context).

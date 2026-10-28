@@ -66,6 +66,10 @@ actual object ImageProcessor {
     actual suspend fun encodeToByteArray(bitmap: androidx.compose.ui.graphics.ImageBitmap): ByteArray {
         return ByteArray(0)
     }
+
+    actual fun crop(bitmap: androidx.compose.ui.graphics.ImageBitmap, state: ru.quasaris.characternexus.backend.cropper.ImageCropState): androidx.compose.ui.graphics.ImageBitmap {
+        return bitmap
+    }
 }
 
 actual fun generateUuid(): String = NSUUID().UUIDString()
