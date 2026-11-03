@@ -57,7 +57,6 @@ import ru.quasaris.characternexus.util.generateUuid
 
 import ru.quasaris.characternexus.ui.menu.CharacterFolderTree
 import ru.quasaris.characternexus.ui.util.FolderColors
-import ru.quasaris.characternexus.ui.util.PayWall
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.BorderStroke
@@ -99,7 +98,6 @@ fun MenuWindow(
 
     val autoDownload by settingsViewModel?.autoDownloadLssAvatar?.collectAsState() ?: remember { mutableStateOf(false) }
     val veryResponsive by settingsViewModel?.veryResponsiveHaptics?.collectAsState() ?: remember { mutableStateOf(true) }
-    val isPremium by settingsViewModel?.isPremium?.collectAsState() ?: remember { mutableStateOf(false) }
     val debugInfoEnabled by settingsViewModel?.debugInfoEnabled?.collectAsState() ?: remember { mutableStateOf(false) }
     var showDebugLogs by remember { mutableStateOf(false) }
 
@@ -147,137 +145,90 @@ fun MenuWindow(
         customHex: String,
         onCustomHexChange: (String) -> Unit
     ) {
-        val freeColors = FolderColors.predefinedColors.filter { !it.isPremium }
-        val premiumColors = FolderColors.predefinedColors.filter { it.isPremium }
-
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                freeColors.forEach { folderColor ->
-                    val color = if (isDark) folderColor.dark else folderColor.light
-                    val argb = color.toArgb()
-                    val isSelected = selectedColorArgb == argb
-
-                    Box(modifier = Modifier.weight(1f).aspectRatio(1f)) {
-                        Surface(
-                            onClick = { onColorSelect(argb) },
-                            shape = CircleShape,
-                            color = color,
-                            border = if (isSelected) BorderStroke(3.dp, colorScheme.primary) else null,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            if (isSelected) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Default.Check,
-                                        null,
-                                        tint = FolderColors.getBestIconTint(color),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            PayWall(
-                isLocked = !isPremium,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = (2).dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            FolderColors.predefinedColors.chunked(4).forEach { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        premiumColors.chunked(4).forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                row.forEach { folderColor ->
-                                    val color = if (isDark) folderColor.dark else folderColor.light
-                                    val argb = color.toArgb()
-                                    val isSelected = selectedColorArgb == argb
+                    row.forEach { folderColor ->
+                        val color = if (isDark) folderColor.dark else folderColor.light
+                        val argb = color.toArgb()
+                        val isSelected = selectedColorArgb == argb
 
-                                    Box(modifier = Modifier.weight(1f).aspectRatio(1f)) {
-                                        Surface(
-                                            onClick = { onColorSelect(argb) },
-                                            shape = CircleShape,
-                                            color = color,
-                                            border = if (isSelected) BorderStroke(3.dp, colorScheme.primary) else null,
-                                            modifier = Modifier.fillMaxSize()
-                                        ) {
-                                            if (isSelected) {
-                                                Box(contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        Icons.Default.Check,
-                                                        null,
-                                                        tint = FolderColors.getBestIconTint(color),
-                                                        modifier = Modifier.size(20.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
+                        Box(modifier = Modifier.weight(1f).aspectRatio(1f)) {
+                            Surface(
+                                onClick = { onColorSelect(argb) },
+                                shape = CircleShape,
+                                color = color,
+                                border = if (isSelected) BorderStroke(3.dp, colorScheme.primary) else null,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                if (isSelected) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            null,
+                                            tint = FolderColors.getBestIconTint(color),
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-
-                    var showColourPicker by remember { mutableStateOf(false) }
-
-                    if (showColourPicker) {
-                        val currentColor = selectedColorArgb?.let { Color(it) } ?: colorScheme.primary
-                        ColourPickerDialog(
-                            initialColor = currentColor,
-                            onDismiss = { showColourPicker = false },
-                            onColorConfirmed = { chosenColor ->
-                                val argb = chosenColor.toArgb()
-                                onColorSelect(argb)
-                                val hex = ColourUtils.colorToHex(chosenColor, includeAlpha = false).removePrefix("#")
-                                onCustomHexChange(hex)
-                            },
-                            showAlpha = false,
-                            title = "Цвет папки"
-                        )
-                    }
-
-                    OutlinedTextField(
-                        value = customHex,
-                        onValueChange = { input ->
-                            val filtered = input.filter { it.isDigit() || it.uppercaseChar() in 'A'..'F' }.take(6)
-                            onCustomHexChange(filtered)
-                            if (filtered.length == 6) {
-                                try {
-                                    val argb = (0xFF000000 or filtered.toLong(16)).toInt()
-                                    onColorSelect(argb)
-                                } catch (e: Exception) {}
-                            }
-                        },
-                        label = { Text("Свой HEX цвет") },
-                        placeholder = { Text("RRGGBB") },
-                        prefix = { Text("#") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        trailingIcon = {
-                            val displayColor = selectedColorArgb?.let { Color(it) } ?: colorScheme.primary
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .clickable { showColourPicker = true }
-                                    .background(displayColor, CircleShape)
-                                    .border(1.dp, colorScheme.outline.copy(alpha = 0.5f), CircleShape)
-                            )
-                        }
-                    )
                 }
             }
+
+            var showColourPicker by remember { mutableStateOf(false) }
+
+            if (showColourPicker) {
+                val currentColor = selectedColorArgb?.let { Color(it) } ?: colorScheme.primary
+                ColourPickerDialog(
+                    initialColor = currentColor,
+                    onDismiss = { showColourPicker = false },
+                    onColorConfirmed = { chosenColor ->
+                        val argb = chosenColor.toArgb()
+                        onColorSelect(argb)
+                        val hex = ColourUtils.colorToHex(chosenColor, includeAlpha = false).removePrefix("#")
+                        onCustomHexChange(hex)
+                    },
+                    showAlpha = false,
+                    title = "Цвет папки"
+                )
+            }
+
+            OutlinedTextField(
+                value = customHex,
+                onValueChange = { input ->
+                    val filtered = input.filter { it.isDigit() || it.uppercaseChar() in 'A'..'F' }.take(6)
+                    onCustomHexChange(filtered)
+                    if (filtered.length == 6) {
+                        try {
+                            val argb = (0xFF000000 or filtered.toLong(16)).toInt()
+                            onColorSelect(argb)
+                        } catch (e: Exception) {}
+                    }
+                },
+                label = { Text("Свой HEX цвет") },
+                placeholder = { Text("RRGGBB") },
+                prefix = { Text("#") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                trailingIcon = {
+                    val displayColor = selectedColorArgb?.let { Color(it) } ?: colorScheme.primary
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .clickable { showColourPicker = true }
+                            .background(displayColor, CircleShape)
+                            .border(1.dp, colorScheme.outline.copy(alpha = 0.5f), CircleShape)
+                    )
+                }
+            )
 
             TextButton(
                 onClick = { onColorSelect(null); onCustomHexChange("") },

@@ -96,7 +96,6 @@ data class AppSettings(
     var collapseSpellsOnEdit: Boolean = true,
     var collapseDynamicFieldsOnEdit: Boolean = true,
     var veryResponsiveHaptics: Boolean = true,
-    var isPremium: Boolean = false,
     var desktopLeftColumnWidth: Float = 450f,
     var lastCrashLog: String? = null,
     var crashLogs: List<CrashLogEntry> = emptyList()
@@ -205,7 +204,6 @@ class SettingsManager {
     var blurRadius: Int get() = settings.blurRadius; set(value) { settings.blurRadius = value; save() }
     var customBlurRadius: Int get() = settings.customBlurRadius; set(value) { settings.customBlurRadius = value; save() }
     var veryResponsiveHaptics: Boolean get() = settings.veryResponsiveHaptics; set(value) { settings.veryResponsiveHaptics = value; save() }
-    var isPremium: Boolean get() = settings.isPremium; set(value) { settings.isPremium = value; save() }
     var lastCrashLog: String? get() = settings.lastCrashLog; set(value) { settings.lastCrashLog = value; save() }
     var crashLogs: List<CrashLogEntry> get() = settings.crashLogs; set(value) { settings.crashLogs = value; save() }
 

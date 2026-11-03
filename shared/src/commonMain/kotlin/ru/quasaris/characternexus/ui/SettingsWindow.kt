@@ -40,7 +40,6 @@ fun SettingsWindow(
     onFullscreenDialogOpenChange: (Boolean) -> Unit = {},
     onCleanupDuplicateFolders: () -> Unit = {}
 ) {
-    val isPremium by settingsViewModel.isPremium.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
 
     var showResetDialog by remember { mutableStateOf(false) }
@@ -177,32 +176,6 @@ fun SettingsWindow(
                 Icon(Icons.Default.Keyboard, null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Изменить горячие клавиши", fontWeight = FontWeight.Bold)
-            }
-
-            HorizontalDivider(color = colorScheme.outlineVariant)
-
-            // Character Nexus Premium
-            Text(
-                text = "Character Nexus Premium",
-                style = MaterialTheme.typography.titleMedium,
-                color = colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Премиум аккаунт",
-                    fontSize = 16.sp,
-                    color = colorScheme.onSurface
-                )
-                Switch(
-                    checked = isPremium,
-                    onCheckedChange = { settingsViewModel.updateIsPremium(it) }
-                )
             }
 
             HorizontalDivider(color = colorScheme.outlineVariant)

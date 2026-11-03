@@ -234,9 +234,6 @@ class SettingsViewModel(
     private val _customOutline = MutableStateFlow(settingsManager.settings.customOutline)
     val customOutline = _customOutline.asStateFlow()
 
-    private val _isPremium = MutableStateFlow(settingsManager.settings.isPremium)
-    val isPremium = _isPremium.asStateFlow()
-
     private val _veryResponsiveHaptics = MutableStateFlow(settingsManager.settings.veryResponsiveHaptics)
     val veryResponsiveHaptics = _veryResponsiveHaptics.asStateFlow()
 
@@ -622,11 +619,6 @@ class SettingsViewModel(
         settingsManager.save()
     }
 
-    fun updateIsPremium(enabled: Boolean) {
-        _isPremium.value = enabled
-        settingsManager.isPremium = enabled
-    }
-
     fun updateLastCrashLog(log: String?) {
         _lastCrashLog.value = log
         settingsManager.lastCrashLog = log
@@ -728,6 +720,5 @@ class SettingsViewModel(
         _interfaceMode.value = s.interfaceMode
         _desktopLeftColumnWidth.value = s.desktopLeftColumnWidth
         _m3SeedColor.value = s.m3SeedColor
-        _isPremium.value = s.isPremium
     }
 }

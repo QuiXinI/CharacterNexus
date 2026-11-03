@@ -45,7 +45,6 @@ import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.ui.DialogDimStyle
-import ru.quasaris.characternexus.ui.util.PayWall
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.ui.colourpicker.ColourPickerDialog
@@ -94,7 +93,6 @@ fun PotionConfigDialog(
     var shortRestAll by remember { mutableStateOf(initialPotion.quantity.shortRest.lowercase() == "all" || initialPotion.quantity.shortRest.lowercase() == "все") }
     var longRestAll by remember { mutableStateOf(initialPotion.quantity.longRest.lowercase() == "all" || initialPotion.quantity.longRest.lowercase() == "все") }
     var dawnRestAll by remember { mutableStateOf(initialPotion.quantity.dawnRest.lowercase() == "all" || initialPotion.quantity.dawnRest.lowercase() == "все") }
-    val isPremium by settingsViewModel?.isPremium?.collectAsState() ?: remember { mutableStateOf(true) }
 
     var englishNameError by remember { mutableStateOf<String?>(null) }
     val allowedCharsRegex = remember { Regex("^[a-zA-Z0-9'\\-._,() ]*$") }
@@ -120,7 +118,6 @@ fun PotionConfigDialog(
             onLongRestAllChange = { longRestAll = it },
             dawnRestAll = dawnRestAll,
             onDawnRestAllChange = { dawnRestAll = it },
-            isPremium = isPremium,
             onDismiss = handleDismiss,
             onDelete = { potionToDelete ->
                 onDelete(potionToDelete)
@@ -163,7 +160,6 @@ fun PotionConfigDialog(
                 onLongRestAllChange = { longRestAll = it },
                 dawnRestAll = dawnRestAll,
                 onDawnRestAllChange = { dawnRestAll = it },
-                isPremium = isPremium,
                 onDismiss = handleDismiss,
                 onDelete = { potionToDelete ->
                     onDelete(potionToDelete)
@@ -199,7 +195,6 @@ fun PotionConfigDialogContent(
     onLongRestAllChange: (Boolean) -> Unit,
     dawnRestAll: Boolean,
     onDawnRestAllChange: (Boolean) -> Unit,
-    isPremium: Boolean,
     onDismiss: () -> Unit,
     onDelete: (PotionState) -> Unit,
     isReadOnlyDefinition: Boolean = false,
@@ -672,54 +667,50 @@ fun PotionConfigDialogContent(
                         }
 
                         // Slider setting
-                        PayWall(isLocked = !isPremium) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                                shape = RoundedCornerShape(12.dp)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        "Режим слайдера",
-                                        modifier = Modifier.weight(1f),
-                                        fontWeight = FontWeight.Bold,
-                                        color = colorScheme.onSurface
-                                    )
-                                    Switch(
-                                        checked = state.quantity.useSlider,
-                                        onCheckedChange = { onStateChange(state.copy(quantity = state.quantity.copy(useSlider = it))) }
-                                    )
-                                }
+                                Text(
+                                    "Режим слайдера",
+                                    modifier = Modifier.weight(1f),
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onSurface
+                                )
+                                Switch(
+                                    checked = state.quantity.useSlider,
+                                    onCheckedChange = { onStateChange(state.copy(quantity = state.quantity.copy(useSlider = it))) }
+                                )
                             }
                         }
 
                         // Resource Step setting
-                        PayWall(isLocked = !isPremium) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(
-                                        "Шаг изменения",
-                                        fontWeight = FontWeight.Bold,
-                                        color = colorScheme.onSurface,
-                                        modifier = Modifier.padding(bottom = 8.dp)
-                                    )
-                                    OutlinedTextField(
-                                        value = sliderStepText,
-                                        onValueChange = onSliderStepTextChange,
-                                        label = { Text("Значение шага") },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        placeholder = { Text("1.0 (по умолчанию)") },
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                }
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    "Шаг изменения",
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onSurface,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                OutlinedTextField(
+                                    value = sliderStepText,
+                                    onValueChange = onSliderStepTextChange,
+                                    label = { Text("Значение шага") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    placeholder = { Text("1.0 (по умолчанию)") },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
                             }
                         }
 

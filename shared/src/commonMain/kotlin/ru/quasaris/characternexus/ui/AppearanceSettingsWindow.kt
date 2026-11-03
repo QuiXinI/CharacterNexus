@@ -44,7 +44,6 @@ import ru.quasaris.characternexus.getDynamicColorScheme
 import ru.quasaris.characternexus.model.AppInterfaceMode
 import ru.quasaris.characternexus.model.AppThemeBehavior
 import ru.quasaris.characternexus.model.AppThemeMode
-import ru.quasaris.characternexus.ui.util.PayWall
 import kotlin.math.roundToInt
 
 private const val SHOW_DEBUG_SETTINGS = true
@@ -56,7 +55,6 @@ fun AppearanceSettingsWindow(
     onDismiss: () -> Unit
 ) {
     val themeMode by settingsViewModel.themeMode.collectAsState()
-    val isPremium by settingsViewModel.isPremium.collectAsState()
     val colorScheme = MaterialTheme.colorScheme
     val scaleFactor by settingsViewModel.scaleFactor.collectAsState()
     val useOldAvatarStyle by settingsViewModel.useOldAvatarStyle.collectAsState()
@@ -133,22 +131,18 @@ fun AppearanceSettingsWindow(
                             ) { Text("Material You") }
                         }
                         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                            PayWall(isLocked = !isPremium, modifier = Modifier.weight(1f)) {
-                                SegmentedButton(
-                                    selected = themeMode == AppThemeMode.OFF,
-                                    onClick = { settingsViewModel.updateThemeMode(AppThemeMode.OFF) },
-                                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { Text("BLACK") }
-                            }
-                            PayWall(isLocked = !isPremium, modifier = Modifier.weight(1f)) {
-                                SegmentedButton(
-                                    selected = themeMode == AppThemeMode.CHARACTER,
-                                    onClick = { settingsViewModel.updateThemeMode(AppThemeMode.CHARACTER) },
-                                    shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { Text("Персонаж") }
-                            }
+                            SegmentedButton(
+                                selected = themeMode == AppThemeMode.OFF,
+                                onClick = { settingsViewModel.updateThemeMode(AppThemeMode.OFF) },
+                                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp),
+                                modifier = Modifier.weight(1f)
+                            ) { Text("BLACK") }
+                            SegmentedButton(
+                                selected = themeMode == AppThemeMode.CHARACTER,
+                                onClick = { settingsViewModel.updateThemeMode(AppThemeMode.CHARACTER) },
+                                shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 0.dp),
+                                modifier = Modifier.weight(1f)
+                            ) { Text("Персонаж") }
                         }
                         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                             SegmentedButton(

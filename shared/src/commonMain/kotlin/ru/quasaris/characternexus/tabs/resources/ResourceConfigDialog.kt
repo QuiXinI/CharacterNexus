@@ -34,7 +34,6 @@ import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.BackHandler
 import ru.quasaris.characternexus.ui.PredictiveBackBox
 import ru.quasaris.characternexus.ui.DialogDimStyle
-import ru.quasaris.characternexus.ui.util.PayWall
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
 import ru.quasaris.characternexus.ui.CharacterDetailState
 
@@ -77,7 +76,6 @@ fun ResourceConfigDialog(
     var shortRestAll by remember { mutableStateOf(resource.shortRest.lowercase() == "all" || resource.shortRest.lowercase() == "все") }
     var longRestAll by remember { mutableStateOf(resource.longRest.lowercase() == "all" || resource.longRest.lowercase() == "все") }
     var dawnRestAll by remember { mutableStateOf(resource.dawnRest.lowercase() == "all" || resource.dawnRest.lowercase() == "все") }
-    val isPremium by settingsViewModel?.isPremium?.collectAsState() ?: remember { mutableStateOf(true) }
 
     val currentOnFullscreenDialogOpenChange by rememberUpdatedState(onFullscreenDialogOpenChange)
 
@@ -104,7 +102,6 @@ fun ResourceConfigDialog(
             onLongRestAllChange = { longRestAll = it },
             dawnRestAll = dawnRestAll,
             onDawnRestAllChange = { dawnRestAll = it },
-            isPremium = isPremium,
             onDismiss = handleDismiss,
             onDelete = { resourceToDelete ->
                 onDelete(resourceToDelete)
@@ -149,7 +146,6 @@ fun ResourceConfigDialogContent(
     onLongRestAllChange: (Boolean) -> Unit,
     dawnRestAll: Boolean,
     onDawnRestAllChange: (Boolean) -> Unit,
-    isPremium: Boolean,
     onDismiss: () -> Unit,
     onDelete: (DynamicContentBlock.Resource) -> Unit,
     forceBlurEnabled: Boolean,
@@ -208,7 +204,6 @@ fun ResourceConfigDialogContent(
             onLongRestAllChange = onLongRestAllChange,
             dawnRestAll = dawnRestAll,
             onDawnRestAllChange = onDawnRestAllChange,
-            isPremium = isPremium,
             onDismiss = onDismiss,
             onDelete = { showDeleteConfirm = true },
             owner = owner,
@@ -324,7 +319,6 @@ fun ResourceConfigDialogInner(
     onLongRestAllChange: (Boolean) -> Unit,
     dawnRestAll: Boolean,
     onDawnRestAllChange: (Boolean) -> Unit,
-    isPremium: Boolean,
     onDismiss: () -> Unit,
     onDelete: () -> Unit,
     owner: CharacterDetailState? = null,
@@ -494,41 +488,37 @@ fun ResourceConfigDialogInner(
                         }
 
                         // Slider setting
-                        PayWall(isLocked = !isPremium) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                                shape = RoundedCornerShape(12.dp)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Режим слайдера", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
-                                    Switch(checked = state.useSlider, onCheckedChange = { onStateChange(state.copy(useSlider = it)) })
-                                }
+                                Text("Режим слайдера", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                                Switch(checked = state.useSlider, onCheckedChange = { onStateChange(state.copy(useSlider = it)) })
                             }
                         }
 
                         // Step setting
-                        PayWall(isLocked = !isPremium) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text("Шаг изменения", fontWeight = FontWeight.Bold, color = colorScheme.onSurface, modifier = Modifier.padding(bottom = 8.dp))
-                                    OutlinedTextField(
-                                        value = sliderStepText,
-                                        onValueChange = onSliderStepTextChange,
-                                        label = { Text("Значение шага") },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                        placeholder = { Text("1.0 (по умолчанию)") },
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                }
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("Шаг изменения", fontWeight = FontWeight.Bold, color = colorScheme.onSurface, modifier = Modifier.padding(bottom = 8.dp))
+                                OutlinedTextField(
+                                    value = sliderStepText,
+                                    onValueChange = onSliderStepTextChange,
+                                    label = { Text("Значение шага") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    placeholder = { Text("1.0 (по умолчанию)") },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
                             }
                         }
 
