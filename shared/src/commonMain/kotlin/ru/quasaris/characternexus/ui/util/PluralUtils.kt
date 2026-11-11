@@ -38,3 +38,24 @@ fun charactersCountLabel(count: Int): String {
     val word = pluralizeRu(count, one = "персонаж", few = "персонажа", many = "персонажей")
     return "$count $word"
 }
+
+/**
+ * Готовая подпись вида "1 папка" / "2 папки" / "5 папок".
+ */
+fun foldersCountLabel(count: Int): String {
+    val word = pluralizeRu(count, one = "папка", few = "папки", many = "папок")
+    return "$count $word"
+}
+
+/**
+ * Готовая подпись количества персонажей и папок.
+ */
+fun folderDetailsLabel(characterCount: Int, folderCount: Int): String {
+    val charsText = charactersCountLabel(characterCount)
+    return if (folderCount > 0) {
+        val foldersText = foldersCountLabel(folderCount)
+        "$charsText, $foldersText"
+    } else {
+        charsText
+    }
+}

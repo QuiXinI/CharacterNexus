@@ -82,6 +82,7 @@ import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.util.FolderColors
 import ru.quasaris.characternexus.util.charactersCountLabel
+import ru.quasaris.characternexus.util.folderDetailsLabel
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -193,12 +194,21 @@ sealed class TreeItem {
 
     data class Folder(
         val folder: CharacterFolder,
-        val count: Int,
+        val characterCount: Int,
+        val folderCount: Int,
         override val indentation: Int,
         override val parentId: String?
     ) : TreeItem() {
         override val id: String = folder.uuid
     }
+}
+
+private fun getAllSubfolderUuids(folderUuid: String, folders: Map<String, CharacterFolder>): Set<String> {
+    val result = mutableSetOf(folderUuid)
+    folders.values.filter { it.parentFolderUuid == folderUuid }.forEach { child ->
+        result.addAll(getAllSubfolderUuids(child.uuid, folders))
+    }
+    return result
 }
 
 private fun flattenTree(
@@ -216,8 +226,10 @@ private fun flattenTree(
                 return@forEach
             }
             val f = folders[id] ?: return@forEach
-            val count = model.childrenOf(f.uuid).count { it in characters }
-            out += TreeItem.Folder(f, count, depth, parent)
+            val subfolderUuids = getAllSubfolderUuids(f.uuid, folders)
+            val characterCount = characters.values.count { it.folderUuid in subfolderUuids }
+            val folderCount = subfolderUuids.size - 1
+            out += TreeItem.Folder(f, characterCount, folderCount, depth, parent)
             if (f.isExpanded) walk(f.uuid, depth + 1)
         }
     }
@@ -957,7 +969,8 @@ private fun FolderHost(
                 Box(Modifier.graphicsLayer { alpha = 0.85f; scaleX = 1.04f; scaleY = 1.04f }) {
                     FolderHeader(
                         folder = item.folder,
-                        characterCount = item.count,
+                        characterCount = item.characterCount,
+                        folderCount = item.folderCount,
                         isExpanded = item.folder.isExpanded,
                         onToggleExpand = {},
                         onExpansionToggle = {},
@@ -976,7 +989,8 @@ private fun FolderHost(
         ) {
             FolderHeader(
                 folder = item.folder,
-                characterCount = item.count,
+                characterCount = item.characterCount,
+                folderCount = item.folderCount,
                 isExpanded = item.folder.isExpanded,
                 isSelected = isSelected,
                 isEditMode = isEditMode,
@@ -1362,6 +1376,7 @@ fun CharacterCardComposable(
 fun FolderHeader(
     folder: CharacterFolder,
     characterCount: Int,
+    folderCount: Int,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
     onExpansionToggle: () -> Unit,
@@ -1421,7 +1436,7 @@ fun FolderHeader(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = charactersCountLabel(characterCount),
+                    text = folderDetailsLabel(characterCount, folderCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurfaceVariant
                 )

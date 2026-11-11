@@ -27,6 +27,7 @@ import ru.quasaris.characternexus.model.CharacterFolder
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.util.FolderColors
 import ru.quasaris.characternexus.util.charactersCountLabel
+import ru.quasaris.characternexus.util.folderDetailsLabel
 import androidx.compose.foundation.isSystemInDarkTheme
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -34,6 +35,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 fun FolderCard(
     folder: CharacterFolder,
     characterCount: Int,
+    folderCount: Int = 0,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
     isDropZoneHovered: Boolean = false,
@@ -128,7 +130,7 @@ fun FolderCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = charactersCountLabel(characterCount),
+                        text = folderDetailsLabel(characterCount, folderCount),
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant
                     )
