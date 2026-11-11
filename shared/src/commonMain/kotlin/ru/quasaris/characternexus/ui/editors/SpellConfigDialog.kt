@@ -158,7 +158,8 @@ fun SpellConfigContent(
     englishNameError: String?,
     onEnglishNameErrorChange: (String?) -> Unit,
     allowedCharsRegex: Regex,
-    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null
+    settingsViewModel: ru.quasaris.characternexus.backend.SettingsViewModel? = null,
+    showTopBar: Boolean = true
 ) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     var isInputFocused by remember { mutableStateOf(false) }
@@ -208,52 +209,15 @@ fun SpellConfigContent(
             contentColor = colorScheme.onSurface,
             modifier = Modifier.fillMaxSize()
         ) {
-        Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .run {
-                    if (forceBlurEnabled && hazeState != null && !isOled) {
-                        this.hazeEffect(state = hazeState, style = hazeStyle)
-                    } else this
-                },
-            topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            if (spell.name.isBlank()) "Новое заклинание" else "Редактировать",
-                            fontWeight = FontWeight.Black
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Закрыть")
-                        }
-                    },
-                    actions = {
-                        if (state.name.isNotBlank()) {
-                            IconButton(onClick = { onExport(state) }) {
-                                Icon(Icons.Default.FileUpload, contentDescription = "Экспорт")
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = surfaceColor,
-                        titleContentColor = colorScheme.onSurface,
-                        navigationIconContentColor = colorScheme.onSurface,
-                        actionIconContentColor = colorScheme.onSurface
-                    )
-                )
-            },
-            containerColor = Color.Transparent
-        ) { paddingValues ->
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+            val formContent: @Composable (PaddingValues) -> Unit = { paddingValues ->
+                Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                     OutlinedTextField(
                         value = state.name,
                         onValueChange = { onStateChange(state.copy(name = it)) },
@@ -1118,8 +1082,53 @@ fun SpellConfigContent(
                 }
             }
         }
+
+            if (showTopBar) {
+                Scaffold(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .run {
+                            if (forceBlurEnabled && hazeState != null && !isOled) {
+                                this.hazeEffect(state = hazeState, style = hazeStyle)
+                            } else this
+                        },
+                    topBar = {
+                        CenterAlignedTopAppBar(
+                            title = {
+                                Text(
+                                    if (spell.name.isBlank()) "Новое заклинание" else "Редактировать",
+                                    fontWeight = FontWeight.Black
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = onDismiss) {
+                                    Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                                }
+                            },
+                            actions = {
+                                if (state.name.isNotBlank()) {
+                                    IconButton(onClick = { onExport(state) }) {
+                                        Icon(Icons.Default.FileUpload, contentDescription = "Экспорт")
+                                    }
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = surfaceColor,
+                                titleContentColor = colorScheme.onSurface,
+                                navigationIconContentColor = colorScheme.onSurface,
+                                actionIconContentColor = colorScheme.onSurface
+                            )
+                        )
+                    },
+                    containerColor = Color.Transparent
+                ) { paddingValues ->
+                    formContent(paddingValues)
+                }
+            } else {
+                formContent(PaddingValues(0.dp))
+            }
+        }
     }
-}
 }
 
 @Composable

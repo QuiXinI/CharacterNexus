@@ -12,6 +12,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
+import ru.quasaris.characternexus.ui.theme.rememberEffectiveHazeStyle
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
 import ru.quasaris.characternexus.tabs.BonusConfigDialog
@@ -834,6 +837,10 @@ fun CharacterDetailDialogs(
 
             val effectiveManager = spellbookManager ?: SpellbookManager()
 
+            val blurRadius = rememberEffectiveBlurRadius(state.settingsViewModel)
+            val hazeStyle = rememberEffectiveHazeStyle(blurRadius = blurRadius)
+            val activeHazeState = popupHazeState ?: hazeState
+
             val dialogContent = @Composable {
                 val colorScheme = MaterialTheme.colorScheme
                 val isOled = colorScheme.background == Color.Black
@@ -857,12 +864,12 @@ fun CharacterDetailDialogs(
                                     }
                                 },
                                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                    containerColor = if (forceBlurEnabled && hazeState != null && !isOled) Color.Transparent else colorScheme.surface
+                                    containerColor = if (forceBlurEnabled && activeHazeState != null && !isOled) Color.Transparent else colorScheme.surface
                                 )
                             )
                             SecondaryTabRow(
                                 selectedTabIndex = selectedTab,
-                                containerColor = if (forceBlurEnabled && hazeState != null && !isOled) Color.Transparent else colorScheme.surface,
+                                containerColor = if (forceBlurEnabled && activeHazeState != null && !isOled) Color.Transparent else colorScheme.surface,
                                 contentColor = colorScheme.primary,
                                 divider = {}
                             ) {
@@ -870,23 +877,30 @@ fun CharacterDetailDialogs(
                                     selected = selectedTab == 0,
                                     onClick = { selectedTab = 0 },
                                     text = { Text("Список", fontWeight = FontWeight.Bold) },
-                                    icon = { Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = null) }
                                 )
                                 Tab(
                                     selected = selectedTab == 1,
                                     onClick = { selectedTab = 1 },
                                     text = { Text("Редактор", fontWeight = FontWeight.Bold) },
-                                    icon = { Icon(Icons.Default.Edit, contentDescription = null) }
                                 )
                             }
                         }
                     },
-                    containerColor = if (forceBlurEnabled && hazeState != null && !isOled) Color.Transparent else colorScheme.background
+                    containerColor = if (forceBlurEnabled && activeHazeState != null && !isOled) Color.Transparent else colorScheme.background,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .run {
+                            if (forceBlurEnabled && activeHazeState != null && !isOled) {
+                                this.hazeEffect(state = activeHazeState, style = hazeStyle)
+                            } else this
+                        }
                 ) { paddingValues ->
                     Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
                         if (selectedTab == 0) {
                             var searchQuery by remember { mutableStateOf("") }
-                            var currentSelected by remember { mutableStateOf(setOf(currentSpellState.id)) }
+                            var currentSelected by remember {
+                                mutableStateOf(targetBlock.spellId?.let { setOf(it) } ?: emptySet())
+                            }
                             var currentPrepared by remember { mutableStateOf(emptySet<String>()) }
                             var isBookMode by remember { mutableStateOf(false) }
                             var expandedIds by remember { mutableStateOf(setOf<String>()) }
@@ -900,14 +914,17 @@ fun CharacterDetailDialogs(
                                 currentSelected = currentSelected,
                                 onCurrentSelectedChange = { newSelected ->
                                     currentSelected = newSelected
-                                    val clickedId = newSelected.firstOrNull { it != currentSpellState.id }
-                                    if (clickedId != null) {
-                                        val all = effectiveManager.loadSpells() + state.spellSettings.spellOverrides.values
-                                        val found = all.find { it.matchesId(clickedId) }
-                                        if (found != null) {
-                                            currentSpellState = found
-                                            state.updateSpellBlockRef(found.id)
-                                            selectedTab = 1
+                                    if (newSelected.isEmpty()) {
+                                        state.updateSpellBlockRef(null)
+                                    } else {
+                                        val clickedId = newSelected.firstOrNull()
+                                        if (clickedId != null) {
+                                            val all = effectiveManager.loadSpells() + state.spellSettings.spellOverrides.values
+                                            val found = all.find { it.matchesId(clickedId) }
+                                            if (found != null) {
+                                                currentSpellState = found
+                                                state.updateSpellBlockRef(found.id)
+                                            }
                                         }
                                     }
                                 },
@@ -938,7 +955,7 @@ fun CharacterDetailDialogs(
                                 }
                             )
                         } else {
-                            ru.quasaris.characternexus.tabs.spells.SpellEditorTabContent(
+                            ru.quasaris.characternexus.ui.editors.SpellConfigContent(
                                 spell = currentSpellState,
                                 state = currentSpellState,
                                 onStateChange = { currentSpellState = it },
@@ -955,9 +972,20 @@ fun CharacterDetailDialogs(
                                     state.isSingleSpellDialogOpen = false
                                     state.activeSpellBlockRef = null
                                 },
+                                onDelete = {
+                                    state.updateSpellBlockRef(null)
+                                    state.refreshTrigger++
+                                    state.isSingleSpellDialogOpen = false
+                                    state.activeSpellBlockRef = null
+                                },
+                                onExport = { _ -> },
                                 forceBlurEnabled = forceBlurEnabled,
                                 hazeState = popupHazeState ?: hazeState,
-                                settingsViewModel = state.settingsViewModel
+                                englishNameError = null,
+                                onEnglishNameErrorChange = {},
+                                allowedCharsRegex = Regex("^[a-zA-Z0-9'\\-._,() ]*$"),
+                                settingsViewModel = state.settingsViewModel,
+                                showTopBar = false
                             )
                         }
                     }

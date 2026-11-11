@@ -368,7 +368,7 @@ class CharacterDetailState(
         }
     }
 
-    fun updateSpellBlockRef(newSpellId: String) {
+    fun updateSpellBlockRef(newSpellId: String?) {
         val targetBlock = activeSpellBlockRef ?: return
         val targetId = targetBlock.id
         val updatedBlock = targetBlock.copy(spellId = newSpellId)
