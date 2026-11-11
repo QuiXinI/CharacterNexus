@@ -1,5 +1,7 @@
 package ru.quasaris.characternexus.tabs
 
+import ru.quasaris.characternexus.model.DynamicContentBlock
+
 /**
  * Lightweight HTML to Markdown converter designed for pasting rich text from
  * Google Docs, MS Word, web browsers, and other rich text editors into [NotionBlockEditor].
@@ -18,8 +20,10 @@ object HtmlToMarkdownParser {
     fun toMarkdown(html: String): String {
         if (html.isBlank()) return ""
 
+        val preprocessedHtml = parseHtmlTables(html)
+
         // 1. Clean HTML structure
-        var cleanHtml = html
+        var cleanHtml = preprocessedHtml
             .replace(Regex("(?s)<!--.*?-->"), "") // Remove HTML comments
             .replace(Regex("(?is)<head.*?>.*?</head>"), "") // Remove head
             .replace(Regex("(?is)<style.*?>.*?</style>"), "") // Remove style tags
@@ -240,5 +244,44 @@ object HtmlToMarkdownParser {
                 val code = match.groupValues[1].toIntOrNull(16)
                 if (code != null) code.toChar().toString() else match.value
             }
+    }
+
+    private fun parseHtmlTables(html: String): String {
+        val tableRegex = Regex("(?is)<table[^>]*>(.*?)</table>")
+        var processed = html
+        tableRegex.findAll(html).forEach { match ->
+            val tableHtml = match.groupValues[1]
+            val rowRegex = Regex("(?is)<tr[^>]*>(.*?)</tr>")
+            val rows = mutableListOf<List<DynamicContentBlock.TableCell>>()
+
+            rowRegex.findAll(tableHtml).forEach { rowMatch ->
+                val rowHtml = rowMatch.groupValues[1]
+                val cellRegex = Regex("(?is)<(td|th)([^>]*)>(.*?)</\\1>")
+                val cells = mutableListOf<DynamicContentBlock.TableCell>()
+
+                cellRegex.findAll(rowHtml).forEach { cellMatch ->
+                    val tag = cellMatch.groupValues[1].lowercase()
+                    val attrs = cellMatch.groupValues[2]
+                    val cellInnerHtml = cellMatch.groupValues[3]
+                    
+                    val cellText = toMarkdown(cellInnerHtml).trim()
+                    val colSpan = extractAttribute(attrs, "colspan")?.toIntOrNull() ?: 1
+                    val rowSpan = extractAttribute(attrs, "rowspan")?.toIntOrNull() ?: 1
+                    val isHeader = tag == "th" || extractAttribute(attrs, "class")?.contains("header", ignoreCase = true) == true
+
+                    cells.add(DynamicContentBlock.TableCell(text = cellText, colSpan = colSpan, rowSpan = rowSpan, isHeader = isHeader))
+                }
+                if (cells.isNotEmpty()) {
+                    rows.add(cells)
+                }
+            }
+
+            if (rows.isNotEmpty()) {
+                val tableBlock = DynamicContentBlock.Table(rows = rows, id = ru.quasaris.characternexus.util.generateUuid())
+                val tableTag = tableBlock.toTag()
+                processed = processed.replace(match.value, "\n$tableTag\n")
+            }
+        }
+        return processed
     }
 }

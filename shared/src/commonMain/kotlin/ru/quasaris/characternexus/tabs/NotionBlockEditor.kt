@@ -54,6 +54,7 @@ import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockComponent
 import ru.quasaris.characternexus.tabs.attacks.AttackCardItem
 import ru.quasaris.characternexus.tabs.spells.SingleSpellBlockCard
 import ru.quasaris.characternexus.tabs.folders.DynamicFolderCard
+import ru.quasaris.characternexus.tabs.table.TableBlockComponent
 import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.model.Attribute
@@ -522,6 +523,35 @@ fun NotionBlockEditor(
         }
     }
 
+    val insertTableAction = {
+        val initialTable = DynamicContentBlock.Table(
+            rows = listOf(
+                listOf(
+                    DynamicContentBlock.TableCell("Заголовок 1", isHeader = true),
+                    DynamicContentBlock.TableCell("Заголовок 2", isHeader = true)
+                ),
+                listOf(
+                    DynamicContentBlock.TableCell("Ячейка 1"),
+                    DynamicContentBlock.TableCell("Ячейка 2")
+                )
+            ),
+            id = ru.quasaris.characternexus.util.generateUuid()
+        )
+        if (effectiveIsPlainText) {
+            val tag = initialTable.toTag()
+            val cur = plainTextValue
+            val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
+            val min = cur.selection.min.coerceIn(0, cur.text.length)
+            val max = cur.selection.max.coerceIn(0, cur.text.length)
+            val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
+            plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
+            lastEmittedText = newText
+            onFieldChange(field.copy(content = newText))
+        } else {
+            insertBlockAtSelection(initialTable)
+        }
+    }
+
     val currentClipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val richTextClipboardManager = remember(currentClipboardManager) { RichTextClipboardManager(currentClipboardManager) }
 
@@ -551,6 +581,10 @@ fun NotionBlockEditor(
         val showToolbar = canEdit && isEditorAttached && (if (effectiveIsPlainText) isAnyFocused else (activeKey != null && activeValue != null))
         if (showToolbar && toolbarValue != null) {
             val isOled = colorScheme.background == Color.Black
+            val activeBlock = activeKey?.let { key -> blocks.find { it.key == key }?.block }
+            val isTableActive = activeBlock is DynamicContentBlock.Table
+            val tableBlock = activeBlock as? DynamicContentBlock.Table
+
             FormattingToolbar(
                 value = toolbarValue,
                 onValueChange = { newValue ->
@@ -598,7 +632,66 @@ fun NotionBlockEditor(
                 editorHeightPx = editorHeightPx,
                 isBasicMode = isBasicMode,
                 isPlainTextMode = effectiveIsPlainText,
-                onTogglePlainText = { togglePlainText() }
+                onTogglePlainText = { togglePlainText() },
+                isTableMode = isTableActive,
+                onAddRowBelow = tableBlock?.let { tbl ->
+                    {
+                        val newRow = List(tbl.rows.firstOrNull()?.size ?: 1) { DynamicContentBlock.TableCell("") }
+                        val newRows = tbl.rows + listOf(newRow)
+                        val idx = blocks.indexOfFirst { it.key == activeKey }
+                        if (idx != -1) {
+                            blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
+                            emit()
+                        }
+                    }
+                },
+                onDeleteRow = tableBlock?.let { tbl ->
+                    {
+                        if (tbl.rows.size > 1) {
+                            val newRows = tbl.rows.dropLast(1)
+                            val idx = blocks.indexOfFirst { it.key == activeKey }
+                            if (idx != -1) {
+                                blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
+                                emit()
+                            }
+                        }
+                    }
+                },
+                onAddColRight = tableBlock?.let { tbl ->
+                    {
+                        val newRows = tbl.rows.map { row -> row + DynamicContentBlock.TableCell("") }
+                        val idx = blocks.indexOfFirst { it.key == activeKey }
+                        if (idx != -1) {
+                            blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
+                            emit()
+                        }
+                    }
+                },
+                onDeleteCol = tableBlock?.let { tbl ->
+                    {
+                        if ((tbl.rows.firstOrNull()?.size ?: 0) > 1) {
+                            val newRows = tbl.rows.map { row -> if (row.isNotEmpty()) row.dropLast(1) else row }
+                            val idx = blocks.indexOfFirst { it.key == activeKey }
+                            if (idx != -1) {
+                                blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
+                                emit()
+                            }
+                        }
+                    }
+                },
+                onToggleHeader = tableBlock?.let { tbl ->
+                    {
+                        val newRows = tbl.rows.mapIndexed { rIdx, row ->
+                            if (rIdx == 0) row.map { cell -> cell.copy(isHeader = !cell.isHeader) } else row
+                        }
+                        val idx = blocks.indexOfFirst { it.key == activeKey }
+                        if (idx != -1) {
+                            blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
+                            emit()
+                        }
+                    }
+                },
+                onInsertTable = insertTableAction
             )
         }
 
@@ -1035,6 +1128,23 @@ fun NotionBlockEditor(
                                     hazeState = hazeState,
                                     forceBlurEnabled = forceBlurEnabled,
                                     settingsViewModel = settingsViewModel
+                                )
+                            }
+
+                            is DynamicContentBlock.Table -> {
+                                TableBlockComponent(
+                                    table = block,
+                                    onUpdate = { updatedTable ->
+                                        val idx = blocks.indexOfFirst { it.key == item.key }
+                                        if (idx != -1) {
+                                            blocks[idx] = blocks[idx].copy(block = updatedTable)
+                                            emit()
+                                        }
+                                    },
+                                    canEdit = canEdit && !isReorderMode,
+                                    isActive = item.key == activeKey,
+                                    onActivate = { activeKey = item.key },
+                                    onDeleteRequest = { requestDelete(absoluteIndex) }
                                 )
                             }
                         }

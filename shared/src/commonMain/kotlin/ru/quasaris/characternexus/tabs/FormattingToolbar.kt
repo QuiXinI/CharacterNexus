@@ -35,6 +35,7 @@ import androidx.compose.ui.window.PopupProperties
 import kotlin.math.roundToInt
 import dev.chrisbanes.haze.HazeState
 import ru.quasaris.characternexus.backend.SettingsViewModel
+import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.ui.outerShadow
 import ru.quasaris.characternexus.ui.theme.hazePopover
 import ru.quasaris.characternexus.ui.theme.rememberEffectiveBlurRadius
@@ -101,6 +102,17 @@ fun FormattingToolbar(
     isBasicMode: Boolean = false,
     isPlainTextMode: Boolean = false,
     onTogglePlainText: (() -> Unit)? = null,
+    isTableMode: Boolean = false,
+    onAddRowAbove: (() -> Unit)? = null,
+    onAddRowBelow: (() -> Unit)? = null,
+    onDeleteRow: (() -> Unit)? = null,
+    onAddColLeft: (() -> Unit)? = null,
+    onAddColRight: (() -> Unit)? = null,
+    onDeleteCol: (() -> Unit)? = null,
+    onToggleHeader: (() -> Unit)? = null,
+    onMergeCells: (() -> Unit)? = null,
+    onUnmergeCells: (() -> Unit)? = null,
+    onInsertTable: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (!isFocused || !isAttached) return
@@ -198,14 +210,57 @@ fun FormattingToolbar(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Spacer(modifier = Modifier.width(8.dp))
-                    HeaderDropdownMenu(
-                        value = value,
-                        onValueChange = onValueChange
-                    )
-                    VerticalDivider(
-                        modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                    )
+                    if (isTableMode) {
+                        FormattingButton(
+                            icon = Icons.Default.Add,
+                            isActive = false,
+                            enabled = true,
+                            onClick = { onAddRowBelow?.invoke() }
+                        )
+                        FormattingButton(
+                            icon = Icons.Default.Remove,
+                            isActive = false,
+                            enabled = true,
+                            onClick = { onDeleteRow?.invoke() }
+                        )
+                        FormattingButton(
+                            icon = Icons.Default.ViewColumn,
+                            isActive = false,
+                            enabled = true,
+                            onClick = { onAddColRight?.invoke() }
+                        )
+                        FormattingButton(
+                            icon = Icons.Default.DeleteSweep,
+                            isActive = false,
+                            enabled = true,
+                            onClick = { onDeleteCol?.invoke() }
+                        )
+                        FormattingButton(
+                            icon = Icons.Default.Title,
+                            isActive = false,
+                            enabled = true,
+                            onClick = { onToggleHeader?.invoke() }
+                        )
+                        FormattingButton(
+                            icon = Icons.Default.CallMerge,
+                            isActive = false,
+                            enabled = true,
+                            onClick = { onMergeCells?.invoke() }
+                        )
+                        VerticalDivider(
+                            modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                        )
+                    } else {
+                        HeaderDropdownMenu(
+                            value = value,
+                            onValueChange = onValueChange
+                        )
+                        VerticalDivider(
+                            modifier = Modifier.padding(horizontal = 4.dp).height(24.dp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                        )
+                    }
                     FormattingButton(
                         icon = Icons.Default.FormatBold,
                         isActive = MarkdownHelper.isFormatActive(value, "**", "**"),
@@ -276,7 +331,8 @@ fun FormattingToolbar(
                             onInsertInfoBlock = onInsertInfoBlock,
                             onInsertAttack = onInsertAttack,
                             onInsertSpell = onInsertSpell,
-                            onInsertFolder = onInsertFolder
+                            onInsertFolder = onInsertFolder,
+                            onInsertTable = onInsertTable
                         )
 
                         VerticalDivider(
@@ -513,7 +569,8 @@ private fun InsertDropdownMenu(
     onInsertInfoBlock: (() -> Unit)?,
     onInsertAttack: (() -> Unit)?,
     onInsertSpell: (() -> Unit)?,
-    onInsertFolder: (() -> Unit)?
+    onInsertFolder: (() -> Unit)?,
+    onInsertTable: (() -> Unit)?
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -649,6 +706,39 @@ private fun InsertDropdownMenu(
                 },
                 leadingIcon = {
                     Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Таблица") },
+                onClick = {
+                    expanded = false
+                    if (onInsertTable != null) {
+                        onInsertTable()
+                    } else {
+                        val initialTable = DynamicContentBlock.Table(
+                            rows = listOf(
+                                listOf(
+                                    DynamicContentBlock.TableCell("Заголовок 1", isHeader = true),
+                                    DynamicContentBlock.TableCell("Заголовок 2", isHeader = true)
+                                ),
+                                listOf(
+                                    DynamicContentBlock.TableCell("Ячейка 1"),
+                                    DynamicContentBlock.TableCell("Ячейка 2")
+                                )
+                            ),
+                            id = ru.quasaris.characternexus.util.generateUuid()
+                        )
+                        val tag = initialTable.toTag()
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val insert = prefix + tag + "\n"
+                        val min = value.selection.min.coerceIn(0, value.text.length)
+                        val max = value.selection.max.coerceIn(0, value.text.length)
+                        val newText = value.text.substring(0, min) + insert + value.text.substring(max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(min + insert.length)))
+                    }
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.TableChart, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
             )
         }

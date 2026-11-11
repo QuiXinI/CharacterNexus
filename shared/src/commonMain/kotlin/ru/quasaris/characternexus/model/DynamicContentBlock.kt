@@ -2,6 +2,8 @@ package ru.quasaris.characternexus.model
 
 import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okio.ByteString.Companion.encodeUtf8
 import ru.quasaris.characternexus.util.generateUuid
 
 @Immutable
@@ -136,5 +138,28 @@ sealed class DynamicContentBlock {
         val id: String = ""
     ) : DynamicContentBlock() {
         fun toTag(): String = "{Папка: id=${id.ifEmpty { generateUuid() }}}"
+    }
+
+    @Immutable
+    @Serializable
+    data class TableCell(
+        val text: String = "",
+        val colSpan: Int = 1,
+        val rowSpan: Int = 1,
+        val isHeader: Boolean = false
+    )
+
+    @Immutable
+    @Serializable
+    data class Table(
+        val rows: List<List<TableCell>>,
+        val id: String = ""
+    ) : DynamicContentBlock() {
+        fun toTag(): String {
+            val actualId = id.ifEmpty { generateUuid() }
+            val jsonPayload = Json.encodeToString(rows)
+            val base64Data = jsonPayload.encodeUtf8().base64()
+            return "{Таблица: id=$actualId | data=$base64Data}"
+        }
     }
 }

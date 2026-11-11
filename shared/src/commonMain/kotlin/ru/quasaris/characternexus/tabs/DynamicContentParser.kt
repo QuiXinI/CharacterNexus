@@ -1,5 +1,6 @@
 package ru.quasaris.characternexus.tabs
 
+import okio.ByteString.Companion.decodeBase64
 import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.util.generateUuid
 
@@ -12,6 +13,7 @@ object DynamicContentParser {
     private val attackRegex = Regex("(?s)\\{(?:Атака|Attack)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
     private val spellRegex = Regex("(?s)\\{(?:Заклинание|Spell)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
     private val folderRegex = Regex("(?s)\\{(?:Папка|Folder)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
+    private val tableRegex = Regex("(?s)\\{(?:Таблица|Table)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
 
     fun parse(text: String, resources: Map<String, DynamicContentBlock.Resource> = emptyMap()): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
@@ -174,6 +176,28 @@ object DynamicContentParser {
             allMatches.add(match.range to DynamicContentBlock.FolderRef(id = id))
         }
 
+        // Find table blocks using flexible parser
+        tableRegex.findAll(text).forEach { match ->
+            val content = match.groupValues[1]
+            val parts = content.split("|").map { it.trim() }
+            val params = mutableMapOf<String, String>()
+
+            parts.forEach { part ->
+                val kv = part.split("=", limit = 2)
+                if (kv.size == 2) {
+                    params[kv[0].trim().lowercase()] = kv[1].trim()
+                }
+            }
+
+            val id = params["id"] ?: generateUuid()
+            val dataBase64 = params["data"] ?: ""
+            val rows = runCatching {
+                val jsonDecoded = dataBase64.decodeBase64()?.utf8() ?: params["data"] ?: "[]"
+                kotlinx.serialization.json.Json.decodeFromString<List<List<DynamicContentBlock.TableCell>>>(jsonDecoded)
+            }.getOrElse { emptyList() }
+            allMatches.add(match.range to DynamicContentBlock.Table(rows = rows, id = id))
+        }
+
         // Sort matches by start position
         allMatches.sortBy { it.first.first }
 
@@ -247,8 +271,18 @@ object DynamicContentParser {
                 is DynamicContentBlock.AttackRef -> block.toTag()
                 is DynamicContentBlock.SpellRef -> block.toTag()
                 is DynamicContentBlock.FolderRef -> block.toTag()
+                is DynamicContentBlock.Table -> block.toTag()
             }
         }
+    }
+
+    fun tableIds(text: String): Set<String> {
+        return tableRegex.findAll(text).mapNotNull { match ->
+            val content = match.groupValues[1]
+            content.split("|").map { it.trim() }
+                .firstOrNull { it.startsWith("id=", ignoreCase = true) }
+                ?.substringAfter("=")
+        }.filter { it.isNotBlank() }.toSet()
     }
 
     fun resourceIds(text: String): Set<String> {

@@ -64,6 +64,7 @@ object BlockContentParser {
         is DynamicContentBlock.AttackRef -> block.toTag()
         is DynamicContentBlock.SpellRef -> block.toTag()
         is DynamicContentBlock.FolderRef -> block.toTag()
+        is DynamicContentBlock.Table -> block.toTag()
     }
 
     fun reconcile(previous: List<NoteBlockState>, freshBlocks: List<DynamicContentBlock>): List<NoteBlockState> {
@@ -88,5 +89,6 @@ object BlockContentParser {
         is DynamicContentBlock.AttackRef -> "AR:${block.id}"
         is DynamicContentBlock.SpellRef -> "SR:${block.id}:${block.spellId}"
         is DynamicContentBlock.FolderRef -> "FR:${block.id}"
+        is DynamicContentBlock.Table -> "TBL:${block.id}:${block.rows.size}"
     }
 }
