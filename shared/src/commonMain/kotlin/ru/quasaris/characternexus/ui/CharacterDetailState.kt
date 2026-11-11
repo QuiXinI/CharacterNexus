@@ -259,13 +259,13 @@ class CharacterDetailState(
 
     val resourceManager = ResourceManager(this, initialCharacter?.resources ?: emptyList())
     val infoBlockManager = InfoBlockManager(this, initialCharacter?.infoBlocks ?: emptyList())
-    val spellFieldManager = ru.quasaris.characternexus.tabs.spells.SpellFieldManager(this, initialCharacter?.spellFields ?: emptyList())
+    val folderManager = ru.quasaris.characternexus.tabs.folders.FolderManager(this, initialCharacter?.folders ?: emptyList())
 
     init {
         // Migration and Sync
         resourceManager.normalize()
         infoBlockManager.normalize()
-        spellFieldManager.normalize()
+        folderManager.normalize()
 
         // Ensure default proficiencies for existing characters with empty sections
         val currentSections = proficiencies.sections.toMutableList()
@@ -334,6 +334,59 @@ class CharacterDetailState(
     var isWalletDialogOpen by mutableStateOf(false)
     var isSpellbookSelectionOpen by mutableStateOf(false)
     var activeSpellFieldIdForSelection by mutableStateOf<String?>(null)
+
+    var activeSpellBlockRef by mutableStateOf<DynamicContentBlock.SpellRef?>(null)
+    var isSingleSpellDialogOpen by mutableStateOf(false)
+    var activeSpellTab by mutableStateOf(0)
+
+    fun openSingleSpellDialog(block: DynamicContentBlock.SpellRef, initialTab: Int = 0) {
+        closeFullscreenDialogs()
+        activeSpellBlockRef = block
+        activeSpellTab = initialTab
+        if (block.spellId != null) {
+            editingSpell = spellSettings.spellOverrides[block.spellId]
+                ?: spellbookManager?.loadSpells()?.find { it.matchesId(block.spellId) }
+                ?: SpellCard(id = block.spellId, level = "1")
+        } else {
+            editingSpell = SpellCard(level = "1")
+        }
+        isSingleSpellDialogOpen = true
+    }
+
+    fun mutateAllNotes(transform: (String) -> String) {
+        fun List<DynamicNoteState>.mutated() = map { note ->
+            val updated = transform(note.content)
+            if (updated != note.content) note.copy(content = updated) else note
+        }
+        notes = notes.mutated()
+        skillsAndTraits = skillsAndTraits.mutated()
+        inventory = inventory.mutated()
+        spells = spells.mutated()
+        bioLongSections = bioLongSections.mutated()
+        customTabs = customTabs.map { tab ->
+            tab.copy(content = tab.content.mutated())
+        }
+    }
+
+    fun updateSpellBlockRef(newSpellId: String) {
+        val targetBlock = activeSpellBlockRef ?: return
+        val targetId = targetBlock.id
+        val updatedBlock = targetBlock.copy(spellId = newSpellId)
+
+        mutateAllNotes { text ->
+            val blocks = BlockContentParser.toBlocks(text).toMutableList()
+            var found = false
+            for (i in blocks.indices) {
+                val b = blocks[i]
+                if (b is DynamicContentBlock.SpellRef && b.id == targetId) {
+                    blocks[i] = updatedBlock
+                    found = true
+                }
+            }
+            if (found) BlockContentParser.toText(blocks) else text
+        }
+        activeSpellBlockRef = updatedBlock
+    }
 
     var activeAttackConfigId by mutableStateOf<String?>(null)
     var editingAttack by mutableStateOf<AttackEntry?>(null)
@@ -695,7 +748,7 @@ class CharacterDetailState(
             deathSaveFailures = deathSaveFailures,
             resources = resourceManager.items,
             infoBlocks = infoBlockManager.items,
-            spellFields = spellFieldManager.items,
+            folders = folderManager.items,
             customTabs = customTabs,
             tabOrder = tabOrder,
             disabledTabs = disabledTabs,
@@ -995,6 +1048,8 @@ class CharacterDetailState(
         isPotionConfigOpen = false
         isPotionSelectionOpen = false
         isCargoConfigOpen = false
+        isSingleSpellDialogOpen = false
+        activeSpellBlockRef = null
         showHpDialog = false
         activeBonusConfigAttribute = null
         activeBonusConfigSkill = null

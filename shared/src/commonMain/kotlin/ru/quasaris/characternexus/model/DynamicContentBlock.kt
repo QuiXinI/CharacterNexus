@@ -117,7 +117,24 @@ sealed class DynamicContentBlock {
 
     @Immutable
     @Serializable
-    data class SpellFieldRef(val id: String) : DynamicContentBlock() {
-        fun toTag(): String = "{Заклинания: id=$id}"
+    data class SpellRef(
+        val id: String = "",
+        val spellId: String? = null
+    ) : DynamicContentBlock() {
+        fun toTag(): String {
+            val parts = mutableListOf<String>()
+            if (!spellId.isNullOrBlank()) parts.add("spellId=$spellId")
+            val actualId = id.ifEmpty { generateUuid() }
+            parts.add("id=$actualId")
+            return "{Заклинание: ${parts.joinToString(" | ")}}"
+        }
+    }
+
+    @Immutable
+    @Serializable
+    data class FolderRef(
+        val id: String = ""
+    ) : DynamicContentBlock() {
+        fun toTag(): String = "{Папка: id=${id.ifEmpty { generateUuid() }}}"
     }
 }

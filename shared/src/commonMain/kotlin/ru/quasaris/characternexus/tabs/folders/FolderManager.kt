@@ -1,38 +1,38 @@
-package ru.quasaris.characternexus.tabs.spells
+package ru.quasaris.characternexus.tabs.folders
 
 import androidx.compose.runtime.*
 import ru.quasaris.characternexus.model.CharacterTab
 import ru.quasaris.characternexus.model.DynamicContentBlock
-import ru.quasaris.characternexus.model.DynamicSpellField
+import ru.quasaris.characternexus.model.DynamicFolder
 import ru.quasaris.characternexus.model.DynamicNoteState
 import ru.quasaris.characternexus.tabs.DynamicContentParser
 import ru.quasaris.characternexus.ui.CharacterDetailState
 import ru.quasaris.characternexus.util.generateUuid
 
-class SpellFieldManager(
+class FolderManager(
     private val owner: CharacterDetailState,
-    initial: List<DynamicSpellField>
+    initial: List<DynamicFolder>
 ) {
     var items by mutableStateOf(initial)
         private set
 
     private val index by derivedStateOf { items.associateBy { it.id } }
 
-    operator fun get(id: String): DynamicSpellField? = index[id]
+    operator fun get(id: String): DynamicFolder? = index[id]
 
-    fun upsert(spellField: DynamicSpellField) {
-        if (spellField.id.isEmpty()) return
-        val existing = index[spellField.id]
-        if (existing == spellField) return
+    fun upsert(folder: DynamicFolder) {
+        if (folder.id.isEmpty()) return
+        val existing = index[folder.id]
+        if (existing == folder) return
         items = if (existing != null) {
-            items.map { if (it.id == spellField.id) spellField else it }
+            items.map { if (it.id == folder.id) folder else it }
         } else {
-            items + spellField
+            items + folder
         }
     }
 
-    fun create(title: String = "Заклинания"): DynamicSpellField {
-        val block = DynamicSpellField(
+    fun create(title: String = "Папка"): DynamicFolder {
+        val block = DynamicFolder(
             title = title,
             id = generateUuid()
         )
@@ -40,8 +40,8 @@ class SpellFieldManager(
         return block
     }
 
-    fun createTag(title: String = "Заклинания"): String =
-        DynamicContentBlock.SpellFieldRef(create(title).id).toTag()
+    fun createTag(title: String = "Папка"): String =
+        DynamicContentBlock.FolderRef(create(title).id).toTag()
 
     private fun sections(): List<Pair<String, List<DynamicNoteState>>> {
         val list = mutableListOf(
@@ -70,22 +70,22 @@ class SpellFieldManager(
         }
     }
 
-    fun deleteCompletely(spellFieldId: String) {
-        if (spellFieldId.isEmpty()) return
-        items = items.filterNot { it.id == spellFieldId }
-        mutateNotes { DynamicContentParser.removeSpellFieldById(it, spellFieldId) }
+    fun deleteCompletely(folderId: String) {
+        if (folderId.isEmpty()) return
+        items = items.filterNot { it.id == folderId }
+        mutateNotes { DynamicContentParser.removeFolderById(it, folderId) }
     }
 
     fun normalize() {
         val referencedIds = mutableSetOf<String>()
         sections().forEach { (_, list) ->
             list.forEach { note ->
-                referencedIds.addAll(DynamicContentParser.spellFieldIds(note.content))
+                referencedIds.addAll(DynamicContentParser.folderIds(note.content))
             }
         }
         referencedIds.forEach { id ->
             if (index[id] == null) {
-                upsert(DynamicSpellField(id = id, title = "Заклинания"))
+                upsert(DynamicFolder(id = id, title = "Папка"))
             }
         }
     }

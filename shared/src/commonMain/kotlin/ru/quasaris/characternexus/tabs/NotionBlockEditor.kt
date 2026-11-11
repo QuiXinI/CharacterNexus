@@ -44,15 +44,16 @@ import androidx.compose.ui.zIndex
 import dev.chrisbanes.haze.HazeState
 import ru.quasaris.characternexus.backend.SettingsViewModel
 import ru.quasaris.characternexus.model.DynamicContentBlock
+import ru.quasaris.characternexus.model.DynamicFolder
 import ru.quasaris.characternexus.model.DynamicNoteState
-import ru.quasaris.characternexus.model.DynamicSpellField
 import ru.quasaris.characternexus.model.NoteBlockState
 import ru.quasaris.characternexus.ui.BackHandler
 import kotlin.time.Duration.Companion.milliseconds
 import ru.quasaris.characternexus.tabs.resources.ResourceBlock
 import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockComponent
 import ru.quasaris.characternexus.tabs.attacks.AttackCardItem
-import ru.quasaris.characternexus.tabs.spells.DynamicSpellFieldCard
+import ru.quasaris.characternexus.tabs.spells.SingleSpellBlockCard
+import ru.quasaris.characternexus.tabs.folders.DynamicFolderCard
 import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.model.Attribute
@@ -487,10 +488,9 @@ fun NotionBlockEditor(
     }
 
     val insertSpellAction = {
-        val spellField = state?.spellFieldManager?.create("Заклинания")
-            ?: DynamicSpellField(title = "Заклинания", id = ru.quasaris.characternexus.util.generateUuid())
+        val newSpellId = ru.quasaris.characternexus.util.generateUuid()
         if (effectiveIsPlainText) {
-            val tag = "{Заклинания: id=${spellField.id}}"
+            val tag = "{Заклинание: id=$newSpellId}"
             val cur = plainTextValue
             val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
             val min = cur.selection.min.coerceIn(0, cur.text.length)
@@ -500,7 +500,25 @@ fun NotionBlockEditor(
             lastEmittedText = newText
             onFieldChange(field.copy(content = newText))
         } else {
-            insertBlockAtSelection(DynamicContentBlock.SpellFieldRef(spellField.id))
+            insertBlockAtSelection(DynamicContentBlock.SpellRef(id = newSpellId))
+        }
+    }
+
+    val insertFolderAction = {
+        val folder = state?.folderManager?.create("Папка")
+            ?: DynamicFolder(title = "Папка", id = ru.quasaris.characternexus.util.generateUuid())
+        if (effectiveIsPlainText) {
+            val tag = "{Папка: id=${folder.id}}"
+            val cur = plainTextValue
+            val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
+            val min = cur.selection.min.coerceIn(0, cur.text.length)
+            val max = cur.selection.max.coerceIn(0, cur.text.length)
+            val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
+            plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
+            lastEmittedText = newText
+            onFieldChange(field.copy(content = newText))
+        } else {
+            insertBlockAtSelection(DynamicContentBlock.FolderRef(id = folder.id))
         }
     }
 
@@ -556,6 +574,7 @@ fun NotionBlockEditor(
                 onInsertInfoBlock = insertInfoBlockAction,
                 onInsertAttack = insertAttackAction,
                 onInsertSpell = insertSpellAction,
+                onInsertFolder = insertFolderAction,
                 onInsertDivider = {
                     if (effectiveIsPlainText) {
                         val cur = plainTextValue
@@ -985,9 +1004,17 @@ fun NotionBlockEditor(
                                 )
                             }
 
-                            is DynamicContentBlock.SpellFieldRef -> {
-                                DynamicSpellFieldCard(
-                                    spellFieldId = block.id,
+                            is DynamicContentBlock.SpellRef -> {
+                                SingleSpellBlockCard(
+                                    block = block,
+                                    onUpdateBlock = { updated ->
+                                        val idx = blocks.indexOfFirst { it.key == item.key }
+                                        if (idx != -1) {
+                                            blocks[idx] = blocks[idx].copy(block = updated)
+                                            emit()
+                                        }
+                                    },
+                                    onDeleteBlock = { requestDelete(absoluteIndex) },
                                     state = state,
                                     spellbookManager = state?.spellbookManager,
                                     hazeState = hazeState,
@@ -998,6 +1025,16 @@ fun NotionBlockEditor(
                                     characterLevel = state?.level?.toIntOrNull() ?: 1,
                                     onRoll = onRoll,
                                     isDesktop = isDesktop
+                                )
+                            }
+
+                            is DynamicContentBlock.FolderRef -> {
+                                DynamicFolderCard(
+                                    folderId = block.id,
+                                    state = state,
+                                    hazeState = hazeState,
+                                    forceBlurEnabled = forceBlurEnabled,
+                                    settingsViewModel = settingsViewModel
                                 )
                             }
                         }
@@ -1039,9 +1076,8 @@ fun NotionBlockEditor(
                 insertAfterActive(DynamicContentBlock.AttackRef(atk.id))
             },
             {
-                val spellField = state?.spellFieldManager?.create("Заклинания")
-                    ?: DynamicSpellField(title = "Заклинания", id = ru.quasaris.characternexus.util.generateUuid())
-                insertAfterActive(DynamicContentBlock.SpellFieldRef(spellField.id))
+                val newSpellId = ru.quasaris.characternexus.util.generateUuid()
+                insertAfterActive(DynamicContentBlock.SpellRef(id = newSpellId))
             }
         )
       }

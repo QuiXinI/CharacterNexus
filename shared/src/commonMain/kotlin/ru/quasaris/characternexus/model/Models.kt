@@ -759,6 +759,14 @@ data class SpellLevelDivider(
 
 @Immutable
 @Serializable
+data class DynamicFolder(
+    val id: String = generateUuid(),
+    val title: String = "",
+    val isExpanded: Boolean = false
+)
+
+@Immutable
+@Serializable
 data class DynamicSpellField(
     val id: String = generateUuid(),
     val title: String = "",
@@ -925,6 +933,7 @@ fun SpellSettings.getSpellbookSpells(
 ): List<SpellCard> {
     val allAvailable = getAvailableSpells(baseSpells)
     val selectedSet = selectedSpellIds.toSet()
+    val noteSpellIds = spellsNotes.flatMap { note -> ru.quasaris.characternexus.tabs.DynamicContentParser.spellIds(note.content) }.toSet()
     val fieldSpellIds = spellFields.flatMap { field -> field.items.mapNotNull { it.spellId } }.toSet()
 
     fun matchesAny(spell: SpellCard, idSet: Set<String>): Boolean {
@@ -934,7 +943,7 @@ fun SpellSettings.getSpellbookSpells(
     val extractedNames = if (spellsNotes.isNotEmpty()) extractSpellNamesFromNotes(spellsNotes) else emptySet()
 
     fun isSelected(spell: SpellCard): Boolean {
-        if (matchesAny(spell, selectedSet) || matchesAny(spell, fieldSpellIds)) return true
+        if (matchesAny(spell, selectedSet) || matchesAny(spell, fieldSpellIds) || matchesAny(spell, noteSpellIds)) return true
         if (extractedNames.isNotEmpty()) {
             return extractedNames.any { spell.matchesId(it) || spell.name.equals(it, ignoreCase = true) || (spell.englishName.isNotBlank() && spell.englishName.equals(it, ignoreCase = true)) }
         }
@@ -1171,6 +1180,7 @@ data class Character(
     val resources: List<DynamicContentBlock.Resource> = emptyList(),
     val infoBlocks: List<DynamicContentBlock.InfoBlock> = emptyList(),
     val spellFields: List<DynamicSpellField> = emptyList(),
+    val folders: List<DynamicFolder> = emptyList(),
     val folderUuid: String? = null,
     val customTabs: List<CustomTab> = emptyList(),
     val tabOrder: List<String> = emptyList(),

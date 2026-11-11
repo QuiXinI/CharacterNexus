@@ -1,6 +1,16 @@
 package ru.quasaris.characternexus.ui
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.chrisbanes.haze.HazeState
 import ru.quasaris.characternexus.backend.*
 import ru.quasaris.characternexus.model.*
@@ -15,10 +25,15 @@ import ru.quasaris.characternexus.tabs.attacks.AttackConfigDialog
 import ru.quasaris.characternexus.tabs.attacks.calculateAttackFormulaParts
 import ru.quasaris.characternexus.tabs.spells.SpellSettingsDialog
 import ru.quasaris.characternexus.tabs.spells.SpellbookSelectionDialog
+import ru.quasaris.characternexus.tabs.spells.SpellSelectionTabContent
+import ru.quasaris.characternexus.tabs.spells.SpellEditorTabContent
 import ru.quasaris.characternexus.ui.editors.SpellEditorWindow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import ru.quasaris.characternexus.HeaderCode.Fullscreen.*
 import ru.quasaris.characternexus.HeaderCode.HealthDialog
 import ru.quasaris.characternexus.model.HitDiceEntry
+import ru.quasaris.characternexus.util.generateUuid
 
 @Composable
 fun CharacterDetailDialogs(
@@ -260,13 +275,8 @@ fun CharacterDetailDialogs(
                 )
             }
 
-            val targetSpellFieldId = state.activeSpellFieldIdForSelection
-            val targetField = if (targetSpellFieldId != null) {
-                state.spellFieldManager[targetSpellFieldId] ?: DynamicSpellField(id = targetSpellFieldId)
-            } else null
-
-            val selectedIds = targetField?.items?.mapNotNull { it.spellId } ?: spellSettings.selectedSpellIds
-            val isSpellbookEnabled = if (targetField != null) false else spellSettings.isSpellbookEnabled
+            val selectedIds = spellSettings.selectedSpellIds
+            val isSpellbookEnabled = spellSettings.isSpellbookEnabled
 
             SpellbookSelectionDialog(
                 spellbookManager = spellbookManager,
@@ -275,32 +285,12 @@ fun CharacterDetailDialogs(
                 isSpellbookEnabled = isSpellbookEnabled,
                 onDismiss = {
                     state.isSpellbookSelectionOpen = false
-                    state.activeSpellFieldIdForSelection = null
                 },
                 onSave = { newIds, newPrepared ->
-                    if (targetField != null) {
-                        val newItems = mutableListOf<SpellLevelItem>()
-                        val existingDividers = targetField.items.filter { it.divider != null }
-                        newItems.addAll(existingDividers)
-                        newIds.forEach { id ->
-                            if (newItems.none { it.spellId == id }) {
-                                newItems.add(SpellLevelItem(spellId = id))
-                            }
-                        }
-                        state.spellFieldManager.upsert(targetField.copy(items = newItems))
-                        if (state.spellSettings.isSpellbookEnabled) {
-                            val curSelected = state.spellSettings.selectedSpellIds
-                            val updatedSelected = (curSelected + newIds).distinct()
-                            onSpellSettingsChange(state.spellSettings.copy(
-                                selectedSpellIds = updatedSelected
-                            ))
-                        }
-                    } else {
-                        onSpellSettingsChange(spellSettings.copy(
-                            selectedSpellIds = newIds,
-                            preparedSpellIds = newPrepared
-                        ))
-                    }
+                    onSpellSettingsChange(spellSettings.copy(
+                        selectedSpellIds = newIds,
+                        preparedSpellIds = newPrepared
+                    ))
                 },
                 hazeState = popupHazeState ?: hazeState,
                 forceBlurEnabled = forceBlurEnabled,
@@ -829,6 +819,164 @@ fun CharacterDetailDialogs(
                 hazeState = popupHazeState ?: hazeState,
                 settingsViewModel = state.settingsViewModel
             )
+        }
+
+        if (state.isSingleSpellDialogOpen && state.activeSpellBlockRef != null) {
+            val targetBlock = state.activeSpellBlockRef!!
+            var selectedTab by remember(targetBlock.id, state.activeSpellTab) { mutableIntStateOf(state.activeSpellTab) }
+            val currentSpell = remember(targetBlock.spellId, state.editingSpell, state.spellSettings.spellOverrides) {
+                targetBlock.spellId?.let { id ->
+                    state.spellSettings.spellOverrides[id]
+                        ?: spellbookManager?.loadSpells()?.find { it.matchesId(id) }
+                } ?: state.editingSpell ?: SpellCard(id = targetBlock.spellId ?: generateUuid(), level = "1")
+            }
+            var currentSpellState by remember(currentSpell.id) { mutableStateOf(currentSpell) }
+
+            val effectiveManager = spellbookManager ?: SpellbookManager()
+
+            val dialogContent = @Composable {
+                val colorScheme = MaterialTheme.colorScheme
+                val isOled = colorScheme.background == Color.Black
+
+                Scaffold(
+                    topBar = {
+                        Column {
+                            CenterAlignedTopAppBar(
+                                title = {
+                                    Text(
+                                        text = if (currentSpellState.name.isBlank()) "Новое заклинание" else currentSpellState.name,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                },
+                                navigationIcon = {
+                                    IconButton(onClick = {
+                                        state.isSingleSpellDialogOpen = false
+                                        state.activeSpellBlockRef = null
+                                    }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Закрыть")
+                                    }
+                                },
+                                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                    containerColor = if (forceBlurEnabled && hazeState != null && !isOled) Color.Transparent else colorScheme.surface
+                                )
+                            )
+                            SecondaryTabRow(
+                                selectedTabIndex = selectedTab,
+                                containerColor = if (forceBlurEnabled && hazeState != null && !isOled) Color.Transparent else colorScheme.surface,
+                                contentColor = colorScheme.primary,
+                                divider = {}
+                            ) {
+                                Tab(
+                                    selected = selectedTab == 0,
+                                    onClick = { selectedTab = 0 },
+                                    text = { Text("Список", fontWeight = FontWeight.Bold) },
+                                    icon = { Icon(Icons.AutoMirrored.Filled.LibraryBooks, contentDescription = null) }
+                                )
+                                Tab(
+                                    selected = selectedTab == 1,
+                                    onClick = { selectedTab = 1 },
+                                    text = { Text("Редактор", fontWeight = FontWeight.Bold) },
+                                    icon = { Icon(Icons.Default.Edit, contentDescription = null) }
+                                )
+                            }
+                        }
+                    },
+                    containerColor = if (forceBlurEnabled && hazeState != null && !isOled) Color.Transparent else colorScheme.background
+                ) { paddingValues ->
+                    Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+                        if (selectedTab == 0) {
+                            var searchQuery by remember { mutableStateOf("") }
+                            var currentSelected by remember { mutableStateOf(setOf(currentSpellState.id)) }
+                            var currentPrepared by remember { mutableStateOf(emptySet<String>()) }
+                            var isBookMode by remember { mutableStateOf(false) }
+                            var expandedIds by remember { mutableStateOf(setOf<String>()) }
+                            var showFilters by remember { mutableStateOf(false) }
+                            var filterState by remember { mutableStateOf(SpellFilterState()) }
+
+                            ru.quasaris.characternexus.tabs.spells.SpellSelectionTabContent(
+                                spellbookManager = effectiveManager,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                currentSelected = currentSelected,
+                                onCurrentSelectedChange = { newSelected ->
+                                    currentSelected = newSelected
+                                    val clickedId = newSelected.firstOrNull { it != currentSpellState.id }
+                                    if (clickedId != null) {
+                                        val all = effectiveManager.loadSpells() + state.spellSettings.spellOverrides.values
+                                        val found = all.find { it.matchesId(clickedId) }
+                                        if (found != null) {
+                                            currentSpellState = found
+                                            state.updateSpellBlockRef(found.id)
+                                            selectedTab = 1
+                                        }
+                                    }
+                                },
+                                currentPrepared = currentPrepared,
+                                onCurrentPreparedChange = { currentPrepared = it },
+                                isBookMode = isBookMode,
+                                onIsBookModeChange = { isBookMode = it },
+                                expandedIds = expandedIds,
+                                onExpandedIdsChange = { expandedIds = it },
+                                showFilters = showFilters,
+                                onShowFiltersChange = { showFilters = it },
+                                filterState = filterState,
+                                onFilterStateChange = { filterState = it },
+                                isSpellbookEnabled = false,
+                                statsMap = statsMap,
+                                characterLevel = state.level.toIntOrNull() ?: 1,
+                                spellOverrides = state.spellSettings.spellOverrides,
+                                settingsViewModel = state.settingsViewModel,
+                                onRollDamage = { formula, title, advantage ->
+                                    onRoll(DiceRoller.roll(title = title, baseModifier = 0, bonuses = listOf(SimpleBonus(formula = formula, name = "Урон")), isDamage = true, stats = statsMap, advantageType = advantage))
+                                },
+                                onRollAttack = { advantage ->
+                                    onRoll(DiceRoller.roll(title = "Атака", baseModifier = getProficiencyBonus(state.level) + calculateModifier(statsMap["intelligence"] ?: "10"), stats = statsMap, sourceType = RollSourceType.ATTACK, advantageType = advantage))
+                                },
+                                onDismiss = {
+                                    state.isSingleSpellDialogOpen = false
+                                    state.activeSpellBlockRef = null
+                                }
+                            )
+                        } else {
+                            ru.quasaris.characternexus.tabs.spells.SpellEditorTabContent(
+                                spell = currentSpellState,
+                                state = currentSpellState,
+                                onStateChange = { currentSpellState = it },
+                                onDismiss = {
+                                    spellbookManager?.addOrUpdateSpell(currentSpellState)
+                                    val newOverrides = state.spellSettings.spellOverrides.toMutableMap()
+                                    newOverrides[currentSpellState.id] = currentSpellState
+                                    onSpellSettingsChange(state.spellSettings.copy(
+                                        spellOverrides = newOverrides,
+                                        selectedSpellIds = (state.spellSettings.selectedSpellIds + currentSpellState.id).distinct()
+                                    ))
+                                    state.updateSpellBlockRef(currentSpellState.id)
+                                    state.refreshTrigger++
+                                    state.isSingleSpellDialogOpen = false
+                                    state.activeSpellBlockRef = null
+                                },
+                                forceBlurEnabled = forceBlurEnabled,
+                                hazeState = popupHazeState ?: hazeState,
+                                settingsViewModel = state.settingsViewModel
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (isDesktop) {
+                dialogContent()
+            } else {
+                Dialog(
+                    onDismissRequest = {
+                        state.isSingleSpellDialogOpen = false
+                        state.activeSpellBlockRef = null
+                    },
+                    properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                    dialogContent()
+                }
+            }
         }
     }
 }

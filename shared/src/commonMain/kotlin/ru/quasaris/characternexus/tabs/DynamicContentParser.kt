@@ -1,6 +1,7 @@
 package ru.quasaris.characternexus.tabs
 
 import ru.quasaris.characternexus.model.DynamicContentBlock
+import ru.quasaris.characternexus.util.generateUuid
 
 object DynamicContentParser {
     private val dividerRegex = Regex("^[ \\t\\u200B\\uFEFF]*---[ \\t\\u200B\\uFEFF]*$", RegexOption.MULTILINE)
@@ -9,7 +10,8 @@ object DynamicContentParser {
     private val resourceRegex = Regex("(?s)\\{(?:Ресурс|Resource)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
     private val infoBlockRegex = Regex("(?s)\\{(?:Инфоблок|InfoBlock)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
     private val attackRegex = Regex("(?s)\\{(?:Атака|Attack)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
-    private val spellFieldRegex = Regex("(?s)\\{(?:Заклинания|SpellField|Заклинание)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
+    private val spellRegex = Regex("(?s)\\{(?:Заклинание|Spell)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
+    private val folderRegex = Regex("(?s)\\{(?:Папка|Folder)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
 
     fun parse(text: String, resources: Map<String, DynamicContentBlock.Resource> = emptyMap()): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
@@ -137,8 +139,8 @@ object DynamicContentParser {
             }
         }
 
-        // Find spell fields using flexible parser
-        spellFieldRegex.findAll(text).forEach { match ->
+        // Find single spell blocks using flexible parser
+        spellRegex.findAll(text).forEach { match ->
             val content = match.groupValues[1]
             val parts = content.split("|").map { it.trim() }
             val params = mutableMapOf<String, String>()
@@ -150,10 +152,26 @@ object DynamicContentParser {
                 }
             }
 
-            val id = params["id"] ?: ""
-            if (id.isNotEmpty()) {
-                allMatches.add(match.range to DynamicContentBlock.SpellFieldRef(id))
+            val id = params["id"] ?: params["uuid"] ?: generateUuid()
+            val spellId = params["spellid"] ?: params["spell_id"] ?: params["spell"]
+            allMatches.add(match.range to DynamicContentBlock.SpellRef(id = id, spellId = spellId))
+        }
+
+        // Find folder blocks using flexible parser
+        folderRegex.findAll(text).forEach { match ->
+            val content = match.groupValues[1]
+            val parts = content.split("|").map { it.trim() }
+            val params = mutableMapOf<String, String>()
+
+            parts.forEach { part ->
+                val kv = part.split("=", limit = 2)
+                if (kv.size == 2) {
+                    params[kv[0].trim().lowercase()] = kv[1].trim()
+                }
             }
+
+            val id = params["id"] ?: params["uuid"] ?: generateUuid()
+            allMatches.add(match.range to DynamicContentBlock.FolderRef(id = id))
         }
 
         // Sort matches by start position
@@ -227,7 +245,8 @@ object DynamicContentParser {
                 is DynamicContentBlock.InfoBlockRef -> block.toTag()
                 is DynamicContentBlock.Attack -> block.toTag()
                 is DynamicContentBlock.AttackRef -> block.toTag()
-                is DynamicContentBlock.SpellFieldRef -> block.toTag()
+                is DynamicContentBlock.SpellRef -> block.toTag()
+                is DynamicContentBlock.FolderRef -> block.toTag()
             }
         }
     }
@@ -259,13 +278,22 @@ object DynamicContentParser {
         }.toSet()
     }
 
-    fun spellFieldIds(text: String): Set<String> {
-        return spellFieldRegex.findAll(text).mapNotNull { match ->
+    fun spellIds(text: String): Set<String> {
+        return spellRegex.findAll(text).mapNotNull { match ->
             val content = match.groupValues[1]
             content.split("|").map { it.trim() }
-                .firstOrNull { it.startsWith("id=") }
+                .firstOrNull { it.startsWith("spellId=", ignoreCase = true) || it.startsWith("spell_id=", ignoreCase = true) || it.startsWith("spell=", ignoreCase = true) }
                 ?.substringAfter("=")
-        }.toSet()
+        }.filter { it.isNotBlank() }.toSet()
+    }
+
+    fun folderIds(text: String): Set<String> {
+        return folderRegex.findAll(text).mapNotNull { match ->
+            val content = match.groupValues[1]
+            content.split("|").map { it.trim() }
+                .firstOrNull { it.startsWith("id=", ignoreCase = true) }
+                ?.substringAfter("=")
+        }.filter { it.isNotBlank() }.toSet()
     }
 
     fun rewriteInlineResources(text: String, transform: (DynamicContentBlock.Resource) -> DynamicContentBlock): String {
@@ -374,9 +402,16 @@ object DynamicContentParser {
         return BlockContentParser.toText(blocks)
     }
 
-    fun removeSpellFieldById(text: String, id: String): String {
+    fun removeSpellById(text: String, id: String): String {
         val blocks = BlockContentParser.toBlocks(text).filterNot {
-            it is DynamicContentBlock.SpellFieldRef && it.id == id
+            it is DynamicContentBlock.SpellRef && it.id == id
+        }
+        return BlockContentParser.toText(blocks)
+    }
+
+    fun removeFolderById(text: String, id: String): String {
+        val blocks = BlockContentParser.toBlocks(text).filterNot {
+            it is DynamicContentBlock.FolderRef && it.id == id
         }
         return BlockContentParser.toText(blocks)
     }

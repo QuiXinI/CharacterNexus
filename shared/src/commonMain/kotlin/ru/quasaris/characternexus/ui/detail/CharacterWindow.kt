@@ -419,7 +419,7 @@ fun CharacterWindow(
         state.hpBonusesAtLevel, state.hpBonusesTotal, state.hasInspiration, state.potions,
         state.race, state.classes, state.isJackOfAllTrades,
         state.deathSaveSuccesses, state.deathSaveFailures,
-        state.proficiencies, state.resourceManager.items, state.infoBlockManager.items, state.spellFieldManager.items,
+        state.proficiencies, state.resourceManager.items, state.infoBlockManager.items, state.folderManager.items,
         state.customTabs, state.tabOrder, state.disabledTabs, state.customTabTitles, state.customTabIcons
     ) {
         onSaveChanges(state.toCharacter(character))
@@ -1679,7 +1679,7 @@ fun CharacterDetailMainContent(
                         state.isFullscreenDynamicFieldOpen || state.isWalletDialogOpen ||
                         state.isSpellbookSelectionOpen || state.isResourceConfigOpen || state.isInfoBlockConfigOpen ||
                         state.isPotionConfigOpen || state.isPotionSelectionOpen ||
-                        state.isCargoConfigOpen ||
+                        state.isCargoConfigOpen || state.isSingleSpellDialogOpen ||
                         state.showEnhancedAC || state.showEnhancedInit || state.showEnhancedSpeed ||
                         state.showEnhancedCond || state.showCharacterSettings || state.showHealthSettings ||
                         state.isBonusConfigOpen || state.showHpDialog

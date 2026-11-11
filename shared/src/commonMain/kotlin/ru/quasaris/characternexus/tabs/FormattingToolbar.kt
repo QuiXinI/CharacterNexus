@@ -89,6 +89,7 @@ fun FormattingToolbar(
     onInsertInfoBlock: (() -> Unit)? = null,
     onInsertAttack: (() -> Unit)? = null,
     onInsertSpell: (() -> Unit)? = null,
+    onInsertFolder: (() -> Unit)? = null,
     onInsertDivider: (() -> Unit)? = null,
     hazeState: HazeState? = null,
     settingsViewModel: SettingsViewModel? = null,
@@ -274,7 +275,8 @@ fun FormattingToolbar(
                             onInsertResource = onInsertResource,
                             onInsertInfoBlock = onInsertInfoBlock,
                             onInsertAttack = onInsertAttack,
-                            onInsertSpell = onInsertSpell
+                            onInsertSpell = onInsertSpell,
+                            onInsertFolder = onInsertFolder
                         )
 
                         VerticalDivider(
@@ -510,7 +512,8 @@ private fun InsertDropdownMenu(
     onInsertResource: (() -> Unit)?,
     onInsertInfoBlock: (() -> Unit)?,
     onInsertAttack: (() -> Unit)?,
-    onInsertSpell: (() -> Unit)?
+    onInsertSpell: (() -> Unit)?,
+    onInsertFolder: (() -> Unit)?
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -609,7 +612,7 @@ private fun InsertDropdownMenu(
                 }
             )
             DropdownMenuItem(
-                text = { Text("Заклинания") },
+                text = { Text("Заклинание") },
                 onClick = {
                     expanded = false
                     if (onInsertSpell != null) {
@@ -617,7 +620,7 @@ private fun InsertDropdownMenu(
                     } else {
                         val id = ru.quasaris.characternexus.util.generateUuid()
                         val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
-                        val insert = prefix + "{Заклинания: id=$id}\n"
+                        val insert = prefix + "{Заклинание: id=$id}\n"
                         val min = value.selection.min.coerceIn(0, value.text.length)
                         val max = value.selection.max.coerceIn(0, value.text.length)
                         val newText = value.text.substring(0, min) + insert + value.text.substring(max)
@@ -626,6 +629,26 @@ private fun InsertDropdownMenu(
                 },
                 leadingIcon = {
                     Icon(Icons.Default.AutoFixHigh, contentDescription = null, modifier = Modifier.size(20.dp))
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("Папка") },
+                onClick = {
+                    expanded = false
+                    if (onInsertFolder != null) {
+                        onInsertFolder()
+                    } else {
+                        val id = ru.quasaris.characternexus.util.generateUuid()
+                        val prefix = if (value.text.isNotEmpty() && !value.text.endsWith("\n")) "\n" else ""
+                        val insert = prefix + "{Папка: id=$id}\n"
+                        val min = value.selection.min.coerceIn(0, value.text.length)
+                        val max = value.selection.max.coerceIn(0, value.text.length)
+                        val newText = value.text.substring(0, min) + insert + value.text.substring(max)
+                        onValueChange(value.copy(text = newText, selection = androidx.compose.ui.text.TextRange(min + insert.length)))
+                    }
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(20.dp))
                 }
             )
         }
