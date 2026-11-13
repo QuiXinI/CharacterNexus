@@ -31,7 +31,9 @@ fun DynamicFolderCard(
     modifier: Modifier = Modifier,
     hazeState: HazeState? = null,
     forceBlurEnabled: Boolean = false,
-    settingsViewModel: SettingsViewModel? = null
+    settingsViewModel: SettingsViewModel? = null,
+    // сколько блоков лежит внутри (дети рисует редактор под карточкой)
+    childCount: Int = 0
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val folderManager = state?.folderManager
@@ -118,6 +120,15 @@ fun DynamicFolderCard(
                     }
                 )
 
+                if (childCount > 0) {
+                    Text(
+                        text = childCount.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                }
+
                 IconButton(
                     onClick = { isEditMode = !isEditMode },
                     modifier = Modifier.size(32.dp)
@@ -132,7 +143,7 @@ fun DynamicFolderCard(
             }
 
             AnimatedVisibility(
-                visible = isExpanded,
+                visible = isExpanded && childCount == 0,
                 enter = fadeIn() + expandVertically(clip = true),
                 exit = fadeOut() + shrinkVertically(clip = true)
             ) {

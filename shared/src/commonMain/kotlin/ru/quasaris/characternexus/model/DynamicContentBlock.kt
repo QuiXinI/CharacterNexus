@@ -2,8 +2,6 @@ package ru.quasaris.characternexus.model
 
 import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import okio.ByteString.Companion.encodeUtf8
 import ru.quasaris.characternexus.util.generateUuid
 
 @Immutable
@@ -135,15 +133,20 @@ sealed class DynamicContentBlock {
     @Immutable
     @Serializable
     data class FolderRef(
-        val id: String = ""
+        val id: String = "",
+        // true — парный маркер конца папки: {Папка: id=X | end=1}. Всё между началом и концом — дети папки.
+        val isEnd: Boolean = false
     ) : DynamicContentBlock() {
-        fun toTag(): String = "{Папка: id=${id.ifEmpty { generateUuid() }}}"
+        fun toTag(): String {
+            val actualId = id.ifEmpty { generateUuid() }
+            return if (isEnd) "{Папка: id=$actualId | end=1}" else "{Папка: id=$actualId}"
+        }
     }
 
     @Immutable
     @Serializable
     data class TableCell(
-        val text: String = "",
+        val text: String,
         val colSpan: Int = 1,
         val rowSpan: Int = 1,
         val isHeader: Boolean = false
@@ -157,9 +160,17 @@ sealed class DynamicContentBlock {
     ) : DynamicContentBlock() {
         fun toTag(): String {
             val actualId = id.ifEmpty { generateUuid() }
-            val jsonPayload = Json.encodeToString(rows)
-            val base64Data = jsonPayload.encodeUtf8().base64()
-            return "{Таблица: id=$actualId | data=$base64Data}"
+            val rowsStr = rows.joinToString(";;") { row ->
+                row.joinToString("||") { cell ->
+                    buildString {
+                        append(cell.text)
+                        if (cell.colSpan > 1) append("|cs=${cell.colSpan}")
+                        if (cell.rowSpan > 1) append("|rs=${cell.rowSpan}")
+                        if (cell.isHeader) append("|h=1")
+                    }
+                }
+            }
+            return "{Таблица: id=$actualId | $rowsStr}"
         }
     }
 }

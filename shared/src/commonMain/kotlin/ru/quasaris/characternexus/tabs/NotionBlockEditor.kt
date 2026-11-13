@@ -47,6 +47,7 @@ import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.model.DynamicFolder
 import ru.quasaris.characternexus.model.DynamicNoteState
 import ru.quasaris.characternexus.model.NoteBlockState
+import ru.quasaris.characternexus.tabs.table.TableBlockComponent
 import ru.quasaris.characternexus.ui.BackHandler
 import kotlin.time.Duration.Companion.milliseconds
 import ru.quasaris.characternexus.tabs.resources.ResourceBlock
@@ -54,7 +55,6 @@ import ru.quasaris.characternexus.tabs.infoblocks.InfoBlockComponent
 import ru.quasaris.characternexus.tabs.attacks.AttackCardItem
 import ru.quasaris.characternexus.tabs.spells.SingleSpellBlockCard
 import ru.quasaris.characternexus.tabs.folders.DynamicFolderCard
-import ru.quasaris.characternexus.tabs.table.TableBlockComponent
 import ru.quasaris.characternexus.backend.getProficiencyBonus
 import ru.quasaris.characternexus.backend.calculateModifier
 import ru.quasaris.characternexus.model.Attribute
@@ -65,7 +65,6 @@ import ru.quasaris.characternexus.model.resolve
 import ru.quasaris.characternexus.model.RollResult
 import ru.quasaris.characternexus.ui.DeleteConfirmationDialog
 import ru.quasaris.characternexus.ui.outerShadow
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun NotionBlockEditor(
@@ -209,6 +208,15 @@ fun NotionBlockEditor(
     fun deleteBlockAt(idx: Int) {
         if (idx !in blocks.indices) return
         val removed = blocks.removeAt(idx)
+        // Удаляя папку, убираем и её маркер конца: дети остаются и поднимаются на уровень выше
+        (removed.block as? DynamicContentBlock.FolderRef)?.let { fr ->
+            if (!fr.isEnd) {
+                val endIdx = blocks.indexOfFirst {
+                    (it.block as? DynamicContentBlock.FolderRef)?.let { x -> x.isEnd && x.id == fr.id } == true
+                }
+                if (endIdx != -1) blocks.removeAt(endIdx)
+            }
+        }
         if (activeKey == removed.key) {
             activeKey = null
             liveSelections.remove(removed.key)
@@ -523,35 +531,6 @@ fun NotionBlockEditor(
         }
     }
 
-    val insertTableAction = {
-        val initialTable = DynamicContentBlock.Table(
-            rows = listOf(
-                listOf(
-                    DynamicContentBlock.TableCell("Заголовок 1", isHeader = true),
-                    DynamicContentBlock.TableCell("Заголовок 2", isHeader = true)
-                ),
-                listOf(
-                    DynamicContentBlock.TableCell("Ячейка 1"),
-                    DynamicContentBlock.TableCell("Ячейка 2")
-                )
-            ),
-            id = ru.quasaris.characternexus.util.generateUuid()
-        )
-        if (effectiveIsPlainText) {
-            val tag = initialTable.toTag()
-            val cur = plainTextValue
-            val insert = (if (cur.text.isNotEmpty() && !cur.text.endsWith("\n")) "\n" else "") + tag + "\n"
-            val min = cur.selection.min.coerceIn(0, cur.text.length)
-            val max = cur.selection.max.coerceIn(0, cur.text.length)
-            val newText = cur.text.substring(0, min) + insert + cur.text.substring(max)
-            plainTextValue = cur.copy(text = newText, selection = TextRange(min + insert.length))
-            lastEmittedText = newText
-            onFieldChange(field.copy(content = newText))
-        } else {
-            insertBlockAtSelection(initialTable)
-        }
-    }
-
     val currentClipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     val richTextClipboardManager = remember(currentClipboardManager) { RichTextClipboardManager(currentClipboardManager) }
 
@@ -581,10 +560,6 @@ fun NotionBlockEditor(
         val showToolbar = canEdit && isEditorAttached && (if (effectiveIsPlainText) isAnyFocused else (activeKey != null && activeValue != null))
         if (showToolbar && toolbarValue != null) {
             val isOled = colorScheme.background == Color.Black
-            val activeBlock = activeKey?.let { key -> blocks.find { it.key == key }?.block }
-            val isTableActive = activeBlock is DynamicContentBlock.Table
-            val tableBlock = activeBlock as? DynamicContentBlock.Table
-
             FormattingToolbar(
                 value = toolbarValue,
                 onValueChange = { newValue ->
@@ -632,66 +607,7 @@ fun NotionBlockEditor(
                 editorHeightPx = editorHeightPx,
                 isBasicMode = isBasicMode,
                 isPlainTextMode = effectiveIsPlainText,
-                onTogglePlainText = { togglePlainText() },
-                isTableMode = isTableActive,
-                onAddRowBelow = tableBlock?.let { tbl ->
-                    {
-                        val newRow = List(tbl.rows.firstOrNull()?.size ?: 1) { DynamicContentBlock.TableCell("") }
-                        val newRows = tbl.rows + listOf(newRow)
-                        val idx = blocks.indexOfFirst { it.key == activeKey }
-                        if (idx != -1) {
-                            blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
-                            emit()
-                        }
-                    }
-                },
-                onDeleteRow = tableBlock?.let { tbl ->
-                    {
-                        if (tbl.rows.size > 1) {
-                            val newRows = tbl.rows.dropLast(1)
-                            val idx = blocks.indexOfFirst { it.key == activeKey }
-                            if (idx != -1) {
-                                blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
-                                emit()
-                            }
-                        }
-                    }
-                },
-                onAddColRight = tableBlock?.let { tbl ->
-                    {
-                        val newRows = tbl.rows.map { row -> row + DynamicContentBlock.TableCell("") }
-                        val idx = blocks.indexOfFirst { it.key == activeKey }
-                        if (idx != -1) {
-                            blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
-                            emit()
-                        }
-                    }
-                },
-                onDeleteCol = tableBlock?.let { tbl ->
-                    {
-                        if ((tbl.rows.firstOrNull()?.size ?: 0) > 1) {
-                            val newRows = tbl.rows.map { row -> if (row.isNotEmpty()) row.dropLast(1) else row }
-                            val idx = blocks.indexOfFirst { it.key == activeKey }
-                            if (idx != -1) {
-                                blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
-                                emit()
-                            }
-                        }
-                    }
-                },
-                onToggleHeader = tableBlock?.let { tbl ->
-                    {
-                        val newRows = tbl.rows.mapIndexed { rIdx, row ->
-                            if (rIdx == 0) row.map { cell -> cell.copy(isHeader = !cell.isHeader) } else row
-                        }
-                        val idx = blocks.indexOfFirst { it.key == activeKey }
-                        if (idx != -1) {
-                            blocks[idx] = blocks[idx].copy(block = tbl.copy(rows = newRows))
-                            emit()
-                        }
-                    }
-                },
-                onInsertTable = insertTableAction
+                onTogglePlainText = { togglePlainText() }
             )
         }
 
@@ -752,13 +668,20 @@ fun NotionBlockEditor(
                 }
             )
         } else {
-            BlockDragColumn(
-            blocks = blocks,
-            isReorderMode = isReorderMode,
-            onReordered = { emit() }
-        ) { index, item, dragHandleModifier ->
-            val absoluteIndex = index
-            key(item.key) {
+            val blocksSnapshot = blocks.toList()
+            val tree = remember(blocksSnapshot) { parseBlockTree(blocksSnapshot) }
+            val folderManager = state?.folderManager
+            val expandedById = tree.folderIds.associateWith { id -> folderManager?.get(id)?.isExpanded ?: false }
+            val stripeColor = colorScheme.outlineVariant
+
+            @Composable
+            fun BlockRowContent(
+                item: NoteBlockState,
+                absoluteIndex: Int,
+                row: BlockRowInfo,
+                dragHandleModifier: Modifier
+            ) {
+                key(item.key) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -1122,22 +1045,25 @@ fun NotionBlockEditor(
                             }
 
                             is DynamicContentBlock.FolderRef -> {
-                                DynamicFolderCard(
-                                    folderId = block.id,
-                                    state = state,
-                                    hazeState = hazeState,
-                                    forceBlurEnabled = forceBlurEnabled,
-                                    settingsViewModel = settingsViewModel
-                                )
+                                if (!block.isEnd) {
+                                    DynamicFolderCard(
+                                        folderId = block.id,
+                                        childCount = row.childCount,
+                                        state = state,
+                                        hazeState = hazeState,
+                                        forceBlurEnabled = forceBlurEnabled,
+                                        settingsViewModel = settingsViewModel
+                                    )
+                                }
                             }
 
                             is DynamicContentBlock.Table -> {
                                 TableBlockComponent(
                                     table = block,
-                                    onUpdate = { updatedTable ->
+                                    onUpdate = { updated ->
                                         val idx = blocks.indexOfFirst { it.key == item.key }
                                         if (idx != -1) {
-                                            blocks[idx] = blocks[idx].copy(block = updatedTable)
+                                            blocks[idx] = blocks[idx].copy(block = updated)
                                             emit()
                                         }
                                     },
@@ -1161,8 +1087,41 @@ fun NotionBlockEditor(
                         }
                     }
                 }
+                }
             }
-        }
+
+            if (isReorderMode) {
+                BlockReorderTree(
+                    tree = tree,
+                    expandedById = expandedById,
+                    folderTitle = { id -> folderManager?.get(id)?.title.orEmpty() },
+                    onApply = { newFlat ->
+                        blocks.clear()
+                        blocks.addAll(newFlat)
+                        emit()
+                    },
+                    rowContent = { item, row, handle ->
+                        BlockRowContent(item, blocks.indexOfFirst { it.key == item.key }, row, handle)
+                    }
+                )
+            } else {
+                val rows = remember(tree, expandedById) { tree.visibleRows(tree.model, expandedById) }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    rows.forEachIndexed { i, row ->
+                        val item = tree.byKey[row.key] ?: return@forEachIndexed
+                        if ((item.block as? DynamicContentBlock.FolderRef)?.isEnd == true) return@forEachIndexed
+                        Box(
+                            Modifier
+                                .fillMaxWidth()
+                                .blockStripes(row.depth, stripeColor)
+                                .padding(start = BlockIndent * row.depth)
+                        ) {
+                            BlockRowContent(item, blocks.indexOfFirst { it.key == item.key }, row, Modifier)
+                        }
+                        if (i != rows.lastIndex) Spacer(Modifier.height(4.dp))
+                    }
+                }
+            }
         }
 
         bottomActionRow?.invoke(
@@ -1542,70 +1501,5 @@ private fun DividerBlockRow(modifier: Modifier = Modifier) {
     val colorScheme = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
         HorizontalDivider(modifier = Modifier.weight(1f).padding(vertical = 8.dp), thickness = 1.dp, color = colorScheme.outlineVariant)
-    }
-}
-
-@Composable
-private fun BlockDragColumn(
-    blocks: SnapshotStateList<NoteBlockState>,
-    isReorderMode: Boolean,
-    onReordered: () -> Unit,
-    content: @Composable (index: Int, item: NoteBlockState, dragHandleModifier: Modifier) -> Unit
-) {
-    val rowHeights = remember { mutableStateMapOf<String, Int>() }
-    var draggingKey by remember { mutableStateOf<String?>(null) }
-    var dragOffsetY by remember { mutableFloatStateOf(0f) }
-    val density = LocalDensity.current
-    val spacingPx = with(density) { 4.dp.toPx() }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        blocks.forEachIndexed { index, item ->
-            val isDragged = isReorderMode && item.key == draggingKey
-            key(item.key) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { coords -> rowHeights[item.key] = coords.size.height }
-                        .zIndex(if (isDragged) 1f else 0f)
-                        .graphicsLayer { if (isDragged) translationY = dragOffsetY }
-                ) {
-                    val dragHandleModifier = if (isReorderMode) {
-                        Modifier.pointerInput(item.key, blocks.size) {
-                            detectDragGestures(
-                                onDragStart = { draggingKey = item.key; dragOffsetY = 0f },
-                                onDragEnd = {
-                                    val moved = draggingKey != null
-                                    draggingKey = null
-                                    dragOffsetY = 0f
-                                    if (moved) onReordered()
-                                },
-                                onDragCancel = { draggingKey = null; dragOffsetY = 0f },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    dragOffsetY += dragAmount.y
-                                    val myKey = item.key
-                                    val myIndex = blocks.indexOfFirst { it.key == myKey }
-                                    if (myIndex == -1) return@detectDragGestures
-                                    val myHeight = (rowHeights[myKey] ?: 0) + spacingPx
-                                    if (myHeight <= 0f) return@detectDragGestures
-                                    if (dragOffsetY > myHeight / 2f && myIndex + 1 < blocks.size) {
-                                        val nextHeight = (rowHeights[blocks[myIndex + 1].key] ?: 0) + spacingPx
-                                        blocks.add(myIndex, blocks.removeAt(myIndex + 1))
-                                        dragOffsetY -= nextHeight
-                                    } else if (dragOffsetY < -myHeight / 2f && myIndex - 1 >= 0) {
-                                        val prevHeight = (rowHeights[blocks[myIndex - 1].key] ?: 0) + spacingPx
-                                        blocks.add(myIndex, blocks.removeAt(myIndex - 1))
-                                        dragOffsetY += prevHeight
-                                    }
-                                }
-                            )
-                        }
-                    } else Modifier
-
-                    content(index, item, dragHandleModifier)
-                }
-            }
-            if (index != blocks.lastIndex) Spacer(Modifier.height(4.dp))
-        }
     }
 }

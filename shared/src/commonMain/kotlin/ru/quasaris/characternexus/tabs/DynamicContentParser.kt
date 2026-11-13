@@ -1,6 +1,5 @@
 package ru.quasaris.characternexus.tabs
 
-import okio.ByteString.Companion.decodeBase64
 import ru.quasaris.characternexus.model.DynamicContentBlock
 import ru.quasaris.characternexus.util.generateUuid
 
@@ -173,7 +172,7 @@ object DynamicContentParser {
             }
 
             val id = params["id"] ?: params["uuid"] ?: generateUuid()
-            allMatches.add(match.range to DynamicContentBlock.FolderRef(id = id))
+            allMatches.add(match.range to DynamicContentBlock.FolderRef(id = id, isEnd = params["end"] == "1"))
         }
 
         // Find table blocks using flexible parser
@@ -181,21 +180,48 @@ object DynamicContentParser {
             val content = match.groupValues[1]
             val parts = content.split("|").map { it.trim() }
             val params = mutableMapOf<String, String>()
+            var rowsStr = ""
 
             parts.forEach { part ->
                 val kv = part.split("=", limit = 2)
                 if (kv.size == 2) {
                     params[kv[0].trim().lowercase()] = kv[1].trim()
+                } else if (part.contains(";;") || part.contains("||")) {
+                    rowsStr = part
                 }
             }
 
-            val id = params["id"] ?: generateUuid()
-            val dataBase64 = params["data"] ?: ""
-            val rows = runCatching {
-                val jsonDecoded = dataBase64.decodeBase64()?.utf8() ?: params["data"] ?: "[]"
-                kotlinx.serialization.json.Json.decodeFromString<List<List<DynamicContentBlock.TableCell>>>(jsonDecoded)
-            }.getOrElse { emptyList() }
-            allMatches.add(match.range to DynamicContentBlock.Table(rows = rows, id = id))
+            val id = params["id"] ?: params["uuid"] ?: generateUuid()
+            if (rowsStr.isEmpty()) {
+                val idx = content.indexOf("|")
+                if (idx != -1) {
+                    rowsStr = content.substring(idx + 1).trim()
+                }
+            }
+
+            val rows = rowsStr.split(";;").map { rowStr ->
+                rowStr.split("||").map { cellStr ->
+                    val cellParts = cellStr.split("|").map { it.trim() }
+                    val cellText = cellParts.firstOrNull() ?: ""
+                    var colSpan = 1
+                    var rowSpan = 1
+                    var isHeader = false
+
+                    cellParts.drop(1).forEach { p ->
+                        val kv2 = p.split("=", limit = 2)
+                        if (kv2.size == 2) {
+                            when (kv2[0].trim().lowercase()) {
+                                "cs", "colspan" -> colSpan = kv2[1].toIntOrNull() ?: 1
+                                "rs", "rowspan" -> rowSpan = kv2[1].toIntOrNull() ?: 1
+                                "h", "header" -> isHeader = kv2[1].toBoolean() || kv2[1] == "1"
+                            }
+                        }
+                    }
+                    DynamicContentBlock.TableCell(text = cellText, colSpan = colSpan, rowSpan = rowSpan, isHeader = isHeader)
+                }
+            }.filter { it.isNotEmpty() }
+
+            allMatches.add(match.range to DynamicContentBlock.Table(rows = rows.ifEmpty { listOf(listOf(DynamicContentBlock.TableCell(""))) }, id = id))
         }
 
         // Sort matches by start position
@@ -274,15 +300,6 @@ object DynamicContentParser {
                 is DynamicContentBlock.Table -> block.toTag()
             }
         }
-    }
-
-    fun tableIds(text: String): Set<String> {
-        return tableRegex.findAll(text).mapNotNull { match ->
-            val content = match.groupValues[1]
-            content.split("|").map { it.trim() }
-                .firstOrNull { it.startsWith("id=", ignoreCase = true) }
-                ?.substringAfter("=")
-        }.filter { it.isNotBlank() }.toSet()
     }
 
     fun resourceIds(text: String): Set<String> {

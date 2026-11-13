@@ -88,7 +88,7 @@ object BlockContentParser {
         is DynamicContentBlock.Attack -> "A:${block.id}:${block.name}:${block.notes}"
         is DynamicContentBlock.AttackRef -> "AR:${block.id}"
         is DynamicContentBlock.SpellRef -> "SR:${block.id}:${block.spellId}"
-        is DynamicContentBlock.FolderRef -> "FR:${block.id}"
+        is DynamicContentBlock.FolderRef -> "FR:${block.id}:${block.isEnd}"
         is DynamicContentBlock.Table -> "TBL:${block.id}:${block.rows.size}"
     }
 }
