@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import ru.quasaris.characternexus.getAppDataDir
 import ru.quasaris.characternexus.platformFileSystem
 import ru.quasaris.characternexus.model.*
+import ru.quasaris.characternexus.util.PlatformUtils
 import ru.quasaris.characternexus.util.log
 
 @Serializable
@@ -52,7 +53,7 @@ data class AppSettings(
     var rollHistorySize: Int = 5,
     var customRollHistorySize: Int = 10,
     var rollInterfaceAlpha: Float = 1.0f,
-    var masterBlurEnabled: Boolean = true,
+    var masterBlurEnabled: Boolean = !PlatformUtils.isLowEndDevice,
     var blurRolls: Boolean = true,
     var blurFullscreen: Boolean = true,
     var blurPopups: Boolean = true,

@@ -9,7 +9,6 @@ import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -21,31 +20,52 @@ actual fun Modifier.outerShadow(
     offsetY: Dp,
     offsetX: Dp
 ): Modifier = this.drawWithCache {
+    if (blur <= 0.dp && offsetY == 0.dp && offsetX == 0.dp) {
+        return@drawWithCache onDrawBehind {}
+    }
+
     val outline = shape.createOutline(size, layoutDirection, this)
     val path = Path().apply { addOutline(outline) }
     val androidPath = path.asAndroidPath()
-    
-    val paint = android.graphics.Paint().apply {
+
+    val blurPx = blur.toPx().coerceAtLeast(0.01f)
+    val offsetXPx = offsetX.toPx()
+    val offsetYPx = offsetY.toPx()
+
+    val shadowPaint = android.graphics.Paint().apply {
         isAntiAlias = true
         this.color = color.toArgb()
         setShadowLayer(
-            blur.toPx(),
-            offsetX.toPx(),
-            offsetY.toPx(),
+            blurPx,
+            offsetXPx,
+            offsetYPx,
             color.toArgb()
         )
     }
 
-    onDrawBehind {
-        if (blur <= 0.dp && offsetY == 0.dp && offsetX == 0.dp) return@onDrawBehind
+    val erasePaint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_OUT)
+    }
 
+    onDrawBehind {
         drawIntoCanvas { canvas ->
-            canvas.save()
+            val nativeCanvas = canvas.nativeCanvas
+            // Hardware-accelerated offscreen layer for GPU PorterDuff blending
+            val checkpoint = nativeCanvas.saveLayer(
+                -blurPx + offsetXPx,
+                -blurPx + offsetYPx,
+                size.width + blurPx + offsetXPx,
+                size.height + blurPx + offsetYPx,
+                null
+            )
             try {
-                canvas.clipPath(path, clipOp = ClipOp.Difference)
-                canvas.nativeCanvas.drawPath(androidPath, paint)
+                // 1. Draw hardware shadow
+                nativeCanvas.drawPath(androidPath, shadowPaint)
+                // 2. Erase inner shape using GPU hardware DST_OUT blending (prevents shadow from crawling under transparent cards)
+                nativeCanvas.drawPath(androidPath, erasePaint)
             } finally {
-                canvas.restore()
+                nativeCanvas.restoreToCount(checkpoint)
             }
         }
     }

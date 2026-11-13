@@ -7,6 +7,14 @@ plugins {
     alias(libs.plugins.baselineProfile)
 }
 
+composeCompiler {
+    stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("compose_compiler_config.conf"))
+}
+
+baselineProfile {
+    saveInSrc = true
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -22,7 +30,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     compilerOptions {
         if (isRelease) {
             // Включаем оптимизации для релизной сборки
-            freeCompilerArgs.add("-Xbackend-threads=0") // Параллельная компиляция
             freeCompilerArgs.add("-Xno-call-assertions")
             freeCompilerArgs.add("-Xno-receiver-assertions")
             freeCompilerArgs.add("-Xno-param-assertions")

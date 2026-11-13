@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 
 actual object PlatformUtils {
     actual val isAndroid: Boolean = false
+    actual val isLowEndDevice: Boolean = false
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
         System.err.println("[$tag] $message")
         throwable?.printStackTrace()

@@ -49,7 +49,6 @@ tasks.withType<KotlinCompile>().configureEach {
         
         if (isRelease) {
             // Оптимизации для релиза
-            freeCompilerArgs.add("-Xbackend-threads=0")
             freeCompilerArgs.add("-Xno-call-assertions")
             freeCompilerArgs.add("-Xno-receiver-assertions")
             freeCompilerArgs.add("-Xno-param-assertions")

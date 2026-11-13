@@ -30,6 +30,16 @@ actual object PlatformUtils {
     actual val isAndroid: Boolean = true
     lateinit var androidContext: Context
 
+    actual val isLowEndDevice: Boolean
+        get() {
+            if (!::androidContext.isInitialized) return false
+            val am = androidContext.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager ?: return false
+            val memInfo = android.app.ActivityManager.MemoryInfo()
+            am.getMemoryInfo(memInfo)
+            val totalRamMb = memInfo.totalMem / (1024 * 1024)
+            return am.isLowRamDevice || totalRamMb < 4000
+        }
+
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
         Log.e(tag, message, throwable)
     }

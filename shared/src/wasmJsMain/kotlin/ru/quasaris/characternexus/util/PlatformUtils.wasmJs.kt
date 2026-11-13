@@ -6,6 +6,7 @@ import ru.quasaris.characternexus.backend.cropper.ImageCropState
 
 actual object PlatformUtils {
     actual val isAndroid: Boolean = false
+    actual val isLowEndDevice: Boolean = false
 
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
     }

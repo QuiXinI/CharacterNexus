@@ -15,6 +15,7 @@ data class ClipboardContent(
 
 expect object PlatformUtils {
     val isAndroid: Boolean
+    val isLowEndDevice: Boolean
     fun logError(tag: String, message: String, throwable: Throwable? = null)
     fun setClipboardText(label: String, text: String)
     fun performHapticFeedback(type: HapticType = HapticType.CLICK)

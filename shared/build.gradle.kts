@@ -9,6 +9,10 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
 }
 
+composeCompiler {
+    stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("compose_compiler_config.conf"))
+}
+
 val appVersionName = rootProject.extra["appVersionName"] as String
 
 val generateBuildConstants = tasks.register("generateBuildConstants") {

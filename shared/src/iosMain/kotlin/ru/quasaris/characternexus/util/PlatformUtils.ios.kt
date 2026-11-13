@@ -5,6 +5,7 @@ import platform.Foundation.NSUUID
 
 actual object PlatformUtils {
     actual val isAndroid: Boolean = false
+    actual val isLowEndDevice: Boolean = false
 
     actual fun logError(tag: String, message: String, throwable: Throwable?) {
         println("[$tag] $message")
