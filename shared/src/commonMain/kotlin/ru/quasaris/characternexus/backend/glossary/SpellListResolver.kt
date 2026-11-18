@@ -28,10 +28,18 @@ object SpellListResolver {
     }
 
     /**
-     * Все заклинания, которые доступны подклассу на любом уровне (явные + grants).
+     * Все заклинания, которые доступны подклассу на любом уровне (явные + grants + те, у которых в карточке указан этот подкласс).
      */
-    fun subclassSpellIds(sub: SubclassDefinition): Set<String> =
-        sub.spellIds.toSet() + sub.spellGrants.flatMap { it.spellIds }
+    fun subclassSpellIds(
+        sub: SubclassDefinition,
+        allSpells: List<ru.quasaris.characternexus.model.SpellCard> = emptyList()
+    ): Set<String> {
+        val explicit = sub.spellIds.toSet() + sub.spellGrants.flatMap { it.spellIds }
+        val taggedInSpells = allSpells.filter { spell ->
+            spell.subclasses.any { it.equals(sub.name, ignoreCase = true) || it.equals(sub.id, ignoreCase = true) }
+        }.map { it.id }.toSet()
+        return explicit + taggedInSpells
+    }
 
     /**
      * Заклинания, которые подкласс держит подготовленными при уровне класса [classLevel].

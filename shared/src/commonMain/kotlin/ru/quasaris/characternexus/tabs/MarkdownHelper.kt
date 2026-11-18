@@ -731,6 +731,17 @@ fun RenderMarkdownContent(
                         color = colorScheme.outlineVariant
                     )
                 }
+                is DynamicContentBlock.Table -> {
+                    ru.quasaris.characternexus.tabs.table.TableBlockComponent(
+                        table = block,
+                        onUpdate = {},
+                        canEdit = false,
+                        isActive = false,
+                        onActivate = {},
+                        onDeleteRequest = {},
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    )
+                }
                 else -> {}
             }
         }

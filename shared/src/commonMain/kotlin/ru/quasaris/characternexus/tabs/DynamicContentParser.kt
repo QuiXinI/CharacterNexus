@@ -13,12 +13,76 @@ object DynamicContentParser {
     private val spellRegex = Regex("(?s)\\{(?:Заклинание|Spell)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
     private val folderRegex = Regex("(?s)\\{(?:Папка|Folder)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
     private val tableRegex = Regex("(?s)\\{(?:Таблица|Table)[:=]\\s*(.*?)\\}", RegexOption.IGNORE_CASE)
+    private val mdTableSeparatorRegex = Regex("^[ \\t]*\\|?([ \\t]*:?-+:?[ \\t]*\\|)+[ \\t]*:?-+:?[ \\t]*\\|?[ \\t]*$")
+
+    private fun findMarkdownTables(text: String, allMatches: MutableList<Pair<IntRange, DynamicContentBlock>>) {
+        val lines = text.split("\n")
+        var lineStartPos = 0
+        var i = 0
+
+        while (i < lines.size) {
+            val line = lines[i]
+            val nextLine = lines.getOrNull(i + 1)
+
+            if (nextLine != null && mdTableSeparatorRegex.matches(nextLine)) {
+                val tableStartPos = lineStartPos
+                val headerText = line
+                val dataRows = mutableListOf<String>()
+
+                var j = i + 2
+                var currentTableEndPos = lineStartPos + line.length + 1 + nextLine.length
+
+                while (j < lines.size) {
+                    val dataLine = lines[j]
+                    if (dataLine.trim().startsWith("|") || (dataLine.contains("|") && !dataLine.trim().startsWith("#"))) {
+                        dataRows.add(dataLine)
+                        currentTableEndPos += 1 + dataLine.length
+                        j++
+                    } else {
+                        break
+                    }
+                }
+
+                val tableEndPos = currentTableEndPos
+
+                fun parseRowCells(rowStr: String, isHeader: Boolean): List<DynamicContentBlock.TableCell> {
+                    val trimmed = rowStr.trim()
+                    val stripped = if (trimmed.startsWith("|")) trimmed.substring(1) else trimmed
+                    val cleaned = if (stripped.endsWith("|")) stripped.substring(0, stripped.length - 1) else stripped
+                    return cleaned.split("|").map { cellText ->
+                        DynamicContentBlock.TableCell(text = cellText.trim(), isHeader = isHeader)
+                    }
+                }
+
+                val headerCells = parseRowCells(headerText, isHeader = true)
+                val bodyRows = dataRows.map { parseRowCells(it, isHeader = false) }
+                val tableRows = listOf(headerCells) + bodyRows
+
+                if (tableRows.isNotEmpty() && headerCells.isNotEmpty()) {
+                    allMatches.add(IntRange(tableStartPos, tableEndPos - 1) to DynamicContentBlock.Table(rows = tableRows, id = generateUuid()))
+                }
+
+                var advancePos = lineStartPos
+                for (k in i until j) {
+                    advancePos += lines[k].length + 1
+                }
+                lineStartPos = advancePos
+                i = j
+            } else {
+                lineStartPos += line.length + 1
+                i++
+            }
+        }
+    }
 
     fun parse(text: String, resources: Map<String, DynamicContentBlock.Resource> = emptyMap()): List<DynamicContentBlock> {
         val blocks = mutableListOf<DynamicContentBlock>()
         var currentPos = 0
 
         val allMatches = mutableListOf<Pair<IntRange, DynamicContentBlock>>()
+
+        // Find Markdown tables
+        findMarkdownTables(text, allMatches)
 
         // Find dividers
         dividerRegex.findAll(text).forEach { match ->

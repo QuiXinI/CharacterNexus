@@ -235,6 +235,7 @@ fun SpellbookWindow(
                     visible = showFilters,
                     filterState = filterState,
                     onFilterChange = { filterState = it },
+                    allSpells = allSpells,
                     modifier = Modifier.weight(1f, fill = false)
                 )
 

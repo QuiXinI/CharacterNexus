@@ -290,7 +290,8 @@ fun SpellSelectionTabContent(
         SpellFiltersArea(
             visible = showFilters,
             filterState = filterState,
-            onFilterChange = onFilterStateChange
+            onFilterChange = onFilterStateChange,
+            allSpells = allSpells
         )
 
         OutlinedTextField(

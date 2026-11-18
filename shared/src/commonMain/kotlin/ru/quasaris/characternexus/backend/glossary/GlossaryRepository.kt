@@ -74,8 +74,9 @@ class GlossaryRepository(
     }
 
     fun spellsForSubclass(sub: SubclassDefinition): List<SpellCard> {
-        val ids = SpellListResolver.subclassSpellIds(sub)
-        return allSpells().filter { it.id in ids }.sortedWith(spellOrder)
+        val spells = allSpells()
+        val ids = SpellListResolver.subclassSpellIds(sub, spells)
+        return spells.filter { it.id in ids }.sortedWith(spellOrder)
     }
 
     // --- Строки списков ---

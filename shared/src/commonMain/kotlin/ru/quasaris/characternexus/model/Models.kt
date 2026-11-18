@@ -593,6 +593,7 @@ data class SpellCard(
     @SerialName("version") val version: SpellVersion = SpellVersion.HB,
     @SerialName("school") val school: SpellSchool = SpellSchool.NONE,
     @SerialName("classes") val classes: List<CharacterClass> = emptyList(),
+    @SerialName("subclasses") val subclasses: List<String> = emptyList(),
     @SerialName("glossaryClassIds") val glossaryClassIds: List<String> = emptyList(),
     @SerialName("castingTimeType") val castingTimeType: CastingTimeType = CastingTimeType.ACTION,
     @SerialName("castingTime") val castingTime: String = "",
@@ -659,15 +660,26 @@ data class SpellCard(
         durationUnit.displayName
     }
 
+    val hasDamageUpcast: Boolean get() = upcastDamageFormula.isNotBlank() || additionalUpcastDamageFormulas.any { it.isNotBlank() }
+
     fun matches(filter: SpellFilterState, searchQuery: String): Boolean {
         val matchesSearch = searchQuery.isBlank() ||
                 name.contains(searchQuery, ignoreCase = true) ||
                 (showEnglishName && englishName.contains(searchQuery, ignoreCase = true))
 
         val matchesLevel = filter.levels.isEmpty() || level in filter.levels
-        val matchesClass = filter.classes.isEmpty() || classes.any { it in filter.classes }
+        val matchesClass = filter.classes.isEmpty() ||
+                classes.any { it in filter.classes } ||
+                subclasses.any { subName ->
+                    val parentClass = ru.quasaris.characternexus.backend.glossary.SubclassRegistry.getClassForSubclass(subName)
+                    parentClass != null && parentClass in filter.classes
+                }
+        val matchesSubclass = filter.subclasses.isEmpty() ||
+                subclasses.any { sub -> filter.subclasses.any { fSub -> fSub.equals(sub, ignoreCase = true) } }
         val matchesSchool = filter.schools.isEmpty() || school in filter.schools
         val matchesVersion = filter.versions.isEmpty() || version in filter.versions
+        val matchesSource = filter.sources.isEmpty() || filter.sources.any { fSrc -> fSrc.equals(source, ignoreCase = true) }
+        val matchesUpcastDamage = filter.hasDamageUpcast == null || hasDamageUpcast == filter.hasDamageUpcast
         val matchesCastingTime = filter.castingTimeTypes.isEmpty() || castingTimeType in filter.castingTimeTypes
         val matchesDuration = filter.durationUnits.isEmpty() || durationUnit in filter.durationUnits
         val matchesAttackType = filter.attackTypes.isEmpty() || attackTypes.any { it in filter.attackTypes }
@@ -703,7 +715,8 @@ data class SpellCard(
         val matchesCastingTimeQuery = filter.castingTimeQuery.isBlank() || castingTime.contains(filter.castingTimeQuery, ignoreCase = true)
         val matchesDurationQuery = filter.durationQuery.isBlank() || durationValue == filter.durationQuery
 
-        return matchesSearch && matchesLevel && matchesClass && matchesSchool && matchesVersion &&
+        return matchesSearch && matchesLevel && matchesClass && matchesSubclass && matchesSchool && matchesVersion &&
+                matchesSource && matchesUpcastDamage &&
                 matchesCastingTime && matchesDuration && matchesAttackType && matchesDamageType && matchesSaveAttr &&
                 matchesConc && matchesRitual && matchesCircle && matchesDamage && matchesComponents &&
                 matchesAttack && matchesSave && matchesCastingTimeQuery && matchesDurationQuery
@@ -719,8 +732,10 @@ enum class SpellComponentFilter {
 data class SpellFilterState(
     val levels: Set<String> = emptySet(),
     val classes: Set<CharacterClass> = emptySet(),
+    val subclasses: Set<String> = emptySet(),
     val schools: Set<SpellSchool> = emptySet(),
     val versions: Set<SpellVersion> = emptySet(),
+    val sources: Set<String> = emptySet(),
     val castingTimeTypes: Set<CastingTimeType> = emptySet(),
     val castingTimeQuery: String = "",
     val durationUnits: Set<DurationUnit> = emptySet(),
@@ -735,6 +750,7 @@ data class SpellFilterState(
     val isCircle: Boolean? = null,
     val hasAttack: Boolean? = null,
     val hasSave: Boolean? = null,
+    val hasDamageUpcast: Boolean? = null,
     val isCompact: Boolean = false
 )
 

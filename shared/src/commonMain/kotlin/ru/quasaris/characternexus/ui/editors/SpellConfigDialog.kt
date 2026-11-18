@@ -389,6 +389,69 @@ fun SpellConfigContent(
                         }
                     }
 
+                    // Subclasses
+                    val subclassesActive = state.subclasses.isNotEmpty()
+                    Column(modifier = Modifier.alpha(if (subclassesActive) 1f else 0.7f)) {
+                        SpellCardSectionTitle("ПОДКЛАССЫ")
+                        var subclassesExpanded by remember { mutableStateOf(false) }
+                        var subclassesText by remember(state.subclasses) { mutableStateOf(state.subclasses.joinToString(", ")) }
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = subclassesText,
+                                onValueChange = { newText ->
+                                    subclassesText = newText
+                                    val parsed = newText.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                                    onStateChange(state.copy(subclasses = parsed))
+                                },
+                                label = { Text("Доступно подклассам (через запятую)") },
+                                trailingIcon = {
+                                    IconButton(onClick = { subclassesExpanded = true }) {
+                                        Icon(Icons.Default.ArrowDropDown, null)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            DropdownMenu(
+                                expanded = subclassesExpanded,
+                                onDismissRequest = { subclassesExpanded = false },
+                                modifier = Modifier.heightIn(max = 350.dp)
+                            ) {
+                                val groupedSubclasses = remember { ru.quasaris.characternexus.backend.glossary.SubclassRegistry.getSubclassesGrouped() }
+                                groupedSubclasses.forEach { (className, subList) ->
+                                    DropdownMenuItem(
+                                        text = { Text(className, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
+                                        onClick = {},
+                                        enabled = false
+                                    )
+                                    subList.forEach { subName ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Checkbox(
+                                                        checked = state.subclasses.any { it.equals(subName, ignoreCase = true) },
+                                                        onCheckedChange = null
+                                                    )
+                                                    Spacer(Modifier.width(8.dp))
+                                                    Text(subName)
+                                                }
+                                            },
+                                            onClick = {
+                                                val newList = if (state.subclasses.any { it.equals(subName, ignoreCase = true) }) {
+                                                    state.subclasses.filterNot { it.equals(subName, ignoreCase = true) }
+                                                } else {
+                                                    state.subclasses + subName
+                                                }
+                                                onStateChange(state.copy(subclasses = newList))
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Components
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SpellCardSectionTitle("КОМПОНЕНТЫ")

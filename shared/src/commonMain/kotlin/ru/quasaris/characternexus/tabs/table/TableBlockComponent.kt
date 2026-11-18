@@ -154,75 +154,90 @@ fun TableBlockComponent(
                                     mutableStateOf(TextFieldValue(cell.text, TextRange(cell.text.length)))
                                 }
 
-                                BasicTextField(
-                                    value = tfValue,
-                                    onValueChange = { newVal ->
-                                        tfValue = newVal
-                                        val mutableRows = rows.map { it.toMutableList() }.toMutableList()
-                                        mutableRows[r][colIdx] = cell.copy(text = newVal.text)
-                                        emitUpdate(mutableRows)
-                                    },
-                                    enabled = canEdit,
-                                    textStyle = TextStyle(
-                                        fontSize = 14.sp,
-                                        color = colorScheme.onSurface,
-                                        fontWeight = if (cell.isHeader) FontWeight.Bold else FontWeight.Normal
-                                    ),
-                                    cursorBrush = SolidColor(colorScheme.primary),
-                                    maxLines = lineCount,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .focusRequester(reqFor(r, c))
-                                        .onFocusChanged { state ->
-                                            if (state.isFocused) {
-                                                onActivate()
-                                                onActiveCellChange(coord)
-                                            }
-                                        }
-                                        .onPreviewKeyEvent { event ->
-                                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                            when (event.key) {
-                                                Key.Tab -> {
-                                                    val nextCol = if (event.isShiftPressed) c - 1 else c + 1
-                                                    val nextRow = if (nextCol < 0) r - 1 else if (nextCol >= colCount) r + 1 else r
-                                                    val wrappedCol = if (nextCol < 0) colCount - 1 else if (nextCol >= colCount) 0 else nextCol
-                                                    val wrappedRow = nextRow.coerceIn(0, rowCount - 1)
-
-                                                    val targetActual = gridMap[CellCoord(wrappedRow, wrappedCol)]
-                                                    if (targetActual != null) {
-                                                        onActiveCellChange(CellCoord(wrappedRow, wrappedCol))
-                                                        runCatching { reqFor(targetActual.first, targetActual.second).requestFocus() }
-                                                    }
-                                                    true
+                                if (canEdit) {
+                                    BasicTextField(
+                                        value = tfValue,
+                                        onValueChange = { newVal ->
+                                            tfValue = newVal
+                                            val mutableRows = rows.map { it.toMutableList() }.toMutableList()
+                                            mutableRows[r][colIdx] = cell.copy(text = newVal.text)
+                                            emitUpdate(mutableRows)
+                                        },
+                                        enabled = true,
+                                        textStyle = TextStyle(
+                                            fontSize = 14.sp,
+                                            color = colorScheme.onSurface,
+                                            fontWeight = if (cell.isHeader) FontWeight.Bold else FontWeight.Normal
+                                        ),
+                                        cursorBrush = SolidColor(colorScheme.primary),
+                                        maxLines = lineCount,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .focusRequester(reqFor(r, c))
+                                            .onFocusChanged { state ->
+                                                if (state.isFocused) {
+                                                    onActivate()
+                                                    onActiveCellChange(coord)
                                                 }
-                                                Key.Enter -> {
-                                                    if (event.isShiftPressed) {
-                                                        false
-                                                    } else {
-                                                        val nextRow = (r + 1).coerceAtMost(rowCount - 1)
-                                                        val targetActual = gridMap[CellCoord(nextRow, c)]
+                                            }
+                                            .onPreviewKeyEvent { event ->
+                                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                                when (event.key) {
+                                                    Key.Tab -> {
+                                                        val nextCol = if (event.isShiftPressed) c - 1 else c + 1
+                                                        val nextRow = if (nextCol < 0) r - 1 else if (nextCol >= colCount) r + 1 else r
+                                                        val wrappedCol = if (nextCol < 0) colCount - 1 else if (nextCol >= colCount) 0 else nextCol
+                                                        val wrappedRow = nextRow.coerceIn(0, rowCount - 1)
+
+                                                        val targetActual = gridMap[CellCoord(wrappedRow, wrappedCol)]
                                                         if (targetActual != null) {
-                                                            onActiveCellChange(CellCoord(nextRow, c))
+                                                            onActiveCellChange(CellCoord(wrappedRow, wrappedCol))
                                                             runCatching { reqFor(targetActual.first, targetActual.second).requestFocus() }
                                                         }
                                                         true
                                                     }
+                                                    Key.Enter -> {
+                                                        if (event.isShiftPressed) {
+                                                            false
+                                                        } else {
+                                                            val nextRow = (r + 1).coerceAtMost(rowCount - 1)
+                                                            val targetActual = gridMap[CellCoord(nextRow, c)]
+                                                            if (targetActual != null) {
+                                                                onActiveCellChange(CellCoord(nextRow, c))
+                                                                runCatching { reqFor(targetActual.first, targetActual.second).requestFocus() }
+                                                            }
+                                                            true
+                                                        }
+                                                    }
+                                                    else -> false
                                                 }
-                                                else -> false
+                                            },
+                                        decorationBox = { inner ->
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                if (tfValue.text.isEmpty()) {
+                                                    Text(
+                                                        text = "",
+                                                        style = TextStyle(fontSize = 14.sp, color = colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                                    )
+                                                }
+                                                inner()
                                             }
-                                        },
-                                    decorationBox = { inner ->
-                                        Box(modifier = Modifier.fillMaxWidth()) {
-                                            if (tfValue.text.isEmpty()) {
-                                                Text(
-                                                    text = "",
-                                                    style = TextStyle(fontSize = 14.sp, color = colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
-                                                )
-                                            }
-                                            inner()
                                         }
+                                    )
+                                } else {
+                                    val annotatedCellText = remember(cell.text, colorScheme.onSurface) {
+                                        ru.quasaris.characternexus.tabs.MarkdownHelper.parseMarkdown(cell.text, colorScheme.onSurface, isEditing = false)
                                     }
-                                )
+                                    Text(
+                                        text = annotatedCellText,
+                                        style = TextStyle(
+                                            fontSize = 14.sp,
+                                            color = colorScheme.onSurface,
+                                            fontWeight = if (cell.isHeader) FontWeight.Bold else FontWeight.Normal
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
                             }
                             c += cell.colSpan
                         }

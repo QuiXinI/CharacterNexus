@@ -334,7 +334,8 @@ fun SpellGlossaryList(
             SpellFiltersArea(
                 visible = showFilters,
                 filterState = filterState,
-                onFilterChange = { filterState = it }
+                onFilterChange = { filterState = it },
+                allSpells = allSpells
             )
 
             SpellListGrid(settingsViewModel = settingsViewModel,

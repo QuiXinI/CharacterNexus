@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.FilterListOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.ImageVector
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import characternexus.shared.generated.resources.*
@@ -31,6 +33,7 @@ fun SpellFiltersArea(
     visible: Boolean,
     filterState: SpellFilterState,
     onFilterChange: (SpellFilterState) -> Unit,
+    allSpells: List<SpellCard> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
@@ -51,7 +54,7 @@ fun SpellFiltersArea(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Row 1: Quick Toggles (K, O, R, Damage, Attack/Save)
+                // Row 1: Quick Toggles (K, O, R, Upcast, Damage, Attack/Save)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
@@ -61,9 +64,10 @@ fun SpellFiltersArea(
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        FilterIconButton("К", filterState.hasConcentration) { onFilterChange(filterState.copy(hasConcentration = it)) }
-                        FilterIconButton("О", filterState.isCircle) { onFilterChange(filterState.copy(isCircle = it)) }
-                        FilterIconButton("Р", filterState.isRitual) { onFilterChange(filterState.copy(isRitual = it)) }
+                        FilterIconButton("К", value = filterState.hasConcentration) { onFilterChange(filterState.copy(hasConcentration = it)) }
+                        FilterIconButton("О", value = filterState.isCircle) { onFilterChange(filterState.copy(isCircle = it)) }
+                        FilterIconButton("Р", value = filterState.isRitual) { onFilterChange(filterState.copy(isRitual = it)) }
+                        FilterIconButton(icon = Icons.Default.ArrowUpward, value = filterState.hasDamageUpcast) { onFilterChange(filterState.copy(hasDamageUpcast = it)) }
                         
                         FilterIconToggleButton(
                             iconRes = Res.drawable.ic_fire,
@@ -120,11 +124,44 @@ fun SpellFiltersArea(
                         modifier = itemModifier
                     )
 
+                    val allSubclasses = remember(allSpells) {
+                        (ru.quasaris.characternexus.backend.glossary.SubclassRegistry.getAllSubclassNames() + allSpells.flatMap { it.subclasses }).distinct().sorted()
+                    }
+                    MultiChoiceDropdown(
+                        label = "Подклассы",
+                        options = allSubclasses,
+                        selectedOptions = filterState.subclasses,
+                        onSelectionChange = { onFilterChange(filterState.copy(subclasses = it)) },
+                        optionLabel = { it },
+                        modifier = itemModifier
+                    )
+
+                    val allSources = remember(allSpells) {
+                        allSpells.mapNotNull { it.source.takeIf { s -> s.isNotBlank() } }.distinct().sorted()
+                    }
+                    MultiChoiceDropdown(
+                        label = "Источники",
+                        options = allSources,
+                        selectedOptions = filterState.sources,
+                        onSelectionChange = { onFilterChange(filterState.copy(sources = it)) },
+                        optionLabel = { it },
+                        modifier = itemModifier
+                    )
+
                     MultiChoiceDropdown(
                         label = "Школы",
                         options = SpellSchool.entries.toList(),
                         selectedOptions = filterState.schools,
                         onSelectionChange = { onFilterChange(filterState.copy(schools = it)) },
+                        optionLabel = { it.displayName },
+                        modifier = itemModifier
+                    )
+
+                    MultiChoiceDropdown(
+                        label = "Версии",
+                        options = SpellVersion.entries.toList(),
+                        selectedOptions = filterState.versions,
+                        onSelectionChange = { onFilterChange(filterState.copy(versions = it)) },
                         optionLabel = { it.displayName },
                         modifier = itemModifier
                     )
@@ -289,7 +326,8 @@ fun FilterIconToggleButton(
 
 @Composable
 fun FilterIconButton(
-    label: String,
+    label: String? = null,
+    icon: ImageVector? = null,
     value: Boolean?,
     onValueChange: (Boolean?) -> Unit
 ) {
@@ -312,15 +350,28 @@ fun FilterIconButton(
         modifier = Modifier.size(48.dp)
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = label,
-                fontWeight = FontWeight.Bold,
-                color = when(value) {
-                    true -> colorScheme.onPrimary
-                    false -> colorScheme.onErrorContainer
-                    null -> colorScheme.onSurfaceVariant
-                }
-            )
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = when(value) {
+                        true -> colorScheme.onPrimary
+                        false -> colorScheme.onErrorContainer
+                        null -> colorScheme.onSurfaceVariant
+                    }
+                )
+            } else if (label != null) {
+                Text(
+                    text = label,
+                    fontWeight = FontWeight.Bold,
+                    color = when(value) {
+                        true -> colorScheme.onPrimary
+                        false -> colorScheme.onErrorContainer
+                        null -> colorScheme.onSurfaceVariant
+                    }
+                )
+            }
         }
     }
 }

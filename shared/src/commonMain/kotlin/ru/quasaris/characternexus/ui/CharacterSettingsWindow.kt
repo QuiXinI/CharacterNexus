@@ -301,16 +301,42 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
                 shape = RoundedCornerShape(12.dp)
             )
             
-            OutlinedTextField(
-                value = firstClass.subclass,
-                onValueChange = { 
-                    state.classes = listOf(firstClass.copy(subclass = it))
-                    state.syncIdentity()
-                },
-                label = { Text("Подкласс") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
+            var singleSubclassDropdownExpanded by remember { mutableStateOf(false) }
+            val singleSubclassSuggestions = remember(firstClass.className) {
+                ru.quasaris.characternexus.backend.glossary.SubclassRegistry.getSubclassesGrouped()[firstClass.className].orEmpty()
+            }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = firstClass.subclass,
+                    onValueChange = { 
+                        state.classes = listOf(firstClass.copy(subclass = it))
+                        state.syncIdentity()
+                    },
+                    label = { Text("Подкласс") },
+                    trailingIcon = if (singleSubclassSuggestions.isNotEmpty()) {
+                        { IconButton(onClick = { singleSubclassDropdownExpanded = true }) { Icon(Icons.Default.ArrowDropDown, null) } }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                if (singleSubclassSuggestions.isNotEmpty()) {
+                    DropdownMenu(
+                        expanded = singleSubclassDropdownExpanded,
+                        onDismissRequest = { singleSubclassDropdownExpanded = false }
+                    ) {
+                        singleSubclassSuggestions.forEach { subName ->
+                            DropdownMenuItem(
+                                text = { Text(subName) },
+                                onClick = {
+                                    state.classes = listOf(firstClass.copy(subclass = subName))
+                                    state.syncIdentity()
+                                    singleSubclassDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         } else {
             SectionHeader("Список классов")
 
@@ -357,18 +383,46 @@ fun IdentitySettingsSection(state: CharacterDetailState, statsMap: Map<String, S
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedTextField(
-                                value = entry.subclass,
-                                onValueChange = { s ->
-                                    val newList = state.classes.toMutableList()
-                                    newList[index] = entry.copy(subclass = s)
-                                    state.classes = newList
-                                    state.syncIdentity()
-                                },
-                                label = { Text("Подкласс") },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                            var multiSubclassDropdownExpanded by remember { mutableStateOf(false) }
+                            val multiSubclassSuggestions = remember(entry.className) {
+                                ru.quasaris.characternexus.backend.glossary.SubclassRegistry.getSubclassesGrouped()[entry.className].orEmpty()
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(
+                                    value = entry.subclass,
+                                    onValueChange = { s ->
+                                        val newList = state.classes.toMutableList()
+                                        newList[index] = entry.copy(subclass = s)
+                                        state.classes = newList
+                                        state.syncIdentity()
+                                    },
+                                    label = { Text("Подкласс") },
+                                    trailingIcon = if (multiSubclassSuggestions.isNotEmpty()) {
+                                        { IconButton(onClick = { multiSubclassDropdownExpanded = true }) { Icon(Icons.Default.ArrowDropDown, null) } }
+                                    } else null,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                if (multiSubclassSuggestions.isNotEmpty()) {
+                                    DropdownMenu(
+                                        expanded = multiSubclassDropdownExpanded,
+                                        onDismissRequest = { multiSubclassDropdownExpanded = false }
+                                    ) {
+                                        multiSubclassSuggestions.forEach { subName ->
+                                            DropdownMenuItem(
+                                                text = { Text(subName) },
+                                                onClick = {
+                                                    val newList = state.classes.toMutableList()
+                                                    newList[index] = entry.copy(subclass = subName)
+                                                    state.classes = newList
+                                                    state.syncIdentity()
+                                                    multiSubclassDropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
 
                             val totalLvl = state.level.toIntOrNull() ?: 1
                             val placeholder = if (index == 0) {

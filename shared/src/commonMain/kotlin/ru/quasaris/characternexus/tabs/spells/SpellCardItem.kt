@@ -218,12 +218,36 @@ fun SpellCardItem(
                             color = colorScheme.primary.copy(alpha = 0.75f)
                         )
                     }
-                    if (spell.classes.isNotEmpty()) {
+                    if (spell.classes.isNotEmpty() || spell.subclasses.isNotEmpty()) {
+                        val classText = spell.classes.joinToString(" • ") { it.displayName }
+                        val subclassText = spell.subclasses.joinToString(" • ")
+                        val classColor = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        val subclassColor = colorScheme.onSurfaceVariant.copy(alpha = 0.6f * 0.8f)
+
                         Text(
-                            text = spell.classes.joinToString(" • ") { it.displayName },
-                            style = MaterialTheme.typography.labelSmall,
-                            fontStyle = FontStyle.Italic,
-                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            text = buildAnnotatedString {
+                                if (classText.isNotBlank()) {
+                                    withStyle(SpanStyle(color = classColor, fontSize = 11.sp, fontStyle = FontStyle.Italic)) {
+                                        append(classText)
+                                    }
+                                }
+                                if (subclassText.isNotBlank()) {
+                                    if (classText.isNotBlank()) {
+                                        withStyle(SpanStyle(color = classColor, fontSize = 11.sp, fontStyle = FontStyle.Italic)) {
+                                            append(" (")
+                                        }
+                                    }
+                                    withStyle(SpanStyle(color = subclassColor, fontSize = 10.sp, fontStyle = FontStyle.Italic)) {
+                                        append(subclassText)
+                                    }
+                                    if (classText.isNotBlank()) {
+                                        withStyle(SpanStyle(color = classColor, fontSize = 11.sp, fontStyle = FontStyle.Italic)) {
+                                            append(")")
+                                        }
+                                    }
+                                }
+                            },
+                            style = MaterialTheme.typography.labelSmall
                         )
                     }
                 }
