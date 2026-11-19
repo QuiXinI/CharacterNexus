@@ -48,6 +48,15 @@ dependencies {
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
     baselineProfile(project(":baselineprofile"))
+
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.test.uiautomator)
+    androidTestImplementation(libs.junit)
+    androidTestUtil(libs.androidx.test.services)
 }
 
 android {
@@ -60,6 +69,11 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = rootProject.extra["appVersionCode"] as Int
         versionName = rootProject.extra["appVersionName"] as String
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunnerArguments["useTestStorageService"] = "false"
+    }
+    testOptions {
+        animationsDisabled = true
     }
     packaging {
         resources {

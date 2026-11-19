@@ -21,6 +21,7 @@ import ru.quasaris.characternexus.util.PlatformUtils
 import ru.quasaris.characternexus.util.AndroidCrashHandler
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
